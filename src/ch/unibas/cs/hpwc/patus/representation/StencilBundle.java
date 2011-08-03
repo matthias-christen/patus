@@ -1,0 +1,380 @@
+/**
+ *
+ */
+package ch.unibas.cs.hpwc.patus.representation;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
+import ch.unibas.cs.hpwc.patus.util.VectorUtil;
+
+/**
+ * This class provides a means to working with multiple stencils simultaneously.
+ * <p>It includes a &quot;fused&quot; stencil that contains all the nodes of the
+ * stencils that are part of the bundle (without the expression information),
+ * which is used to assess the planes that are needed to calculate the stencils
+ * and the width of the ghost zone layers.</p>
+ *
+ * @author Matthias-M. Christen
+ */
+public class StencilBundle implements IStencilOperations, Iterable<Stencil>
+{
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
+	/**
+	 * The &quot;fused&quot; stencil that contains the nodes of all the
+	 * stencils that have been added to the bundle
+	 */
+	private Stencil m_stencilFused;
+
+	/**
+	 * The list of stencils in the bundle
+	 */
+	private List<Stencil> m_listStencils;
+
+
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
+	/**
+	 * Constructs a new stencil bundle.
+	 */
+	public StencilBundle ()
+	{
+		m_stencilFused = null;
+		m_listStencils = new LinkedList<Stencil> ();
+	}
+
+	/**
+	 * Copy constructor.
+	 * @param bundle The bundle from which to create a new stencil bundle
+	 */
+	public StencilBundle (StencilBundle bundle)
+	{
+		this ();
+
+		try
+		{
+			m_stencilFused = createStencilFromTemplate (bundle.getFusedStencil (), true);
+			for (Stencil stencil : bundle)
+				m_listStencils.add (createStencilFromTemplate (stencil, true));
+		}
+		catch (SecurityException e)
+		{
+			e.printStackTrace();
+		}
+		catch (NoSuchMethodException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Returns the fused stencil containing all the nodes of the stencils
+	 * that have been added to the bundle.
+	 * @return The fused stencil
+	 */
+	public Stencil getFusedStencil ()
+	{
+		return m_stencilFused;
+	}
+
+	/**
+	 * Returns an iterable over all the stencils contained in this bundle.
+	 * @return An iterable over the stencils in this bundle
+	 */
+	public Iterable<Stencil> getStencils ()
+	{
+		return m_listStencils;
+	}
+
+	public int getFlopsCount ()
+	{
+		int nFlopsCount = 0;
+		for (Stencil stencil : m_listStencils)
+			nFlopsCount += stencil.getFlopsCount ();
+		return nFlopsCount;
+	}
+
+	/**
+	 * Adds a stencil to the bundle.
+	 * @param stencil The stencil to add to the bundle
+	 * @throws
+	 * @throws SecurityException
+	 */
+	public void addStencil (Stencil stencil) throws NoSuchMethodException, SecurityException
+	{
+		// add the stencil to the list
+		m_listStencils.add (stencil);
+
+		// add the stencil nodes to the fused stencil
+		addStencilToFused (stencil, true);
+	}
+
+	/**
+	 * Adds the stencil <code>stencil</code> to the fused stencil.
+	 * @param stencil The stencil to add
+	 */
+	private void addStencilToFused (Stencil stencil, boolean bAddToList) throws NoSuchMethodException, SecurityException
+	{
+		// Determine whether we need to shift the stencils in space: Shifting is necessary
+		// if the output indices of the fused stencil and the stencil to add are not
+		// aligned. Note that the stencils in the list will be shifted too.
+
+		ensureFusedStencilCreated (stencil);
+		int[] rgSpaceIndexFusedStencil = m_stencilFused.getSpatialOutputIndex ();
+		int[] rgSpaceIdxNewStencil = stencil.getSpatialOutputIndex ();
+
+		// offset the new stencil so that the output index is at the origin
+		m_stencilFused.offsetInSpace (VectorUtil.negate (rgSpaceIndexFusedStencil));
+		stencil.offsetInSpace (VectorUtil.negate (rgSpaceIdxNewStencil));
+
+		// add the new stencil to the fused stencil
+		for (int i = 0; i < stencil.getNumberOfVectorComponents (); i++)
+			for (StencilNode node : stencil.getNodeIteratorForVectorComponent (i))
+				m_stencilFused.addInputNode (new StencilNode (node));
+
+		// TODO: check output node
+		for (StencilNode node : stencil.getOutputNodes ())
+			if (node.getSpaceIndex ().length > 0)
+				m_stencilFused.addOutputNode (new StencilNode (node));
+
+		// offset the stencils that are in the bundle
+		int[] rgMinSpaceIndex = VectorUtil.getMinimum (rgSpaceIndexFusedStencil, rgSpaceIdxNewStencil);
+		m_stencilFused.offsetInSpace (rgMinSpaceIndex);
+		for (Stencil s : m_listStencils)
+			s.offsetInSpace (rgMinSpaceIndex);
+	}
+
+	/**
+	 * Rebuilds the structure of the fused stencil.
+	 * <p>Use this method after properties of the stencils within this bundle are
+	 * changes manually (i.e. other than using the methods provided by the
+	 * {@link StencilBundle} class).</p>
+	 */
+	public void rebuild () throws NoSuchMethodException, SecurityException
+	{
+		m_stencilFused.clear ();
+		for (Stencil stencil : m_listStencils)
+			addStencilToFused (stencil, false);
+	}
+
+	/**
+	 * Returns the number of stencils in the bundle.
+	 * @return The number of stencils
+	 */
+	public int getStencilsCount ()
+	{
+		return m_listStencils.size ();
+	}
+
+	@Override
+	public Iterator<Stencil> iterator ()
+	{
+		return m_listStencils.iterator ();
+	}
+
+	/**
+	 * Ensures that the fused stencil object has been created
+	 * @param stencilTemplate
+	 * @throws
+	 * @throws SecurityException
+	 */
+	private void ensureFusedStencilCreated (Stencil stencilTemplate) throws NoSuchMethodException, SecurityException
+	{
+		if (m_stencilFused == null)
+			m_stencilFused = createStencilFromTemplate (stencilTemplate, false);
+
+	}
+
+	/**
+	 * Creates a new stencil of the same class as <code>stencilTemplate</code> and
+	 * copies the data (the stencil nodes) from <code>stencilTemplate</code> into the
+	 * newly created instance if <code>bCopyNodes</code> is set to <code>true</code>.
+	 * @param stencilTemplate The template used to create a new stencil instance
+	 * @param bCopyNodes Flag determining whether to copy the stencil nodes of
+	 * 	<code>stencilTemplate</code> into the newly created instance
+	 * @return A new instance of a stencil based on <code>stencilTemplate</code>
+	 * @throws NoSuchMethodException
+	 * @throws SecurityException
+	 */
+	@SuppressWarnings("unchecked")
+	private Stencil createStencilFromTemplate (Stencil stencilTemplate, boolean bCopyNodes) throws NoSuchMethodException, SecurityException
+	{
+		Class<Stencil> clsStencil = (Class<Stencil>) stencilTemplate.getClass ();
+		Constructor<Stencil> mthConstructor = bCopyNodes ? clsStencil.getConstructor (clsStencil) : clsStencil.getConstructor ();
+		Stencil stencil = null;
+
+		try
+		{
+			if (bCopyNodes)
+				stencil = mthConstructor.newInstance (stencilTemplate);
+			else
+				stencil = mthConstructor.newInstance ();
+		}
+		catch (IllegalArgumentException e)
+		{
+		}
+		catch (InstantiationException e)
+		{
+		}
+		catch (IllegalAccessException e)
+		{
+		}
+		catch (InvocationTargetException e)
+		{
+		}
+
+		return stencil;
+	}
+
+
+	///////////////////////////////////////////////////////////////////
+	// Stencil Structure Operations
+
+	@Override
+	public void offsetInSpace (int[] rgSpaceOffset)
+	{
+		if (m_stencilFused == null)
+			return;
+
+		m_stencilFused.offsetInSpace (rgSpaceOffset);
+		for (Stencil stencil : m_listStencils)
+			stencil.offsetInSpace (rgSpaceOffset);
+	}
+
+	@Override
+	public void advanceInSpace (int nDirection)
+	{
+		if (m_stencilFused == null)
+			return;
+
+		m_stencilFused.advanceInSpace (nDirection);
+		for (Stencil stencil : m_listStencils)
+			stencil.advanceInSpace (nDirection);
+	}
+
+	@Override
+	public void offsetInTime (int nTimeOffset)
+	{
+		if (m_stencilFused == null)
+			return;
+
+		m_stencilFused.offsetInTime (nTimeOffset);
+		for (Stencil stencil : m_listStencils)
+			stencil.offsetInTime (nTimeOffset);
+	}
+
+	@Override
+	public void advanceInTime ()
+	{
+		if (m_stencilFused == null)
+			return;
+
+		m_stencilFused.advanceInTime ();
+		for (Stencil stencil : m_listStencils)
+			stencil.advanceInTime ();
+	}
+
+
+	///////////////////////////////////////////////////////////////////
+	// Stencil Structure Information
+
+	@Override
+	public byte getDimensionality ()
+	{
+		return m_stencilFused == null ? 0 : m_stencilFused.getDimensionality ();
+	}
+
+	@Override
+	public int[] getMinSpaceIndex ()
+	{
+		return m_stencilFused == null ? new int[0] : m_stencilFused.getMinSpaceIndex ();
+	}
+
+	@Override
+	public int[] getMinSpaceIndexByTimeIndex (int nTimeIndex)
+	{
+		return m_stencilFused == null ? new int[0] : m_stencilFused.getMinSpaceIndexByTimeIndex (nTimeIndex);
+	}
+
+	@Override
+	public int[] getMinSpaceIndexByVectorIndex (int nVectorIndex)
+	{
+		return m_stencilFused == null ? new int[0] : m_stencilFused.getMinSpaceIndexByTimeIndex (nVectorIndex);
+	}
+
+	@Override
+	public int[] getMinSpaceIndex (int nTimeIndex, int nVectorIndex)
+	{
+		return m_stencilFused == null ? new int[0] : m_stencilFused.getMinSpaceIndex (nTimeIndex, nVectorIndex);
+	}
+
+	@Override
+	public int[] getMaxSpaceIndex ()
+	{
+		return m_stencilFused == null ? new int[0] : m_stencilFused.getMaxSpaceIndex ();
+	}
+
+	@Override
+	public int[] getMaxSpaceIndexByTimeIndex (int nTimeIndex)
+	{
+		return m_stencilFused == null ? new int[0] : m_stencilFused.getMaxSpaceIndexByTimeIndex (nTimeIndex);
+	}
+
+	@Override
+	public int[] getMaxSpaceIndexByVectorIndex (int nVectorIndex)
+	{
+		return m_stencilFused == null ? new int[0] : m_stencilFused.getMaxSpaceIndexByVectorIndex (nVectorIndex);
+	}
+
+	@Override
+	public int[] getMaxSpaceIndex (int nTimeIndex, int nVectorIndex)
+	{
+		return m_stencilFused == null ? new int[0] : m_stencilFused.getMaxSpaceIndex (nTimeIndex, nVectorIndex);
+	}
+
+	@Override
+	public int getMinTimeIndex ()
+	{
+		return m_stencilFused == null ? 0 : m_stencilFused.getMinTimeIndex ();
+	}
+
+	@Override
+	public int getMaxTimeIndex ()
+	{
+		return m_stencilFused == null ? 0 : m_stencilFused.getMaxTimeIndex ();
+	}
+
+	@Override
+	public boolean isTimeblockingApplicable ()
+	{
+		return m_stencilFused == null ? false : m_stencilFused.isTimeblockingApplicable ();
+	}
+
+//	@Override
+//	public GhostZoneSize getPlaneGhostZoneSize (int nTimeIndex, int nInputVectorComponentIndex)
+//	{
+//		return m_stencilFused == null ? new GhostZoneSize (0) : m_stencilFused.getPlaneGhostZoneSize (nTimeIndex, nInputVectorComponentIndex);
+//	}
+
+
+	///////////////////////////////////////////////////////////////////
+	// Object Overrides
+
+	@Override
+	public String toString ()
+	{
+		StringBuilder sb = new StringBuilder ("Fused stencil:\n==============\n\n");
+		sb.append (m_stencilFused == null ? "(null)" : m_stencilFused.toString ());
+		sb.append ("\n\n\nStencils:\n=========\n\n");
+		StringUtil.joinAsBuilder (m_listStencils, "\n", sb);
+
+		return sb.toString ();
+	}
+}

@@ -1,0 +1,138 @@
+package ch.unibas.cs.hpwc.patus.codegen.options;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Class encapsulating code generation options that are set by the code generation
+ * modules at code generation time.
+ *
+ * @author Matthias-M. Christen
+ */
+public class CodeGeneratorRuntimeOptions implements Cloneable
+{
+	///////////////////////////////////////////////////////////////////
+	// Constants
+
+	public final static String OPTION_LOOPUNROLLINGFACTOR = "LoopUnrollingFactor";
+
+	public final static String OPTION_STENCILLOOPUNROLLINGFACTOR = "StencilLoopUnrollingFactor";
+
+	public final static String OPTION_STENCILCALCULATION = "StencilCalculation";
+	public final static String VALUE_STENCILCALCULATION_STENCIL = "stencil";
+	public final static String VALUE_STENCILCALCULATION_INITIALIZE = "initialize";
+	public final static String VALUE_STENCILCALCULATION_VALIDATE = "validate";
+
+	/**
+	 * Suppresses vectorization of the stencil calculation code (if the value is {@link Boolean#TRUE})
+	 */
+	public final static String OPTION_NOVECTORIZE = "NoVectorize";
+
+
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
+	private Map<String, Object> m_mapOptions;
+
+
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
+	public CodeGeneratorRuntimeOptions ()
+	{
+		m_mapOptions = new HashMap<String, Object> ();
+	}
+
+	public void setOption (String strOption, Object objValue)
+	{
+		m_mapOptions.put (strOption, objValue);
+	}
+
+	public void removeOption (String strOption)
+	{
+		m_mapOptions.remove (strOption);
+	}
+
+	public void removeAllOptions ()
+	{
+		m_mapOptions.clear ();
+	}
+
+	public Object getObjectValue (String strOption)
+	{
+		return m_mapOptions.get (strOption);
+	}
+
+	public Boolean getBooleanValue (String strOption)
+	{
+		Object obj = m_mapOptions.get (strOption);
+		if (obj == null || !(obj instanceof Boolean))
+			return null;
+		return (Boolean) obj;
+	}
+
+	public boolean getBooleanValue (String strOption, boolean bDefault)
+	{
+		Boolean b = getBooleanValue (strOption);
+		return b == null ? bDefault : b;
+	}
+
+	public Integer getIntValue (String strOption)
+	{
+		Object obj = m_mapOptions.get (strOption);
+		if (obj == null || !(obj instanceof Number))
+			return null;
+		return ((Number) obj).intValue ();
+	}
+
+	public int getIntValue (String strOption, int nDefault)
+	{
+		Integer n = getIntValue (strOption);
+		return n == null ? nDefault : n;
+	}
+
+	public String getStringValue (String strOption)
+	{
+		Object obj = m_mapOptions.get (strOption);
+		if (obj == null || !(obj instanceof String))
+			return null;
+		return (String) obj;
+	}
+
+	public String getStringValue (String strOption, String strDefault)
+	{
+		String s = getStringValue (strOption);
+		return s == null ? strDefault : s;
+	}
+
+	@Override
+	public boolean equals (Object obj)
+	{
+		if (obj == null)
+			return false;
+		if (!(obj instanceof CodeGeneratorRuntimeOptions))
+			return false;
+
+		return m_mapOptions.equals (((CodeGeneratorRuntimeOptions) obj).m_mapOptions);
+	}
+
+	@Override
+	public int hashCode ()
+	{
+		return m_mapOptions.hashCode ();
+	}
+
+	@Override
+	public CodeGeneratorRuntimeOptions clone ()
+	{
+		CodeGeneratorRuntimeOptions options = new CodeGeneratorRuntimeOptions ();
+		options.m_mapOptions.putAll (m_mapOptions);
+		return options;
+	}
+
+	@Override
+	public String toString ()
+	{
+		return m_mapOptions.toString ();
+	}
+}

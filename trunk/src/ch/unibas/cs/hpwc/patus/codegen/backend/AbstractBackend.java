@@ -1,0 +1,265 @@
+package ch.unibas.cs.hpwc.patus.codegen.backend;
+
+import java.util.List;
+
+import cetus.hir.Expression;
+import cetus.hir.Specifier;
+import cetus.hir.Traversable;
+import ch.unibas.cs.hpwc.patus.ast.StatementList;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
+import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
+import ch.unibas.cs.hpwc.patus.codegen.backend.AbstractNonKernelFunctionsImpl.EOutputGridType;
+
+/**
+ * Provides default implementations for certain methods of the {@link IArithmetic}
+ * and the {@link INonKernelFunctions} interfaces.
+ *
+ * @author Matthias-M. Christen
+ */
+public abstract class AbstractBackend implements IBackend
+{
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
+	protected CodeGeneratorSharedObjects m_data;
+
+	// Mixin classes
+
+	private AbstractArithmeticImpl m_mixinArithmetic;
+
+	private AbstractNonKernelFunctionsImpl m_mixinNonKernelFunctions;
+
+
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
+	public AbstractBackend (CodeGeneratorSharedObjects data)
+	{
+		m_data = data;
+
+		m_mixinArithmetic = new AbstractArithmeticImpl (m_data)
+		{
+			@Override
+			public Traversable splat (Expression expr, Specifier specDatatype)
+			{
+				return null;
+			}
+
+			@Override
+			public Expression shuffle(Expression expr1, Expression expr2, Specifier specDatatype, int nOffset)
+			{
+				return null;
+			}
+		};
+
+		m_mixinNonKernelFunctions = new AbstractNonKernelFunctionsImpl (m_data)
+		{
+		};
+	}
+
+	@Override
+	public IIndexingLevel getIndexingLevelFromParallelismLevel (int nParallelismLevel)
+	{
+		int nIndexingLevelsCount = getIndexingLevelsCount ();
+		if (nParallelismLevel <= 0)
+			return getIndexingLevel (nIndexingLevelsCount - 1);
+		if (nParallelismLevel >= nIndexingLevelsCount)
+			return getIndexingLevel (0);
+		return getIndexingLevel (nIndexingLevelsCount - nParallelismLevel);
+	}
+
+	/**
+	 * @see AbstractNonKernelFunctionsImpl#getExpressionForVariable(Variable)
+	 */
+	public Expression getExpressionForVariable (GlobalGeneratedIdentifiers.Variable variable)
+	{
+		return m_mixinNonKernelFunctions.getExpressionForVariable (variable);
+	}
+
+	/**
+	 * @see AbstractNonKernelFunctionsImpl#getExpressionForVariable(Variable, EOutputGridType)
+	 */
+	public Expression getExpressionForVariable (GlobalGeneratedIdentifiers.Variable variable, EOutputGridType typeOutputGrid)
+	{
+		return m_mixinNonKernelFunctions.getExpressionForVariable (variable, typeOutputGrid);
+	}
+
+	/**
+	 * @see AbstractNonKernelFunctionsImpl#getExpressionsForVariables(List)
+	 */
+	public List<Expression> getExpressionsForVariables (List<Variable> listVariables)
+	{
+		return m_mixinNonKernelFunctions.getExpressionsForVariables (listVariables);
+	}
+
+	/**
+	 * @see AbstractNonKernelFunctionsImpl#getExpressionForVariable(Variable, EOutputGridType)
+	 */
+	public List<Expression> getExpressionsForVariables (List<Variable> listVariables, EOutputGridType typeOutputGrid)
+	{
+		return m_mixinNonKernelFunctions.getExpressionsForVariables (listVariables, typeOutputGrid);
+	}
+
+
+	///////////////////////////////////////////////////////////////////
+	// IIArithmetic Implementation
+
+	@Override
+	public Expression createExpression (Expression exprIn, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.createExpression (exprIn, specDatatype, bVectorize);
+	}
+
+	@Override
+	public Expression plus (Expression expr, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.plus (expr, specDatatype, bVectorize);
+	}
+
+	@Override
+	public Expression minus (Expression expr, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.minus (expr, specDatatype, bVectorize);
+	}
+
+	@Override
+	public Expression add (Expression expr1, Expression expr2, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.add (expr1, expr2, specDatatype, bVectorize);
+	}
+
+	@Override
+	public Expression subtract(Expression expr1, Expression expr2, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.subtract (expr1, expr2, specDatatype, bVectorize);
+	}
+
+	@Override
+	public Expression multiply (Expression expr1, Expression expr2, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.multiply (expr1, expr2, specDatatype, bVectorize);
+	}
+
+	@Override
+	public Expression divide (Expression expr1, Expression expr2, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.divide (expr1, expr2, specDatatype, bVectorize);
+	}
+
+	@Override
+	public Expression fma (Expression expr1, Expression expr2, Expression expr3, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.fma (expr1, expr2, expr3, specDatatype, bVectorize);
+	}
+
+	@Override
+	public Expression sqrt (Expression expr, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.sqrt (expr, specDatatype, bVectorize);
+	}
+
+
+	///////////////////////////////////////////////////////////////////
+	// IAdditionalKernelSpecific Implementation
+
+	@Override
+	public String getAdditionalKernelSpecificCode ()
+	{
+		return null;
+	}
+	
+	
+	///////////////////////////////////////////////////////////////////
+	// INonKernelFunctions Implementation
+	
+	@Override
+	public void initializeNonKernelFunctionCG ()
+	{
+		m_mixinNonKernelFunctions.initializeNonKernelFunctionCG ();
+	}
+
+	@Override
+	public StatementList forwardDecls ()
+	{
+		return m_mixinNonKernelFunctions.forwardDecls ();
+	}
+
+	@Override
+	public StatementList declareGrids()
+	{
+		return m_mixinNonKernelFunctions.declareGrids ();
+	}
+
+	@Override
+	public StatementList allocateGrids ()
+	{
+		return m_mixinNonKernelFunctions.allocateGrids ();
+	}
+
+	@Override
+	public StatementList initializeGrids()
+	{
+		return m_mixinNonKernelFunctions.initializeGrids ();
+	}
+
+	@Override
+	public StatementList sendData ()
+	{
+		return m_mixinNonKernelFunctions.sendData ();
+	}
+
+	@Override
+	public StatementList receiveData ()
+	{
+		return m_mixinNonKernelFunctions.receiveData ();
+	}
+
+	@Override
+	public StatementList computeStencil()
+	{
+		return m_mixinNonKernelFunctions.computeStencil ();
+	}
+
+	@Override
+	public StatementList validateComputation ()
+	{
+		return m_mixinNonKernelFunctions.validateComputation ();
+	}
+
+	@Override
+	public StatementList deallocateGrids()
+	{
+		return m_mixinNonKernelFunctions.deallocateGrids ();
+	}
+
+	@Override
+	public Expression getFlopsPerStencil ()
+	{
+		return m_mixinNonKernelFunctions.getFlopsPerStencil ();
+	}
+
+	@Override
+	public Expression getGridPointsCount ()
+	{
+		return m_mixinNonKernelFunctions.getGridPointsCount ();
+	}
+
+	@Override
+	public Expression getBytesTransferred ()
+	{
+		return m_mixinNonKernelFunctions.getBytesTransferred ();
+	}
+
+	@Override
+	public Expression getDoValidation ()
+	{
+		return m_mixinNonKernelFunctions.getDoValidation ();
+	}
+
+	@Override
+	public Expression getValidates ()
+	{
+		return m_mixinNonKernelFunctions.getValidates ();
+	}
+}

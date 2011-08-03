@@ -1,0 +1,471 @@
+package ch.unibas.cs.hpwc.patus.codegen;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+import cetus.hir.BinaryExpression;
+import cetus.hir.BinaryOperator;
+import cetus.hir.Declaration;
+import cetus.hir.Expression;
+import cetus.hir.NameID;
+import cetus.hir.PointerSpecifier;
+import cetus.hir.ProcedureDeclarator;
+import cetus.hir.SizeofExpression;
+import cetus.hir.Specifier;
+import cetus.hir.VariableDeclaration;
+import cetus.hir.VariableDeclarator;
+import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
+import ch.unibas.cs.hpwc.patus.geometry.Size;
+import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
+import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
+
+/**
+ * Class encapsulating all the generated global identifiers, i.e.,
+ * the stencil function,
+ *
+ * @author Matthias-M. Christen
+ */
+public class GlobalGeneratedIdentifiers
+{
+	///////////////////////////////////////////////////////////////////
+	// Inner Types
+
+	public enum EVariableType
+	{
+		OUTPUT_GRID (0x01),
+		INPUT_GRID (0x02),
+		SIZE_PARAMETER (0x04),
+		KERNEL_PARAMETER (0x08),
+		AUTOTUNE_PARAMETER (0x10),
+		INTERNAL_AUTOTUNE_PARAMETER (0x20),
+		INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER (0x40),
+		INTERNAL_ADDITIONAL_KERNEL_PARAMETER (0x80);
+
+
+		private int m_nMaskValue;
+
+		private EVariableType (int nMaskValue)
+		{
+			m_nMaskValue = nMaskValue;
+		}
+
+		public int mask ()
+		{
+			return m_nMaskValue;
+		}
+
+		public boolean isGrid ()
+		{
+			return INPUT_GRID.equals (this) || OUTPUT_GRID.equals (this);
+		}
+	}
+
+	/**
+	 *
+	 */
+	public static class Variable
+	{
+		private EVariableType m_type;
+		private List<Specifier> m_listSpecifiers;
+		private String m_strName;
+
+		/**
+		 * Size of the array
+		 */
+		private Expression m_exprSize;
+
+		/**
+		 * Memory object box. Only valid for grid type variables.
+		 */
+		private Size m_sizeBox;
+
+		private VariableDeclaration m_declaration;
+
+
+		public Variable (EVariableType type, List<Specifier> listSpecifiers, String strName, Expression exprSize)
+		{
+			m_type = type;
+			m_listSpecifiers = listSpecifiers;
+			m_strName = strName;
+			m_exprSize = exprSize;
+			m_sizeBox = null;
+
+			m_declaration = new VariableDeclaration (listSpecifiers, new VariableDeclarator (new NameID (strName)));
+		}
+
+		public Variable (EVariableType type, VariableDeclaration decl, Expression exprSize, Size sizeBox)
+		{
+			m_type = type;
+			m_declaration = decl;
+			m_listSpecifiers = decl.getSpecifiers ();
+			m_strName = decl.getDeclarator (0).getID ().getName ();
+			m_exprSize = exprSize;
+			m_sizeBox = sizeBox;
+		}
+
+		/**
+		 * Creates a new variable.
+		 * @param type The variable type
+		 * @param decl The variable declaration
+		 * @param specOrig The specifier of the original type (of the underlying stencil node)
+		 * @param strArgumentName The name of the variable
+		 * @param data
+		 */
+		public Variable (EVariableType type, VariableDeclaration decl, String strArgumentName, CodeGeneratorSharedObjects data)
+		{
+			this (
+				type,
+				decl,
+				type.isGrid () ?
+					GlobalGeneratedIdentifiers.getGridMemorySize (decl, strArgumentName, data) :
+					new SizeofExpression (decl.getSpecifiers ()),
+				type.isGrid () ? GlobalGeneratedIdentifiers.getGridMemoryBox (decl, strArgumentName, data) : null
+			);
+		}
+
+		public final EVariableType getType ()
+		{
+			return m_type;
+		}
+
+		public final boolean isGrid ()
+		{
+			return m_type.isGrid ();
+		}
+
+		public final List<Specifier> getSpecifiers ()
+		{
+			return m_listSpecifiers;
+		}
+
+		public final String getName ()
+		{
+			return m_strName;
+		}
+
+		public final Expression getSize ()
+		{
+			return m_exprSize;
+		}
+
+		public final Size getBoxSize ()
+		{
+			return m_sizeBox;
+		}
+
+		public final VariableDeclaration getDeclaration ()
+		{
+			return m_declaration;
+		}
+
+		@Override
+		public String toString()
+		{
+			return StringUtil.concat (
+				"<", m_type.toString (), "> ",
+				StringUtil.join (m_listSpecifiers, ""), " ",
+				m_strName, " [", m_exprSize.toString (), "]");
+		}
+
+		@Override
+		public boolean equals (Object obj)
+		{
+			if (!(obj instanceof Variable))
+				return false;
+
+			Variable var = (Variable) obj;
+
+			if (!m_strName.equals (var.getName ()))
+				return false;
+			if (m_type != var.getType ())
+				return false;
+			if (!m_listSpecifiers.equals (var.getSpecifiers ()))
+				return false;
+			if (!m_exprSize.equals (var.getSize ()))
+				return false;
+
+			return true;
+		}
+
+		@Override
+		public int hashCode ()
+		{
+			return m_strName.hashCode () + m_type.hashCode () * 11;
+		}
+	}
+
+	private static Size getGridMemoryBox (VariableDeclaration decl, String strArgumentName, CodeGeneratorSharedObjects data)
+	{
+		MemoryObject mo = data.getData ().getMemoryObjectManager ().getMemoryObject (
+			data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid (),
+			data.getStencilCalculation ().getReferenceStencilNode (strArgumentName),
+			false);
+		return mo.getSize ();
+	}
+
+	private static Expression getGridMemorySize (VariableDeclaration decl, String strArgumentName, CodeGeneratorSharedObjects data)
+	{
+		MemoryObject mo = data.getData ().getMemoryObjectManager ().getMemoryObject (
+			data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid (),
+			data.getStencilCalculation ().getReferenceStencilNode (strArgumentName),
+			false);
+
+		// get size of the original specifier (double / float)
+		StencilCalculation.ArgumentType type = data.getStencilCalculation ().getArgumentType (strArgumentName);
+
+		return new BinaryExpression (
+			mo.getSize (/*new IntegerLiteral (0), data.getCodeGenerators ().getStrategyAnalyzer ().getMaximumTotalTimestepsCount ()*/).getVolume (),
+			BinaryOperator.MULTIPLY,
+			new SizeofExpression (CodeGeneratorUtil.specifiers (type.getSpecifier ())));
+	}
+
+
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
+	private CodeGeneratorSharedObjects m_data;
+
+	private NameID m_nidInitializeFunction;
+
+	private NameID m_nidStencilFunction;
+	private List<Variable> m_listVariables;
+
+
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
+	/**
+	 *
+	 * @param data
+	 */
+	public GlobalGeneratedIdentifiers (CodeGeneratorSharedObjects data)
+	{
+		m_data = data;
+		m_listVariables = new LinkedList<Variable> ();
+	}
+
+	/**
+	 * Returns the list of all variables.
+	 * @return All the variables
+	 */
+	public List<Variable> getVariables ()
+	{
+		List<Variable> list = new ArrayList<Variable> (m_listVariables.size ());
+		list.addAll (m_listVariables);
+		return list;
+	}
+
+	/**
+	 * Returns a list of all variables of the type <code>type</code>.
+	 * @param type The variable type
+	 * @return All the variables of a certain type, <code>type</code>
+	 */
+	public List<Variable> getVariables (EVariableType type)
+	{
+		return getVariables (type.mask ());
+	}
+
+	/**
+	 * Returns a list of all variables satisfying a type mask, <code>nVariableTypeMask</code>.
+	 * E.g., to retrieve all input grids, use
+	 * <pre>getVariables (EVariableType.INPUT_GRID.mask ())</pre>,
+	 * to retrieve all input or output grids, use
+	 * <pre>getVariables (EVariableType.INPUT_GRID.mask () | EVariableType.OUTPUT_GRID.mask ())</pre>,
+	 * to get all variables but output grids, use
+	 * <pre>getVariables (~EVariableType.OUTPUT_GRID.mask ())</pre>
+	 * @param m_strType The variable type
+	 * @return All the variables of a certain type, <code>type</code>
+	 */
+	public List<Variable> getVariables (int nVariableTypeMask)
+	{
+		List<Variable> list = new ArrayList<Variable> (m_listVariables.size ());
+		for (Variable v : m_listVariables)
+			if ((v.getType ().mask () & nVariableTypeMask) != 0)
+				list.add (v);
+		return list;
+	}
+
+	/**
+	 * Returns all the variables of type {@link EVariableType#INPUT_GRID}.
+	 * @return All the input grid variables
+	 */
+	public List<Variable> getInputGrids ()
+	{
+		return getVariables (EVariableType.INPUT_GRID);
+	}
+
+	/**
+	 * Returns all the variables of type {@link EVariableType#OUTPUT_GRID}.
+	 * @return All the output grid variables
+	 */
+	public List<Variable> getOutputGrids ()
+	{
+		return getVariables (EVariableType.OUTPUT_GRID);
+	}
+
+	public NameID getInitializeFunctionName ()
+	{
+		//m_declInitializeFunction.get
+		return m_nidInitializeFunction;
+	}
+
+	/**
+	 * Returns a list of {@link NameID}s derived from the list of variables, <code>itVars</code>.
+	 * @param itVars An iterable over the variables for which to create a list of declarations
+	 * @param bOriginalTypes If set to <code>true</code>, the variable declarations use the original data types
+	 * 	(as defined in the stencil specification, i.e. <code>float</code> and <code>double</code> (for grids and stencil
+	 * 	params). If set to <code>false</code>, the corresponding derived types (e.g., SIMD types) are used
+	 * @return
+	 */
+	private List<Declaration> getDeclarations (Iterable<Variable> itVars)
+	{
+		boolean bIsFortranCompatible = m_data.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+
+		List<Declaration> listDecls = new ArrayList<Declaration> ();
+		for (Variable v : itVars)
+		{
+			List<Specifier> listSpecs = new ArrayList<Specifier> (v.getSpecifiers ().size () + 1);
+			listSpecs.addAll (v.getSpecifiers ());
+			if (bIsFortranCompatible && !v.isGrid ())
+				listSpecs.add (PointerSpecifier.UNQUALIFIED);
+
+			listDecls.add (new VariableDeclaration (listSpecs, new VariableDeclarator (new NameID (v.getName ()))));
+		}
+
+		return listDecls;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public VariableDeclaration getInitializeFunctionDeclaration ()
+	{
+		if (m_nidInitializeFunction == null)
+			return null;
+
+		List<Specifier> listSpecs = new ArrayList<Specifier> ();
+		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
+		listSpecs.add (Specifier.VOID);
+
+		return new VariableDeclaration (
+			listSpecs,
+			new ProcedureDeclarator (
+				m_nidInitializeFunction.clone (),
+				getDeclarations (getVariables (
+					~EVariableType.OUTPUT_GRID.mask () &
+					~EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask () &
+					~EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask ())
+				)
+			)
+		);
+	}
+
+	/**
+	 *
+	 * @param nidInitializeFunction
+	 */
+	/* package */ void setInitializeFunctionName (NameID nidInitializeFunction)
+	{
+		m_nidInitializeFunction = nidInitializeFunction;
+	}
+
+	/**
+	 * Returns the name of the (generic) stencil function.
+	 * @return
+	 */
+	public NameID getStencilFunctionName ()
+	{
+		return m_nidStencilFunction;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public VariableDeclaration getStencilFunctionDeclaration ()
+	{
+		List<Specifier> listSpecs = new ArrayList<Specifier> ();
+		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
+		listSpecs.add (Specifier.VOID);
+
+		// if Fortran-compatibility mode is turned on, don't include the output grids in the stencil kernel declaration
+		boolean bIsFortranCompatible = m_data.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+		List<Variable> listVariables = getVariables (
+			~EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask () & (bIsFortranCompatible ? ~EVariableType.OUTPUT_GRID.mask () : ~0));
+
+		return new VariableDeclaration (
+			listSpecs,
+			new ProcedureDeclarator (m_nidStencilFunction.clone (), getDeclarations (listVariables)));
+	}
+
+	/**
+	 *
+	 * @param nidStencilFunction
+	 */
+	/* package */ void setStencilFunctionName (NameID nidStencilFunction)
+	{
+		m_nidStencilFunction = nidStencilFunction;
+	}
+
+	/**
+	 *
+	 * @param varArgument
+	 */
+	public void addStencilFunctionArguments (Variable varArgument)
+	{
+		if (!m_listVariables.contains (varArgument))
+			m_listVariables.add (varArgument);
+	}
+
+	/**
+	 * Returns a list of declarations.
+	 * If <code>bIncludeOutputGrids</code> is set to <code>false</code>, no output grid variable declarations
+	 * are contained in the result list.
+	 * If <code>bIncludeAutotuneParameters</code> is set to <code>false</code>, no autotuner parameter variable declarations
+	 * are contained in the result list.
+	 * @param bIncludeOutputGrids
+	 * @param bIncludeAutotuneParameters
+	 * @param bMakeCompatibleWithFortran Flag indicating whether to make the parameter declarations compatible with Fortran, i.e., create pointer
+	 * 	parameters (<code>bMakeCompatibleWithFortran == true</code>) or use the default C convention
+	 * @return
+	 */
+	public List<Declaration> getFunctionParameterList (boolean bIncludeOutputGrids, boolean bIncludeAutotuneParameters, boolean bIncludeInternalAutotuneParameters, boolean bMakeCompatibleWithFortran)
+	{
+		List<Declaration> listDecls = new ArrayList<Declaration> (m_listVariables.size ());
+		for (Variable v : m_listVariables)
+		{
+			if (v.getType ().equals (EVariableType.OUTPUT_GRID) && (!bIncludeOutputGrids || bMakeCompatibleWithFortran))
+				continue;
+			if (v.getType ().equals (EVariableType.AUTOTUNE_PARAMETER) && !bIncludeAutotuneParameters)
+				continue;
+			if (v.getType ().equals (EVariableType.INTERNAL_AUTOTUNE_PARAMETER) && !bIncludeInternalAutotuneParameters)
+				continue;
+			if (v.getType ().equals (EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER))
+				continue;
+
+			if (bMakeCompatibleWithFortran)
+			{
+				// add the pointer specifier
+				List<Specifier> listSpecOrig = v.getDeclaration ().getSpecifiers ();
+				if (listSpecOrig.get (listSpecOrig.size () - 1).equals (PointerSpecifier.UNQUALIFIED))
+					listDecls.add (v.getDeclaration ());
+				else
+				{
+					// add a pointer specifier if the parameter is not a pointer
+					List<Specifier> listSpecs = new ArrayList<Specifier> (listSpecOrig.size () + 1);
+					listSpecs.addAll (listSpecOrig);
+					listSpecs.add (PointerSpecifier.UNQUALIFIED);
+
+					listDecls.add (new VariableDeclaration (listSpecs, v.getDeclaration ().getDeclarator (0)));
+				}
+			}
+			else
+				listDecls.add (v.getDeclaration ());
+		}
+
+		return listDecls;
+	}
+}

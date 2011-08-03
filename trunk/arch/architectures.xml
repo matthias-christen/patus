@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<architectureTypes xsi:noNamespaceSchemaLocation="../src/ch/unibas/cs/hpwc/patus/arch/arch-config.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<!-- Intel x86_64 architecture with SSE, OpenMP parallelization -->
+	<architectureType name="Intel x86_64">
+		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
+		<parallelism>
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+		</parallelism>
+		<datatypes/>
+		<declspecs>
+			<declspec type="restrictedpointer" specifiers="__restrict__"/>
+		</declspecs>
+		<intrinsics/>
+		<includes>
+			<include file="omp.h"/>
+		</includes>
+		<build compiler-command="make" harness-template-dir="arch/CPU_OpenMP"/>
+	</architectureType>
+
+	<architectureType name="Intel x86_64 PAPI">
+		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
+		<parallelism>
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+		</parallelism>
+		<datatypes/>
+		<declspecs>
+			<declspec type="restrictedpointer" specifiers="__restrict__"/>
+		</declspecs>
+		<intrinsics/>
+		<includes>
+			<include file="omp.h"/>
+		</includes>
+		<build compiler-command="make" harness-template-dir="arch/CPU_OpenMP_PAPI"/>
+	</architectureType>
+
+	<!-- Intel x86_64 architecture with SSE, OpenMP parallelization -->
+	<architectureType name="Intel x86_64 SSE">
+		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
+		<parallelism>
+			<level hasExplicitLocalDataCopy="false" asyncIO="true"/>
+		</parallelism>
+		<datatypes>
+			<!-- restrict alignment to 16 bytes -->
+			<alignment restrict="16"/>
+			<!-- declare SSE datatypes -->
+			<datatype basetype="float" name="__m128" simdVectorLength="4"/>
+			<datatype basetype="double" name="__m128d" simdVectorLength="2"/>
+		</datatypes>
+		<declspecs>
+			<declspec type="restrictedpointer" specifiers="__restrict__"/>
+		</declspecs>
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			<intrinsic baseName="plus" name="_mm_add_pd" datatype="__m128d"/>
+			<intrinsic baseName="minus" name="_mm_sub_pd" datatype="__m128d"/>
+			<intrinsic baseName="multiply" name="_mm_mul_pd" datatype="__m128d"/>
+			<intrinsic baseName="divide" name="_mm_div_pd" datatype="__m128d"/>
+			<intrinsic baseName="sqrt" name="_mm_sqrt_pd" datatype="__m128d"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			<intrinsic baseName="plus" name="_mm_add_ps" datatype="__m128"/>
+			<intrinsic baseName="minus" name="_mm_sub_ps" datatype="__m128"/>
+			<intrinsic baseName="multiply" name="_mm_mul_ps" datatype="__m128"/>
+			<intrinsic baseName="divide" name="_mm_div_ps" datatype="__m128"/>
+			<intrinsic baseName="sqrt" name="_mm_sqrt_ps" datatype="__m128"/>
+			
+			<!-- non-arithmetic intrinsics -->
+		</intrinsics>
+		<includes>
+			<include file="omp.h"/>
+			<include file="xmmintrin.h"/>
+			<include file="emmintrin.h"/>
+		</includes>
+		<build compiler-command="make" harness-template-dir="arch/CPU_OpenMP"/>
+	</architectureType>
+
+	<!-- Intel x86_64 architecture with SSE, OpenMP parallelization -->
+	<architectureType name="Intel x86_64 SSE PAPI">
+		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
+		<parallelism>
+			<level hasExplicitLocalDataCopy="false" asyncIO="true"/>
+		</parallelism>
+		<datatypes>
+			<!-- restrict alignment to 16 bytes -->
+			<alignment restrict="16"/>
+			<!-- declare SSE datatypes -->
+			<datatype basetype="float" name="__m128" simdVectorLength="4"/>
+			<datatype basetype="double" name="__m128d" simdVectorLength="2"/>
+		</datatypes>
+		<declspecs>
+			<declspec type="restrictedpointer" specifiers="__restrict__"/>
+		</declspecs>
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			<intrinsic baseName="plus" name="_mm_add_pd" datatype="__m128d"/>
+			<intrinsic baseName="minus" name="_mm_sub_pd" datatype="__m128d"/>
+			<intrinsic baseName="multiply" name="_mm_mul_pd" datatype="__m128d"/>
+			<intrinsic baseName="divide" name="_mm_div_pd" datatype="__m128d"/>
+			<intrinsic baseName="sqrt" name="_mm_sqrt_pd" datatype="__m128d"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			<intrinsic baseName="plus" name="_mm_add_ps" datatype="__m128"/>
+			<intrinsic baseName="minus" name="_mm_sub_ps" datatype="__m128"/>
+			<intrinsic baseName="multiply" name="_mm_mul_ps" datatype="__m128"/>
+			<intrinsic baseName="divide" name="_mm_div_ps" datatype="__m128"/>
+			<intrinsic baseName="sqrt" name="_mm_sqrt_ps" datatype="__m128"/>
+			
+			<!-- non-arithmetic intrinsics -->
+		</intrinsics>
+		<includes>
+			<include file="omp.h"/>
+			<include file="xmmintrin.h"/>
+			<include file="emmintrin.h"/>
+		</includes>
+		<build compiler-command="make" harness-template-dir="arch/CPU_OpenMP_PAPI"/>
+	</architectureType>
+	
+	<!-- NVIDIA CUDA GPU -->
+	<architectureType name="NVIDIA CUDA">
+		<codegenerator src-suffix="cu" backend="CUDA" use-function-pointers="false"/>
+		<parallelism>
+			<!--
+			<level hasExplicitLocalDataCopy="true" asyncIO="false"/>
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>-->
+
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+		</parallelism>
+		<datatypes>
+		</datatypes>
+		<declspecs>
+			<declspec type="kernel" specifiers="__global__"/>
+			<declspec type="localfunction" specifiers="__device__"/>
+		</declspecs>
+		<intrinsics/>
+		<includes/>
+		<build compiler-command="make" harness-template-dir="arch/GPU_CUDA"/>
+	</architectureType>
+
+	<architectureType name="NVIDIA CUDA1D">
+		<codegenerator src-suffix="cu" backend="CUDA1D" use-function-pointers="false"/>
+		<parallelism>
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+		</parallelism>
+		<datatypes>
+		</datatypes>
+		<declspecs>
+			<declspec type="kernel" specifiers="__global__"/>
+			<declspec type="localfunction" specifiers="__device__"/>
+		</declspecs>
+		<intrinsics/>
+		<includes/>
+		<build compiler-command="make" harness-template-dir="arch/GPU_CUDA"/>
+	</architectureType>
+
+	<!-- NVIDIA CUDA >= 4.0 Fermi GPU -->
+	<architectureType name="NVIDIA CUDA4">
+		<codegenerator src-suffix="cu" backend="CUDA4" use-function-pointers="false"/>
+		<parallelism>
+			<!--
+			<level hasExplicitLocalDataCopy="true" asyncIO="false"/>
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>-->
+
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+		</parallelism>
+		<datatypes>
+		</datatypes>
+		<declspecs>
+			<declspec type="kernel" specifiers="__global__"/>
+			<declspec type="localfunction" specifiers="__device__"/>
+		</declspecs>
+		<intrinsics/>
+		<includes/>
+		<build compiler-command="make" harness-template-dir="arch/GPU_CUDA"/>
+	</architectureType>
+</architectureTypes>

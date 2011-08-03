@@ -1,0 +1,105 @@
+package ch.unibas.cs.hpwc.patus.util;
+
+/**
+ *
+ * @author Matthias-M. Christen
+ */
+public class MathUtil
+{
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
+
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
+	/**
+	 * Computes the GCD (greatest common divisor) of <code>a</code> and <code>b</code>.
+	 * @param a The first number
+	 * @param b The second number
+	 * @return The GCD of <code>a</code> and <code>b</code>
+	 */
+	public static int getGCD (int a, int b)
+	{
+		if (b > a)
+		{
+			// swap the arguments
+			int nTmp = a;
+			a = b;
+			b = nTmp;
+		}
+
+		// ensure that the arguments are non-negative
+		if (a < 0)
+			a = -a;
+		if (b < 0)
+			b = -b;
+
+		// Euclidean algorithm
+		for (int p; b != 0; )
+		{
+			p = a;
+			a = b;
+			b %= p;
+		}
+
+		return a;
+	}
+
+	/**
+	 * Computes the GCD (greatest common divisor) of the numbers <code>rgNumbers</code>.
+	 * @param rgNumbers The numbers for which to compute the least common multiple
+	 * @return The GCD of <code>rgNumbers</code>
+	 */
+	public static int getGCD (int... rgNumbers)
+	{
+		if (rgNumbers.length == 0)
+			return 0;
+		if (rgNumbers.length == 1)
+			return rgNumbers[0];
+
+		int nGCD = rgNumbers[0];
+		for (int i = 1; i < rgNumbers.length; i++)
+			nGCD = MathUtil.getGCD (nGCD, rgNumbers[i]);
+
+		return nGCD;
+	}
+
+	/**
+	 * Computes the LCM (least common multiple) of <code>a</code> and <code>b</code>.
+	 * @param a The first number
+	 * @param b The second number
+	 * @return The LCM of <code>a</code> and <code>b</code>
+	 */
+	public static int getLCM (int a, int b)
+	{
+		return (a * b) / MathUtil.getGCD (a, b);
+	}
+
+	/**
+	 * Computes the LCM (least common multiple) of the numbers <code>rgNumbers</code>.
+	 * @param rgNumbers The numbers for which to compute the least common multiple
+	 * @return The LCM of <code>rgNumbers</code>
+	 */
+	public static int getLCM (int... rgNumbers)
+	{
+		if (rgNumbers.length == 0)
+			return 1;
+		if (rgNumbers.length == 1)
+			return rgNumbers[0];
+
+		int nLCM = rgNumbers[0];
+		for (int i = 1; i < rgNumbers.length; i++)
+			nLCM = MathUtil.getLCM (nLCM, rgNumbers[i]);
+
+		return nLCM;
+	}
+
+	public static boolean isPowerOfTwo (int nNum)
+	{
+    	for (int i = 1; i <= nNum; i <<= 1)
+    		if (nNum == i)
+    			return true;
+    	return false;
+	}
+}

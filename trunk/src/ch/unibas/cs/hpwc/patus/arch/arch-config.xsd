@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:element name="architectureTypes">
+		<xs:complexType>
+			<xs:sequence maxOccurs="unbounded" minOccurs="0">
+				<xs:element name="architectureType" type="typeArchitectureType">
+					<xs:key name="keyDatatype">
+						<xs:selector xpath="./datatypes/datatype"/>
+						<xs:field xpath="@name"/>
+					</xs:key>
+					<xs:keyref name="keyrefDatatype" refer="keyDatatype">
+						<xs:selector xpath="./intrinsics/intrinsic"/>
+						<xs:field xpath="@datatype"/>
+					</xs:keyref>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="typeArchitectureType">
+		<xs:sequence>
+			<xs:element name="codegenerator">
+				<xs:complexType>
+					<xs:attribute name="src-suffix" type="xs:string" use="required">
+						<xs:annotation>
+							<xs:documentation>The suffix of the generated source file. The actual filename can be specified on the Patus command line.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="backend" type="xs:string" use="required"/>
+					<xs:attribute name="use-function-pointers" type="xs:boolean" use="required">
+						<xs:annotation>
+							<xs:documentation>Specifies whether function pointers can be used to select code variants.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="parallelism">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="1" name="level">
+							<xs:complexType>
+								<xs:attribute default="false" name="hasExplicitLocalDataCopy" type="xs:boolean" use="optional">
+									<xs:annotation>
+										<xs:documentation>
+											Specifies whether this parallelism level has its own copy of
+											local data and data must be copied explicitly.
+										</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:attribute default="false" name="requiresSynchronization" type="xs:boolean" use="optional">
+									<xs:annotation>
+										<xs:documentation>
+											Specifies whether explicit data synchronization is needed before the
+											data can be used for computation.
+										</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:attribute default="false" name="asyncIO" type="xs:boolean" use="optional">
+									<xs:annotation>
+										<xs:documentation>
+											Specifies whether the I/O operations execute asynchronously,
+											i.e., whether computation and communication will be overlapped.
+											Setting asyncIO to true means that data is preloaded one compute
+											step ahead rather than loaded before the calculation which incurs
+											a barrier (wait for data) before the calculation can be carried
+											out.
+											This attribute is only meaningful if the parallelism level has
+											its own data copy and data must be loaded to the level.
+										</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="datatypes">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="0" name="datatype">
+							<xs:complexType>
+								<xs:attribute name="name" type="xs:string" use="required"/>
+								<xs:attribute default="1" name="simdVectorLength" type="xs:int" use="optional"/>
+								<xs:attribute name="basetype" type="typeBaseDatatype" use="required"/>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="alignment" maxOccurs="1" minOccurs="0">
+							<xs:complexType>
+								<xs:attribute name="restrict" type="xs:int"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="declspecs">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="0" name="declspec">
+							<xs:complexType>
+								<xs:attribute name="type" type="typeDeclspec" use="required"/>
+								<xs:attribute name="specifiers" type="xs:string" use="required"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="intrinsics">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="0" name="intrinsic">
+							<xs:complexType>
+								<xs:attribute name="name" type="xs:string" use="required"/>
+								<xs:attribute name="baseName" type="typeBaseIntrinsicName" use="required"/>
+								<xs:attribute name="datatype" type="xs:string" use="optional"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="includes">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="0" name="include">
+							<xs:complexType>
+								<xs:attribute name="file" type="xs:string" use="required"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="build">
+				<xs:complexType>
+					<xs:attribute name="compiler-command" type="xs:string" use="required"/>
+					<xs:attribute name="harness-template-dir" type="xs:string" use="required"/>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="name" type="xs:string" use="required"/>
+	</xs:complexType>
+	<xs:simpleType name="typeBaseDatatype">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="int"/>
+			<xs:enumeration value="long"/>
+			<xs:enumeration value="double"/>
+			<xs:enumeration value="float"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeBaseIntrinsicName">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="barrier"/>
+			<xs:enumeration value="threadid"/>
+			<xs:enumeration value="numthreads"/>
+			<xs:enumeration value="unary_plus"/>
+			<xs:enumeration value="unary_minus"/>
+			<xs:enumeration value="plus"/>
+			<xs:enumeration value="minus"/>
+			<xs:enumeration value="multiply"/>
+			<xs:enumeration value="divide"/>
+			<xs:enumeration value="fma"/>
+			<xs:enumeration value="sqrt"/>
+			<xs:enumeration value="splat">
+				<xs:annotation>
+					<xs:documentation>
+						Promotes a scalar constant to a vector with that constant in each entry.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeDeclspec">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="kernel"/>
+			<xs:enumeration value="localfunction"/>
+			<xs:enumeration value="restrictedpointer"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

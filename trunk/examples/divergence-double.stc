@@ -1,0 +1,18 @@
+stencil divergence
+{
+	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+	t_max = 1;
+
+	operation (
+		double grid u(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		const double grid ux(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		const double grid uy(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		const double grid uz(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		double param alpha, double param beta, double param gamma)
+	{
+		u[x, y, z; t] =
+			alpha * (ux[x+1, y, z] - ux[x-1, y, z]) +
+			beta  * (uy[x, y+1, z] - uy[x, y-1, z]) +
+			gamma * (uz[x, y, z+1] - uz[x, y, z-1]);
+	}
+}

@@ -1,0 +1,17 @@
+stencil upstream
+{
+	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+	t_max = 1;
+
+	operation (double grid u, double param a)
+	{
+		u[x, y, z; t+1] = a * (
+			 -2 * (u[x-3, y, z; t] + u[x, y-3, z; t] + u[x, y, z-3; t]) +
+			 15 * (u[x-2, y, z; t] + u[x, y-2, z; t] + u[x, y, z-2; t]) +
+			-60 * (u[x-1, y, z; t] + u[x, y-1, z; t] + u[x, y, z-1; t]) +
+			 20 *  u[x,   y, z; t] +
+			 30 * (u[x+1, y, z; t] + u[x, y+1, z; t] + u[x, y, z+1; t]) +
+			 -3 * (u[x+2, y, z; t] + u[x, y+2, z; t] + u[x, y, z+2; t])
+		);
+	}
+}

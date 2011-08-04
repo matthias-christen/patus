@@ -13,8 +13,6 @@ package ch.unibas.cs.hpwc.patus.codegen;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.log4j.Logger;
-
 import cetus.hir.AnnotationStatement;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
@@ -60,7 +58,7 @@ public class ThreadCodeGenerator
 	///////////////////////////////////////////////////////////////////
 	// Constants
 
-	private final static Logger LOGGER = Logger.getLogger (ThreadCodeGenerator.class);
+	//private final static Logger LOGGER = Logger.getLogger (ThreadCodeGenerator.class);
 
 	
 	///////////////////////////////////////////////////////////////////
@@ -661,7 +659,7 @@ public class ThreadCodeGenerator
 		// add the created bound to the generated code
 		// if there is a non-default chunk size (i.e. != 1), the first variable
 		// is captured in a loop, hence only add the bound variables except the first
-		Statement rgStmtBounds[] = new Statement[bHasNondefaultChunkSize ? rgExprBounds.length - 2 : rgExprBounds.length];
+		Statement rgStmtBounds[] = new Statement[bHasNondefaultChunkSize ? rgExprBounds.length - 1 : rgExprBounds.length];
 		for (int i = bHasNondefaultChunkSize ? 1 : 0; i < rgExprBounds.length; i++)
 			rgStmtBounds[bHasNondefaultChunkSize ? i - 1 : i] = new ExpressionStatement (rgExprBounds[i]);
 

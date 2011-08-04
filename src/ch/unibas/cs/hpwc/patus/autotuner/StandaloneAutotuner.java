@@ -319,7 +319,7 @@ public class StandaloneAutotuner
 		}
 	}
 
-	private static void printEnvironment ()
+	public static void printEnvironment ()
 	{
 		for (String strVariable : System.getenv ().keySet ())
 			System.out.println (StringUtil.concat (strVariable, " = ", System.getenv (strVariable)));

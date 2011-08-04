@@ -14,11 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import cetus.hir.BinaryExpression;
-import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
-import cetus.hir.IntegerLiteral;
-import cetus.hir.NameID;
 
 public class OptimizerTest
 {

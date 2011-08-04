@@ -145,6 +145,9 @@ public class ArchitectureDescriptionManager
 				return null;
 			
 			Barrier barrier = level.getBarrier ();
+			if (barrier == null)
+				return null;
+			
 			switch (barrier.getType ())
 			{
 			case PRAGMA:

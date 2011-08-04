@@ -10,7 +10,6 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.autotuner;
 
-import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  * Encapsulates a parameter set passed to the autotuner.

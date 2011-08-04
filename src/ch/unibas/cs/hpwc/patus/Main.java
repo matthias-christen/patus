@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2011 Matthias-M. Christen, University of Basel, Switzerland.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser Public License v2.1
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * 
+ * Contributors:
+ *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
+ ******************************************************************************/
 package ch.unibas.cs.hpwc.patus;
 
 import java.util.Arrays;
@@ -5,7 +15,6 @@ import java.util.Arrays;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-import ch.unibas.cs.hpwc.patus.autotuner.ReadQsubResults;
 import ch.unibas.cs.hpwc.patus.autotuner.StandaloneAutotuner;
 import ch.unibas.cs.hpwc.patus.tools.Compare;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -16,9 +25,6 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  */
 public class Main
 {
-	///////////////////////////////////////////////////////////////////
-	// Member Variables
-
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
@@ -41,10 +47,6 @@ public class Main
 			CodeGeneratorMain.main (Arrays.copyOfRange (args, 1, args.length));
 		else if (strMode.equals ("autotune"))
 			StandaloneAutotuner.main (Arrays.copyOfRange (args, 1, args.length));
-		//else if (strMode.equals ("qsubautotune"))
-		//	QsubStandaloneAutotuner.main (Arrays.copyOfRange (args, 1, args.length));
-		else if (strMode.equals ("readqsubresults"))
-			ReadQsubResults.main (Arrays.copyOfRange (args, 1, args.length));
 		else if (strMode.equals ("compare"))
 			Compare.main (Arrays.copyOfRange (args, 1, args.length));
 		else

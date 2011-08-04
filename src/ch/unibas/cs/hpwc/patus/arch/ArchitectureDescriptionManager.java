@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2011 Matthias-M. Christen, University of Basel, Switzerland.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser Public License v2.1
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * 
+ * Contributors:
+ *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
+ ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.arch;
 
 import java.io.File;
@@ -9,11 +19,15 @@ import java.util.Map;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 
+import cetus.hir.AnnotationStatement;
 import cetus.hir.BinaryOperator;
+import cetus.hir.ExpressionStatement;
 import cetus.hir.FunctionCall;
 import cetus.hir.IDExpression;
 import cetus.hir.NameID;
+import cetus.hir.PragmaAnnotation;
 import cetus.hir.Specifier;
+import cetus.hir.Statement;
 import cetus.hir.UnaryOperator;
 import cetus.hir.UserSpecifier;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
@@ -24,6 +38,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Declspecs.Declspec;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Includes.Include;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level.Barrier;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -98,17 +113,14 @@ public class ArchitectureDescriptionManager
 
 		private Level getParallelismLevel (int nParallelismLevel)
 		{
-			// the first parallelism level is first entry in the (zero-based) list
-			int nIdx = nParallelismLevel - 1;
-
 			// get the parallelism level from the list; if nIdx exceeds the size of
 			// the list, this hardware doesn't have that many parallelism levels, i.e.,
 			// there are also no explicit data copies -- return false
-			List<Level> listLevels = m_type.getParallelism ().getLevel ();
-			if (nIdx < 0 || nIdx >= listLevels.size ())
-				return null;
 
-			return listLevels.get (nIdx);
+			for (Level level : m_type.getParallelism ().getLevel ())
+				if (level.getNumber () == nParallelismLevel)
+					return level;
+			return null;			
 		}
 
 		@Override
@@ -123,6 +135,27 @@ public class ArchitectureDescriptionManager
 		{
 			Level level = getParallelismLevel (nParallelismLevel);
 			return level == null ? false : level.isHasExplicitLocalDataCopy ();
+		}
+		
+		@Override
+		public Statement getBarrier (int nParallelismLevel)
+		{
+			Level level = getParallelismLevel (nParallelismLevel);
+			if (level == null)
+				return null;
+			
+			Barrier barrier = level.getBarrier ();
+			switch (barrier.getType ())
+			{
+			case PRAGMA:
+				return new AnnotationStatement (new PragmaAnnotation (barrier.getImplementation ()));
+			case FUNCTIONCALL:
+				return new ExpressionStatement (new FunctionCall (new NameID (barrier.getImplementation ())));
+			case STATEMENT:
+				return new ExpressionStatement (new NameID (barrier.getImplementation ()));
+			}
+			
+			return null;
 		}
 
 		@Override

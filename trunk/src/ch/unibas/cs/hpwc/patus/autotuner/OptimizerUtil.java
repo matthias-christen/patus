@@ -17,7 +17,6 @@ import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.IDExpression;
 import cetus.hir.IntegerLiteral;
-import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 
 public class OptimizerUtil
@@ -107,21 +106,13 @@ public class OptimizerUtil
 				throw new RuntimeException ("Constraints must be comparison expressions");
 
 			BinaryExpression bexprSubst = (BinaryExpression) OptimizerUtil.substituteValues (expr, rgParams);
-			//if (Maxima.isInstalled ())
-			if (false)
-			{
-				if (Symbolic.isTrue (bexprSubst, null) != Symbolic.ELogicalValue.TRUE)
-					return false;
-			}
-			else
-			{
-				Expression exprLHS = cetus.hir.Symbolic.simplify (bexprSubst.getLHS ());
-				Expression exprRHS = cetus.hir.Symbolic.simplify (bexprSubst.getRHS ());
-				if (!(exprLHS instanceof IntegerLiteral) && !(exprRHS instanceof IntegerLiteral))
-					return false;
-				if (!ExpressionUtil.compare ((IntegerLiteral) exprLHS, ((BinaryExpression) expr).getOperator (), (IntegerLiteral) exprRHS))
-					return false;
-			}
+
+			Expression exprLHS = cetus.hir.Symbolic.simplify (bexprSubst.getLHS ());
+			Expression exprRHS = cetus.hir.Symbolic.simplify (bexprSubst.getRHS ());
+			if (!(exprLHS instanceof IntegerLiteral) && !(exprRHS instanceof IntegerLiteral))
+				return false;
+			if (!ExpressionUtil.compare ((IntegerLiteral) exprLHS, ((BinaryExpression) expr).getOperator (), (IntegerLiteral) exprRHS))
+				return false;
 		}
 
 		return true;

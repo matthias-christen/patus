@@ -14,13 +14,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
-
 import cetus.hir.Expression;
 import ch.unibas.cs.hpwc.patus.util.IntArray;
 
 /**
- *
+ * <p>Abstract implementation of {@link IRunExecutable}.</p>
+ * <p>Does not define the actual program execution, but provides constraint checking and
+ * caching of program results, and maps parameter ranges between the ones used in the
+ * auto-tuner and the actual program command line arguments.</p> 
+ * 
  * @author Matthias-M. Christen
  */
 public abstract class AbstractRunExecutable implements IRunExecutable
@@ -28,7 +30,7 @@ public abstract class AbstractRunExecutable implements IRunExecutable
 	///////////////////////////////////////////////////////////////////
 	// Constants
 
-	private final static Logger LOGGER = Logger.getLogger (AbstractRunExecutable.class);
+	//private final static Logger LOGGER = Logger.getLogger (AbstractRunExecutable.class);
 
 
 	///////////////////////////////////////////////////////////////////

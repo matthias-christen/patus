@@ -285,7 +285,7 @@ public class CodeGenerator
 
 		// initialization function
 		packageCode (new GeneratedProcedure (
-			Globals.getInitializeFunction (bMakeFortranCompatible),
+			Globals.getInitializeFunction (m_data.getStencilCalculation ().getName (), bMakeFortranCompatible),
 			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (false, bIncludeAutotuneParameters, false, false),
 			slbInitializationBody,
 			unit)

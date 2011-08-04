@@ -60,11 +60,12 @@ public class Globals
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	public static NameID getInitializeFunction (boolean bMakeFortranCompatible)
+	public static NameID getInitializeFunction (String strStencilName, boolean bMakeFortranCompatible)
 	{
+		String strInitializeFnxName = StringUtil.concat (FNX_INITIALIZE.getName (), "_", strStencilName);
 		if (bMakeFortranCompatible)
-			return new NameID (Globals.createFortranName (FNX_INITIALIZE.getName ()));
-		return FNX_INITIALIZE.clone ();
+			return new NameID (Globals.createFortranName (strInitializeFnxName));
+		return new NameID (strInitializeFnxName);
 	}
 
 	public static String createFortranName (String strStencilKernelName)

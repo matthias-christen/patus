@@ -4,7 +4,9 @@
 	<architectureType name="Intel x86_64">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+      <level number="1" hasExplicitLocalDataCopy="false" asyncIO="false">
+        <barrier type="pragma" implementation="omp barrier"/>
+      </level>
 		</parallelism>
 		<datatypes/>
 		<declspecs>
@@ -20,7 +22,9 @@
 	<architectureType name="Intel x86_64 PAPI">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+      <level number="1" hasExplicitLocalDataCopy="false" asyncIO="false">
+        <barrier type="pragma" implementation="omp barrier"/>
+      </level>
 		</parallelism>
 		<datatypes/>
 		<declspecs>
@@ -37,7 +41,9 @@
 	<architectureType name="Intel x86_64 SSE">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
-			<level hasExplicitLocalDataCopy="false" asyncIO="true"/>
+      <level number="1" hasExplicitLocalDataCopy="false" asyncIO="true">
+        <barrier type="pragma" implementation="omp barrier"/>
+      </level>
 		</parallelism>
 		<datatypes>
 			<!-- restrict alignment to 16 bytes -->
@@ -78,7 +84,9 @@
 	<architectureType name="Intel x86_64 SSE PAPI">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
-			<level hasExplicitLocalDataCopy="false" asyncIO="true"/>
+      <level number="1" hasExplicitLocalDataCopy="false" asyncIO="true">
+        <barrier type="pragma" implementation="omp barrier"/>
+      </level>
 		</parallelism>
 		<datatypes>
 			<!-- restrict alignment to 16 bytes -->
@@ -123,8 +131,10 @@
 			<level hasExplicitLocalDataCopy="true" asyncIO="false"/>
 			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>-->
 
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+			<level number="1" name="ThreadBlock" hasExplicitLocalDataCopy="false" asyncIO="false"/>
+      <level number="2" name="Thread" hasExplicitLocalDataCopy="false" asyncIO="false">
+        <barrier type="functioncall" implementation="__syncthreads"/>
+      </level>
 		</parallelism>
 		<datatypes>
 		</datatypes>
@@ -140,9 +150,11 @@
 	<architectureType name="NVIDIA CUDA1D">
 		<codegenerator src-suffix="cu" backend="CUDA1D" use-function-pointers="false"/>
 		<parallelism>
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
-		</parallelism>
+      <level number="1" name="ThreadBlock" hasExplicitLocalDataCopy="false" asyncIO="false"/>
+      <level number="2" name="Thread" hasExplicitLocalDataCopy="false" asyncIO="false">
+        <barrier type="functioncall" implementation="__syncthreads"/>
+      </level>
+    </parallelism>
 		<datatypes>
 		</datatypes>
 		<declspecs>
@@ -158,13 +170,11 @@
 	<architectureType name="NVIDIA CUDA4">
 		<codegenerator src-suffix="cu" backend="CUDA4" use-function-pointers="false"/>
 		<parallelism>
-			<!--
-			<level hasExplicitLocalDataCopy="true" asyncIO="false"/>
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>-->
-
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
-		</parallelism>
+      <level number="1" name="ThreadBlock" hasExplicitLocalDataCopy="false" asyncIO="false"/>
+      <level number="2" name="Thread" hasExplicitLocalDataCopy="false" asyncIO="false">
+        <barrier type="functioncall" implementation="__syncthreads"/>
+      </level>
+    </parallelism>
 		<datatypes>
 		</datatypes>
 		<declspecs>

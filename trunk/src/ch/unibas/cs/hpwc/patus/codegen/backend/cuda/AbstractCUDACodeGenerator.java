@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2011 Matthias-M. Christen, University of Basel, Switzerland.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser Public License v2.1
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * 
+ * Contributors:
+ *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
+ ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.codegen.backend.cuda;
 
 import java.util.ArrayList;
@@ -72,7 +82,6 @@ public abstract class AbstractCUDACodeGenerator extends AbstractBackend
 	private final static NameID[] ACCESS_NAMES = new NameID[] { new NameID ("x"), new NameID ("y"), new NameID ("z") };
 
 	private final static String SUFFIX_GPU = "_gpu";
-	private final static String BARRIER_ARRAY_NAME = "pBarrier";
 
 	private final static IDExpression GPU_PTR = new NameID ("gpu_ptr_t");
 	private final static Specifier SPEC_GPU_PTR = new UserSpecifier (GPU_PTR);
@@ -175,18 +184,6 @@ public abstract class AbstractCUDACodeGenerator extends AbstractBackend
 	}
 
 	protected abstract int getIndexingLevelDimensionality (int nIndexingLevel);
-
-
-	///////////////////////////////////////////////////////////////////
-	// IParallel Implementation
-
-	@Override
-	public Statement getBarrier ()
-	{
-		// It isn't possible to synchronize over all thread blocks in CUDA;
-		// instead, the kernel has to be terminated and restarted
-		return null;
-	}
 
 
 	///////////////////////////////////////////////////////////////////

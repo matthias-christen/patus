@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2011 Matthias-M. Christen, University of Basel, Switzerland.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser Public License v2.1
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * 
+ * Contributors:
+ *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
+ ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.codegen;
 
 import java.util.ArrayList;
@@ -251,7 +261,7 @@ public class ThreadCodeGenerator
 		));
 
 		// add synchronization point
-		Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier ();
+		Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());
 		if (stmtBarrier != null)
 			cmpstmtOutput.addStatement (stmtBarrier);
 	}
@@ -526,7 +536,7 @@ public class ThreadCodeGenerator
 		cmpstmtOutput.addStatement (loopOuter);
 
 		// synchronize
-		Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier ();
+		Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());
 		if (stmtBarrier != null)
 			cmpstmtOutput.addStatement (stmtBarrier);
 
@@ -702,7 +712,7 @@ public class ThreadCodeGenerator
 			cmpstmtOutput.addStatement (cmpstmtNewLoopBody.clone ());
 		
 		// synchronize
-		Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier ();
+		Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());
 		if (stmtBarrier != null)
 			cmpstmtOutput.addStatement (stmtBarrier);
 	}

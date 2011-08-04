@@ -39,6 +39,41 @@
 					<xs:sequence>
 						<xs:element maxOccurs="unbounded" minOccurs="1" name="level">
 							<xs:complexType>
+                <xs:sequence>
+                  <xs:element maxOccurs="1" minOccurs="0" name="barrier">
+                    <xs:complexType>
+                      <xs:attribute name="type" type="typeCgType" use="required">
+                        <xs:annotation>
+                          <xs:documentation>
+                            Defines how the barrier will be generated (i.e., as a pragma, function call, or statement)
+                          </xs:documentation>
+                        </xs:annotation>
+                      </xs:attribute>
+                      <xs:attribute name="implementation" type="xs:string" use="required">
+                        <xs:annotation>
+                          <xs:documentation>
+                            Contains the pragma (without "#pragma"), the name of the function to call, or the statement.
+                          </xs:documentation>
+                        </xs:annotation>
+                      </xs:attribute>
+                    </xs:complexType>
+                  </xs:element>
+                </xs:sequence>
+                <xs:attribute name="number" type="xs:int" use="required">
+                  <xs:annotation>
+                    <xs:documentation>
+                      Specifies the parallelism level number. The first level (number=1) is associated with the
+                      first level in the hierarchy below the root (e.g., thread blocks/SMs on a GPU).
+                    </xs:documentation>
+                  </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="name" type="xs:string" use="optional">
+                  <xs:annotation>
+                    <xs:documentation>
+                      An optional name of the parallelism level (not required for the time being, just for documentation reasons).
+                    </xs:documentation>
+                  </xs:annotation>
+                </xs:attribute>
 								<xs:attribute default="false" name="hasExplicitLocalDataCopy" type="xs:boolean" use="optional">
 									<xs:annotation>
 										<xs:documentation>
@@ -174,4 +209,11 @@
 			<xs:enumeration value="restrictedpointer"/>
 		</xs:restriction>
 	</xs:simpleType>
+  <xs:simpleType name="typeCgType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="pragma"/>
+      <xs:enumeration value="functioncall"/>
+      <xs:enumeration value="statement"/>
+    </xs:restriction>
+  </xs:simpleType>
 </xs:schema>

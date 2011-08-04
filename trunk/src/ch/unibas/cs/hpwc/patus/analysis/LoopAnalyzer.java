@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2011 Matthias-M. Christen, University of Basel, Switzerland.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser Public License v2.1
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * 
+ * Contributors:
+ *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
+ ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.analysis;
 
 import java.util.ArrayList;
@@ -20,19 +30,16 @@ import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
- * TODO: Unify with architecture of loop unroller...
+ * Obtain information about loops.
  * @author Matthias-M. Christen
  */
 public class LoopAnalyzer
 {
 	///////////////////////////////////////////////////////////////////
-	// Member Variables
-
-	///////////////////////////////////////////////////////////////////
 	// Implementation
 
 	/**
-	 *
+	 * Determines whether the <code>loop</code> has a constant trip count.
 	 * @param loop
 	 * @return
 	 */
@@ -47,7 +54,7 @@ public class LoopAnalyzer
 	}
 
 	/**
-	 *
+	 * Determines whether the <code>loop</code> has a constant trip count.
 	 * @param loop
 	 * @return
 	 */
@@ -57,7 +64,7 @@ public class LoopAnalyzer
 	}
 
 	/**
-	 *
+	 * Determines whether the loop defined by the start, step, and end expressions has a constant trip count.
 	 * @param exprStart
 	 * @param exprEnd
 	 * @param exprStep
@@ -69,7 +76,7 @@ public class LoopAnalyzer
 	}
 
 	/**
-	 *
+	 * Returns the trip count of the <code>loop</code>.
 	 * @param loop
 	 * @return
 	 */

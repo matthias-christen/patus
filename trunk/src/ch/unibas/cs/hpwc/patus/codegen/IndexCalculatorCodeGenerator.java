@@ -23,8 +23,10 @@ import cetus.hir.CompoundStatement;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.FunctionCall;
+import cetus.hir.IDExpression;
 import cetus.hir.Identifier;
 import cetus.hir.IntegerLiteral;
+import cetus.hir.Literal;
 import cetus.hir.NameID;
 import cetus.hir.Statement;
 import cetus.hir.Typecast;
@@ -33,6 +35,7 @@ import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IBackend;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IIndexing;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IIndexing.IIndexingLevel;
+import ch.unibas.cs.hpwc.patus.codegen.backend.IndexingLevelUtil;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.geometry.Size;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
@@ -83,7 +86,7 @@ public class IndexCalculatorCodeGenerator
 		private int m_nTargetDimension;
 		private int m_nIndexingLevelsCount;
 
-		private IBackend m_cg;
+		private IIndexing m_cg;
 
 		private CodeGeneratorRuntimeOptions m_options;
 
@@ -97,14 +100,14 @@ public class IndexCalculatorCodeGenerator
 		 * @param cmpstmt The compound statement to which auxiliary calculations are added, or <code>null</code>
 		 * 	if the auxiliary calculations are to be added to the initialization statement of the kernel function
 		 */
-		public Calculator (Size size, CompoundStatement cmpstmt, ECalculationMode mode, CodeGeneratorRuntimeOptions options)
+		public Calculator (IIndexing cg, Size size, CompoundStatement cmpstmt, ECalculationMode mode, CodeGeneratorRuntimeOptions options)
 		{
 			m_sizeDomain = size;
 			m_cmpstmt = cmpstmt;
 			m_options = options;
 
 			// initialize variables
-			m_cg = m_data.getCodeGenerators ().getBackendCodeGenerator ();
+			m_cg = cg;
 
 			m_nTargetDimension = m_sizeDomain.getDimensionality ();
 			m_nIndexingLevelsCount = m_cg.getIndexingLevelsCount ();
@@ -724,13 +727,48 @@ public class IndexCalculatorCodeGenerator
 		Expression exprIdx = rgIndex[rgIndex.length - 1].clone ();
 		for (int i = rgIndex.length - 2; i >= 0; i--)
 		{
-			exprIdx = new BinaryExpression (
-				new BinaryExpression (rgSizes[i].clone (), BinaryOperator.MULTIPLY, exprIdx.clone ()),
-				BinaryOperator.ADD,
-				rgIndex[i].clone ());
+			if (!ExpressionUtil.isValue (rgSizes[i], 1))
+			{
+				exprIdx = new BinaryExpression (
+					new BinaryExpression (rgSizes[i].clone (), BinaryOperator.MULTIPLY, exprIdx.clone ()),
+					BinaryOperator.ADD,
+					rgIndex[i].clone ());
+			}
 		}
 
 		return exprIdx;
+	}
+	
+	/**
+	 * Collapses the multi-dimensional hardware index to a one-dimensional one. 
+	 * @param nDimension The dimension for which to collapse the hardware index
+	 * @return A one-dimensional index computed from the possibly multi-dimensional one
+	 */
+	public Expression calculateHardwareIndicesToOne (int nDimension)
+	{
+		IIndexing indexing = m_data.getCodeGenerators ().getBackendCodeGenerator ();
+		int nIndexingLevels = indexing.getIndexingLevelsCount ();
+		
+		Expression[] rgIndex = new Expression[nIndexingLevels];
+		Expression[] rgSizes = new Expression[nIndexingLevels];
+		
+		for (int i = 0; i < nIndexingLevels; i++)
+		{
+			IIndexingLevel level = indexing.getIndexingLevel (i);
+			
+			if (nDimension < level.getDimensionality ())
+			{
+				rgIndex[i] = level.getIndexForDimension (nDimension);
+				rgSizes[i] = level.getSizeForDimension (nDimension);
+			}
+			else
+			{
+				rgIndex[i] = Globals.ZERO.clone ();
+				rgSizes[i] = Globals.ONE.clone ();
+			}
+		}
+		
+		return calculateMultiToOne (rgIndex, rgSizes);
 	}
 
 	/**
@@ -742,13 +780,126 @@ public class IndexCalculatorCodeGenerator
 	 * 	the statements are added to the initialization statement
 	 * @return
 	 */
-	public Expression[] calculateIndices (Size sizeDomain, CompoundStatement cmpstmt, CodeGeneratorRuntimeOptions options)
+	public Expression[] calculateIndicesFromHardwareIndices (Size sizeDomain, CompoundStatement cmpstmt, CodeGeneratorRuntimeOptions options)
 	{
-		return new IndexCalculatorCodeGenerator.Calculator (sizeDomain, cmpstmt, ECalculationMode.CALCULATE_INDICES, options).getTargetIndices ();
+		return calculateIndices (m_data.getCodeGenerators ().getBackendCodeGenerator (), sizeDomain, cmpstmt, options);
+	}
+	
+	/**
+	 * Returns the total size of the addressable hardware index in dimension <code>nDimension</code>.
+	 * @param nDimension
+	 * @return
+	 */
+	public Expression calculateTotalHardwareSize (int nDimension)
+	{
+		IIndexing indexing = m_data.getCodeGenerators ().getBackendCodeGenerator ();
+		int nIndexingLevels = indexing.getIndexingLevelsCount ();
+		
+		Expression exprTotalSize = null;
+		
+		for (int i = 0; i < nIndexingLevels; i++)
+		{
+			IIndexingLevel level = indexing.getIndexingLevel (i);
+			Expression exprSize = level.getSizeForDimension (nDimension);
+			if (!ExpressionUtil.isValue (exprSize, 1))
+			{
+				if (exprTotalSize == null)
+					exprTotalSize = exprSize;
+				else
+					exprTotalSize = new BinaryExpression (exprTotalSize, BinaryOperator.MULTIPLY, exprSize);
+			}			
+		}
+
+		return exprTotalSize == null ? Globals.ONE.clone () : exprTotalSize;
+	}
+	
+	/**
+	 * Converts the d-dimensional index <code>rgIndices</code> to a D-dimensional target index
+	 * (D being the dimensionality of the domain).
+	 * @param rgIndices The d-dimensional index to convert
+	 * @param sizeDomain The D-dimensional domain
+	 * @param cmpstmt The compound statement to which auxiliary calculations are added as the index is converted
+	 * @param options Code generation options
+	 * @return The D-dimensional target index
+	 */
+	public Expression[] convertIndices (final Expression[] rgIndices, final Expression[] rgSizes,
+		Size sizeDomain, CompoundStatement cmpstmt, CodeGeneratorRuntimeOptions options)
+	{
+		return calculateIndices (
+			new IIndexing ()
+			{
+				@Override
+				public int getIndexingLevelsCount ()
+				{
+					return 1;
+				}
+
+				@Override
+				public IIndexingLevel getIndexingLevel (int nIndexingLevel)
+				{
+					return new IIndexingLevel ()
+					{
+						@Override
+						public boolean isVariable ()
+						{
+							for (Expression exprIdx : rgIndices)
+								if (!(exprIdx instanceof IDExpression) && !(exprIdx instanceof Literal))
+									return false;
+							return true;
+						}
+						
+						@Override
+						public Expression getSizeForDimension (int nDimension)
+						{
+							return rgSizes[nDimension];
+						}
+						
+						@Override
+						public Expression getIndexForDimension (int nDimension)
+						{
+							return rgIndices[nDimension];
+						}
+						
+						@Override
+						public int getDimensionality ()
+						{
+							return rgIndices.length;
+						}
+						
+						@Override
+						public int getDefaultBlockSize (int nDimension)
+						{
+							return 0;
+						}
+					};
+				}
+
+				@Override
+				public IIndexingLevel getIndexingLevelFromParallelismLevel (int nParallelismLevel)
+				{
+					return IndexingLevelUtil.getIndexingLevelFromParallelismLevel (this, nParallelismLevel);
+				}
+
+				@Override
+				public EThreading getThreading ()
+				{
+					return EThreading.MULTI;
+				}				
+			},
+			sizeDomain, cmpstmt, options);
+	}
+	
+	public Expression[] calculateIndices (IIndexing indexing, Size sizeDomain, CompoundStatement cmpstmt, CodeGeneratorRuntimeOptions options)
+	{
+		return new IndexCalculatorCodeGenerator.Calculator (
+			indexing, sizeDomain, cmpstmt, ECalculationMode.CALCULATE_INDICES, options
+		).getTargetIndices ();		
 	}
 
 	public Expression[] calculateSizes (Size sizeDomain, CompoundStatement cmpstmt, CodeGeneratorRuntimeOptions options)
 	{
-		return new IndexCalculatorCodeGenerator.Calculator (sizeDomain, cmpstmt, ECalculationMode.CALCULATE_SIZES, options).getTargetSizes ();
+		return new IndexCalculatorCodeGenerator.Calculator (
+			m_data.getCodeGenerators ().getBackendCodeGenerator (), sizeDomain, cmpstmt, ECalculationMode.CALCULATE_SIZES, options
+		).getTargetSizes ();
 	}
 }

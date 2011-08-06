@@ -90,7 +90,7 @@ public class RangeIterator extends Loop
 	 */
 	public RangeIterator (Identifier idLoopIndex, Expression exprStart, Expression exprEnd, Expression exprStep, int nNumThreads, Expression exprChunkSize, Statement stmtBody, int nParallelismLevel)
 	{
-		super (nNumThreads, exprChunkSize, stmtBody, nParallelismLevel);
+		super (nNumThreads, new Expression[] { exprChunkSize }, stmtBody, nParallelismLevel);
 		setLoopIndex (idLoopIndex);
 		setRange (exprStart, exprEnd, exprStep);
 		m_bIsMainTemporalIterator = false;
@@ -221,13 +221,16 @@ public class RangeIterator extends Loop
 	}
 
 	@Override
-	protected Expression getDefaultChunkSize ()
+	protected Expression[] getDefaultChunkSize ()
 	{
 		// calculates the default chunk size:
 		// chunk = ceil ((end - start + 1) / (step * #thds))
-		return ExpressionUtil.ceil (
-			new BinaryExpression (new BinaryExpression (m_exprEnd, BinaryOperator.SUBTRACT, m_exprStart), BinaryOperator.ADD, new IntegerLiteral (1)),
-			ExpressionUtil.product (m_exprStep, m_exprNumThreads));
+		return new Expression[] {
+			ExpressionUtil.ceil (
+				ExpressionUtil.increment (new BinaryExpression (m_exprEnd, BinaryOperator.SUBTRACT, m_exprStart)),
+				ExpressionUtil.product (m_exprStep, m_exprNumThreads)
+			)
+		};
 	}
 
 //	/**
@@ -265,7 +268,7 @@ public class RangeIterator extends Loop
 	{
 		return StringUtil.concat (
 			"for ", m_idLoopIndex, " = ", m_exprStart, "..", m_exprEnd, " by ", m_exprStep,
-			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel, "> schedule ", m_exprChunkSize, "\n",
+			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel, "> schedule ", m_rgChunkSize[0], "\n",
 			getLoopBody ());
 	}
 
@@ -274,7 +277,7 @@ public class RangeIterator extends Loop
 	{
 		return StringUtil.concat (
 			"for ", m_idLoopIndex, " = ", m_exprStart, "..", m_exprEnd, " by ", m_exprStep,
-			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel, "> schedule ", m_exprChunkSize, " { ... }");
+			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel, "> schedule ", m_rgChunkSize[0], " { ... }");
 	}
 
 	@Override

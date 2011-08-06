@@ -958,7 +958,7 @@ PRODUCTIONS                                                                    /
 		    		SYNC "parallel"                                            (. loopSubdomain.setNumberOfThreads (Loop.MAX_THREADS); bNewParallelismLevel = true; .)
 			    	[
 			    		SYNC "schedule" StrategyExpression<
-			    			out Expression exprChunkSizeTmp>                   (. loopSubdomain.setChunkSize (exprChunkSizeTmp); .)
+			    			out Expression exprChunkSizeTmp>                   (. int nDim = loopSubdomain.getDomainIdentifier ().getDimensionality (); Expression[] rgChunkSize = new Expression[nDim]; rgChunkSize[0] = exprChunkSizeTmp; for (int i = 1; i < nDim; i++) rgChunkSize[i] = Globals.ONE.clone (); loopSubdomain.setChunkSize (rgChunkSize); .)
 			    	]
 		    	]
 	    	)                                                                  (. loop = loopSubdomain; .)
@@ -973,7 +973,7 @@ PRODUCTIONS                                                                    /
 			    	]                                                          (. if (bNewParallelismLevel) m_stackParallelismLevels.push (m_stackParallelismLevels.peek () + 1); .)
 			    	[
 			    		SYNC "schedule" StrategyExpression<
-			    			out Expression exprChunkSizeTmp>                   (. loop.setChunkSize (exprChunkSizeTmp); .)
+			    			out Expression exprChunkSizeTmp>                   (. loop.setChunkSize (new Expression[] { exprChunkSizeTmp }); .)
 			    	]
     			]
     		)

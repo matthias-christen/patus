@@ -133,7 +133,7 @@ public class StrategyFix
 							sgit.getDomainIdentifier (),
 							sgit.getDomainBorder (),
 							0,
-							sgit.getChunkSize (),
+							sgit.getChunkSizes (),
 							sgitEmbedBody,
 							sgit.getParallelismLevel ());
 						sgitEmbed.setNumberOfThreads (sgit.getNumberOfThreads ().clone ());

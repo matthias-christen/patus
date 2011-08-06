@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import cetus.hir.Expression;
+
 /**
  *
  * @author Matthias-M. Christen
@@ -190,7 +192,9 @@ public class StringUtil
 			return Arrays.toString ((boolean[]) obj);
 		if (obj instanceof char[])
 			return Arrays.toString ((char[]) obj);
-
+		if (obj instanceof Expression[])
+			return StringUtil.concat ("[ ", StringUtil.join ((Expression[]) obj, ", "), " ]");
+		
 		// default
 		return obj.toString ();
 	}

@@ -42,7 +42,7 @@ public abstract class Loop extends CompoundStatement
 	// Member Variables
 
 	protected Expression m_exprNumThreads;
-	protected Expression m_exprChunkSize;
+	protected Expression[] m_rgChunkSize;
 
 //	/**
 //	 * The loop body
@@ -77,10 +77,10 @@ public abstract class Loop extends CompoundStatement
 	 * @param exprNumThreads
 	 * @param exprChunkSize
 	 */
-	protected Loop (int nNumThreads, Expression exprChunkSize, Statement stmtBody, int nParallelismLevel)
+	protected Loop (int nNumThreads, Expression[] rgChunkSize, Statement stmtBody, int nParallelismLevel)
 	{
 		setNumberOfThreads (nNumThreads);
-		setChunkSize (exprChunkSize);
+		setChunkSize (rgChunkSize);
 		setLoopBody (stmtBody);
 		setParallelismLevel (nParallelismLevel);
 
@@ -169,14 +169,18 @@ public abstract class Loop extends CompoundStatement
 	 *
 	 * @param exprChunkSize
 	 */
-	public void setChunkSize (Expression exprChunkSize)
+	public void setChunkSize (Expression[] rgChunkSize)
 	{
-		if (exprChunkSize == null)
-			m_exprChunkSize = null;
+		if (rgChunkSize == null)
+			m_rgChunkSize = null;
 		else
 		{
-			m_exprChunkSize = exprChunkSize.clone ();
-			m_exprChunkSize.setParent (this);
+			m_rgChunkSize = new Expression[rgChunkSize.length];
+			for (int i = 0; i < rgChunkSize.length; i++)
+			{
+				m_rgChunkSize[i] = rgChunkSize[i].clone ();
+				m_rgChunkSize[i].setParent (this);
+			}
 		}
 	}
 
@@ -184,18 +188,29 @@ public abstract class Loop extends CompoundStatement
 	 * Returns the default chunk size.
 	 * @return The default chunk size
 	 */
-	protected abstract Expression getDefaultChunkSize ();
+	protected abstract Expression[] getDefaultChunkSize ();
 
 	/**
 	 * Returns the chunk size, i.e. how many consecutive loop iterations are carried out by the same thread.
 	 * The chunk size is only used if the loop is parallel.
 	 * @return
 	 */
-	public Expression getChunkSize ()
+	public Expression getChunkSize (int nDimension)
 	{
-		if (m_exprChunkSize == null)
+		if (m_rgChunkSize == null)
 			setChunkSize (getDefaultChunkSize ());
-		return m_exprChunkSize.clone ();
+		return m_rgChunkSize[nDimension].clone ();
+	}
+	
+	public Expression[] getChunkSizes ()
+	{
+		if (m_rgChunkSize == null)
+			setChunkSize (getDefaultChunkSize ());
+		
+		Expression[] rgChunkSize = new Expression[m_rgChunkSize.length];
+		for (int i = 0; i < m_rgChunkSize.length; i++)
+			rgChunkSize[i] = m_rgChunkSize[i].clone ();
+		return rgChunkSize;
 	}
 
 	/**

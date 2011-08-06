@@ -22,6 +22,7 @@ import cetus.hir.CompoundStatement;
 import cetus.hir.DeclarationStatement;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
+import cetus.hir.FunctionCall;
 import cetus.hir.Identifier;
 import cetus.hir.IfStatement;
 import cetus.hir.IntegerLiteral;
@@ -37,6 +38,7 @@ import ch.unibas.cs.hpwc.patus.ast.Loop;
 import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
+import ch.unibas.cs.hpwc.patus.codegen.backend.IIndexing.IIndexingLevel;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
 import ch.unibas.cs.hpwc.patus.geometry.Point;
@@ -224,7 +226,7 @@ public class ThreadCodeGenerator
 		cmpstmtOutput.addStatement (new ExpressionStatement (new AssignmentExpression (
 			idStrideJ,
 			AssignmentOperator.NORMAL,
-			ExpressionUtil.product (loop.getStep (), loop.getChunkSize (), m_data.getCodeGenerators ().getLoopCodeGenerator ().getNumberOfThreads (loop, options))
+			ExpressionUtil.product (loop.getStep (), loop.getChunkSize (0), m_data.getCodeGenerators ().getLoopCodeGenerator ().getNumberOfThreads (loop, options))
 		)));
 
 		CompoundStatement cmpstmtLoopOuterBody = new CompoundStatement ();
@@ -235,7 +237,7 @@ public class ThreadCodeGenerator
 		cmpstmtLoopOuterBody.addStatement (new ExpressionStatement (new AssignmentExpression (
 			idEndI,
 			AssignmentOperator.NORMAL,
-			ExpressionUtil.sum (idJ, ExpressionUtil.product (loop.getStep (), loop.getChunkSize ()), new IntegerLiteral (-1))
+			ExpressionUtil.sum (idJ, ExpressionUtil.product (loop.getStep (), loop.getChunkSize (0)), new IntegerLiteral (-1))
 		)));
 
 		// create the inner loop
@@ -247,9 +249,9 @@ public class ThreadCodeGenerator
 			ExpressionUtil.sum (
 				loop.getStart (),
 				ExpressionUtil.product (
-					/* Globals.getThreadNumber () */m_data.getCodeGenerators ().getIndexCalculator ().calculateIndices (new Size (Integer.MAX_VALUE), cmpstmtLoopOuterBody, options)[0],
+					/* Globals.getThreadNumber () */m_data.getCodeGenerators ().getIndexCalculator ().calculateIndicesFromHardwareIndices (new Size (Integer.MAX_VALUE), cmpstmtLoopOuterBody, options)[0],
 					loop.getStep (),
-					loop.getChunkSize ()
+					loop.getChunkSize (0)
 				)
 			),
 			loop.getEnd (),
@@ -371,7 +373,7 @@ public class ThreadCodeGenerator
 	 * @param cmpstmtOutput
 	 * @param bContainsStencilCall
 	 */
-	protected void generateMultiCoreSubdomainIterator (
+	protected void generateMultiCoreSubdomainIterator0 (
 		SubdomainIterator loop, CompoundStatement cmpstmtLoopBody, CompoundStatement cmpstmtOutput, boolean bContainsStencilCall,
 		CodeGeneratorRuntimeOptions options)
 	{
@@ -386,7 +388,7 @@ public class ThreadCodeGenerator
 		// idJ is the index of the outer loop
 		Identifier idJ = null;
 		Loop loopInner = null;
-		boolean bHasNonUnitChunk = Symbolic.isTrue (new BinaryExpression (loop.getChunkSize (), BinaryOperator.COMPARE_EQ, new IntegerLiteral (1)), null) != Symbolic.ELogicalValue.TRUE; 
+		boolean bHasNonUnitChunk = Symbolic.isTrue (new BinaryExpression (loop.getChunkSize (0), BinaryOperator.COMPARE_EQ, new IntegerLiteral (1)), null) != Symbolic.ELogicalValue.TRUE; 
 		if (bHasNonUnitChunk)
 		{
 			// create the loop indices for the outer loop
@@ -397,7 +399,7 @@ public class ThreadCodeGenerator
 			loopInner = new RangeIterator (
 				m_data.getData ().getGeneratedIdentifiers ().getIndexIdentifier (loop.getIterator ()).clone (),
 				idJ,
-				new BinaryExpression (idJ, BinaryOperator.ADD, ExpressionUtil.decrement (loop.getChunkSize ())),
+				new BinaryExpression (idJ, BinaryOperator.ADD, ExpressionUtil.decrement (loop.getChunkSize (0))),
 				new IntegerLiteral (bContainsStencilCall ? m_data.getCodeGenerators ().getStencilCalculationCodeGenerator ().getLcmSIMDVectorLengths () : 1),
 				null,	// start with an empty body; it will be assigned later (since RangeIterator clones the body)
 				loop.getParallelismLevel ()
@@ -509,9 +511,9 @@ public class ThreadCodeGenerator
 		/////////////////////////////////
 		// create the outer loop
 
-		Expression exprStartOuter = /*Globals.getThreadNumber ()*/ m_data.getCodeGenerators ().getIndexCalculator ().calculateIndices (new Size (Integer.MAX_VALUE), cmpstmtOutput, options)[0];
+		Expression exprStartOuter = /*Globals.getThreadNumber ()*/ m_data.getCodeGenerators ().getIndexCalculator ().calculateIndicesFromHardwareIndices (new Size (Integer.MAX_VALUE), cmpstmtOutput, options)[0];
 		if (bHasNonUnitChunk)
-			exprStartOuter = new BinaryExpression (loop.getChunkSize (), BinaryOperator.MULTIPLY, exprStartOuter);
+			exprStartOuter = new BinaryExpression (loop.getChunkSize (0), BinaryOperator.MULTIPLY, exprStartOuter);
 		
  		RangeIterator loopOuter = new RangeIterator (
 			idJ,
@@ -519,7 +521,7 @@ public class ThreadCodeGenerator
 			new BinaryExpression (idNumBlocks.clone (), BinaryOperator.SUBTRACT, Globals.ONE.clone ()),
 			Symbolic.simplify (
 				ExpressionUtil.product (
-					loop.getChunkSize (),
+					loop.getChunkSize (0),
 					m_data.getCodeGenerators ().getLoopCodeGenerator ().getNumberOfThreads (loop, options), /*loop.getNumberOfThreads (),*/
 					// account for SIMD if there is no inner loop and the loop contains a stencil call
 					new IntegerLiteral (loopInner == null && bContainsStencilCall ?
@@ -542,6 +544,161 @@ public class ThreadCodeGenerator
 ////		m_data.getBoxInstanceManager ().bindNewBoxInstance (loop);
 //	(loopInner == null ? loopOuter : loopInner).setOriginalSubdomainIterator (loop);
 	}
+	
+	/**
+	 * Returns the maximum indexing dimension in the chosen hardware architecture.
+	 * @return The maximum indexing dimension
+	 */
+	private int getMaxIndexDimension ()
+	{
+		int nMaxIndexDimension = 0;
+		for (int i = 0; i < m_data.getCodeGenerators ().getBackendCodeGenerator ().getIndexingLevelsCount (); i++)
+		{
+			IIndexingLevel level = m_data.getCodeGenerators ().getBackendCodeGenerator ().getIndexingLevel (i);
+			nMaxIndexDimension = Math.max (nMaxIndexDimension, level.getDimensionality ());
+		}
+
+		return nMaxIndexDimension;
+	}
+	
+	/**
+	 * 
+	 * @param sdit
+	 * @param exprStart
+	 * @param exprEnd
+	 * @param exprNumThreadsInDim
+	 * @param stmtLoopBody
+	 * @param rgIndices
+	 * @param nDim
+	 * @param bContainsStencilCall
+	 * @return
+	 */
+	private Statement generateLoopsForDim (SubdomainIterator sdit,
+		Expression exprStart, Expression exprEnd, Expression exprNumThreadsInDim,
+		Statement stmtLoopBody,
+		Expression[] rgIndices, int nDim, boolean bContainsStencilCall)
+	{
+		// determine whether the outer loop is needed
+		// (i.e., if the number of threads in the dimension (the step of the outer loop) is strictly less than the end expression)
+		boolean bHasOuterLoop = Symbolic.isTrue (
+			new BinaryExpression (exprNumThreadsInDim.clone (), BinaryOperator.COMPARE_GE, exprEnd.clone ()), Symbolic.ALL_VARIABLES_INTEGER) == Symbolic.ELogicalValue.TRUE;
+
+		if (!bHasOuterLoop)
+		{
+			rgIndices[nDim] = exprStart.clone ();
+			return stmtLoopBody;
+		}
+		
+		// determine whether the inner loop is needed
+		// (i.e., if there is a non-unit chunk)
+		boolean bHasNonUnitChunk = Symbolic.isTrue (
+			new BinaryExpression (sdit.getChunkSize (nDim), BinaryOperator.COMPARE_EQ, new IntegerLiteral (1)), null) != Symbolic.ELogicalValue.TRUE;
+		
+		Identifier idInnerLoopIdx = m_data.getData ().getGeneratedIdentifiers ().getIndexIdentifier (sdit.getIterator ());
+		Identifier idOuterLoopIdx = null;
+		rgIndices[nDim] = idInnerLoopIdx.clone ();
+
+		// create the inner loop
+		RangeIterator itLoopInner = null;
+		if (bHasNonUnitChunk)
+		{
+			idOuterLoopIdx = new Identifier (new VariableDeclarator (
+				Globals.SPECIFIER_INDEX,
+				new NameID (StringUtil.concat (sdit.getIterator ().getName (), "_idxouter"))));
+
+			itLoopInner = new RangeIterator (
+				idInnerLoopIdx.clone (),
+				idOuterLoopIdx.clone (),
+				
+				// end = min (global_end, idxouter + chunk - 1)
+				new FunctionCall (Globals.FNX_MIN.clone (), CodeGeneratorUtil.expressions (
+					exprEnd,
+					new BinaryExpression (idOuterLoopIdx.clone (), BinaryOperator.ADD, ExpressionUtil.decrement (sdit.getChunkSize (nDim))))),
+					
+				// step: account for SIMD or just 1 if no stencil call/SIMD
+				new IntegerLiteral (bContainsStencilCall ?
+					m_data.getCodeGenerators ().getStencilCalculationCodeGenerator ().getLcmSIMDVectorLengths () : 1),
+					
+				stmtLoopBody,
+				sdit.getParallelismLevel ());
+		}
+		else
+			idOuterLoopIdx = idInnerLoopIdx;
+			
+		// create the outer loop
+		return new RangeIterator (idOuterLoopIdx, exprStart, exprEnd, exprNumThreadsInDim,
+			itLoopInner == null ? stmtLoopBody : itLoopInner, sdit.getParallelismLevel ()); 
+	}
+	
+	private void generateBoundVariables ()
+	{
+		
+	}
+
+	/**
+	 * 
+	 * @param loop
+	 * @param nStartDim
+	 * @return
+	 */
+	private Expression calculateNumberOfBlocksInMissingDims (SubdomainIterator loop, int nStartDim)
+	{
+		Expression exprTotalNumBlocks = null;
+		
+		for (int i = nStartDim; i < loop.getDomainIdentifier ().getDimensionality (); i++)
+		{
+			Expression exprNumBlocks = ExpressionUtil.ceil (loop.getNumberOfBlocksInDimension (i), loop.getChunkSize (i));
+			if (!ExpressionUtil.isValue (exprNumBlocks, 1))
+			{
+				if (exprTotalNumBlocks == null)
+					exprTotalNumBlocks = exprNumBlocks;
+				else
+					exprTotalNumBlocks = new BinaryExpression (exprTotalNumBlocks, BinaryOperator.MULTIPLY, exprNumBlocks);
+			}			
+		}
+
+		return exprTotalNumBlocks == null ? Globals.ONE.clone () : exprTotalNumBlocks;
+	}
+	
+	/**
+	 * 
+	 * @param loop
+	 * @param cmpstmtLoopBody
+	 * @param cmpstmtOutput
+	 * @param bContainsStencilCall
+	 * @param options
+	 */
+	protected void generateMultiCoreSubdomainIterator (
+		SubdomainIterator loop, CompoundStatement cmpstmtLoopBody, CompoundStatement cmpstmtOutput, boolean bContainsStencilCall,
+		CodeGeneratorRuntimeOptions options)
+	{
+		IndexCalculatorCodeGenerator iccg = m_data.getCodeGenerators ().getIndexCalculator ();
+		
+		int nMaxIndexDimension = Math.min (m_data.getStencilCalculation ().getDimensionality (), getMaxIndexDimension ());
+		Expression[] rgIndices = new Expression[nMaxIndexDimension];
+		
+		Statement stmtBody = loop.getLoopBody ();
+		for (int i = 0; i < nMaxIndexDimension - 1; i++)
+		{
+			stmtBody = generateLoopsForDim (
+				loop,
+				iccg.calculateHardwareIndicesToOne (i),
+				ExpressionUtil.ceil (loop.getNumberOfBlocksInDimension (i), loop.getChunkSize (i)),
+				iccg.calculateTotalHardwareSize (i),
+				stmtBody, rgIndices, i, bContainsStencilCall);
+		}
+		
+		// outer-most loop nest
+		stmtBody = generateLoopsForDim (
+			loop,
+			iccg.calculateHardwareIndicesToOne (nMaxIndexDimension - 1),
+			calculateNumberOfBlocksInMissingDims (loop, nMaxIndexDimension - 1),
+			iccg.calculateTotalHardwareSize (nMaxIndexDimension - 1),
+			stmtBody, rgIndices, nMaxIndexDimension - 1, bContainsStencilCall);
+
+		// create bound variables
+		generateBoundVariables ();
+	}
 
 	/**
 	 * Generates a C version of a subdomain iterator for a &quot;many-core&quot;
@@ -559,7 +716,7 @@ public class ThreadCodeGenerator
 		byte nDim = boxDomain.getDimensionality ();
 
 		// determine whether there is a chunksize != 1
-		boolean bHasNondefaultChunkSize = Symbolic.isTrue (new BinaryExpression (loop.getChunkSize (), BinaryOperator.COMPARE_EQ, new IntegerLiteral (1)), null) != Symbolic.ELogicalValue.TRUE;
+		boolean bHasNondefaultChunkSize = Symbolic.isTrue (new BinaryExpression (loop.getChunkSize (0), BinaryOperator.COMPARE_EQ, new IntegerLiteral (1)), null) != Symbolic.ELogicalValue.TRUE;
 
 		// has data transfers?
 		boolean bHasDatatransfers = m_data.getCodeGenerators ().getStrategyAnalyzer ().isDataLoadedInIterator (loop, m_data.getArchitectureDescription ());
@@ -585,7 +742,7 @@ public class ThreadCodeGenerator
 		// get the size of the blocks
 		Size sizeIterator = loop.getIteratorSubdomain ().getBox ().getSize ();
 		if (bHasNondefaultChunkSize)
-			sizeIterator.setCoord (0, new BinaryExpression (sizeIterator.getCoord (0), BinaryOperator.MULTIPLY, loop.getChunkSize ()));
+			sizeIterator.setCoord (0, new BinaryExpression (sizeIterator.getCoord (0), BinaryOperator.MULTIPLY, loop.getChunkSize (0)));
 
 //		// calculate the number of blocks in each direction
 //		// ---
@@ -613,7 +770,7 @@ public class ThreadCodeGenerator
 
 		// calculate the block indices from the thread indices, add auxiliary
 		// calculations to the initialization block (=> null)
-		Expression[] rgBlockIndices = m_data.getCodeGenerators ().getIndexCalculator ().calculateIndices (boxDomain.getSize (), null, options);
+		Expression[] rgBlockIndices = m_data.getCodeGenerators ().getIndexCalculator ().calculateIndicesFromHardwareIndices (boxDomain.getSize (), null, options);
 
 		// create bound variables
 		Point ptDomainBase = loop.getDomainSubdomain ().getBaseGridCoordinates ();
@@ -700,7 +857,7 @@ public class ThreadCodeGenerator
 			cmpstmtOutput.addStatement (new RangeIterator (
 				idMin.clone (),
 				exprMin.clone (),
-				new BinaryExpression (exprMin.clone (),	BinaryOperator.ADD, ExpressionUtil.decrement (loop.getChunkSize ())),
+				new BinaryExpression (exprMin.clone (),	BinaryOperator.ADD, ExpressionUtil.decrement (loop.getChunkSize (0))),
 				Globals.ONE.clone (),
 				cmpstmtNewLoopBody,
 				loop.getParallelismLevel ()

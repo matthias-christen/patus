@@ -72,12 +72,7 @@ public abstract class AbstractBackend implements IBackend
 	@Override
 	public IIndexingLevel getIndexingLevelFromParallelismLevel (int nParallelismLevel)
 	{
-		int nIndexingLevelsCount = getIndexingLevelsCount ();
-		if (nParallelismLevel <= 0)
-			return getIndexingLevel (nIndexingLevelsCount - 1);
-		if (nParallelismLevel >= nIndexingLevelsCount)
-			return getIndexingLevel (0);
-		return getIndexingLevel (nIndexingLevelsCount - nParallelismLevel);
+		return IndexingLevelUtil.getIndexingLevelFromParallelismLevel (this, nParallelismLevel);
 	}
 
 	/**

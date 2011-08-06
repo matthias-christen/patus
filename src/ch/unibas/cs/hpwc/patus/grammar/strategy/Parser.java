@@ -977,7 +977,7 @@ public class Parser {
 					while (!(la.kind == 0 || la.kind == 20)) {SynErr(64); Get();}
 					Get();
 					Expression exprChunkSizeTmp = StrategyExpression();
-					loopSubdomain.setChunkSize (exprChunkSizeTmp); 
+					int nDim = loopSubdomain.getDomainIdentifier ().getDimensionality (); Expression[] rgChunkSize = new Expression[nDim]; rgChunkSize[0] = exprChunkSizeTmp; for (int i = 1; i < nDim; i++) rgChunkSize[i] = Globals.ONE.clone (); loopSubdomain.setChunkSize (rgChunkSize); 
 				}
 			}
 			loop = loopSubdomain; 
@@ -996,7 +996,7 @@ public class Parser {
 					while (!(la.kind == 0 || la.kind == 20)) {SynErr(66); Get();}
 					Get();
 					Expression exprChunkSizeTmp = StrategyExpression();
-					loop.setChunkSize (exprChunkSizeTmp); 
+					loop.setChunkSize (new Expression[] { exprChunkSizeTmp }); 
 				}
 			}
 		} else SynErr(67);

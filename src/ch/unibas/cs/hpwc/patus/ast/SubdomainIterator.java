@@ -20,6 +20,7 @@ import cetus.hir.IDExpression;
 import cetus.hir.Identifier;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.Statement;
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.geometry.Border;
 import ch.unibas.cs.hpwc.patus.geometry.Size;
 import ch.unibas.cs.hpwc.patus.geometry.Subdomain;
@@ -80,9 +81,9 @@ public class SubdomainIterator extends Loop
 	 * @param stmtBody
 	 * @param nParallelismLevel
 	 */
-	public SubdomainIterator (SubdomainIdentifier sdIterator, SubdomainIdentifier sdDomain, Border borderDomain, int nNumThreads, Expression exprChunkSize, Statement stmtBody, int nParallelismLevel)
+	public SubdomainIterator (SubdomainIdentifier sdIterator, SubdomainIdentifier sdDomain, Border borderDomain, int nNumThreads, Expression[] rgChunkSize, Statement stmtBody, int nParallelismLevel)
 	{
-		super (nNumThreads, exprChunkSize, stmtBody, nParallelismLevel);
+		super (nNumThreads, rgChunkSize, stmtBody, nParallelismLevel);
 
 		setIteratorSubdomain (sdIterator);
 		setDomainSubdomain (sdDomain, sdDomain.getSubdomain ().getSize (), borderDomain);
@@ -184,10 +185,13 @@ public class SubdomainIterator extends Loop
 	}
 
 	@Override
-	protected Expression getDefaultChunkSize ()
+	protected Expression[] getDefaultChunkSize ()
 	{
 		// default is one block per thread
-		return new IntegerLiteral (1);
+		Expression[] rgDefaultChunk = new Expression[m_sdidDomain.getDimensionality ()];
+		for (int i = 0; i < m_sdidDomain.getDimensionality (); i++)
+			rgDefaultChunk[i] = Globals.ONE.clone ();
+		return rgDefaultChunk;
 	}
 
 	/**
@@ -274,7 +278,7 @@ public class SubdomainIterator extends Loop
 		return StringUtil.concat (
 			"for ", m_sdidIterator.getSubdomain ().getType (), " ", m_sdidIterator, m_sdidIterator.getSubdomain ().getSize (), " in ", m_sdidDomain,
 			(m_borderDomain != null ? " + " + m_borderDomain.toString () : ""),
-			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel , "> schedule ", m_exprChunkSize == null ? "default" : m_exprChunkSize, "\n",
+			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel , "> schedule ", m_rgChunkSize == null ? "default" : StringUtil.toString (m_rgChunkSize), "\n",
 			getLoopBody ());
 	}
 
@@ -284,7 +288,7 @@ public class SubdomainIterator extends Loop
 		return StringUtil.concat (
 			"for ", m_sdidIterator.getSubdomain ().getType (), " ", m_sdidIterator, " of size ", m_sdidIterator.getSubdomain ().getSize (), " in ", m_sdidDomain,
 			(m_borderDomain != null ? " + " + m_borderDomain.toString () : ""),
-			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel , "> schedule ", m_exprChunkSize == null ? "default" : m_exprChunkSize, " { ... }");
+			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel , "> schedule ", m_rgChunkSize == null ? "default" : StringUtil.toString (m_rgChunkSize), " { ... }");
 	}
 
 	@Override
@@ -296,12 +300,20 @@ public class SubdomainIterator extends Loop
 	@Override
 	public SubdomainIterator clone ()
 	{
+		Expression[] rgChunkSize = null;
+		if (m_rgChunkSize != null)
+		{
+			rgChunkSize = new Expression[m_rgChunkSize.length];
+			for (int i = 0; i < m_rgChunkSize.length; i++)
+				rgChunkSize[i] = m_rgChunkSize[i].clone ();
+		}
+		
 		SubdomainIterator sgit = new SubdomainIterator (
 			m_sdidIterator.clone (),
 			m_sdidDomain.clone (),
 			new Border (m_borderDomain.getMin ().clone (), m_borderDomain.getMax ().clone ()),
 			0,
-			m_exprChunkSize == null ? null : m_exprChunkSize.clone (),
+			rgChunkSize,
 			getLoopBody (),	// will be cloned in Loop
 			m_nParallelismLevel);
 		sgit.setNumberOfThreads (m_exprNumThreads.clone ());

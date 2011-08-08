@@ -111,12 +111,12 @@ public class LoopCodeGenerator
 	 * @param loop The loop
 	 * @return An expression that evaluates the the number of threads that execute <code>loop</code>
 	 */
-	public Expression getNumberOfThreads (Loop loop, CodeGeneratorRuntimeOptions options)
+	public Expression getNumberOfThreadsInDimension (Loop loop, int nDim, CodeGeneratorRuntimeOptions options)
 	{
 		if (Globals.NUMBER_OF_THREADS.equals (loop.getNumberOfThreads ()))
 		{
 			return m_data.getCodeGenerators ().getConstantGeneratedIdentifiers ().getConstantIdentifier (
-				m_data.getCodeGenerators ().getBackendCodeGenerator ().getIndexingLevelFromParallelismLevel (loop.getParallelismLevel ()).getSizeForDimension (0),
+				m_data.getCodeGenerators ().getBackendCodeGenerator ().getIndexingLevelFromParallelismLevel (loop.getParallelismLevel ()).getSizeForDimension (nDim),
 				"dimsize", Globals.SPECIFIER_SIZE, null, null, options);
 		}
 

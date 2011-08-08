@@ -25,6 +25,8 @@ import ch.unibas.cs.hpwc.patus.util.IntArray;
 /**
  * Helper class to unroll an innermost stencil loop nest.
  * @author Matthias-M. Christen
+ * 
+ * @deprecated
  */
 public class StencilUnrollLoop
 {

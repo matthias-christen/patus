@@ -174,7 +174,7 @@ int main (int argc, char** argv)
 		float *  tmp_swap_0;
 		{
 			/*
-			for t_ref = 1..1 by 1 parallel 1 <level 0> schedule  { ... }
+			for t_ref = 1..1 by 1 parallel 1 <level 0> schedule 1 { ... }
 			*/
 			for (t_ref=1; t_ref<=1; t_ref+=1)
 			{

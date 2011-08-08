@@ -13,8 +13,11 @@ package ch.unibas.cs.hpwc.patus.codegen;
 import java.util.HashMap;
 import java.util.Map;
 
+import cetus.hir.AssignmentExpression;
+import cetus.hir.AssignmentOperator;
 import cetus.hir.DeclarationStatement;
 import cetus.hir.Expression;
+import cetus.hir.ExpressionStatement;
 import cetus.hir.IDExpression;
 import cetus.hir.Identifier;
 import cetus.hir.Initializer;
@@ -131,15 +134,26 @@ public class ConstantGeneratedIdentifiers
 		}
 
 		VariableDeclarator decl = new VariableDeclarator (new NameID (StringUtil.concat (strIdentifierName, getTempIdentifierSuffix (strIdentifierName))));
-		decl.setInitializer (trvConstantCalculation instanceof Initializer ? (Initializer) trvConstantCalculation : new ValueInitializer ((Expression) trvConstantCalculation));
-		exprResult = new Identifier (decl);
 		VariableDeclaration declaration = new VariableDeclaration (m_data.getArchitectureDescription ().getType (specDatatype), decl);
+		m_data.getData ().addDeclaration (declaration);
+
+		exprResult = new Identifier (decl);
 
 		// determine where to declare the variable (local or global)
 		if (exprConstant instanceof Literal || (exprConstant instanceof NameID && m_data.getStencilCalculation ().isArgument (((NameID) exprConstant).getName ())) || slbGeneratedCode == null)
-			m_data.getData ().addDeclaration (declaration);
+			decl.setInitializer (trvConstantCalculation instanceof Initializer ? (Initializer) trvConstantCalculation : new ValueInitializer ((Expression) trvConstantCalculation));
 		else
-			slbGeneratedCode.addStatement (new DeclarationStatement (declaration));
+		{
+			Expression exprValue = null;
+			if (trvConstantCalculation instanceof Expression)
+				exprValue = (Expression) trvConstantCalculation;
+			else if (trvConstantCalculation instanceof Initializer)
+				exprValue = (Expression) ((Initializer) trvConstantCalculation).getChildren ().get (0);
+			else
+				throw new RuntimeException ("Unknown initializer");
+
+			slbGeneratedCode.addStatement (new ExpressionStatement (new AssignmentExpression (exprResult.clone (), AssignmentOperator.NORMAL, exprValue)));
+		}
 
 		mapConstantCache.put (exprConstant, exprResult);
 		return exprResult;

@@ -90,7 +90,7 @@ public class RangeIterator extends Loop
 	 */
 	public RangeIterator (Identifier idLoopIndex, Expression exprStart, Expression exprEnd, Expression exprStep, int nNumThreads, Expression exprChunkSize, Statement stmtBody, int nParallelismLevel)
 	{
-		super (nNumThreads, new Expression[] { exprChunkSize }, stmtBody, nParallelismLevel);
+		super (nNumThreads, exprChunkSize == null ? null : new Expression[] { exprChunkSize }, stmtBody, nParallelismLevel);
 		setLoopIndex (idLoopIndex);
 		setRange (exprStart, exprEnd, exprStep);
 		m_bIsMainTemporalIterator = false;
@@ -268,7 +268,7 @@ public class RangeIterator extends Loop
 	{
 		return StringUtil.concat (
 			"for ", m_idLoopIndex, " = ", m_exprStart, "..", m_exprEnd, " by ", m_exprStep,
-			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel, "> schedule ", m_rgChunkSize[0], "\n",
+			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel, "> schedule ", m_rgChunkSize == null ? "1" : m_rgChunkSize[0], "\n",
 			getLoopBody ());
 	}
 
@@ -277,7 +277,7 @@ public class RangeIterator extends Loop
 	{
 		return StringUtil.concat (
 			"for ", m_idLoopIndex, " = ", m_exprStart, "..", m_exprEnd, " by ", m_exprStep,
-			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel, "> schedule ", m_rgChunkSize[0], " { ... }");
+			" parallel ", m_exprNumThreads, " <level ", m_nParallelismLevel, "> schedule ", m_rgChunkSize == null ? "1" : m_rgChunkSize[0], " { ... }");
 	}
 
 	@Override

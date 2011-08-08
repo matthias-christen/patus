@@ -23,6 +23,7 @@ import cetus.hir.AnnotationStatement;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
+import cetus.hir.BreadthFirstIterator;
 import cetus.hir.CompoundStatement;
 import cetus.hir.DeclarationStatement;
 import cetus.hir.DepthFirstIterator;
@@ -779,6 +780,8 @@ public class StrategyAnalyzer
 
 		return false;
 	}
+	
+	//private static boolean is
 
 	/**
 	 * Determines whether the {@link SubdomainIterator} it is eligible for stencil loop unrolling, i.e.
@@ -789,6 +792,10 @@ public class StrategyAnalyzer
 	public static boolean isEligibleForStencilLoopUnrolling (SubdomainIterator it)
 	{
 		boolean bContainsStencilCall = false;
+		
+		// if the loop body is a single statement it has to be a stencil call to be eligible for loop unrolling
+		if (it.getLoopBody () instanceof ExpressionStatement)
+			return StrategyAnalyzer.isStencilCall (it.getLoopBody ());
 
 		for (Traversable trv : it.getLoopBody ().getChildren ())
 		{
@@ -803,7 +810,7 @@ public class StrategyAnalyzer
 					return false;
 				}
 			}
-			else if (trv instanceof AnnotationStatement)
+			else if (trv instanceof AnnotationStatement || trv instanceof CompoundStatement)
 			{
 				// ignore annotation statements
 				continue;
@@ -1062,6 +1069,19 @@ public class StrategyAnalyzer
 			Object obj = it.next ();
 			if (obj instanceof RangeIterator && obj != loop)
 				if (isTemporalLoop ((RangeIterator) obj))
+					return false;
+		}
+
+		return true;
+	}
+	
+	public boolean isInnerMostParallelLoop (Loop loop)
+	{
+		for (DepthFirstIterator it = new DepthFirstIterator (loop); it.hasNext (); )
+		{
+			Object obj = it.next ();
+			if (obj instanceof Loop && obj != loop)
+				if (((Loop) obj).isParallel ())
 					return false;
 		}
 

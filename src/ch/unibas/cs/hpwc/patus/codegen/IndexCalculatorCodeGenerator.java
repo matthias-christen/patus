@@ -32,7 +32,6 @@ import cetus.hir.Statement;
 import cetus.hir.Typecast;
 import cetus.hir.VariableDeclaration;
 import cetus.hir.VariableDeclarator;
-import ch.unibas.cs.hpwc.patus.codegen.backend.IBackend;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IIndexing;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IIndexing.IIndexingLevel;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IndexingLevelUtil;
@@ -742,19 +741,26 @@ public class IndexCalculatorCodeGenerator
 	/**
 	 * Collapses the multi-dimensional hardware index to a one-dimensional one. 
 	 * @param nDimension The dimension for which to collapse the hardware index
+	 * @param nParallelismLevelStart The first (lowest) parallelism level the final index should depend on
+	 * @param nParallelismLevelEnd The last (highest) parallelism level the final index should depend on
 	 * @return A one-dimensional index computed from the possibly multi-dimensional one
 	 */
-	public Expression calculateHardwareIndicesToOne (int nDimension)
+	public Expression calculateHardwareIndicesToOne (int nDimension, int nParallelismLevelStart, int nParallelismLevelEnd)
 	{
 		IIndexing indexing = m_data.getCodeGenerators ().getBackendCodeGenerator ();
-		int nIndexingLevels = indexing.getIndexingLevelsCount ();
+		int nIndexingLevels = Math.min (nParallelismLevelEnd - nParallelismLevelStart + 1, indexing.getIndexingLevelsCount ());
+		if (nIndexingLevels <= 0)
+			throw new RuntimeException ("The end parallelism level must be at least the start parallelism level");
 		
 		Expression[] rgIndex = new Expression[nIndexingLevels];
 		Expression[] rgSizes = new Expression[nIndexingLevels];
 		
-		for (int i = 0; i < nIndexingLevels; i++)
+		int i = 0;
+		for (int nParallelismLevel = nParallelismLevelEnd; nParallelismLevel >= nParallelismLevelStart; nParallelismLevel--)
 		{
-			IIndexingLevel level = indexing.getIndexingLevel (i);
+			IIndexingLevel level = indexing.getIndexingLevelFromParallelismLevel (nParallelismLevel);
+			if (level == null)
+				continue;
 			
 			if (nDimension < level.getDimensionality ())
 			{
@@ -766,6 +772,7 @@ public class IndexCalculatorCodeGenerator
 				rgIndex[i] = Globals.ZERO.clone ();
 				rgSizes[i] = Globals.ONE.clone ();
 			}
+			i++;
 		}
 		
 		return calculateMultiToOne (rgIndex, rgSizes);
@@ -790,16 +797,21 @@ public class IndexCalculatorCodeGenerator
 	 * @param nDimension
 	 * @return
 	 */
-	public Expression calculateTotalHardwareSize (int nDimension)
+	public Expression calculateTotalHardwareSize (int nDimension, int nParallelismLevelStart, int nParallelismLevelEnd)
 	{
 		IIndexing indexing = m_data.getCodeGenerators ().getBackendCodeGenerator ();
-		int nIndexingLevels = indexing.getIndexingLevelsCount ();
+		int nIndexingLevels = Math.min (nParallelismLevelEnd - nParallelismLevelStart + 1, indexing.getIndexingLevelsCount ());
+		if (nIndexingLevels <= 0)
+			throw new RuntimeException ("The end parallelism level must be at least the start parallelism level");
 		
 		Expression exprTotalSize = null;
 		
-		for (int i = 0; i < nIndexingLevels; i++)
+		for (int nParallelismLevel = nParallelismLevelEnd; nParallelismLevel >= nParallelismLevelStart; nParallelismLevel--)
 		{
-			IIndexingLevel level = indexing.getIndexingLevel (i);
+			IIndexingLevel level = indexing.getIndexingLevelFromParallelismLevel (nParallelismLevel);
+			if (level == null)
+				continue;
+
 			Expression exprSize = level.getSizeForDimension (nDimension);
 			if (!ExpressionUtil.isValue (exprSize, 1))
 			{

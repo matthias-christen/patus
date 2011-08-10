@@ -608,24 +608,27 @@ public class IndexCalculatorCodeGenerator
 		Expression[] rgStrides = new Expression[rgSizes.length];
 		rgStrides[0] = new IntegerLiteral (1);
 
-		if (rgSizes[0] instanceof BinaryExpression)
+		if (rgStrides.length > 1)
 		{
-			rgStrides[1] = createIdentifier (
-				StringUtil.concat ("tmp_stride_", m_nTmpStrides, CodeGeneratorUtil.getDimensionName (1)),
-				rgSizes[0].clone (),
-				cmpstmt);
+			if (rgSizes[0] instanceof BinaryExpression)
+			{
+				rgStrides[1] = createIdentifier (
+					StringUtil.concat ("tmp_stride_", m_nTmpStrides, CodeGeneratorUtil.getDimensionName (1)),
+					rgSizes[0].clone (),
+					cmpstmt);
+			}
+			else
+				rgStrides[1] = rgSizes[0];
+	
+			for (int i = 2; i < rgSizes.length; i++)
+			{
+				rgStrides[i] = createIdentifier (
+					StringUtil.concat ("tmp_stride_", m_nTmpStrides, CodeGeneratorUtil.getDimensionName (i)),
+					new BinaryExpression (rgStrides[i - 1].clone (), BinaryOperator.MULTIPLY, rgSizes[i - 1].clone ()),
+					cmpstmt);
+			}
 		}
-		else
-			rgStrides[1] = rgSizes[0];
-
-		for (int i = 2; i < rgSizes.length; i++)
-		{
-			rgStrides[i] = createIdentifier (
-				StringUtil.concat ("tmp_stride_", m_nTmpStrides, CodeGeneratorUtil.getDimensionName (i)),
-				new BinaryExpression (rgStrides[i - 1].clone (), BinaryOperator.MULTIPLY, rgSizes[i - 1].clone ()),
-				cmpstmt);
-		}
-
+		
 		if (FIND_PREVIOUSLY_CALCULATED_STRIDES)
 			m_listSizesAndStrides.add (new SizesAndStrides (rgSizes, rgStrides));
 

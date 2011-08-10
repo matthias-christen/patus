@@ -299,21 +299,23 @@ public class ThreadCodeGenerator
 		if (!loop.isSequential () /* && !m_data.getCodeGenerators ().getStrategyAnalyzer ().isDataLoadedInIterator (loop, m_data.getArchitectureDescription ()) */)
 		{
 			// replace a parallel loop by the part a thread executes
-			switch (m_data.getCodeGenerators ().getBackendCodeGenerator ().getThreading ())
-			{
-			case MULTI:
-				// calculate linearized block indices from the linearized thread index
-				generateMultiCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
-				break;
-
-			case MANY:
-				// calculate ND block indices from an ND thread index
-				generateManyCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
-				break;
-
-			default:
-				throw new RuntimeException (StringUtil.concat ("Code generation for ", m_data.getCodeGenerators ().getBackendCodeGenerator ().getThreading (), " not implemented"));
-			}
+//			switch (m_data.getCodeGenerators ().getBackendCodeGenerator ().getThreading ())
+//			{
+//			case MULTI:
+//				// calculate linearized block indices from the linearized thread index
+//				generateMultiCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
+//				break;
+//
+//			case MANY:
+//				// calculate ND block indices from an ND thread index
+//				generateManyCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
+//				break;
+//
+//			default:
+//				throw new RuntimeException (StringUtil.concat ("Code generation for ", m_data.getCodeGenerators ().getBackendCodeGenerator ().getThreading (), " not implemented"));
+//			}
+			
+			generateMultiCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
 		}
 		else
 		{

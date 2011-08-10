@@ -39,6 +39,7 @@ public class SubdomainGeneratedIdentifiers
 		private Identifier m_idIndexIdentifier;
 		private Identifier[] m_rgDimensionIndexIdentifiers;
 		private Identifier[] m_rgDimensionMaxIdentifiers;
+		private Identifier[] m_rgDimensionBlockIndexIdentifiers;
 		private Identifier m_idLoopCounter;
 		private Identifier m_idNumBlocks;
 		private Identifier m_idTimeIndexIdentifier;
@@ -59,6 +60,7 @@ public class SubdomainGeneratedIdentifiers
 			m_idIndexIdentifier = null;
 			m_rgDimensionIndexIdentifiers = null;
 			m_rgDimensionMaxIdentifiers = null;
+			m_rgDimensionBlockIndexIdentifiers = null;
 			m_idLoopCounter = null;
 			m_idNumBlocks = null;
 			m_idTimeIndexIdentifier = null;
@@ -193,6 +195,30 @@ public class SubdomainGeneratedIdentifiers
 		 *
 		 * @return
 		 */
+		public Identifier[] getDimensionBlockIndexIdentifiers ()
+		{
+			if (m_rgDimensionBlockIndexIdentifiers == null)
+			{
+				m_rgDimensionBlockIndexIdentifiers = new Identifier[m_sdid.getDimensionality ()];
+				for (int i = 0; i < m_sdid.getDimensionality (); i++)
+				{
+					m_rgDimensionBlockIndexIdentifiers[i] = createIdentifier (StringUtil.concat (
+						"_blkidx_", CodeGeneratorUtil.getDimensionName (i)));
+				}
+			}
+
+			return m_rgDimensionBlockIndexIdentifiers;
+		}
+
+		public Identifier getDimensionBlockIndexIdentifier (int nDimension)
+		{
+			return getDimensionBlockIndexIdentifiers ()[nDimension];
+		}
+
+		/**
+		 *
+		 * @return
+		 */
 		public Identifier getLoopCounterIdentifier ()
 		{
 			if (m_idLoopCounter == null)
@@ -279,6 +305,7 @@ public class SubdomainGeneratedIdentifiers
 			m_idNumBlocks = null;
 			m_rgDimensionIndexIdentifiers = null;
 			m_rgDimensionMaxIdentifiers = null;
+			m_rgDimensionBlockIndexIdentifiers = null;
 		}
 	}
 
@@ -355,6 +382,11 @@ public class SubdomainGeneratedIdentifiers
 	public Identifier getDimensionMaxIdentifier (SubdomainIdentifier sdid, int nDimension)
 	{
 		return getIdentifiers (sdid).getDimensionMaxIdentifier (nDimension);
+	}
+
+	public Identifier getDimensionBlockIndexIdentifier (SubdomainIdentifier sdid, int nDimension)
+	{
+		return getIdentifiers (sdid).getDimensionBlockIndexIdentifier (nDimension);
 	}
 
 	/**

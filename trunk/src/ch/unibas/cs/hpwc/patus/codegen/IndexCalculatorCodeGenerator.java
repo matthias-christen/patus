@@ -33,10 +33,11 @@ import cetus.hir.Typecast;
 import cetus.hir.VariableDeclaration;
 import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IIndexing;
-import ch.unibas.cs.hpwc.patus.codegen.backend.IIndexing.IIndexingLevel;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IndexingLevelUtil;
+import ch.unibas.cs.hpwc.patus.codegen.backend.IIndexing.IIndexingLevel;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.geometry.Size;
+import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -778,7 +779,7 @@ public class IndexCalculatorCodeGenerator
 			i++;
 		}
 		
-		return calculateMultiToOne (rgIndex, rgSizes);
+		return Symbolic.simplify (calculateMultiToOne (rgIndex, rgSizes));
 	}
 
 	/**
@@ -814,7 +815,9 @@ public class IndexCalculatorCodeGenerator
 			IIndexingLevel level = indexing.getIndexingLevelFromParallelismLevel (nParallelismLevel);
 			if (level == null)
 				continue;
-
+			if (nDimension >= level.getDimensionality ())
+				continue;
+			
 			Expression exprSize = level.getSizeForDimension (nDimension);
 			if (!ExpressionUtil.isValue (exprSize, 1))
 			{

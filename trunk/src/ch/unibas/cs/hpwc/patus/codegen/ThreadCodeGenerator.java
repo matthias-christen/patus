@@ -13,6 +13,7 @@ package ch.unibas.cs.hpwc.patus.codegen;
 import java.util.ArrayList;
 import java.util.List;
 
+import cetus.hir.AccessExpression;
 import cetus.hir.AnnotationStatement;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
@@ -567,7 +568,7 @@ public class ThreadCodeGenerator
 	
 	private Expression getIdentifier (Expression exprOrig, String strIdentifier, StatementListBundle slb, CodeGeneratorRuntimeOptions options)
 	{
-		if (exprOrig instanceof IDExpression || exprOrig instanceof Literal)
+		if (exprOrig instanceof IDExpression || exprOrig instanceof Literal || exprOrig instanceof AccessExpression)
 			return exprOrig;
 		
 		return m_data.getCodeGenerators ().getConstantGeneratedIdentifiers ().getConstantIdentifier (
@@ -609,7 +610,8 @@ public class ThreadCodeGenerator
 
 		// create a multi-dimensional index from the 1-dimensional loop index ids.getIndexIdentifier (loop.getIterator ())
 		m_data.getCodeGenerators ().getIndexCalculator ().calculateOneToMulti (
-			ids.getIndexIdentifier (loop.getIterator ()).clone (),
+			//ids.getIndexIdentifier (loop.getIterator ()).clone (),
+			ids.getDimensionBlockIndexIdentifier (loop.getIterator (), nDimStart).clone (),
 			rgMin, rgNumBlocks, null, cmpstmtBody);
 
 		// multiply the indices by the size of the grid and calculate the upper bounds
@@ -663,6 +665,7 @@ public class ThreadCodeGenerator
 		Expression[] rgIndices, CompoundStatement cmpstmtInitializations, int nDimStart, int nDimEnd, boolean bContainsStencilCall,
 		CodeGeneratorRuntimeOptions options)
 	{
+		SubdomainGeneratedIdentifiers ids = m_data.getData ().getGeneratedIdentifiers ();
 		CompoundStatement cmpstmtLoopBody = createLoopBody (sdit, stmtLoopBody, nDimStart, nDimEnd);
 						
 		StatementListBundle slbInit = new StatementListBundle (cmpstmtInitializations);
@@ -697,7 +700,7 @@ public class ThreadCodeGenerator
 		boolean bHasNonUnitChunk = Symbolic.isTrue (
 			new BinaryExpression (exprChunkSize.clone (), BinaryOperator.COMPARE_EQ, new IntegerLiteral (1)), null) != Symbolic.ELogicalValue.TRUE;
 		
-		Identifier idInnerLoopIdx = m_data.getData ().getGeneratedIdentifiers ().getIndexIdentifier (sdit.getIterator ());
+		Identifier idInnerLoopIdx = ids.getDimensionBlockIndexIdentifier (sdit.getIterator (), nDimStart);
 		Identifier idOuterLoopIdx = null;
 		rgIndices[nDimStart] = idInnerLoopIdx.clone ();
 
@@ -707,7 +710,7 @@ public class ThreadCodeGenerator
 		{
 			idOuterLoopIdx = new Identifier (new VariableDeclarator (
 				Globals.SPECIFIER_INDEX,
-				new NameID (StringUtil.concat (sdit.getIterator ().getName (), "_idxouter"))));
+				new NameID (StringUtil.concat (idInnerLoopIdx.getName (), "_idxouter"))));
 
 			itLoopInner = new RangeIterator (
 				idInnerLoopIdx.clone (),
@@ -734,74 +737,7 @@ public class ThreadCodeGenerator
 			exprEnd,
 			bHasNonUnitChunk ? new BinaryExpression (exprNumThreadsInDim.clone (), BinaryOperator.MULTIPLY, exprChunkSize.clone ()) : exprNumThreadsInDim,
 			itLoopInner == null ? cmpstmtLoopBody : itLoopInner, sdit.getParallelismLevel ()); 
-	}
-	
-//	private void generateBoundVariables (SubdomainIterator loop, CompoundStatement cmpstmtLoopBody)
-//	{
-//		/////////////////////////////////
-//		// add bound variables
-//
-//		// add an assignment to the loop body that calculates the box bounds
-//		// 		subdomain = domain + i * iterator
-//		// and the actual code to calculate the lower and upper bounds
-//
-//		Size sizeIterator = loop.getIteratorSubdomain ().getSize ();
-//		byte nDim = loop.getDomainSubdomain ().getBox ().getDimensionality ();
-//		SubdomainGeneratedIdentifiers ids = m_data.getData ().getGeneratedIdentifiers ();
-//
-//		// calculate the multi-dimensional index
-//		CompoundStatement cmpstmtBoundsCalculations = new CompoundStatement ();
-//		Identifier[] rgMin = new Identifier[nDim];
-//		Expression[] rgNumBlocks = new Expression[nDim];
-//		for (int i = 0; i < nDim; i++)
-//		{
-//			// create the minimum identifiers
-//			rgMin[i] = ids.getDimensionIndexIdentifier (loop.getIterator (), i);
-//
-//			// calculate the number of blocks per dimension
-//			rgNumBlocks[i] = ExpressionUtil.ceil (
-//				loop.getDomainSubdomain ().getSize ().getCoord (i).clone (),
-//				sizeIterator.getCoord (i).clone ());
-//		}
-//
-//		// create a multi-dimensional index from the 1-dimensional loop index ids.getIndexIdentifier (loop.getIterator ())
-//		m_data.getCodeGenerators ().getIndexCalculator ().calculateOneToMulti (
-//			ids.getIndexIdentifier (loop.getIterator ()).clone (),
-//			rgMin, rgNumBlocks, null, cmpstmtBoundsCalculations);
-//
-//		// multiply the indices by the size of the grid and calculate the upper bounds
-//		for (int i = 0; i < nDim; i++)
-//		{
-//			// adjust the lower bound
-//			cmpstmtBoundsCalculations.addStatement (new ExpressionStatement (new AssignmentExpression (
-//				rgMin[i].clone (),
-//				AssignmentOperator.NORMAL,
-//				new BinaryExpression (
-//					new BinaryExpression (rgMin[i].clone (), BinaryOperator.MULTIPLY, sizeIterator.getCoord (i).clone ()),
-//					BinaryOperator.ADD,
-//					loop.getDomainSubdomain ().getLocalCoordinates ().getCoord (i).clone ()	// TODO: check whether this is correct for subdomains
-//				)
-//			)));
-//
-//			// upper bounds
-//			Identifier idMax = ids.getDimensionMaxIdentifier (loop.getIterator (), i).clone ();
-//			cmpstmtBoundsCalculations.addStatement (new ExpressionStatement (new AssignmentExpression (
-//				idMax,
-//				AssignmentOperator.NORMAL,
-//				ExpressionUtil.min (
-//					// calculated maximum
-//					new BinaryExpression (rgMin[i].clone (), BinaryOperator.ADD, sizeIterator.getCoord (i).clone ()),
-//					// maximum grid index + 1 (+1 since the for loops don't include the maximum)
-//					new BinaryExpression (m_data.getStencilCalculation ().getDomainSize ().getMax ().getCoord (i).clone (), BinaryOperator.ADD, Globals.ONE.clone ())
-//				)
-//			)));
-//		}
-//
-//		// determine the location where the index calculation is inserted
-//		// (the number-of-blocks calculation doesn't depend on the loop index (v_idx), but the index bounds (v_x_min, v_x_max, ...) do
-//		CompoundStatement cmpstmtIndexCalculation = getIndexCalculationLocation (loop, cmpstmtLoopBody);
-//		CodeGeneratorUtil.addStatementsAtTop (cmpstmtLoopBody, cmpstmtBoundsCalculations);
-//	}
+	}	
 
 	/**
 	 * 
@@ -815,7 +751,7 @@ public class ThreadCodeGenerator
 		
 		for (int i = nStartDim; i < loop.getDomainIdentifier ().getDimensionality (); i++)
 		{
-			Expression exprNumBlocks = ExpressionUtil.ceil (loop.getNumberOfBlocksInDimension (i), loop.getChunkSize (i));
+			Expression exprNumBlocks = loop.getNumberOfBlocksInDimension (i);//ExpressionUtil.ceil (loop.getNumberOfBlocksInDimension (i), loop.getChunkSize (i));
 			if (!ExpressionUtil.isValue (exprNumBlocks, 1))
 			{
 				if (exprTotalNumBlocks == null)
@@ -863,7 +799,7 @@ public class ThreadCodeGenerator
 		{
 			// calculate the end expression
 			Expression exprEnd = i < nMaxIndexDimension - 1 ?
-				ExpressionUtil.ceil (loop.getNumberOfBlocksInDimension (i), loop.getChunkSize (i)) :
+				loop.getNumberOfBlocksInDimension (i) ://ExpressionUtil.ceil (loop.getNumberOfBlocksInDimension (i), loop.getChunkSize (i)) :
 				calculateNumberOfBlocksInMissingDims (loop, nMaxIndexDimension - 1);
 				
 			// calculate the "end" dimension to be processed by "generateLoopsForDim":

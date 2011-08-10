@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -15,7 +15,6 @@ import java.util.Map;
 
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
-import cetus.hir.DeclarationStatement;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.IDExpression;
@@ -157,5 +156,11 @@ public class ConstantGeneratedIdentifiers
 
 		mapConstantCache.put (exprConstant, exprResult);
 		return exprResult;
+	}
+
+	public void reset ()
+	{
+		m_mapConstantCache.clear ();
+		m_mapTempIdentifierSuffices.clear ();
 	}
 }

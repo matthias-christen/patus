@@ -63,9 +63,9 @@ int main (int argc, char** argv)
 	// <--
 	
 	// allocate_GPU_grids -->
+	cudaMalloc(((void *  * )( & u_0_1_out_gpu)), sizeof (gpu_ptr_t));
 	cudaMalloc(((void *  * )( & u_0_1_gpu)), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)));
 	cudaMalloc(((void *  * )( & u_0_0_gpu)), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)));
-	cudaMalloc(((void *  * )( & u_0_1_out_gpu)), sizeof (gpu_ptr_t));
 	// <--
 	
 	// copy_grids_to_GPU -->

@@ -10,8 +10,8 @@
 #include "patusrt.h"
 
 // forward_decls -->
-void initialize_laplacian(float *  u_0_0, float *  u_0_1, float alpha, float beta, int x_max, int y_max, int z_max, int cb_x, int cb_y, int cb_z, int chunk);
-void laplacian(float *  *  u_0_1_out, float *  u_0_0, float *  u_0_1, float alpha, float beta, int x_max, int y_max, int z_max, int cb_x, int cb_y, int cb_z, int chunk, int _unroll_p3);
+void initialize_laplacian(float *  u_0_0, float *  u_0_1, float alpha, float beta, int x_max, int y_max, int z_max, int chunk);
+void laplacian(float *  *  u_0_1_out, float *  u_0_0, float *  u_0_1, float alpha, float beta, int x_max, int y_max, int z_max, int chunk, int _unroll_p2);
 
 // <--
 
@@ -28,19 +28,16 @@ int main (int argc, char** argv)
 	float *  u_0_0_ref;
 	float *  u_0_1;
 	float *  u_0_1_ref;
-	if ((argc!=9))
+	if ((argc!=6))
 	{
-		printf("Wrong number of parameters. Syntax:\n%s <x_max> <y_max> <z_max> <cb_x> <cb_y> <cb_z> <chunk> <_unroll_p3>\n", argv[0]);
+		printf("Wrong number of parameters. Syntax:\n%s <x_max> <y_max> <z_max> <chunk> <_unroll_p2>\n", argv[0]);
 		exit(-1);
 	}
 	int x_max = atoi(argv[1]);
 	int y_max = atoi(argv[2]);
 	int z_max = atoi(argv[3]);
-	int cb_x = atoi(argv[4]);
-	int cb_y = atoi(argv[5]);
-	int cb_z = atoi(argv[6]);
-	int chunk = atoi(argv[7]);
-	int _unroll_p3 = atoi(argv[8]);
+	int chunk = atoi(argv[4]);
+	int _unroll_p2 = atoi(argv[5]);
 	// <--
 	
 	// allocate_grids -->
@@ -65,8 +62,8 @@ int main (int argc, char** argv)
 #pragma omp parallel
 	{
 		// initialize_grids -->
-		initialize_laplacian(((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, cb_x, cb_y, cb_z, chunk);
-		initialize_laplacian(u_0_0_ref, u_0_1_ref, 0.1, 0.2, x_max, y_max, z_max, cb_x, cb_y, cb_z, chunk);
+		initialize_laplacian(((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, chunk);
+		initialize_laplacian(u_0_0_ref, u_0_1_ref, 0.1, 0.2, x_max, y_max, z_max, chunk);
 		// <--
 		
 	}
@@ -79,7 +76,7 @@ int main (int argc, char** argv)
 #pragma omp parallel
 	{
 		// compute_stencil -->
-		laplacian(( & u_0_1_out), ((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, cb_x, cb_y, cb_z, chunk, _unroll_p3);
+		laplacian(( & u_0_1_out), ((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, chunk, _unroll_p2);
 		// <--
 		
 	}
@@ -90,7 +87,7 @@ int main (int argc, char** argv)
 	for (i = 0; i < 5; i++)
 	{
 		// compute_stencil -->
-		laplacian(( & u_0_1_out), ((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, cb_x, cb_y, cb_z, chunk, _unroll_p3);
+		laplacian(( & u_0_1_out), ((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, chunk, _unroll_p2);
 		// <--
 		
 #pragma omp barrier
@@ -103,13 +100,13 @@ int main (int argc, char** argv)
 #pragma omp parallel
 		{
 			// initialize_grids -->
-			initialize_laplacian(((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, cb_x, cb_y, cb_z, chunk);
-			initialize_laplacian(u_0_0_ref, u_0_1_ref, 0.1, 0.2, x_max, y_max, z_max, cb_x, cb_y, cb_z, chunk);
+			initialize_laplacian(((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, chunk);
+			initialize_laplacian(u_0_0_ref, u_0_1_ref, 0.1, 0.2, x_max, y_max, z_max, chunk);
 			// <--
 			
 #pragma omp barrier
 			// compute_stencil -->
-			laplacian(( & u_0_1_out), ((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, cb_x, cb_y, cb_z, chunk, _unroll_p3);
+			laplacian(( & u_0_1_out), ((float * )((((uintptr_t)u_0_0)+15)&( ~ ((uintptr_t)15)))), ((float * )((((uintptr_t)u_0_1)+15)&( ~ ((uintptr_t)15)))), 0.1, 0.2, x_max, y_max, z_max, chunk, _unroll_p2);
 			// <--
 			
 		}

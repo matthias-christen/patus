@@ -46,11 +46,14 @@ __device__ void laplacian___unroll_p3_10101(float *  *  u_0_1_out, float *  u_0_
 	int p3_idx_z;
 	int start0;
 	int start1;
+	int start2;
+	int stepouter0;
+	int stepouter1;
+	int stepouter2;
 	int v2_blkidx_x;
 	int v2_blkidx_x_idxouter;
 	int v2_blkidx_y;
 	int v2_blkidx_z;
-	int v2_idx;
 	int v2_idx_x;
 	int v2_idx_x_max;
 	int v2_idx_y;
@@ -63,54 +66,57 @@ __device__ void laplacian___unroll_p3_10101(float *  *  u_0_1_out, float *  u_0_
 	/*
 	Implementation
 	*/
-	start0=(threadIdx.x+(blockDim.x*blockIdx.x));
-	end0=(((int)(((((int)(((x_max+cb_x)-1)/cb_x))+chunk)-1)/chunk))-1);
+	start0=((threadIdx.x+(blockDim.x*blockIdx.x))*cb_x);
+	end0=(x_max-1);
 	numthds0=(blockDim.x*gridDim.x);
-	start1=(threadIdx.y+(blockDim.y*blockIdx.y));
-	end1=(((int)(((int)(((y_max+cb_y)-1)/cb_y))/1))-1);
+	stepouter0=((cb_x*chunk)*numthds0);
+	start1=((threadIdx.y+(blockDim.y*blockIdx.y))*cb_y);
+	end1=(y_max-1);
 	numthds1=(blockDim.y*gridDim.y);
-	end2=(((int)(((z_max+cb_z)-1)/cb_z))-1);
+	stepouter1=(cb_y*numthds1);
+	start2=(threadIdx.z*cb_z);
+	end2=(z_max-1);
+	stepouter2=(cb_z*blockDim.z);
 	
-	printf ("start0=%d, end0=%d, numthds0=%d, start1=%d, end1=%d, numthds1=%d, end2=%d\n", start0, end0, numthds0, start1, end1, numthds1, end2);
-	
+	printf ("start0=%d, end0=%d, numthds0=%d, stepouter0=%d, start1=%d, end1=%d, numthds1=%d, stepouter1=%d, end2=%d, stepouter2=%d\n", start0, end0, numthds0, stepouter0, start1, end1, numthds1, stepouter1, end2, stepouter2);
+
 	/*
-	for v2_blkidx_z = threadIdx.z..end2 by blockDim.z parallel 1 <level 1> schedule 1 { ... }
+	for v2_blkidx_z = start2..end2 by stepouter2 parallel 1 <level 1> schedule 1 { ... }
 	*/
-	for (v2_blkidx_z=threadIdx.z; v2_blkidx_z<=end2; v2_blkidx_z+=blockDim.z)
+	for (v2_blkidx_z=start2; v2_blkidx_z<=end2; v2_blkidx_z+=stepouter2)
 	{
 		v2_idx_z=v2_blkidx_z;
-		v2_idx_z=((v2_idx_z*cb_z)+1);
+		v2_idx_z=(v2_idx_z+1);
 		v2_idx_z_max=min((v2_idx_z+cb_z), (z_max+1));
 		/*
-		for v2_blkidx_y = start1..end1 by numthds1 parallel 1 <level 1> schedule 1 { ... }
+		for v2_blkidx_y = start1..end1 by stepouter1 parallel 1 <level 1> schedule 1 { ... }
 		*/
-		for (v2_blkidx_y=start1; v2_blkidx_y<=end1; v2_blkidx_y+=numthds1)
+		for (v2_blkidx_y=start1; v2_blkidx_y<=end1; v2_blkidx_y+=stepouter1)
 		{
 			v2_idx_y=v2_blkidx_y;
-			v2_idx_y=((v2_idx_y*cb_y)+1);
+			v2_idx_y=(v2_idx_y+1);
 			v2_idx_y_max=min((v2_idx_y+cb_y), (y_max+1));
 			/*
-			for v2_blkidx_x_idxouter = (start0*chunk)..end0 by (numthds0*chunk) parallel 1 <level 1> schedule 1 { ... }
+			for v2_blkidx_x_idxouter = (start0*chunk)..end0 by stepouter0 parallel 1 <level 1> schedule 1 { ... }
 			*/
-			for (v2_blkidx_x_idxouter=(start0*chunk); v2_blkidx_x_idxouter<=end0; v2_blkidx_x_idxouter+=(numthds0*chunk))
+			for (v2_blkidx_x_idxouter=(start0*chunk); v2_blkidx_x_idxouter<=end0; v2_blkidx_x_idxouter+=stepouter0)
 			{
 				/*
-				for v2_blkidx_x = v2_blkidx_x_idxouter..min(end0, (v2_blkidx_x_idxouter+(chunk-1))) by 1 parallel 1 <level 1> schedule 1 { ... }
+				for v2_blkidx_x = v2_blkidx_x_idxouter..min(end0, (v2_blkidx_x_idxouter+(chunk-1))) by cb_x parallel 1 <level 1> schedule 1 { ... }
 				*/
-				for (v2_blkidx_x=v2_blkidx_x_idxouter; v2_blkidx_x<=min(end0, (v2_blkidx_x_idxouter+(chunk-1))); v2_blkidx_x+=1)
+				for (v2_blkidx_x=v2_blkidx_x_idxouter; v2_blkidx_x<=min(end0, (v2_blkidx_x_idxouter+(chunk-1))); v2_blkidx_x+=cb_x)
 				{
 					v2_idx_x=v2_blkidx_x;
-					v2_idx_x=((v2_idx_x*cb_x)+1);
+					v2_idx_x=(v2_idx_x+1);
 					v2_idx_x_max=min((v2_idx_x+cb_x), (x_max+1));
-					
-					printf ("(%d..%d), (%d..%d), (%d..%d)\n", v2_idx_x, v2_idx_x_max-1, v2_idx_y, v2_idx_y_max-1, v2_idx_z, v2_idx_z_max-1);
-					
 					/* Index bounds calculations for iterators in v2[t=t][0] */
 					/*
 					for POINT p3[t=t][0] of size [1, 1, 1] in v2[t=t][0] + [ min=[0, 0, 0], max=[0, 0, 0] ] parallel 1 <level 1> schedule default { ... }
 					*/
 					{
-						/* Index bounds calculations for iterators in p3[t=t][0] */
+    					printf ("(%d..%d), (%d..%d), (%d..%d)\n", v2_idx_x, v2_idx_x_max-1, v2_idx_y, v2_idx_y_max-1, v2_idx_z, v2_idx_z_max-1);
+
+                        /* Index bounds calculations for iterators in p3[t=t][0] */
 						for (p3_idx_z=v2_idx_z; p3_idx_z<v2_idx_z_max; p3_idx_z+=1)
 						{
 							for (p3_idx_y=v2_idx_y; p3_idx_y<v2_idx_y_max; p3_idx_y+=1)
@@ -135,7 +141,7 @@ __device__ void laplacian___unroll_p3_10101(float *  *  u_0_1_out, float *  u_0_
 									_idx5=(((_idx3+((x_max+2)*y_max))+x_max)+2);
 									/* _idx6 = (((x_max+2)*(((y_max+2)*(p3_idx_z-1))+p3_idx_y))+p3_idx_x) */
 									_idx6=(((_idx3+((( - x_max)-2)*y_max))-(3*x_max))-6);
-									//u_0_1[_idx0]=((alpha*u_0_0[_idx0])+(beta*((u_0_0[_idx1]+(u_0_0[_idx2]+u_0_0[_idx3]))+(u_0_0[_idx4]+(u_0_0[_idx5]+u_0_0[_idx6])))));
+//									u_0_1[_idx0]=((alpha*u_0_0[_idx0])+(beta*((u_0_0[_idx1]+(u_0_0[_idx2]+u_0_0[_idx3]))+(u_0_0[_idx4]+(u_0_0[_idx5]+u_0_0[_idx6])))));
 									printf ("STENCIL: %d %d %d %d %d %d %d\n", _idx0, _idx1, _idx2, _idx3, _idx4, _idx5, _idx6);
 								}
 							}
@@ -172,7 +178,7 @@ int main (int argc, char** argv)
                         for (threadIdx.x = 0; threadIdx.x < blockDim.x; threadIdx.x++)
                         {
                             printf ("/// blk (%d, %d, %d), thd (%d, %d, %d)\n", blockIdx.x, blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z);
-                            laplacian___unroll_p3_10101(NULL, NULL, NULL, 0.1f, 0.2f, X_MAX, Y_MAX, Z_MAX, /* cb_? */ 1, 1, 1, /* chunk */ 2);
+                            laplacian___unroll_p3_10101(NULL, NULL, NULL, 0.1f, 0.2f, X_MAX, Y_MAX, Z_MAX, /* cb_? */ 2, 1, 1, /* chunk */ 2);
                         }
                         printf ("\n");
                     }

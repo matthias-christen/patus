@@ -300,23 +300,23 @@ public class ThreadCodeGenerator
 		if (!loop.isSequential () /* && !m_data.getCodeGenerators ().getStrategyAnalyzer ().isDataLoadedInIterator (loop, m_data.getArchitectureDescription ()) */)
 		{
 			// replace a parallel loop by the part a thread executes
-//			switch (m_data.getCodeGenerators ().getBackendCodeGenerator ().getThreading ())
-//			{
-//			case MULTI:
-//				// calculate linearized block indices from the linearized thread index
-//				generateMultiCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
-//				break;
-//
-//			case MANY:
-//				// calculate ND block indices from an ND thread index
-//				generateManyCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
-//				break;
-//
-//			default:
-//				throw new RuntimeException (StringUtil.concat ("Code generation for ", m_data.getCodeGenerators ().getBackendCodeGenerator ().getThreading (), " not implemented"));
-//			}
+			switch (m_data.getCodeGenerators ().getBackendCodeGenerator ().getThreading ())
+			{
+			case MULTI:
+				// calculate linearized block indices from the linearized thread index
+				generateMultiCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
+				break;
+
+			case MANY:
+				// calculate ND block indices from an ND thread index
+				generateManyCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
+				break;
+
+			default:
+				throw new RuntimeException (StringUtil.concat ("Code generation for ", m_data.getCodeGenerators ().getBackendCodeGenerator ().getThreading (), " not implemented"));
+			}
 			
-			generateMultiCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
+//			generateMultiCoreSubdomainIterator (loop, cmpstmtLoopBody, cmpstmtOutput, bContainsStencilCall, options);
 		}
 		else
 		{
@@ -544,10 +544,6 @@ public class ThreadCodeGenerator
 		Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());
 		if (stmtBarrier != null)
 			cmpstmtOutput.addStatement (stmtBarrier);
-
-//		// bind the loop
-////		m_data.getBoxInstanceManager ().bindNewBoxInstance (loop);
-//	(loopInner == null ? loopOuter : loopInner).setOriginalSubdomainIterator (loop);
 	}
 	
 	/**
@@ -583,7 +579,7 @@ public class ThreadCodeGenerator
 	 * @param nDimEnd
 	 * @return
 	 */
-	private CompoundStatement createLoopBody (SubdomainIterator loop, Statement stmtOrignalBody, int nDimStart, int nDimEnd)
+	private CompoundStatement createLoopBody (SubdomainIterator loop, Statement stmtOrignalBody, int nDimStart, int nDimEnd, boolean bUseBlockIndices)
 	{
 		CompoundStatement cmpstmtBody = new CompoundStatement ();
 
@@ -603,9 +599,12 @@ public class ThreadCodeGenerator
 			rgMin[i - nDimStart] = ids.getDimensionIndexIdentifier (loop.getIterator (), i);
 
 			// calculate the number of blocks per dimension
-			rgNumBlocks[i - nDimStart] = ExpressionUtil.ceil (
-				loop.getDomainSubdomain ().getSize ().getCoord (i).clone (),
-				sizeIterator.getCoord (i).clone ());
+			if (bUseBlockIndices)
+			{
+				rgNumBlocks[i - nDimStart] = ExpressionUtil.ceil (
+					loop.getDomainSubdomain ().getSize ().getCoord (i).clone (),
+					sizeIterator.getCoord (i).clone ());
+			}
 		}
 
 		// create a multi-dimensional index from the 1-dimensional loop index ids.getIndexIdentifier (loop.getIterator ())
@@ -613,7 +612,7 @@ public class ThreadCodeGenerator
 			//ids.getIndexIdentifier (loop.getIterator ()).clone (),
 			ids.getDimensionBlockIndexIdentifier (loop.getIterator (), nDimStart).clone (),
 			rgMin, rgNumBlocks, null, cmpstmtBody);
-
+		
 		// multiply the indices by the size of the grid and calculate the upper bounds
 		for (int i = nDimStart; i <= nDimEnd; i++)
 		{
@@ -622,12 +621,14 @@ public class ThreadCodeGenerator
 				rgMin[i - nDimStart].clone (),
 				AssignmentOperator.NORMAL,
 				new BinaryExpression (
-					new BinaryExpression (rgMin[i - nDimStart].clone (), BinaryOperator.MULTIPLY, sizeIterator.getCoord (i).clone ()),
+					bUseBlockIndices ?
+						new BinaryExpression (rgMin[i - nDimStart].clone (), BinaryOperator.MULTIPLY, sizeIterator.getCoord (i).clone ()) :
+						rgMin[i - nDimStart].clone (),
 					BinaryOperator.ADD,
 					loop.getDomainSubdomain ().getLocalCoordinates ().getCoord (i).clone ()	// TODO: check whether this is correct for subdomains
 				)
 			)));
-
+			
 			// upper bounds
 			Identifier idMax = ids.getDimensionMaxIdentifier (loop.getIterator (), i).clone ();
 			cmpstmtBody.addStatement (new ExpressionStatement (new AssignmentExpression (
@@ -647,38 +648,71 @@ public class ThreadCodeGenerator
 	}
 	
 	/**
+	 * Generates a double loop nest for a single dimension. The outer loop
+	 * iterates over chunks, the inner over chunked blocks. If the chunk is 1,
+	 * only one loop is generated.
 	 * 
 	 * @param sdit
+	 *            The original subdomain iterator
 	 * @param exprStartOrig
+	 *            The start of the loop, typically dependent on the thread ID
+	 *            (for round-robin parallelization)
 	 * @param exprEndOrig
+	 *            The end of the domain
+	 * @param exprBlockStepOrig
+	 *            The step by which the index is increased in each iteration:
+	 *            the size of the block in the respective dimension
 	 * @param exprNumThreadsInDimOrig
+	 *            The number of threads in the dimension for which to create the
+	 *            loops
 	 * @param stmtLoopBody
+	 *            The loop body
 	 * @param rgIndices
-	 * @param cmpstmtInitializations The compound statement to which initializations will be added
-	 * @param nDim
+	 *            An array into which the index for the dimension for which the
+	 *            loops are created is written
+	 * @param cmpstmtInitializations
+	 *            The compound statement to which initializations will be added
+	 * @param nDimStart
+	 *            The start dimension
+	 * @param nDimEnd
+	 *            The end dimension
+	 * @param bUseBlockIndices
+	 *            Flag specifying whether the loop indices are block indices.
+	 *            Set to <code>true</code> if multiple dimensions are emulated
+	 *            at once in one loop nest (i.e. for the last indexing dimension
+	 *            if there are strictly less indexing dimensions than the
+	 *            dimensionality)
 	 * @param bContainsStencilCall
-	 * @return
+	 *            Flag specifying whether the subdomain iterator contains a
+	 *            stencil call (and we therefore need to take care of modifying
+	 *            the loop bounds for SIMD)
+	 * @param options
+	 *            Runtime code generation options
+	 * 
+	 * @return The generated loop nest
 	 */
 	private Statement generateLoopsForDim (SubdomainIterator sdit,
-		Expression exprStartOrig, Expression exprEndOrig, Expression exprNumThreadsInDimOrig,
+		Expression exprStartOrig, Expression exprEndOrig, Expression exprBlockStepOrig, Expression exprNumThreadsInDimOrig,
 		Statement stmtLoopBody,
-		Expression[] rgIndices, CompoundStatement cmpstmtInitializations, int nDimStart, int nDimEnd, boolean bContainsStencilCall,
+		Expression[] rgIndices, CompoundStatement cmpstmtInitializations, int nDimStart, int nDimEnd,
+		boolean bUseBlockIndices, boolean bContainsStencilCall,
 		CodeGeneratorRuntimeOptions options)
 	{
 		SubdomainGeneratedIdentifiers ids = m_data.getData ().getGeneratedIdentifiers ();
-		CompoundStatement cmpstmtLoopBody = createLoopBody (sdit, stmtLoopBody, nDimStart, nDimEnd);
+		CompoundStatement cmpstmtLoopBody = createLoopBody (sdit, stmtLoopBody, nDimStart, nDimEnd, bUseBlockIndices);
 						
 		StatementListBundle slbInit = new StatementListBundle (cmpstmtInitializations);
 		
 		// create identifiers for the start/end/num threads expressions if they are no IDExpressions or literals
 		Expression exprStart = getIdentifier (exprStartOrig, "start", slbInit, options);
 		Expression exprEnd = getIdentifier (exprEndOrig, "end", slbInit, options);
+		Expression exprBlockStep = getIdentifier (exprBlockStepOrig, "step", slbInit, options);
 		Expression exprNumThreadsInDim = getIdentifier (exprNumThreadsInDimOrig, "numthds", slbInit, options);
 		
 		// determine whether the outer loop is needed
 		// (i.e., if the number of threads in the dimension (the step of the outer loop) is strictly less than the end expression)
 		boolean bNoHasOuterLoop = Symbolic.isTrue (
-			new BinaryExpression (exprNumThreadsInDim.clone (), BinaryOperator.COMPARE_GE, exprEnd.clone ()), Symbolic.ALL_VARIABLES_INTEGER) == Symbolic.ELogicalValue.FALSE;
+			new BinaryExpression (exprNumThreadsInDimOrig.clone (), BinaryOperator.COMPARE_GE, exprEndOrig.clone ()), Symbolic.ALL_VARIABLES_INTEGER) == Symbolic.ELogicalValue.FALSE;
 
 		if (bNoHasOuterLoop)
 		{
@@ -711,19 +745,27 @@ public class ThreadCodeGenerator
 			idOuterLoopIdx = new Identifier (new VariableDeclarator (
 				Globals.SPECIFIER_INDEX,
 				new NameID (StringUtil.concat (idInnerLoopIdx.getName (), "_idxouter"))));
+			
+			// step: account for SIMD or just 1 if no stencil call/SIMD
+			int nInnerStep = bContainsStencilCall ?
+				m_data.getCodeGenerators ().getStencilCalculationCodeGenerator ().getLcmSIMDVectorLengths () : 1;
 
 			itLoopInner = new RangeIterator (
 				idInnerLoopIdx.clone (),
 				idOuterLoopIdx.clone (),
 				
-				// end = min (global_end, idxouter + chunk - 1)
-				new FunctionCall (Globals.FNX_MIN.clone (), CodeGeneratorUtil.expressions (
+				// end = min (global_end, idxouter + chunk*blockstep - 1)
+				Symbolic.simplify (new FunctionCall (Globals.FNX_MIN.clone (), CodeGeneratorUtil.expressions (
 					exprEnd,
-					new BinaryExpression (idOuterLoopIdx.clone (), BinaryOperator.ADD, ExpressionUtil.decrement (exprChunkSize.clone ())))),
+					new BinaryExpression (
+						idOuterLoopIdx.clone (),
+						BinaryOperator.ADD,
+						ExpressionUtil.decrement (new BinaryExpression (exprChunkSize.clone (), BinaryOperator.MULTIPLY, exprBlockStep.clone ())))
+					)
+				)),
 					
-				// step: account for SIMD or just 1 if no stencil call/SIMD
-				new IntegerLiteral (bContainsStencilCall ?
-					m_data.getCodeGenerators ().getStencilCalculationCodeGenerator ().getLcmSIMDVectorLengths () : 1),
+				// step
+				nInnerStep == 1 ? exprBlockStep.clone () : new BinaryExpression (exprBlockStep.clone (), BinaryOperator.MULTIPLY, new IntegerLiteral (nInnerStep)),
 					
 				cmpstmtLoopBody,
 				sdit.getParallelismLevel ());
@@ -732,18 +774,23 @@ public class ThreadCodeGenerator
 			idOuterLoopIdx = idInnerLoopIdx;
 			
 		// create the outer loop
+		Expression exprOuterStep = getIdentifier (Symbolic.simplify (
+			new BinaryExpression (exprNumThreadsInDim.clone (), BinaryOperator.MULTIPLY, new BinaryExpression (exprChunkSize.clone (), BinaryOperator.MULTIPLY, exprBlockStep.clone ()))),
+			"stepouter", slbInit, options);
+		
 		return new RangeIterator (idOuterLoopIdx,
 			bHasNonUnitChunk ? new BinaryExpression (exprStart.clone (), BinaryOperator.MULTIPLY, exprChunkSize.clone ()) : exprStart,
 			exprEnd,
-			bHasNonUnitChunk ? new BinaryExpression (exprNumThreadsInDim.clone (), BinaryOperator.MULTIPLY, exprChunkSize.clone ()) : exprNumThreadsInDim,
-			itLoopInner == null ? cmpstmtLoopBody : itLoopInner, sdit.getParallelismLevel ()); 
+			exprOuterStep,
+			itLoopInner == null ? cmpstmtLoopBody : itLoopInner,
+			sdit.getParallelismLevel ()); 
 	}	
 
 	/**
-	 * 
-	 * @param loop
-	 * @param nStartDim
-	 * @return
+	 * Multiplies the numbers of blocks in dimensions <code>nStartDim</code>, <code>nStartDim+1</code>, ..., dimensionality.
+	 * @param loop The loop for which the calculate the number of blocks
+	 * @param nStartDim The start dimension
+	 * @return The total number of blocks in dimensions <code>nStartDim</code>, <code>nStartDim+1</code>, ..., dimensionality
 	 */
 	private Expression calculateNumberOfBlocksInMissingDims (SubdomainIterator loop, int nStartDim)
 	{
@@ -767,6 +814,21 @@ public class ThreadCodeGenerator
 	/**
 	 * 
 	 * @param loop
+	 * @param nStartDim
+	 * @param nEndDim
+	 * @return
+	 */
+	private Expression calculateDomainSize (SubdomainIterator loop, int nStartDim, int nEndDim)
+	{
+		Expression exprSize = loop.getTotalDomainSubdomain ().getSize ().getCoord (nStartDim).clone ();
+		for (int i = nStartDim + 1; i <= nEndDim; i++)
+			exprSize = new BinaryExpression (exprSize, BinaryOperator.MULTIPLY, loop.getTotalDomainSubdomain ().getSize ().getCoord (i).clone ());
+		return exprSize;
+	}
+	
+	/**
+	 * 
+	 * @param loop
 	 * @param cmpstmtLoopBody
 	 * @param cmpstmtOutput
 	 * @param bContainsStencilCall
@@ -777,6 +839,8 @@ public class ThreadCodeGenerator
 		CodeGeneratorRuntimeOptions options)
 	{
 		IndexCalculatorCodeGenerator iccg = m_data.getCodeGenerators ().getIndexCalculator ();
+		
+		// TODO: data transfers
 		
 		// get the start and end parallelism level of the subdomain iterator "loop":
 		// if "loop" is the inner-most parallel subdomain iterator it spans all the "remaining"
@@ -795,32 +859,59 @@ public class ThreadCodeGenerator
 		
 		// generate the loop nest
 		Statement stmtBody = cmpstmtLoopBody;
-		for (int i = 0; i < nMaxIndexDimension; i++)
+		int nEnd = m_data.getStencilCalculation ().getDimensionality () > nMaxIndexDimension ? nMaxIndexDimension - 1 : nMaxIndexDimension;
+		
+		// all indexing dimensions if all of them are to be treated the same, or all but the
+		// last if the last has to emulate missing dimensions
+		for (int i = 0; i < nEnd; i++)
 		{
-			// calculate the end expression
-			Expression exprEnd = i < nMaxIndexDimension - 1 ?
-				loop.getNumberOfBlocksInDimension (i) ://ExpressionUtil.ceil (loop.getNumberOfBlocksInDimension (i), loop.getChunkSize (i)) :
-				calculateNumberOfBlocksInMissingDims (loop, nMaxIndexDimension - 1);
-				
-			// calculate the "end" dimension to be processed by "generateLoopsForDim":
-			// the same as the start dim (=i) except for the last indexing dimension, which emulates the missing
-			// domain dimensions
-			int nDimEnd = i == nMaxIndexDimension - 1 ? loop.getDomainIdentifier ().getDimensionality () - 1 : i;
-			
 			// create the loops for dimension i
 			stmtBody = generateLoopsForDim (
 				loop,
-				iccg.calculateHardwareIndicesToOne (i, nParallelismLevelStart, nParallelismLevelEnd),
-				ExpressionUtil.decrement (exprEnd),	// decrement because "end" is expected to be inclusive in generateLoopsForDim
+				
+				// start
+				new BinaryExpression (
+					iccg.calculateHardwareIndicesToOne (i, nParallelismLevelStart, nParallelismLevelEnd),
+					BinaryOperator.MULTIPLY,
+					loop.getIteratorSubdomain ().getSize ().getCoord (i).clone ()
+				),
+				
+				// end
+				// decrement because "end" is expected to be inclusive in generateLoopsForDim
+				ExpressionUtil.decrement (loop.getTotalDomainSubdomain ().getSize ().getCoord (i).clone ()),
+				
+				// block step
+				loop.getIteratorSubdomain ().getSize ().getCoord (i),
+				
+				// number of hardware entities used
+				// determines the step in the outer loop
 				iccg.calculateTotalHardwareSize (i, nParallelismLevelStart, nParallelismLevelEnd),
-				stmtBody, rgIndices, cmpstmtOutput, i, nDimEnd, bContainsStencilCall, options);
+				
+				stmtBody, rgIndices, cmpstmtOutput, i, i, false, bContainsStencilCall, options);
 		}
 		
-		// create bound variables
-//		generateBoundVariables (loop, cmpstmtLoopBody);
-		
+		// last indexing dimension, if it has to emulate multiple dimensions
+		if (m_data.getStencilCalculation ().getDimensionality () > nMaxIndexDimension)
+		{
+			// calculate the end expression
+			Expression exprEnd = calculateNumberOfBlocksInMissingDims (loop, nMaxIndexDimension - 1);
+				
+			// create the loops for dimension i
+			stmtBody = generateLoopsForDim (
+				loop,
+				iccg.calculateHardwareIndicesToOne (nMaxIndexDimension - 1, nParallelismLevelStart, nParallelismLevelEnd),
+				ExpressionUtil.decrement (exprEnd),	// decrement because "end" is expected to be inclusive in generateLoopsForDim
+				Globals.ONE.clone (),
+				iccg.calculateTotalHardwareSize (nMaxIndexDimension - 1, nParallelismLevelStart, nParallelismLevelEnd),
+				stmtBody, rgIndices, cmpstmtOutput,
+				nMaxIndexDimension - 1, loop.getDomainIdentifier ().getDimensionality () - 1,
+				true, bContainsStencilCall, options);			
+		}
+				
 		// add the loop to the output statement
 		cmpstmtOutput.addStatement (stmtBody);
+		
+		// TODO: transfer data back
 
 		// synchronize
 		Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());
@@ -828,6 +919,128 @@ public class ThreadCodeGenerator
 			cmpstmtOutput.addStatement (stmtBarrier);
 	}
 
+	private void loadData (SubdomainIterator loop, CompoundStatement cmpstmtLoopBody, CodeGeneratorRuntimeOptions options)
+	{
+		// has data transfers?
+		boolean bHasDatatransfers = m_data.getCodeGenerators ().getStrategyAnalyzer ().isDataLoadedInIterator (loop, m_data.getArchitectureDescription ());
+
+		// add data transfer code if required
+		if (bHasDatatransfers)
+		{
+			if (true)
+				throw new RuntimeException ("Not implemented");
+
+			DatatransferCodeGenerator dtcg = m_data.getCodeGenerators ().getDatatransferCodeGenerator ();
+			MemoryObjectManager mgr = m_data.getData ().getMemoryObjectManager ();
+
+			// allocate memory objects
+			dtcg.allocateLocalMemoryObjects (loop, options);
+
+			// load and wait
+			StatementListBundle slbLoad = new StatementListBundle (new ArrayList<Statement> ());
+			StencilNodeSet setInputNodes = mgr.getInputStencilNodes (loop.getIterator ());
+
+			dtcg.loadData (setInputNodes, loop, slbLoad, options);
+			dtcg.waitFor (setInputNodes, loop, slbLoad, options);
+
+			CodeGeneratorUtil.addStatementsAtTop (cmpstmtLoopBody, slbLoad.getDefaultList ().getStatementsAsList ());
+		}		
+	}
+	
+	private void storeData (SubdomainIterator loop, CompoundStatement cmpstmtLoopBody, CodeGeneratorRuntimeOptions options)
+	{
+		// has data transfers?
+		boolean bHasDatatransfers = m_data.getCodeGenerators ().getStrategyAnalyzer ().isDataLoadedInIterator (loop, m_data.getArchitectureDescription ());
+
+		// add datatransfer code if required: store
+		if (bHasDatatransfers)
+		{
+			if (true)
+				throw new RuntimeException ("Not implemented");
+
+			DatatransferCodeGenerator dtcg = m_data.getCodeGenerators ().getDatatransferCodeGenerator ();
+			MemoryObjectManager mgr = m_data.getData ().getMemoryObjectManager ();
+
+			// store
+			StatementListBundle slbStore = new StatementListBundle (new ArrayList<Statement> ());
+			dtcg.storeData (mgr.getOutputStencilNodes (loop.getIterator ()), loop, slbStore, options);
+			CodeGeneratorUtil.addStatements (cmpstmtLoopBody, slbStore.getDefaultList ().getStatementsAsList ());
+		}
+	}
+	
+	private Statement generateManyCoreLoopForDim (SubdomainIterator loop,
+		Statement stmtLoopBody,
+		Expression[] rgBlockIndices,
+		int nDim, boolean bHasNestedLoops, boolean bContainsStencilCall,
+		CodeGeneratorRuntimeOptions options)
+	{
+		SubdomainGeneratedIdentifiers ids = m_data.getData ().getGeneratedIdentifiers ();
+		Point ptDomainBase = loop.getDomainSubdomain ().getBaseGridCoordinates ();
+		Size sizeIterator = loop.getIteratorSubdomain ().getBox ().getSize ();
+
+		// v_*_min = u_*_min + idx_* * v_*_size
+		Identifier idMin = ids.getDimensionIndexIdentifier (loop.getIterator (), nDim);
+		Expression exprMin = Symbolic.optimizeExpression (new BinaryExpression (
+			ptDomainBase.getCoord (nDim).clone (),
+			BinaryOperator.ADD,
+			new BinaryExpression (rgBlockIndices[nDim].clone (), BinaryOperator.MULTIPLY, sizeIterator.getCoord (nDim).clone ())));
+		
+		// v_*_max = v_*_min + v_*_size
+		Identifier idMax = null;
+		Expression exprMax = null;
+		if (bHasNestedLoops)
+		{
+			idMax = ids.getDimensionMaxIdentifier (loop.getIterator (), nDim).clone ();
+			exprMax = new BinaryExpression (idMin.clone (), BinaryOperator.ADD, sizeIterator.getCoord (nDim).clone ());
+
+			// account for SIMD
+			if (bContainsStencilCall && nDim == 0)
+			{
+				int nSIMDVectorLength = m_data.getCodeGenerators ().getStencilCalculationCodeGenerator ().getLcmSIMDVectorLengths ();
+				if (nSIMDVectorLength > 1)
+					exprMax = ExpressionUtil.ceil (exprMax, new IntegerLiteral (nSIMDVectorLength));
+			}
+			
+			exprMax = Symbolic.simplify (exprMax, Symbolic.ALL_VARIABLES_INTEGER);
+		}
+		
+		// prepare the new loop body
+		CompoundStatement cmpstmtNewLoopBody = null;
+		if (stmtLoopBody instanceof CompoundStatement && !(stmtLoopBody instanceof Loop))
+			cmpstmtNewLoopBody = (CompoundStatement) stmtLoopBody;
+		else
+		{
+			cmpstmtNewLoopBody = new CompoundStatement ();
+			CodeGeneratorUtil.addStatements (cmpstmtNewLoopBody, stmtLoopBody.clone ());
+		}
+		
+		if (ExpressionUtil.isValue (loop.getChunkSize (nDim), 1))
+		{
+			// default chunk size; no loop needed
+			if (bHasNestedLoops)
+				CodeGeneratorUtil.addStatementAtTop (cmpstmtNewLoopBody, new ExpressionStatement (new AssignmentExpression (idMax, AssignmentOperator.NORMAL, exprMax)));
+			CodeGeneratorUtil.addStatementAtTop (cmpstmtNewLoopBody, new ExpressionStatement (new AssignmentExpression (idMin, AssignmentOperator.NORMAL, exprMin)));
+
+			return cmpstmtNewLoopBody;
+		}
+		else
+		{
+			// non-default chunk size
+			cmpstmtNewLoopBody.setParent (null);
+			if (bHasNestedLoops)
+				CodeGeneratorUtil.addStatementAtTop (cmpstmtNewLoopBody, new ExpressionStatement (new AssignmentExpression (idMax, AssignmentOperator.NORMAL, exprMax)));
+			
+			return new RangeIterator (
+				idMin.clone (),
+				exprMin.clone (),
+				new BinaryExpression (exprMin.clone (),	BinaryOperator.ADD, ExpressionUtil.decrement (loop.getChunkSize (0))),
+				Globals.ONE.clone (),
+				cmpstmtNewLoopBody,
+				loop.getParallelismLevel ()
+			);
+		}
+	}
+	
 	/**
 	 * Generates a C version of a subdomain iterator for a &quot;many-core&quot;
 	 * architecture. The generated code is added to <code>cmpstmtOutput</code>.
@@ -843,156 +1056,78 @@ public class ThreadCodeGenerator
 		Box boxDomain = loop.getDomainSubdomain ().getBox ();
 		byte nDim = boxDomain.getDimensionality ();
 
-		// determine whether there is a chunksize != 1
-		boolean bHasNondefaultChunkSize = Symbolic.isTrue (new BinaryExpression (loop.getChunkSize (0), BinaryOperator.COMPARE_EQ, new IntegerLiteral (1)), null) != Symbolic.ELogicalValue.TRUE;
+		loadData (loop, cmpstmtLoopBody, options);
 
-		// has data transfers?
-		boolean bHasDatatransfers = m_data.getCodeGenerators ().getStrategyAnalyzer ().isDataLoadedInIterator (loop, m_data.getArchitectureDescription ());
-		DatatransferCodeGenerator dtcg = m_data.getCodeGenerators ().getDatatransferCodeGenerator ();
-		MemoryObjectManager mgr = m_data.getData ().getMemoryObjectManager ();
-
-		// add data transfer code if required
-		if (bHasDatatransfers)
-		{
-			// allocate memory objects
-			dtcg.allocateLocalMemoryObjects (loop, options);
-
-			// load and wait
-			StatementListBundle slbLoad = new StatementListBundle (new ArrayList<Statement> ());
-			StencilNodeSet setInputNodes = mgr.getInputStencilNodes (loop.getIterator ());
-
-			dtcg.loadData (setInputNodes, loop, slbLoad, options);
-			dtcg.waitFor (setInputNodes, loop, slbLoad, options);
-
-			CodeGeneratorUtil.addStatementsAtTop (cmpstmtLoopBody, slbLoad.getDefaultList ().getStatementsAsList ());
-		}
-
-		// get the size of the blocks
+		// adjust the size of the blocks if chunking is used
 		Size sizeIterator = loop.getIteratorSubdomain ().getBox ().getSize ();
-		if (bHasNondefaultChunkSize)
-			sizeIterator.setCoord (0, new BinaryExpression (sizeIterator.getCoord (0), BinaryOperator.MULTIPLY, loop.getChunkSize (0)));
-
-//		// calculate the number of blocks in each direction
-//		// ---
-//		Size sizeNumBlocks = new Size (nDim);
-//
-//		// get a reference output memory object to determine the size of a block
-//		MemoryObject moRef = mgr.getMemoryObject (loop.getIterator (), m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ().getOutputNodes ().iterator ().next (), true);
-//		Size sizeMemObj = moRef.getSize (/*Globals.ZERO.clone (), Globals.ONE.clone ()*/);
-//
-//		for (int i = 0; i < nDim; i++)
-//		{
-//			/*
-//			 * sizeNumBlocks.setCoord (i, ExpressionUtil.ceil
-//			 * (loop.getNumberOfBlocksInDimension (i), sizeIterator.getCoord
-//			 * (i)));
-//			 */
-//			// ThreadCodeGenerator.LOGGER.error
-//			// ("FIX ME!!!! <size must be calculated from the reference memory object size that is attached to this parallelism level!!!!>");
-//			// sizeNumBlocks.setCoord (i, m_data.getStencilCalculation
-//			// ().getDomainMaxIdentifier (i));
-//
-//			sizeNumBlocks.setCoord (i, ExpressionUtil.ceil (loop.getDomainSubdomain ().getBox ().getSize ().getCoord (i), sizeMemObj.getCoord (i)));
-//		}
-//		// ---
-
+		for (int i = 0; i < sizeIterator.getDimensionality (); i++)
+			if (!ExpressionUtil.isValue (loop.getChunkSize (i), 1))
+				sizeIterator.setCoord (i, new BinaryExpression (sizeIterator.getCoord (0), BinaryOperator.MULTIPLY, loop.getChunkSize (i)));
+		
+		// expression checking whether v_*_min is within the parent iterator's bounds
+		SubdomainGeneratedIdentifiers ids = m_data.getData ().getGeneratedIdentifiers ();
+		Expression exprInBounds = null;
+		for (int i = 0; i < nDim; i++)
+		{
+			Expression exprInBoundsLocal = new BinaryExpression (ids.getDimensionIndexIdentifier (loop.getIterator (), i).clone (), BinaryOperator.COMPARE_LE, loop.getDomainSubdomain ().getBox ().getMax ().getCoord (i).clone ());
+			exprInBounds = exprInBounds == null ? exprInBoundsLocal : new BinaryExpression (exprInBounds, BinaryOperator.LOGICAL_AND, exprInBoundsLocal);
+		}
+		Statement stmtLoopBody = new IfStatement (exprInBounds, cmpstmtLoopBody.clone ());
+		
 		// calculate the block indices from the thread indices, add auxiliary
 		// calculations to the initialization block (=> null)
 		Expression[] rgBlockIndices = m_data.getCodeGenerators ().getIndexCalculator ().calculateIndicesFromHardwareIndices (boxDomain.getSize (), null, options);
+		boolean bHasNestedLoops = StrategyAnalyzer.hasNestedLoops (loop);
 
-		// create bound variables
-		Point ptDomainBase = loop.getDomainSubdomain ().getBaseGridCoordinates ();
-		Expression[] rgExprBounds = new Expression[2 * nDim];
-
-		// expression checking whether v_*_min is within the parent iterator's bounds
-		Expression exprInBounds = null;
-
-		SubdomainGeneratedIdentifiers ids = m_data.getData ().getGeneratedIdentifiers ();
 		for (int i = 0; i < nDim; i++)
-		{
-			// v_*_min = u_*_min + idx_* * v_*_size
-			Identifier idMin = ids.getDimensionIndexIdentifier (loop.getIterator (), i);
-			
-			Expression exprInBoundsLocal = new BinaryExpression (idMin.clone (), BinaryOperator.COMPARE_LE, boxDomain.getMax ().getCoord (i).clone ());
-			exprInBounds = exprInBounds == null ? exprInBoundsLocal : new BinaryExpression (exprInBounds, BinaryOperator.LOGICAL_AND, exprInBoundsLocal);
+			stmtLoopBody = generateManyCoreLoopForDim (loop, stmtLoopBody, rgBlockIndices, i, bHasNestedLoops, bContainsStencilCall, options);
+		cmpstmtOutput.addStatement (stmtLoopBody);
 
-			Expression exprMin = new BinaryExpression (
-				ptDomainBase.getCoord (i).clone (),
-				BinaryOperator.ADD,
-				new BinaryExpression (rgBlockIndices[i].clone (), BinaryOperator.MULTIPLY, sizeIterator.getCoord (i).clone ()));
-			rgExprBounds[2 * i] = new AssignmentExpression (idMin.clone (), AssignmentOperator.NORMAL, Symbolic.optimizeExpression (exprMin));
-
-			// v_*_max = v_*_min + v_*_size
-			Identifier idMax = ids.getDimensionMaxIdentifier (loop.getIterator (), i).clone ();
-			Expression exprSize = new BinaryExpression (idMin.clone (), BinaryOperator.ADD, sizeIterator.getCoord (i).clone ());
-
-			// account for SIMD
-			if (bContainsStencilCall)
-			{
-				int nSIMDVectorLength = m_data.getCodeGenerators ().getStencilCalculationCodeGenerator ().getLcmSIMDVectorLengths ();
-				if (nSIMDVectorLength > 1)
-					exprSize = ExpressionUtil.ceil (exprSize, new IntegerLiteral (nSIMDVectorLength));
-			}
-
-			rgExprBounds[2 * i + 1] = new AssignmentExpression (
-				idMax,
-				AssignmentOperator.NORMAL,
-				Symbolic.simplify (exprSize, Symbolic.ALL_VARIABLES_INTEGER)
-			);
-		}
-
-		// add the created bound to the generated code
-		// if there is a non-default chunk size (i.e. != 1), the first variable
-		// is captured in a loop, hence only add the bound variables except the first
-		Statement rgStmtBounds[] = new Statement[bHasNondefaultChunkSize ? rgExprBounds.length - 1 : rgExprBounds.length];
-		for (int i = bHasNondefaultChunkSize ? 1 : 0; i < rgExprBounds.length; i++)
-			rgStmtBounds[bHasNondefaultChunkSize ? i - 1 : i] = new ExpressionStatement (rgExprBounds[i]);
-
-		// determine the location where the index calculations are to be inserted
-		CompoundStatement cmpstmtIndexCalculation = getIndexCalculationLocation (loop, cmpstmtLoopBody);
-		if (cmpstmtIndexCalculation == null)
-			m_data.getData ().addInitializationStatements (rgStmtBounds);
-		else
-			CodeGeneratorUtil.addStatements (cmpstmtIndexCalculation, rgStmtBounds);
-
-		// add datatransfer code if required: store
-		if (bHasDatatransfers)
-		{
-			// store
-			StatementListBundle slbStore = new StatementListBundle (new ArrayList<Statement> ());
-			dtcg.storeData (mgr.getOutputStencilNodes (loop.getIterator ()), loop, slbStore, options);
-			CodeGeneratorUtil.addStatements (cmpstmtLoopBody, slbStore.getDefaultList ().getStatementsAsList ());
-		}
-		
-		// add guards to prevent execution if out of bounds
-		CompoundStatement cmpstmtNewLoopBody = null;
-		if (exprInBounds != null)
-		{
-			cmpstmtNewLoopBody = new CompoundStatement ();
-			cmpstmtLoopBody.setParent (null);
-			cmpstmtNewLoopBody.addStatement (new IfStatement (exprInBounds, cmpstmtLoopBody));
-		}
-		else
-			cmpstmtNewLoopBody = cmpstmtLoopBody;
-		
-
-		// create the loop for handling chunks
-		if (bHasNondefaultChunkSize)
-		{
-			Identifier idMin = ids.getDimensionIndexIdentifier (loop.getIterator (), 0);
-			Expression exprMin = ((AssignmentExpression) rgExprBounds[0]).getRHS ();
-
-			cmpstmtOutput.addStatement (new RangeIterator (
-				idMin.clone (),
-				exprMin.clone (),
-				new BinaryExpression (exprMin.clone (),	BinaryOperator.ADD, ExpressionUtil.decrement (loop.getChunkSize (0))),
-				Globals.ONE.clone (),
-				cmpstmtNewLoopBody,
-				loop.getParallelismLevel ()
-			));
-		}
-		else
-			cmpstmtOutput.addStatement (cmpstmtNewLoopBody.clone ());
+//		// add the created bound to the generated code
+//		// if there is a non-default chunk size (i.e. != 1), the first variable
+//		// is captured in a loop, hence only add the bound variables except the first
+//		List<Statement> listStmtBounds = new ArrayList<Statement> ();
+//		for (int i = bHasNondefaultChunkSize ? 1 : 0; i < rgExprBounds.length; i++)
+//			listStmtBounds.add ()[bHasNondefaultChunkSize ? i - 1 : i] = new ExpressionStatement (rgExprBounds[i]));
+//
+//		// determine the location where the index calculations are to be inserted
+//		CompoundStatement cmpstmtIndexCalculation = getIndexCalculationLocation (loop, cmpstmtLoopBody);
+//		if (cmpstmtIndexCalculation == null)
+//			m_data.getData ().addInitializationStatements (rgStmtBounds);
+//		else
+//			CodeGeneratorUtil.addStatements (cmpstmtIndexCalculation, rgStmtBounds);
+//
+//		storeData (loop, cmpstmtLoopBody, options);
+//		
+//		// add guards to prevent execution if out of bounds
+//		CompoundStatement cmpstmtNewLoopBody = null;
+//		if (exprInBounds != null)
+//		{
+//			cmpstmtNewLoopBody = new CompoundStatement ();
+//			cmpstmtLoopBody.setParent (null);
+//			cmpstmtNewLoopBody.addStatement (new IfStatement (exprInBounds, cmpstmtLoopBody));
+//		}
+//		else
+//			cmpstmtNewLoopBody = cmpstmtLoopBody;
+//		
+//
+//		// create the loop for handling chunks
+//		if (bHasNondefaultChunkSize)
+//		{
+//			Identifier idMin = ids.getDimensionIndexIdentifier (loop.getIterator (), 0);
+//			Expression exprMin = ((AssignmentExpression) rgExprBounds[0]).getRHS ();
+//
+//			cmpstmtOutput.addStatement (new RangeIterator (
+//				idMin.clone (),
+//				exprMin.clone (),
+//				new BinaryExpression (exprMin.clone (),	BinaryOperator.ADD, ExpressionUtil.decrement (loop.getChunkSize (0))),
+//				Globals.ONE.clone (),
+//				cmpstmtNewLoopBody,
+//				loop.getParallelismLevel ()
+//			));
+//		}
+//		else
+//			cmpstmtOutput.addStatement (cmpstmtNewLoopBody.clone ());
 		
 		// synchronize
 		Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());

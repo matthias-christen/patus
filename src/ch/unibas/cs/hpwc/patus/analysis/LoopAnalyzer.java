@@ -111,6 +111,8 @@ public class LoopAnalyzer
 		//     |  end - start  |
 		//     |  -----------  |  +  1
 		//     +-   stride    -+
+		//
+		// ( ceil((end - start + 1) / stride) = floor((end - start + 1 + (stride - 1)) / stride) = floor((end - start) / stride + 1) = floor ((end - start) / stride) + 1 )
 
 		try
 		{

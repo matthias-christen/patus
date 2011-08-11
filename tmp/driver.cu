@@ -63,14 +63,14 @@ int main (int argc, char** argv)
 	// <--
 	
 	// allocate_GPU_grids -->
-	cudaMalloc(((void *  * )( & u_0_1_gpu)), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)));
-	cudaMalloc(((void *  * )( & u_0_0_gpu)), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)));
 	cudaMalloc(((void *  * )( & u_0_1_out_gpu)), sizeof (gpu_ptr_t));
+	cudaMalloc(((void *  * )( & u_0_0_gpu)), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)));
+	cudaMalloc(((void *  * )( & u_0_1_gpu)), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)));
 	// <--
 	
 	// copy_grids_to_GPU -->
-	cudaMemcpy(((void * )u_0_1_gpu), ((void * )u_0_1), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)), cudaMemcpyHostToDevice);
 	cudaMemcpy(((void * )u_0_0_gpu), ((void * )u_0_0), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)), cudaMemcpyHostToDevice);
+	cudaMemcpy(((void * )u_0_1_gpu), ((void * )u_0_1), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)), cudaMemcpyHostToDevice);
 	// <--
 	
 	
@@ -84,8 +84,8 @@ int main (int argc, char** argv)
 	{
 		printf ("CUDA Error [Initialization]: %s.\n", cudaGetErrorString (res));
 		// deallocate_grids -->
-		cudaFree(((void * )u_0_1_gpu));
 		cudaFree(((void * )u_0_0_gpu));
+		cudaFree(((void * )u_0_1_gpu));
 		free(u_0_0);
 		free(u_0_0_ref);
 		free(u_0_1);
@@ -111,8 +111,8 @@ int main (int argc, char** argv)
 	{
 		printf ("CUDA Error [Stencil]: %s.\n", cudaGetErrorString (res));
 		// deallocate_grids -->
-		cudaFree(((void * )u_0_1_gpu));
 		cudaFree(((void * )u_0_0_gpu));
+		cudaFree(((void * )u_0_1_gpu));
 		free(u_0_0);
 		free(u_0_0_ref);
 		free(u_0_1);
@@ -143,8 +143,8 @@ int main (int argc, char** argv)
 		// <--
 		
 		// copy_input_grids_from_GPU_to_reference_grids -->
-		cudaMemcpy(((void * )u_0_1_ref), ((void * )u_0_1_gpu), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)), cudaMemcpyDeviceToHost);
 		cudaMemcpy(((void * )u_0_0_ref), ((void * )u_0_0_gpu), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)), cudaMemcpyDeviceToHost);
+		cudaMemcpy(((void * )u_0_1_ref), ((void * )u_0_1_gpu), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)), cudaMemcpyDeviceToHost);
 		// <--
 		
 		// compute_stencil -->
@@ -247,8 +247,8 @@ int main (int argc, char** argv)
 		else
 		{
 			// deallocate_grids -->
-			cudaFree(((void * )u_0_1_gpu));
 			cudaFree(((void * )u_0_0_gpu));
+			cudaFree(((void * )u_0_1_gpu));
 			free(u_0_0);
 			free(u_0_0_ref);
 			free(u_0_1);
@@ -263,8 +263,8 @@ int main (int argc, char** argv)
 	
 	// free memory
 	// deallocate_grids -->
-	cudaFree(((void * )u_0_1_gpu));
 	cudaFree(((void * )u_0_0_gpu));
+	cudaFree(((void * )u_0_1_gpu));
 	free(u_0_0);
 	free(u_0_0_ref);
 	free(u_0_1);

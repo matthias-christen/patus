@@ -1,0 +1,10 @@
+\chapter{Alternate Entry Points to \textsc{Patus}}
+
+As the auto-tuner module is decoupled from the code generating system, it can be used as a stand-alone auto-tuner
+for other codes besides the ones created by \textsc{Patus}.
+If the user has a hand-crafted existing parametrized code for which the best configurations need to be determined,
+the \textsc{Patus} auto-tuner is a perfectly valid option to find the best set of parameters.
+The only requirements are that the tunable parameters must be exposed as command line parameters
+and that the program must print the timing information to \texttt{stdout} as last line of the program output in an arbitrary
+time measurement unit.
+Note that the auto-tuner tries to {\em minimize} this number, i.e., it must be a time measurement rather than a performance number.

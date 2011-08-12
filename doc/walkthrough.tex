@@ -1,0 +1,260 @@
+\chapter{A \textsc{Patus} Walkthrough Example}
+\label{sec:walkthrough}
+
+In this section, we give an example, who a \textsc{Patus} stencil specification
+can be derived from a mathematical problem description.
+From this stencil specification, the \textsc{Patus} code generator generates a
+C code which implements the compute kernel along with a benchmarking harness that
+can be used to measure the performance of the generated code and also shows how
+the kernel is to be called from within a user code.
+
+
+\section{From a Model to a Stencil}
+
+Consider the classical wave equation\index{wave equation} on $\Omega=[-1,1]^3$ with Dirichlet boundary conditions and some initial condition:
+\begin{align}
+  \frac{\partial^2 u}{\partial t^2} - c^2 \Delta u & = 0 \qquad \text{in }\Omega, \nonumber \\
+  u & = g \qquad \text{on }\partial\Omega, \\
+  u|_{t=0} & = f. \nonumber
+  \label{eq:wave}
+\end{align}
+
+We use an explicit finite difference method\index{finite difference}\index{PDE} to discretize the equation both in space and time.
+For the discretization in time we use a second-order scheme with time step $\delta t$.
+For the discretization in space 
+we choose a fourth-order discretization of the Laplacian $\Delta$ on the structured uniformly discretized grid
+$\Omega_{h}$ with step size $h$. This discretization gives us
+\begin{equation}
+	\label{eq:wave-discrete}
+	\frac{u^{(t+\delta t)}-2u^{(t)}+u^{(t-\delta t)}}{\delta t} - c^2 \Delta_h u^{(t)} = 0,
+\end{equation}
+where $\Delta_h$ is the discretized version of the Laplacian:
+\begin{align}
+	\label{eq:wave-discrete-laplacian}
+	\Delta_h u^{(t)}(x,y,z) = \tfrac{-15}{2h^2} & u^{(t)}(x,y,z) + \\
+                     \tfrac{-1}{12h^2} & \left(u^{(t)}(x-2h,y,z) + u^{(t)}(x,y-2h,z) + u^{(t)}(x,y,z-2h) \right) + \nonumber \\
+                     \tfrac{4}{3h^2}   & \left(u^{(t)}(x-h,y,z)  + u^{(t)}(x,y-h,z)  + u^{(t)}(x,y,z-h)  \right) + \nonumber \\                     
+                     \tfrac{4}{3h^2}   & \left(u^{(t)}(x+h,y,z)  + u^{(t)}(x,y+h,z)  + u^{(t)}(x,y,z+h)  \right) + \nonumber \\
+                     \tfrac{-1}{12h^2} & \left(u^{(t)}(x+2h,y,z) + u^{(t)}(x,y+2h,z) + u^{(t)}(x,y,z+2h) \right). \nonumber
+\end{align}
+Substituting Eqn. \ref{eq:wave-discrete-laplacian} into Eqn. \ref{eq:wave-discrete},
+solving Eqn. \ref{eq:wave-discrete} for $u^{(t+\delta t)}$, and interpreting $u$ as a grid in space and time with mesh size $h$
+and time step $\delta t$, we arrive at
+\begin{align*}
+	u[x,y,z;t+1] =  2 & u[x,y,z;t] - u[x,y,z;t-1] + c^2\tfrac{\delta t}{h^2} \Big( \tfrac{-15}{2} u[x,y,z;t] + \\
+	                \tfrac{-1}{12}& \left(u[x-2,y,z;t] + u[x,y-2,z;t] + u[x,y,z-2;t] \right) + \\
+                    \tfrac{4}{3}  & \left(u[x-1,y,z;t] + u[x,y-1,z;t] + u[x,y,z-1;t] \right) + \\                     
+                    \tfrac{4}{3}  & \left(u[x+1,y,z;t] + u[x,y+1,z;t] + u[x,y,z+1;t] \right) + \\
+                    \tfrac{-1}{12}& \left(u[x+2,y,z;t] + u[x,y+2,z;t] + u[x,y,z+2;t] \right) \!\!\Big).
+\end{align*}
+
+To actually solve the discretized equation, we need to specify the mesh size $h$ or, equivalently, the number of grid points $N$,
+and the time step $\delta t$ or, equivalently, the number of time steps $t_{\text{max}}$.
+Choosing a concrete number of the number of time steps, we can transform the above equation together with the
+number of grid points and the number of time steps almost trivially into a \textsc{Patus} stencil specification:
+
+\begin{example}{A \textsc{Patus} stencil specification.}
+	The listing below shows the \textsc{Patus} stencil specification for the classical wave
+	equation discretized by $4^{\text{th}}$ order finite differences in space and by
+	$2^{\text{nd}}$ order finite differences in time. Note that the maximum $N$ in the domain
+	size specification is inclusive.
+
+\begin{lstlisting}[language=stencil, frame={}]
+stencil wave
+{
+    domainsize = (1 .. N, 1 .. N, 1 .. N);
+    t_max = 100;
+
+    operation (float grid u, float param c2dt_h2)
+    {
+        u[x, y, z; t+1] = 2 * u[x, y, z; t] - u[x, y, z; t-1] +
+            c2dt_h2 * (
+                -15/2 * u[x, y, z; t] +
+                4/3 * (
+                    u[x+1, y, z; t] + u[x-1, y, z; t] +
+                    u[x, y+1, z; t] + u[x, y-1, z; t] +
+                    u[x, y, z+1; t] + u[x, y, z-1; t]
+                )
+                -1/12 * (
+                    u[x+2, y, z; t] + u[x-2, y, z; t] +
+                    u[x, y+2, z; t] + u[x, y-2, z; t] +
+                    u[x, y, z+2; t] + u[x, y, z-2; t]
+                )
+            );
+    }
+}
+\end{lstlisting}
+\end{example}
+
+
+\section{Generating The Code}
+\index{\textsc{Patus} code generator}
+
+We feed this stencil specification as an input to \textsc{Patus}, which will turn it to C code.
+\textsc{Patus} expects two other input files: a template defining how the code will be parallelized
+and how code optimizations will be applied, e.g., how loop tiling/cache blocking is applied.
+In \textsc{Patus} lingo, this is called a {\em Strategy}. The other input is a description of the
+hardware architecture. It defines which code generation back-end to use (e.g., the OpenMP paradigm
+for shared memory CPU system, or NVIDIA C for CUDA for NVIDIA GPUs), and how arithmetic operations
+and data types are mapped to the corresponding vector intrinsics and vector data types, for instance.
+
+\begin{example}{Generating the C code from a stencil specification.}
+	\label{ex:patusgen}
+	\footnotesize
+	\noindent\texttt{java -jar patus.jar codegen -{}-stencil=wave.stc} \\
+	\phantom{XXX}\texttt{-{}-strategy=cacheblocking.stg} \\
+	\phantom{XXX}\texttt{-{}-architecture="arch/architectures.xml,Intel x86\_64 SSE"} \\
+	\phantom{XXX}\texttt{-{}-outdir=output}
+\end{example}
+
+The command in Ex. \ref{ex:patusgen} will create an implementation for the stencil kernel specified
+in the file \texttt{wave.stc} and a benchmarking harness for that kernel and file it in the directory
+\texttt{output}. The Strategy chosen is a cache blocking strategy defined in the file \texttt{cacheblocking.stg},
+which comes with the \textsc{Patus} software. The hardware architecture for which the code will be
+generated is defined by the identifier \texttt{Intel x86\_64 SSE}, which can be found in the architecture
+definition file, \texttt{arch/architectures.xml}.
+
+After running the \textsc{Patus} code generation, the directory \texttt{output} will contain the following files:
+\begin{itemize}
+	\item \texttt{kernel.c} --- The implementation of the stencil kernel defined in \texttt{wave.stc}.
+	\item \texttt{driver.c} --- The benchmarking harness invoking the stencil kernel and measuring the
+		time for the stencil call. It allocates and initializes data with arbitrary values and (by default)
+		validates the result returned by the stencil kernel by comparing it to a na\"ive sequential implementation.
+	\item \texttt{timer.c} --- Functions related to timing and calculating the performance.
+	\item \texttt{patusrt.h} --- Header file for the timing functions.
+	\item \texttt{cycle.h} --- Functions for counting clock cycles to do the timing. (This code has been taken from FFTW \cite{fftw05}.)
+	\item \texttt{Makefile} --- A GNUmake Makefile to build the benchmarking harness.
+\end{itemize}
+
+The benchmarking harness then can be built by typing \texttt{make} on the command line. This will compile and
+link the generated code and produce the benchmarking executable, by default called \texttt{bench}.
+
+
+\section{Running and Tuning}
+\index{auto-tuning}
+
+The benchmark executable requires a number of parameters to run:
+
+\begin{example}{Starting the benchmark executable.}
+	\footnotesize
+	\noindent\texttt{chrmat@palu1:wave> ./bench\\
+	\textit{Wrong number of parameters. Syntax:\\
+	./bench <N> <cb\_x> <cb\_y> <cb\_z> <chunk> <\_unroll\_p3>}}
+\end{example}
+
+\texttt{N} corresponds to the $N$ used in the stencil specification for the definition of the domain size.
+If additional identifiers would have been used to define the domain size, they would appear as parameters to
+the executable as well. The \texttt{cb\_x}, \texttt{cb\_y}, \texttt{cb\_z}, and \texttt{chunk} arguments come from the
+Strategy. They specify the sizes of the cache blocks in $x$, $y$, and $z$ directions and the number of consecutive
+cache blocks assigned to one thread.
+\textsc{Patus} unrolls the inner-most loop nest containing the stencil evaluation. \texttt{\_unroll\_p3}
+selects one of the unroll configuration code variants: by default, \textsc{Patus} creates code variants
+with the loop nest unrolled once (i.e., no unrolling is done) or twice in each direction. Since the example
+wave stencil is defined in $3$ dimensions, there are $2^3=8$ code variants with different unrolling configurations.
+
+In Ex. \ref{ex:patusrun}, the benchmark executable was run with a domain size of $200^3$ grid points
+and an arbitrary cache block size of $16\times 16 \times 16$ grid points per block, one block in a packet per
+thread, and the $0^{\text{th}}$ loop unrolling configuration.
+
+\begin{example}{Running the benchmark executable with arbitrary parameters.}
+	\label{ex:patusrun}
+	\footnotesize
+	\noindent\texttt{chrmat@palu1:wave> ./bench 200 16 16 16 1 0\\
+	\textit{Flops / stencil call:\phantom{XX}19\\
+	Stencil computations:\phantom{XX}40000000\\
+	Bytes transferred:\phantom{XXXXX}509379840\\
+	Total Flops:\phantom{XXXXXXXXXXX}760000000\\
+	Seconds elapsed:\phantom{XXXXXXX}0.230204\\
+	Performance:\phantom{XXXXXXXXXXX}3.301418 GFlop/s\\
+	Bandwidth utilization:\phantom{X}2.212731 GB/s\\
+	506450156.000000\\
+	Validation OK.}}
+\end{example}
+
+The benchmark executable prints the number of floating point operations per stencil evaluation, the
+total number of stencil evaluations that were performed for the time measurement, the number of
+transferred bytes and the total number of floating point operations, the time it took to complete
+the sweeps and the calculated performance in GFlop/s and bandwidth utilization. The number below that
+is a representation of the time spent in the compute kernel, on which the auto-tuner bases the search.
+(It tries to minimize that number.) The string ``Validation OK'' says that the validation test (against
+the na\"ive, sequential implementation) was passed, i.e., the relative errors did not exceed certain bounds.
+
+The idea is that the user chooses the problem size, $N$, but all the other parameters, which do not change
+the problem definition, but rather implementation details which affect the performance, are to be chosen
+by the auto-tuner. In the current state of the software, the user still needs some knowledge how to find
+the performance-specific parameters (in this case \texttt{cb\_x}, \texttt{cb\_y}, \texttt{cb\_z}, \texttt{chunk},
+\texttt{\_unroll\_p3}). An idea for future work is to encapsulate this knowledge in the Strategy, which
+defines the parameters, so that an auto-tuner configuration script can be generated in order to fully automate the auto-tuning process.
+
+We choose $N=200$.
+Experience tells us that in cases with relatively small domain size (such as $N=200$), a good choice for
+\texttt{cb\_x} is $N$. There are several reasons why cutting the domain in the $x$ direction, which is the
+unit stride direction (i.e. choosing \texttt{cb\_x} $< N$), is a bad idea. Reading data in a streaming fashion
+from DRAM is faster than jumping between addresses. Utilizing full cache lines maximizes data locality.
+And the hardware prefetcher is most effective when the constant-stride data streams are as long as possible.
+In Ex. \ref{ex:patustune} we let the auto-tuner choose \texttt{cb\_y}, \texttt{cb\_z}, \texttt{chunk},
+and \texttt{\_unroll\_p3} by letting \texttt{cb\_y} and \texttt{cb\_z} from $4$ to $N=200$ in increments of $4$
+(\texttt{4:4:200}),
+and we want the auto-tuner to try all the powers of $2$ between $1$ and $16$ (\texttt{1:*2:16!}) for the fifth command line
+argument, \texttt{chunk}, and try all the values between $0$ and $7$ (\texttt{0:7!}) for \texttt{\_unroll\_p3}, by which
+all the generated loop unrolling variants are referenced. The exclamation mark specifies that the corresponding
+parameter is searched exhaustively, i.e., the auto-tuner is instructed to visit all of the values in the
+range specified.
+
+\begin{example}{Running the \textsc{Patus} auto-tuner.}
+	\label{ex:patustune}
+	\footnotesize
+	\noindent\texttt{java -jar patus.jar autotune ./bench 200 200 4:4:200 4:4:200\\
+	\phantom{XXX}1:*2:16! 0:7! "C((\textbackslash\$1+\textbackslash\$3-1)/\textbackslash\$3)*((\textbackslash\$1+\textbackslash\$4-1)/\textbackslash\$4)>=\$OMP\_NUM\_THREADS"}
+\end{example}
+
+The auto-tuner also allows to add constraints, such as the expression in the last argument in the call in Ex. \ref{ex:patustune}. Constraints are
+preceded by a \texttt{C} and can be followed by any comparison expression involving arithmetic.
+Parameter values are referenced by a number preceded by a dollar sign \$; the numbering starts with $1$.
+In Ex. \ref{ex:patustune}, the condition reads $(\$1+\$3-1)/\$3 \cdot (\$1+\$4-1)/\$4 \geq T$.
+The sub-expression $(\$1+\$3-1)/\$3$ is the number of blocks in the $y$-direction,
+using the integer division (which rounds towards zero) to express the missing ceiling function\footnote{For positive
+integers $a$, $b$ and the integer division $\div$ (defined by $a \div b := \left\lfloor \tfrac{a}{b} \right\rfloor$,
+it holds $\left\lceil \tfrac{a}{b} \right\rceil = (a+b-1) \div b$.}). Similarly, $(\$1+\$4-1)/\$4$ is the number of blocks in $z$-direction.
+Thus, the condition states that the total number of blocks must be greater or equal than the number of threads
+executing the program (assuming the environment variable \texttt{\$OMP\_NUM\_THREADS} is set and controls
+how many OpenMP threads the program uses.
+Adding constraints is optional, but they can reduce the number of searches by restricting the search space.
+In this case, we simply exclude the points in the search space with bad performance, but constraints can be
+a helpful tool to suppress invalid configurations. For instance, the numbers of threads per block on a GPU 
+must not exceed a particular number lest the program fails. (The numbers are $512$ threads per block on older graphics cards, and $1024$
+threads per block on Fermi GPUs).
+
+Ex. \ref{ex:patustuneresult} shows an excerpt of the auto-tuner output.
+The program is run for many parameter configurations, and at the end of the search, the auto-tuner displays the parameter
+configuration and output of the run for which the best performance was achieved.
+
+\begin{example}{Output of the auto-tuner.}
+	\label{ex:patustuneresult}
+	\footnotesize
+	\noindent\texttt{./bench 200 200 4:4:200 4:4:200 1:*2:16! 0:7!\\
+	Parameter set \{ 200 \}\\
+	Parameter set \{ 200 \}\\
+	Parameter set \{ 4, 8, \dots \}\\
+	Parameter set \{ 4, 8, \dots \}\\
+	Parameter set , Exhaustive \{ 1, 2, 4, 8, 16 \}\\
+	Parameter set , Exhaustive \{ 0, 1, 2, 3, 4, 5, 6, 7 \}\\
+	Using optimizer: Powell search method\\
+	Executing [./bench, 200, 200, 4, 4, 1, 0]...\\
+	\dots\\
+	\\
+	200 200 36 160 1 3\\
+	1.5052755E8\\
+	\\
+	Program output of the optimal run:\\
+	Flops / stencil call:\phantom{XX}19\\
+	Stencil computations:\phantom{XX}40000000\\
+	Bytes transferred:\phantom{XXXXX}509379840\\
+	Total Flops:\phantom{XXXXXXXXXXX}760000000\\
+	Seconds elapsed:\phantom{XXXXXXX}0.068421\\
+	Performance:\phantom{XXXXXXXXXXX}11.107680 GFlop/s\\
+	Bandwidth utilization:\phantom{X}7.444774 GB/s\\
+	150527550.000000\\
+	Validation OK.}
+\end{example}
+

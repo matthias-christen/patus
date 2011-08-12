@@ -1,0 +1,28 @@
+\chapter{Current Limitations}
+
+In the current state, there are several limitations to the \textsc{Patus} framework:
+\begin{itemize}
+	\item Only shared memory architectures are supported (specifically: shared memory CPU systems and single-GPU setups).
+	\item It is assumed that the evaluation order of the stencils within one spatial sweep is irrelevant.
+		Also, always all points within the domain are traversed per sweep. One grid array is read and another
+		array is written to. Such a grid traversal is called a Jacobi iteration.
+		In particular, this rules out schemes with special traversal rules such as red-black Gauss-Seidel
+		iterations.
+	\item No extra boundary handling is applied. The stencil is applied to every interior grid point, but not to boundary
+		points. I.e., the boundary values are kept constant; this corresponds to Dirichlet boundary conditions.
+		To implement boundary conditions, they could be factored into the stencil operation by means of extra coefficient grids.
+		In the same way, non-rectilinear domain shapes and non-uniform grids can be emulated by providing the shape and/or
+		geometry information encoded as coefficients in additional grids.
+		Alternatively, special $(d-1)$-dimensional stencil kernels could be specified for the boundary treatment,
+		which are invoked after the $d$-dimensional stencil kernel operating on the interior. This approach, however,
+		will invalidate temporal blocking schemes.
+	\item The index calculation assumes that the stencil computation is carried out on a flat grid (or a grid which is
+		homotopic to a flat grid). In particular, currently no spherical or torical geometries are implemented, which require
+		modulo index calculations.
+	\item There is no support for temporally blocked schemes yet.
+%	\item Fortran limitations: only one timestep, no output pointer
+%GPU limitations: only one timestep, no global sync from within kernel (global barriers cannot be programmed as blocks are
+%scheduled sequentially to the multiprocessors; one block might wait being scheduled until another block completes;
+%if they wait on each other the code deadlocks)
+\end{itemize}
+

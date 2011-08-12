@@ -1,0 +1,183 @@
+\chapter{\textsc{Patus} Usage}
+\label{sec:cmdline}
+
+\section{Code Generation}
+
+The \textsc{Patus} code generator is invoked by the following command:
+\vspace{4mm}
+\begin{lstlisting}
+	java ~\texttt{-}~jar patus.jar codegen
+		~\texttt{--}~stencil=~\textit{$<$Stencil File$>$}~  ~\texttt{--}~strategy=~\textit{$<$Strategy File$>$}~
+		~\texttt{--}~architecture=~\textit{$<$Architecture Description File$>$}~,~\textit{$<$Hardware Name$>$}~
+		~[ \texttt{--}~outdir=~\textit{$<$Output Directory$>$} ] [\texttt{--}~generate=~\textit{$<$Target$>$} ]~
+		~[ \texttt{--}~kernel-file=~\textit{$<$Kernel Output File Name$>$} ]~
+		~[ \texttt{--}~compatibility=~\{~ C ~$|$~ Fortran ~\} ]~
+		~[ \texttt{--}~unroll=~\textit{$<$UnrollFactor1$>$}~,~\textit{$<$UnrollFactor2$>$}~,...~ ]~
+		~[ \texttt{--}~use-native-simd-datatypes=~\{~ yes ~$|$~ no ~\} ]~
+		~[ \texttt{--}~create-validation=~\{~ yes ~$|$~ no ~\} ]~
+		~[ \texttt{--}~validation-tolerance=~\textit{$<$Tolerance$>$} ]~
+		~[ \texttt{--}~debug=~\textit{$<$DebugOption1$>$}~,~[\textit{$<$DebugOption2$>$}~,~[~...,~[\textit{$<$DebugOptionN$>$} ]~...~]]~
+\end{lstlisting}
+\vspace{4mm}
+
+\cmdln{stencil}{\textit{$<$Stencil File$>$}}{Specifies the stencil specification file for which to generate code.}
+\cmdln{strategy}{\textit{$<$Strategy File$>$}}{The Strategy file describing the parallelization/optimization strategy.}
+\cmdln{architecture}{\textit{$<$Architecture Description File$>$},\textit{$<$Hardware Name$>$}}{
+	The architecture description file and the name of the selected
+	architecture (as specified in the \texttt{name} attribute of the
+	\texttt{architectureType} element).
+}
+\cmdln{outdir}{\textit{$<$Output Directory$>$}}{
+	The output directory into which the generated files will be written.
+	Optional; if not specified the generated files will be created in the
+	current directory.
+}
+\cmdln{generate}{\textit{$<$Target$>$}}{
+	The target that will be generated. \textit{$<$Target$>$} can be one of:
+	\begin{itemize}
+		\item \texttt{benchmark}\\
+				This will generate a full benchmark harness.
+				This is the default setting.
+		\item \texttt{kernel}\\
+				This will only generate the kernel file.
+	\end{itemize}
+}
+\cmdln{kernel-file}{\textit{$<$Kernel Output File Name$>$}}{
+	Specifies the name of the C source file to which the generated kernel
+	is written. The suffix is appended or replaced from the definition
+	in the hardware architecture description.\\
+	Defaults to \texttt{kernel.c}.
+}
+\cmdln{compatibility}{\{\texttt{C} $|$ \texttt{Fortran}\}}{
+	Selects whether the generated code has to be compatible with Fortran
+	%(creates pointer-only input types to the kernel selection function).\\
+	(Omits the double pointer output type in the kernel declaration; therefore
+	multiple time steps are not supported.)
+	Defaults to \texttt{C}.
+}
+\cmdln{unroll}{\textit{$<$UnrollFactor1$>$},\textit{$<$UnrollFactor2$>$},...}{
+	A list of unrolling factors applied to the inner most loop nest
+	containing the stencil computation. The unrolling factors are applied to all the dimensions.
+}
+\cmdln{use-native-simd-datatypes}{\{\texttt{yes} $|$ \texttt{no}\}}{
+	Specifies whether the native SSE data type is to be used in the kernel
+	signature. If set to \texttt{yes}, this also requires that the fields are padded correctly
+	in unit stride direction.\\
+	Defaults to \texttt{no}.
+}
+\cmdln{create-validation}{\{\texttt{yes} $|$ \texttt{no}\}}{
+	Specifies whether to create code that will validate the result.
+	If \textit{$<$Target$>$} is not \texttt{benchmark}, this option will be ignored.\\
+	Defaults to \texttt{yes}.
+}
+\cmdln{validation-tolerance}{\textit{$<$Tolerance$>$}}{
+	Sets the tolerance for the relative error in the validation.
+	This option is only relevant if validation code is generated
+	(\texttt{--create-validation=yes}).\\
+	Defaults to \texttt{yes}.
+}
+\cmdln{debug}{\textit{$<$DebugOption1$>$},[\textit{$<$DebugOption2$>$},[...,[\textit{$<$DebugOptionN$>$}]...]]}{
+	Specifies debug options (as a comma-separated list) that will influence
+	the code generator.
+	Valid debug options (for \textit{$<$DebugOptioni$>$}, $i=1,\dots,N$) are:
+	\begin{itemize}
+		\item \texttt{print-stencil-indices}\\
+			This will insert a \texttt{printf} statement for
+			every stencil calculation with the index
+			into the grid array at which the result
+			is written.
+		\item \texttt{print-validation-errors}\\
+			Prints all values if the validation fails.
+			The option is ignored if no validation code
+			is generated.
+	\end{itemize}
+}
+
+
+\section{Auto-Tuning}
+\label{sec:appendix-autotuning}
+
+The \textsc{Patus} auto-tuner is invoked on the command line like so:
+
+\vspace{4mm}
+\begin{lstlisting}
+	java ~\texttt{-}~jar patus.jar autotune
+		~\textit{$<$Executable Filename$>$}~
+		~\textit{$<$Param1 $>$}~ ~\textit{$<$Param2 $>$}~ ... ~\textit{$<$ParamN $>$}~
+		~[ \textit{$<$Constraint1$>$}~ ~\textit{$<$Constraint2$>$}~ ... ~\textit{$<$ConstraintM$>$} ]~
+		~[ \texttt{-}m\textit{$<$Method$>$} ]~
+\end{lstlisting}
+\vspace{4mm}
+
+\textit{$<$Executable Filename$>$} is the path to the file name of the benchmark executable.
+The benchmark executable must expose the tunable parameters as command line parameters. The \textsc{Patus}
+auto-tuner only generates numerical parameter values. If the benchmark executable requires strings, these
+must be mapped from numerical values internally in the benchmarking program.
+
+The parameters \textit{ParamI}, $I=1,\dots,N$, define integer parameter ranges and have the following syntax:
+\begin{quote}
+	\textit{$<$StartValue$>$}\texttt{:}[[\texttt{*}]\textit{$<$Step$>$}\texttt{:}]\textit{$<$EndValue$>$}[\texttt{!}]
+\end{quote}
+or
+\begin{quote}
+	\textit{$<$Value1$>$}[\texttt{,}\textit{$<$Value2$>$}[\texttt{,}\textit{$<$Value3$>$}...]][\texttt{!}]
+\end{quote}
+The first version, when no asterisk \texttt{*} in the \textit{$<$Step$>$} is specified, enumerates all values in
+\[
+	\{ a := \text{\textit{$<$StartValue$>$}} + k \cdot \text{\textit{$<$Step$>$}} : k \in \mathbb{N}_0 \text{ and } a \leq \text{\textit{$<$EndValue$>$}} \}.
+\]
+If no \textit{$<$Step$>$} is given, it defaults to $1$.
+If there is an asterisk \texttt{*} in front of the \textit{$<$Step$>$}, the values enumerated are
+\[
+	\{ a := \text{\textit{$<$StartValue$>$}} \cdot \text{\textit{$<$Step$>$}}^k : k \in \mathbb{N}_0 \text{ and } a \leq \text{\textit{$<$EndValue$>$}} \}.
+\]
+In the second version, all the comma-separated values \textit{$<$Value1$>$}, \textit{$<$Value2$>$}, \dots are enumerated.
+
+If the optional \texttt{!} is appended to the value  range specification,
+each of the specified values is guaranteed to be used, i.e., an exhaustive search is used for the corresponding parameter.
+
+\begin{example}{Specifying parameter ranges.}
+	\noindent $1:10$\\
+	\phantom{XXXX}enumerates all the integer numbers between and including $1$ and $10$.
+	\bigskip
+	
+	\noindent $2:2:41$\\
+	\phantom{XXXX}enumerates the integers $2,4,6,\dots,38,40$.
+	\bigskip
+	
+	\noindent $1:*2:128$\\
+	\phantom{XXXX}enumerates some powers of $2$, namely $1,2,4,8,16,32,64,128$.
+\end{example}
+
+Optional  constraints  can  be  specified  to restrict the parameter values. The syntax for the constraints is
+\begin{quote}
+	\texttt{C}\textit{$<$ComparisonExpression$>$}
+\end{quote}
+where \textit{$<$ComparisonExpression$>$} is an expression which can contain arithmetic operators \texttt{+}, \texttt{-}, \texttt{*}, and \texttt{/},
+as well as comparison operators \texttt{<}, \texttt{<=}, \texttt{==}, \texttt{>=}, \texttt{>}, \texttt{!=},
+and variables \texttt{\$}$1$, \dots, \texttt{\$}$N$, which correspond to the parameters \textit{$<$Param1 $>$}, \dots \textit{$<$ParamN $>$}.
+
+\begin{example}{Constraints examples.}
+	\noindent $C\$2<=\$1$\\
+	\phantom{XXXX}forces the second parameter to be less or equal to the first.
+	\bigskip
+	
+	\noindent $C(\$2+\$1-1)/\$1>=24$\\
+	\phantom{XXXX}forces $\tfrac{\$2+\$1-1}{\$1} = \left\lceil \tfrac{\$2}{\$1} \right\rceil \geq 24$.
+\end{example}
+
+The \textsc{Patus} auto-tuner supports a range of search methods. The method can be selected by \texttt{-m}\textit{$<$Method$>$}
+where \textit{$<$Method$>$} is one of
+\begin{itemize}
+	\item \texttt{ch.unibas.cs.hpwc.patus.autotuner.DiRectOptimizer}\\ DIRECT method
+	\item \texttt{ch.unibas.cs.hpwc.patus.autotuner.ExhaustiveSearchOptimizer}\\ exhaustive search
+	\item \texttt{ch.unibas.cs.hpwc.patus.autotuner.GeneralCombinedEliminationOptimizer}\\ general combined elimination
+	\item \texttt{ch.unibas.cs.hpwc.patus.autotuner.GreedyOptimizer}\\ greedy search
+	\item \texttt{ch.unibas.cs.hpwc.patus.autotuner.HookeJeevesOptimizer}\\ Hooke-Jeeves algorithm
+	\item \texttt{ch.unibas.cs.hpwc.patus.autotuner.MetaHeuristicOptimizer}\\ genetic algorithm
+	\item \texttt{ch.unibas.cs.hpwc.patus.autotuner.RandomSearchOptimizer}\\ draws $500$ random samples
+	\item \texttt{ch.unibas.cs.hpwc.patus.autotuner.SimplexSearchOptimizer}\\ simplex search (aka Nelder-Mead method)
+\end{itemize}
+These are Java class paths to \texttt{IOptimizer} implementations; this allows to extend range of methods easily.
+Please refer to Chapter \ref{sec:autotuning} for a discussion and comparison of the methods.
+If no method is specified, the greedy algorithm is used by+- default.

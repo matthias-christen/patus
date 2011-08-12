@@ -1,0 +1,521 @@
+% ********** Appendix 1 **********
+\chapter{Stencil Specifications}
+\label{sec:appendix_stencils}
+
+\section{Basic Differential Operators}
+
+\subsection{Laplacian}
+\begin{lstlisting}[language=stencil]
+stencil laplacian
+{
+	domainsize = (1 .. N, 1 .. N, 1 .. N);
+	t_max = 1;
+	
+	operation (float grid u, float param alpha, float param beta)
+	{
+		u[x, y, z; t+1] =
+			alpha * u[x, y, z; t] +
+			beta  * (
+				u[x+1, y, z; t] + u[x-1, y, z; t] +
+				u[x, y+1, z; t] + u[x, y-1, z; t] +
+				u[x, y, z+1; t] + u[x, y, z-1; t]); 
+	}
+}
+\end{lstlisting}
+
+\subsection{Divergence}
+\begin{lstlisting}[language=stencil]
+stencil divergence
+{
+	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+	t_max = 1;
+
+	operation (
+		float grid u(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		const float grid ux(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		const float grid uy(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		const float grid uz(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		float param alpha, float param beta, float param gamma)
+	{
+		u[x, y, z; t] =
+			alpha * (ux[x+1, y, z] - ux[x-1, y, z]) +
+			beta  * (uy[x, y+1, z] - uy[x, y-1, z]) +
+			gamma * (uz[x, y, z+1] - uz[x, y, z-1]);
+	}
+}
+\end{lstlisting}
+
+\subsection{Gradient}
+\begin{lstlisting}[language=stencil]
+stencil gradient
+{
+	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+	t_max = 1;
+
+	operation (
+		const float grid u(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		float grid ux(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		float grid uy(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		float grid uz(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		float param alpha, float param beta, float param gamma)
+	{
+		ux[x, y, z; t] = alpha * (u[x+1, y, z] + u[x-1, y, z]);
+		uy[x, y, z; t] = beta  * (u[x, y+1, z] + u[x, y-1, z]);
+		uz[x, y, z; t] = gamma * (u[x, y, z+1] + u[x, y, z-1]);
+	}
+}
+\end{lstlisting}
+
+
+\section{Wave Equation}
+\begin{lstlisting}[language=stencil]
+stencil wave
+{
+    domainsize = (1 .. N, 1 .. N, 1 .. N);
+    t_max = 100;
+
+    operation (float grid u, float param c2dt_h2)
+    {
+        u[x, y, z; t+1] = 2 * u[x, y, z; t] - u[x, y, z; t-1] +
+            c2dt_h2 * (
+                -15/2 * u[x, y, z; t] +
+                4/3 * (
+                    u[x+1, y, z; t] + u[x-1, y, z; t] +
+                    u[x, y+1, z; t] + u[x, y-1, z; t] +
+                    u[x, y, z+1; t] + u[x, y, z-1; t]
+                )
+                -1/12 * (
+                    u[x+2, y, z; t] + u[x-2, y, z; t] +
+                    u[x, y+2, z; t] + u[x, y-2, z; t] +
+                    u[x, y, z+2; t] + u[x, y, z-2; t]
+                )
+            );
+    }
+}
+\end{lstlisting}
+
+
+\section{COSMO}
+
+\subsection{Upstream}
+\begin{lstlisting}[language=stencil]
+stencil upstream_5_3d
+{
+	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+	t_max = 1;
+
+	operation (double grid u, double param a)
+	{
+		u[x, y, z; t+1] = a * (
+			 -2 * (u[x-3, y, z; t] + u[x, y-3, z; t] + u[x, y, z-3; t]) +
+			 15 * (u[x-2, y, z; t] + u[x, y-2, z; t] + u[x, y, z-2; t]) +
+			-60 * (u[x-1, y, z; t] + u[x, y-1, z; t] + u[x, y, z-1; t]) +
+			 20 *  u[x,   y, z; t] +
+			 30 * (u[x+1, y, z; t] + u[x, y+1, z; t] + u[x, y, z+1; t]) +
+			 -3 * (u[x+2, y, z; t] + u[x, y+2, z; t] + u[x, y, z+2; t]);
+	}
+}
+\end{lstlisting}
+
+\subsection{Tricubic Interpolation}
+\begin{lstlisting}[language=stencil]
+stencil tricubic_interpolation
+{
+	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+	t_max = 1;
+
+	operation (double grid u,
+		const double grid a, const double grid b, const double grid c)
+	{
+		double w1_a = 1.0/6.0*a[x,y,z]*(a[x,y,z]+1.0)*(a[x,y,z]+2.0);
+		double w2_a = -0.5*(a[x,y,z]-1.0)*(a[x,y,z]+1.0)*(a[x,y,z]+2.0);
+		double w3_a =  0.5*(a[x,y,z]-1.0)*a[x,y,z]*(a[x,y,z]+2.0);
+		double w4_a = -1.0/6.0*(a[x,y,z]-1.0)*a[x,y,z]*(a[x,y,z]+1.0);
+
+		double w1_b = 1.0/6.0*b[x,y,z]*(b[x,y,z]+1.0)*(b[x,y,z]+2.0);
+		double w2_b = -0.5*(b[x,y,z]-1.0)*(b[x,y,z]+1.0)*(b[x,y,z]+2.0);
+		double w3_b =  0.5*(b[x,y,z]-1.0)*b[x,y,z]*(b[x,y,z]+2.0);
+		double w4_b = -1.0/6.0*(b[x,y,z]-1.0)*b[x,y,z]*(b[x,y,z]+1.0);
+
+		double w1_c = 1.0/6.0*c[x,y,z]*(c[x,y,z]+1.0)*(c[x,y,z]+2.0);
+		double w2_c = -0.5*(c[x,y,z]-1.0)*(c[x,y,z]+1.0)*(c[x,y,z]+2.0);
+		double w3_c =  0.5*(c[x,y,z]-1.0)*c[x,y,z]*(c[x,y,z]+2.0);
+		double w4_c = -1.0/6.0*(c[x,y,z]-1.0)*c[x,y,z]*(c[x,y,z]+1.0);
+		
+		u[x, y, z; t+1] =
+			w1_a * w1_b * w1_c * u[x-1, y-1, z-1; t] +
+			w2_a * w1_b * w1_c * u[x,   y-1, z-1; t] +
+			w3_a * w1_b * w1_c * u[x+1, y-1, z-1; t] +
+			w4_a * w1_b * w1_c * u[x+2, y-1, z-1; t] +
+			... // etc. for all 64 combinations of w?_a * w?_b * w?_c
+			    // and u[x+d1, y+d2, z+d3; t],  d1,d2,d3=-1,0,1,2
+	}
+}
+\end{lstlisting}
+\begin{comment}
+			w1_a * w2_b * w1_c * u[x-1, y, z-1; t] +
+			w2_a * w2_b * w1_c * u[x,   y, z-1; t] +
+			w3_a * w2_b * w1_c * u[x+1, y, z-1; t] +
+			w4_a * w2_b * w1_c * u[x+2, y, z-1; t] +
+
+			w1_a * w3_b * w1_c * u[x-1, y+1, z-1; t] +
+			w2_a * w3_b * w1_c * u[x,   y+1, z-1; t] +
+			w3_a * w3_b * w1_c * u[x+1, y+1, z-1; t] +
+			w4_a * w3_b * w1_c * u[x+2, y+1, z-1; t] +
+
+			w1_a * w4_b * w1_c * u[x-1, y+2, z-1; t] +
+			w2_a * w4_b * w1_c * u[x,   y+2, z-1; t] +
+			w3_a * w4_b * w1_c * u[x+1, y+2, z-1; t] +
+			w4_a * w4_b * w1_c * u[x+2, y+2, z-1; t] +
+
+
+			w1_a * w1_b * w2_c * u[x-1, y-1, z; t] +
+			w2_a * w1_b * w2_c * u[x,   y-1, z; t] +
+			w3_a * w1_b * w2_c * u[x+1, y-1, z; t] +
+			w4_a * w1_b * w2_c * u[x+2, y-1, z; t] +
+			
+			w1_a * w2_b * w2_c * u[x-1, y, z; t] +
+			w2_a * w2_b * w2_c * u[x,   y, z; t] +
+			w3_a * w2_b * w2_c * u[x+1, y, z; t] +
+			w4_a * w2_b * w2_c * u[x+2, y, z; t] +
+
+			w1_a * w3_b * w2_c * u[x-1, y+1, z; t] +
+			w2_a * w3_b * w2_c * u[x,   y+1, z; t] +
+			w3_a * w3_b * w2_c * u[x+1, y+1, z; t] +
+			w4_a * w3_b * w2_c * u[x+2, y+1, z; t] +
+
+			w1_a * w4_b * w2_c * u[x-1, y+2, z; t] +
+			w2_a * w4_b * w2_c * u[x,   y+2, z; t] +
+			w3_a * w4_b * w2_c * u[x+1, y+2, z; t] +
+			w4_a * w4_b * w2_c * u[x+2, y+2, z; t] +
+
+
+			w1_a * w1_b * w3_c * u[x-1, y-1, z+1; t] +
+			w2_a * w1_b * w3_c * u[x,   y-1, z+1; t] +
+			w3_a * w1_b * w3_c * u[x+1, y-1, z+1; t] +
+			w4_a * w1_b * w3_c * u[x+2, y-1, z+1; t] +
+			
+			w1_a * w2_b * w3_c * u[x-1, y, z+1; t] +
+			w2_a * w2_b * w3_c * u[x,   y, z+1; t] +
+			w3_a * w2_b * w3_c * u[x+1, y, z+1; t] +
+			w4_a * w2_b * w3_c * u[x+2, y, z+1; t] +
+
+			w1_a * w3_b * w3_c * u[x-1, y+1, z+1; t] +
+			w2_a * w3_b * w3_c * u[x,   y+1, z+1; t] +
+			w3_a * w3_b * w3_c * u[x+1, y+1, z+1; t] +
+			w4_a * w3_b * w3_c * u[x+2, y+1, z+1; t] +
+
+			w1_a * w4_b * w3_c * u[x-1, y+2, z+1; t] +
+			w2_a * w4_b * w3_c * u[x,   y+2, z+1; t] +
+			w3_a * w4_b * w3_c * u[x+1, y+2, z+1; t] +
+			w4_a * w4_b * w3_c * u[x+2, y+2, z+1; t] +
+
+
+			w1_a * w1_b * w4_c * u[x-1, y-1, z+2; t] +
+			w2_a * w1_b * w4_c * u[x,   y-1, z+2; t] +
+			w3_a * w1_b * w4_c * u[x+1, y-1, z+2; t] +
+			w4_a * w1_b * w4_c * u[x+2, y-1, z+2; t] +
+			
+			w1_a * w2_b * w4_c * u[x-1, y, z+2; t] +
+			w2_a * w2_b * w4_c * u[x,   y, z+2; t] +
+			w3_a * w2_b * w4_c * u[x+1, y, z+2; t] +
+			w4_a * w2_b * w4_c * u[x+2, y, z+2; t] +
+
+			w1_a * w3_b * w4_c * u[x-1, y+1, z+2; t] +
+			w2_a * w3_b * w4_c * u[x,   y+1, z+2; t] +
+			w3_a * w3_b * w4_c * u[x+1, y+1, z+2; t] +
+			w4_a * w3_b * w4_c * u[x+2, y+1, z+2; t] +
+
+			w1_a * w4_b * w4_c * u[x-1, y+2, z+2; t] +
+			w2_a * w4_b * w4_c * u[x,   y+2, z+2; t] +
+			w3_a * w4_b * w4_c * u[x+1, y+2, z+2; t] +
+			w4_a * w4_b * w4_c * u[x+2, y+2, z+2; t];
+\end{comment}
+
+\section{Hyperthermia}
+\begin{lstlisting}[language=stencil]
+stencil hyperthermia
+{
+	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+	t_max = 1;
+
+	operation (
+		float grid T(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+		const float grid c(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1)[9])
+	{
+		T[x, y, z; t+1] =
+		
+			// center point
+			T[x, y, z; t] * (c[x, y, z; 0] * T[x, y, z; t] + c[x, y, z; 1]) +
+			c[x, y, z; 2] +
+			
+			// faces
+			c[x, y, z; 3] * T[x-1, y, z; t] +
+			c[x, y, z; 4] * T[x+1, y, z; t] +
+			c[x, y, z; 5] * T[x, y-1, z; t] +
+			c[x, y, z; 6] * T[x, y+1, z; t] +
+			c[x, y, z; 7] * T[x, y, z-1; t] +
+			c[x, y, z; 8] * T[x, y, z+1; t];
+	}
+}
+\end{lstlisting}
+
+
+\section{Anelastic Wave Propagation}
+
+\subsection{uxx1}
+\begin{lstlisting}[language=stencil]
+stencil pmcl3d_uxx1
+{
+	domainsize = (nxb .. nxe, nyb .. nye, nzb .. nze);
+	t_max = 1;
+	
+	operation (
+		const float grid d1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float grid u1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid xx(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2), 
+		const float grid xy(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid xz(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float param dth)
+	{
+		float c1 = 9./8.;
+		float c2 = -1./24.;
+      
+		float d = 0.25 *
+			(d1[x,y,z] + d1[x,y-1,z] + d1[x,y,z-1] + d1[x,y-1,z-1]);
+		u1[x,y,z; t+1] = u1[x,y,z; t] + (dth / d) * (
+			c1 * (
+				xx[x,  y,z] - xx[x-1,y,z] +
+				xy[x,y,  z] - xy[x,y-1,z] +
+				xz[x,y,z  ] - xz[x,y,z-1]) +
+			c2 * (
+				xx[x+1,y,z] - xx[x-2,y,z] +
+				xy[x,y+1,z] - xy[x,y-2,z] +
+				xz[x,y,z+1] - xz[x,y,z-2])
+		);
+	}
+}
+\end{lstlisting}
+
+\subsection{xy1}
+\begin{lstlisting}[language=stencil]
+stencil pmcl3d_xy1
+{
+	domainsize = (nxb .. nxe, nyb .. nye, nzb .. nze);
+	t_max = 1;
+	
+	operation (
+		const float grid mu(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float grid xy(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid u1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid v1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2), 
+		float param dth)
+	{
+		float c1 = 9. / 8.;
+		float c2 = -1. / 24.;
+
+		float xmu = 2. / (1. / mu[x, y, z] + 1. / mu[x, y, z-1]);
+
+		xy[x, y, z; t+1] = xy[x, y, z; t] + dth * xmu * (
+			c1 * (
+				u1[x, y+1, z] - u1[x,   y, z] +
+				v1[x, y,   z] - v1[x-1, y, z]
+			) +
+			c2 * (
+				u1[x,   y+2, z] - u1[x,   y-1, z] +
+				v1[x+1, y,   z] - v1[x-2, y,   z]
+			)
+		);
+	}
+}
+\end{lstlisting}
+
+\subsection{xyz1}
+\begin{lstlisting}[language=stencil]
+stencil pmcl3d_xyz1
+{
+	domainsize = (nxb .. nxe, nyb .. nye, nzb .. nze);
+	t_max = 1;
+	
+	operation (
+		const float grid mu(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid lam(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid u1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid v1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid w1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float grid xx(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2), 
+		float grid yy(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float grid zz(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float param dth)
+	{
+		float c1 = 9./8.;
+		float c2 = -1./24.;
+
+		float b = 8. / (
+			1. / lam[x, y,   z  ] + 1. / lam[x+1, y,   z  ] +
+			1. / lam[x, y-1, z  ] + 1. / lam[x+1, y-1, z  ] +
+			1. / lam[x, y,   z-1] + 1. / lam[x+1, y,   z-1] +
+			1. / lam[x, y-1, z-1] + 1. / lam[x+1, y-1, z-1]
+		);     
+     
+		float a = b + 2. * 8. / (
+			1. / mu[x, y,   z  ] + 1. / mu[x+1, y,   z  ] +
+			1. / mu[x, y-1, z  ] + 1. / mu[x+1, y-1, z  ] +
+			1. / mu[x, y,   z-1] + 1. / mu[x+1, y,   z-1] +
+			1. / mu[x, y-1, z-1] + 1. / mu[x+1, y-1, z-1]
+		);      
+
+		// find xx stress
+		xx[x, y, z; t+1] = xx[x, y, z; t] + dth * (
+			a * (
+				c1 * (u1[x+1, y, z] - u1[x,   y, z]) +
+				c2 * (u1[x+2, y, z] - u1[x-1, y, z])
+			) +
+			b * (
+				c1 * (
+					v1[x, y, z] - v1[x, y-1, z  ] +
+					w1[x, y, z] - w1[x, y,   z-1]
+				) +
+				c2 * (
+					v1[x, y+1, z  ] - v1[x, y-2, z  ] +
+					w1[x, y,   z+1] - w1[x, y,   z-2]
+				)
+			)
+		);
+
+		// find yy stress
+		yy[x, y, z; t+1] = yy[x, y, z; t] + dth * (
+			a * (
+				c1 * (v1[x, y,   z] - v1[x, y-1, z]) +
+				c2 * (v1[x, y+1, z] - v1[x, y-2, z])
+			) +
+			b * (
+				c1 * (
+					u1[x+1, y, z] - u1[x, y, z  ] +
+					w1[x,   y, z] - w1[x, y, z-1]
+				) +
+				c2 * (
+					u1[x+2, y, z  ] - u1[x-1, y, z  ] +
+					w1[x,   y, z+1] - w1[x,   y, z-2]
+				)
+			)
+		);
+
+		// find zz stress
+		zz[x, y, z; t+1] = zz[x, y, z; t] + dth * (
+			a * (
+				c1 * (w1[x, y, z  ] - w1[x, y, z-1]) +
+				c2 * (w1[x, y, z+1] - w1[x, y, z-2])
+			) +
+			b * (
+				c1 * (
+					u1[x+1, y, z] - u1[x, y,   z] +
+					v1[x,   y, z] - v1[x, y-1, z]
+				) +
+				c2 * (
+					u1[x+2, y,   z] - u1[x-1, y,   z] +
+					v1[x,   y+1, z] - v1[x,   y-2, z]
+				)
+			)
+		);
+	}
+}
+\end{lstlisting}
+
+\subsection{xyzq}
+\begin{lstlisting}[language=stencil]
+stencil pmcl3d_xyzq
+{
+	domainsize = (nxb .. nxe, nyb .. nye, nzb .. nze);
+	t_max = 1;
+	
+	operation (
+		const float grid mu(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid lam(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float grid r1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2), 
+		float grid r2(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float grid r3(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float grid xx(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2), 
+		float grid yy(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float grid zz(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid u1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2), 
+		const float grid v1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid w1(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid qp(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid qs(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		const float grid tau(-1 .. nxt+2, -1 .. nyt+2, -1 .. nzt+2),
+		float param dh, float param dt, float param dth,
+		float param nz)
+	{
+		float c1 = 9./8.;
+		float c2 = -1./24.;
+
+		float d = 8. / (
+			1. / mu[x, y,   z  ] + 1. / mu[x+1, y,   z  ] +
+			1. / mu[x, y-1, z  ] + 1. / mu[x+1, y-1, z  ] +
+			1. / mu[x, y,   z-1] + 1. / mu[x+1, y,   z-1] +
+			1. / mu[x, y-1, z-1] + 1. / mu[x+1, y-1, z-1]
+		);      
+     
+     	float a2 = 2 * d;
+		float c = a2 + 8. / (
+			1. / lam[x, y,   z  ] + 1. / lam[x+1, y,   z  ] +
+			1. / lam[x, y-1, z  ] + 1. / lam[x+1, y-1, z  ] +
+			1. / lam[x, y,   z-1] + 1. / lam[x+1, y,   z-1] +
+			1. / lam[x, y-1, z-1] + 1. / lam[x+1, y-1, z-1]
+		);
+
+		float qpa = 0.125 * (
+			qp[x, y,   z  ] + qp[x+1, y,   z  ] +
+			qp[x, y-1, z  ] + qp[x+1, y-1, z  ] +
+			qp[x, y,   z-1] + qp[x+1, y,   z-1] +
+			qp[x, y-1, z-1] + qp[x+1, y-1, z-1]
+		);
+     
+		float qsa = 0.125 * (
+			qs[x, y,   z  ] + qs[x+1, y,   z  ] +
+			qs[x, y-1, z  ] + qs[x+1, y-1, z  ] +
+			qs[x, y,   z-1] + qs[x+1, y,   z-1] +
+			qs[x, y-1, z-1] + qs[x+1, y-1, z-1]
+		);
+
+		// (we can't handle indirect grid accesses for the time being)
+		// float tauu = tau[((coords1 * nxt + this.x) % 2) +
+		//     2 * ((coords2 * nyt + this.y) % 2) +
+		//     4 * ((nz + 1 - (coords3 * nzt + this.z)) % 2)];
+
+		float vxx = c1 * (u1[x+1, y, z] - u1[x, y, z]) +
+			c2 * (u1[x+2, y, z] - u1[x-1, y, z]);
+		float vyy = c1 * (v1[x, y, z] - v1[x, y-1, z]) +
+			c2 * (v1[x, y+1, z] - v1[x, y-2, z]);
+		float vzz = c1 * (w1[x, y, z] - w1[x, y, z-1]) +
+			c2 * (w1[x, y, z+1] - w1[x, y, z-2]);
+
+		float a1 = -qpa * c * (vxx + vyy + vzz) / (2. * dh);
+
+		//float x1 = tauu / dt + 0.5;
+		float x1 = tau[x, y, z] / dt + 0.5;
+		float x2 = x1 - 1; // (tauu/dt)-(1./2.)
+
+		// normal stress xx, yy and zz
+		xx[x, y, z; t+1] = xx[x, y, z; t] + dth * (c * vxx + (c - a2) *
+			(vyy + vzz)) + dt * r1[x, y, z; t];
+		yy[x, y, z; t+1] = yy[x, y, z; t] + dth * (c * vyy + (c - a2) *
+			(vxx + vzz)) + dt * r2[x, y, z; t];
+		zz[x, y, z; t+1] = zz[x, y, z; t] + dth * (c * vzz + (c - a2) *
+			(vxx + vyy)) + dt * r3[x, y, z; t];
+
+		float hdh = -d * qsa / dh;
+		r1[x, y, z; t+1] = (x2 * r1[x, y, z; t] - hdh*(vyy + vzz) + a1)/x1;
+		r2[x, y, z; t+1] = (x2 * r2[x, y, z; t] - hdh*(vxx + vzz) + a1)/x1;
+		r3[x, y, z; t+1] = (x2 * r3[x, y, z; t] - hdh*(vxx + vyy) + a1)/x1;
+
+		xx[x, y, z; t+1] = xx[x, y, z; t+1] + dt * r1[x, y, z; t+1];
+		yy[x, y, z; t+1] = yy[x, y, z; t+1] + dt * r2[x, y, z; t+1];
+		zz[x, y, z; t+1] = zz[x, y, z; t+1] + dt * r3[x, y, z; t+1];
+	}
+}
+\end{lstlisting}
+
+
+% ********** End of appendix **********

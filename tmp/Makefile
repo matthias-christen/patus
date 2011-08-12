@@ -6,8 +6,8 @@
 #
 
 CC = nvcc
-NVCCFLAGS = -O3 -arch=sm_13 -I/home/christen/NVIDIA_GPU_Computing_SDK/C/common/inc
-#NVCCFLAGS = -O0 -g -arch=sm_13 -I/home/christen/NVIDIA_GPU_Computing_SDK/C/common/inc
+#NVCCFLAGS = -O3 -arch=sm_13 -I/home/christen/NVIDIA_GPU_Computing_SDK/C/common/inc
+NVCCFLAGS = -O0 -G -g -arch=sm_13 -I/home/christen/NVIDIA_GPU_Computing_SDK/C/common/inc
 
 bench: kernel.cu driver.cu timer.c
 	$(CC) $(NVCCFLAGS) -o $@ $+

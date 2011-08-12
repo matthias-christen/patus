@@ -243,6 +243,15 @@ public class SubdomainIterator extends Loop
 			m_sdTotalDomain.getSize ().getCoord (nDim).clone (),
 			m_sdidIterator.getSubdomain ().getSize ().getCoord (nDim).clone ());
 	}
+	
+	public Size getNumberOfBlocksPerDimension ()
+	{
+		Size sizeNumBlocks = new Size (m_sdidDomain.getDimensionality ());
+		for (int i = 0; i < m_sdidDomain.getDimensionality (); i++)
+			sizeNumBlocks.setCoord (i, getNumberOfBlocksInDimension (i));
+		return sizeNumBlocks;
+	}
+
 
 	/**
 	 * Returns the <code>nDim</code>-th coordinate of the N-dimensional index from

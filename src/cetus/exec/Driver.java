@@ -281,26 +281,27 @@ public class Driver
 
   protected void parseFiles()
 	{
-
-    try {
-      program = new Program();
-      Parser parser = new Parser();
-      for(String file : filenames)
-      program.addTranslationUnit(parser.parse(file));
-    } //catch (TreeWalkException e) {
-      //System.err.println("failed to build IR from syntax tree");
-      //System.err.println(e);
-      //System.exit(1);
-    //}
-    catch (IOException e) {
-      System.err.println("I/O error parsing files");
-      System.err.println(e);
-      System.exit(1);
-    } catch (Exception e) {
-      System.err.println("Miscellaneous exception while parsing files: " + e);
-      e.printStackTrace();
-      System.exit(1);
-		}
+	  throw new RuntimeException ("Not implemented");
+	  
+//    try {
+//      program = new Program();
+//      Parser parser = new Parser();
+//      for(String file : filenames)
+//      program.addTranslationUnit(parser.parse(file));
+//    } //catch (TreeWalkException e) {
+//      //System.err.println("failed to build IR from syntax tree");
+//      //System.err.println(e);
+//      //System.exit(1);
+//    //}
+//    catch (IOException e) {
+//      System.err.println("I/O error parsing files");
+//      System.err.println(e);
+//      System.exit(1);
+//    } catch (Exception e) {
+//      System.err.println("Miscellaneous exception while parsing files: " + e);
+//      e.printStackTrace();
+//      System.exit(1);
+//		}
 	}
   /**
    * Prints the list of options that Cetus accepts.

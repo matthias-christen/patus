@@ -63,8 +63,8 @@ int main (int argc, char** argv)
 	// <--
 	
 	// allocate_GPU_grids -->
-	cudaMalloc(((void *  * )( & u_0_1_out_gpu)), sizeof (gpu_ptr_t));
 	cudaMalloc(((void *  * )( & u_0_0_gpu)), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)));
+	cudaMalloc(((void *  * )( & u_0_1_out_gpu)), sizeof (gpu_ptr_t));
 	cudaMalloc(((void *  * )( & u_0_1_gpu)), ((((x_max+2)*(y_max+2))*(z_max+2))*sizeof (float)));
 	// <--
 	
@@ -233,7 +233,7 @@ int main (int argc, char** argv)
 						if ((fabs(((u_0_1_out[_idx7]-u_0_1_out_ref[_idx7])/u_0_1_out_ref[_idx7]))>1.0E-5))
 						{
 							bHasErrors=1;
-							break;
+							printf("Validation failed for u_0_1_out_ref[%d,%d,%d] (index %d). Expected: %f, was: %f\n", pt_ref_idx_x, pt_ref_idx_y, pt_ref_idx_z, _idx7, u_0_1_out_ref[_idx7], u_0_1_out[_idx7]);
 						}
 					}
 				}

@@ -911,7 +911,7 @@ public class IndexCalculatorCodeGenerator
 	{
 		return new IndexCalculatorCodeGenerator.Calculator (
 			indexing, sizeDomain, cmpstmt, ECalculationMode.CALCULATE_INDICES, options
-		).getTargetIndices ();		
+		).getTargetIndices ();
 	}
 
 	public Expression[] calculateSizes (Size sizeDomain, CompoundStatement cmpstmt, CodeGeneratorRuntimeOptions options)

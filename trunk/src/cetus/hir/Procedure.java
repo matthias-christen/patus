@@ -1,9 +1,14 @@
 package cetus.hir;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.util.*;
-import cetus.exec.Driver;
+import java.io.PrintWriter;
+import java.lang.reflect.Method;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Represents a function, subroutine, or method. A procedure object consists of
@@ -30,9 +35,9 @@ public final class Procedure extends Declaration implements SymbolTable,Symbol
       throw new InternalError();
     }
 
-    if (Driver.getOptionValue("preserve-KR-function") != null)
-      enable_old_style_function = true;
-    else
+//    if (Driver.getOptionValue("preserve-KR-function") != null)
+//      enable_old_style_function = true;
+//    else
       enable_old_style_function = false;
   }
 

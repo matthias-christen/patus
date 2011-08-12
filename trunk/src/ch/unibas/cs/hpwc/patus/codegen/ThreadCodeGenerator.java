@@ -976,14 +976,17 @@ public class ThreadCodeGenerator
 	{
 		SubdomainGeneratedIdentifiers ids = m_data.getData ().getGeneratedIdentifiers ();
 		Point ptDomainBase = loop.getDomainSubdomain ().getBaseGridCoordinates ();
-		Size sizeIterator = loop.getIteratorSubdomain ().getBox ().getSize ();
+		
+		Expression exprIteratorSizeInDim = loop.getIteratorSubdomain ().getBox ().getSize ().getCoord (nDim);
+		Expression exprIteratorSizeWithChunk = ExpressionUtil.isValue (loop.getChunkSize (nDim), 1) ?
+			exprIteratorSizeInDim : new BinaryExpression (exprIteratorSizeInDim.clone (), BinaryOperator.MULTIPLY, loop.getChunkSize (nDim));
 
 		// v_*_min = u_*_min + idx_* * v_*_size
 		Identifier idMin = ids.getDimensionIndexIdentifier (loop.getIterator (), nDim);
 		Expression exprMin = Symbolic.optimizeExpression (new BinaryExpression (
 			ptDomainBase.getCoord (nDim).clone (),
 			BinaryOperator.ADD,
-			new BinaryExpression (rgBlockIndices[nDim].clone (), BinaryOperator.MULTIPLY, sizeIterator.getCoord (nDim).clone ())));
+			new BinaryExpression (rgBlockIndices[nDim].clone (), BinaryOperator.MULTIPLY, exprIteratorSizeWithChunk.clone ())));
 		
 		// v_*_max = v_*_min + v_*_size
 		Identifier idMax = null;
@@ -991,7 +994,7 @@ public class ThreadCodeGenerator
 		if (bHasNestedLoops)
 		{
 			idMax = ids.getDimensionMaxIdentifier (loop.getIterator (), nDim).clone ();
-			exprMax = new BinaryExpression (idMin.clone (), BinaryOperator.ADD, sizeIterator.getCoord (nDim).clone ());
+			exprMax = new BinaryExpression (idMin.clone (), BinaryOperator.ADD, exprIteratorSizeWithChunk.clone ());
 
 			// account for SIMD
 			if (bContainsStencilCall && nDim == 0)
@@ -1030,14 +1033,24 @@ public class ThreadCodeGenerator
 			if (bHasNestedLoops)
 				CodeGeneratorUtil.addStatementAtTop (cmpstmtNewLoopBody, new ExpressionStatement (new AssignmentExpression (idMax, AssignmentOperator.NORMAL, exprMax)));
 			
-			return new RangeIterator (
+			// create identifiers for the start/end/num threads expressions if they are no IDExpressions or literals
+			StatementListBundle slbLoop = new StatementListBundle ();
+			Expression exprStart = getIdentifier (exprMin, "start", slbLoop, options);
+			
+
+			slbLoop.addStatement (new RangeIterator (
 				idMin.clone (),
-				exprMin.clone (),
-				new BinaryExpression (exprMin.clone (),	BinaryOperator.ADD, ExpressionUtil.decrement (loop.getChunkSize (0))),
-				Globals.ONE.clone (),
+				exprStart.clone (),
+				new BinaryExpression (
+					exprStart.clone (),
+					BinaryOperator.ADD,
+					ExpressionUtil.decrement (exprIteratorSizeWithChunk)),
+				exprIteratorSizeInDim,
 				cmpstmtNewLoopBody,
 				loop.getParallelismLevel ()
-			);
+			));
+			
+			return slbLoop.getDefault ();
 		}
 	}
 	
@@ -1052,17 +1065,15 @@ public class ThreadCodeGenerator
 	 */
 	protected void generateManyCoreSubdomainIterator (SubdomainIterator loop, CompoundStatement cmpstmtLoopBody, CompoundStatement cmpstmtOutput, boolean bContainsStencilCall, CodeGeneratorRuntimeOptions options)
 	{
-		// get the domain box
-		Box boxDomain = loop.getDomainSubdomain ().getBox ();
-		byte nDim = boxDomain.getDimensionality ();
-
 		loadData (loop, cmpstmtLoopBody, options);
+		
+		int nDim = loop.getDomainIdentifier ().getDimensionality ();
 
 		// adjust the size of the blocks if chunking is used
-		Size sizeIterator = loop.getIteratorSubdomain ().getBox ().getSize ();
-		for (int i = 0; i < sizeIterator.getDimensionality (); i++)
-			if (!ExpressionUtil.isValue (loop.getChunkSize (i), 1))
-				sizeIterator.setCoord (i, new BinaryExpression (sizeIterator.getCoord (0), BinaryOperator.MULTIPLY, loop.getChunkSize (i)));
+//		Size sizeIterator = loop.getIteratorSubdomain ().getBox ().getSize ();
+//		for (int i = 0; i < sizeIterator.getDimensionality (); i++)
+//			if (!ExpressionUtil.isValue (loop.getChunkSize (i), 1))
+//				sizeIterator.setCoord (i, new BinaryExpression (sizeIterator.getCoord (0), BinaryOperator.MULTIPLY, loop.getChunkSize (i)));
 		
 		// expression checking whether v_*_min is within the parent iterator's bounds
 		SubdomainGeneratedIdentifiers ids = m_data.getData ().getGeneratedIdentifiers ();
@@ -1076,7 +1087,7 @@ public class ThreadCodeGenerator
 		
 		// calculate the block indices from the thread indices, add auxiliary
 		// calculations to the initialization block (=> null)
-		Expression[] rgBlockIndices = m_data.getCodeGenerators ().getIndexCalculator ().calculateIndicesFromHardwareIndices (boxDomain.getSize (), null, options);
+		Expression[] rgBlockIndices = m_data.getCodeGenerators ().getIndexCalculator ().calculateIndicesFromHardwareIndices (loop.getNumberOfBlocksPerDimension (), null, options);
 		boolean bHasNestedLoops = StrategyAnalyzer.hasNestedLoops (loop);
 
 		for (int i = 0; i < nDim; i++)

@@ -7,4 +7,8 @@ M.~Frigo and S.~Johnson.
 \newblock Special issue on ``Program Generation, Optimization, and Platform
   Adaptation''.
 
+\bibitem{opencl08}
+{Khronos OpenCL Working Group}.
+\newblock {\em {The OpenCL Specification}}, 8 December 2008.
+
 \end{thebibliography}

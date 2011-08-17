@@ -164,7 +164,7 @@ COMPILER MaximaExpression
 // Tokens
 
 CHARACTERS
-	letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$".
+	letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$%".
 	digit = "0123456789".
 	cr = '\r'.
 	lf = '\n'.
@@ -266,7 +266,7 @@ PRODUCTIONS                                                                    /
     ExponentExpression<out Expression expr> =
         UnaryExpression<out Expression expr0>                                  (. expr = expr0; .)
         {
-        	'^' UnaryExpression<out Expression expr1>                          (. expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1); .)
+        	'^' UnarySignExpression<out Expression expr1>                      (. expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1); .)
         }.
         
 	/**
@@ -329,7 +329,7 @@ PRODUCTIONS                                                                    /
         .
         
 	Identifier<out Expression expr> =
-		ident                                                                  (. expr = getIdentifier (t.val); .)
+		ident                                                                  (. expr = t.val.equals ("%pi") ? new FloatLiteral (Math.PI) : getIdentifier (t.val); .)
 		[
 			'.'
 			Identifier<out Expression exprSubscript>                           (. expr = new AccessExpression (expr.clone (), AccessOperator.MEMBER_ACCESS, exprSubscript); .)

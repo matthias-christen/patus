@@ -251,8 +251,8 @@ class StartStates {
 public class Scanner {
 	static final char EOL = '\n';
 	static final int  eofSym = 0;
-	static final int maxT = 38;
-	static final int noSym = 38;
+	static final int maxT = 37;
+	static final int noSym = 37;
 
 
 	public Buffer buffer; // scanner buffer
@@ -277,7 +277,8 @@ public class Scanner {
 	static {
 		start = new StartStates();
 		literals = new HashMap();
-		for (int i = 65; i <= 90; ++i) start.set(i, 1);
+		for (int i = 65; i <= 66; ++i) start.set(i, 1);
+		for (int i = 68; i <= 90; ++i) start.set(i, 1);
 		for (int i = 95; i <= 95; ++i) start.set(i, 1);
 		for (int i = 97; i <= 122; ++i) start.set(i, 1);
 		for (int i = 48; i <= 57; ++i) start.set(i, 2);
@@ -285,23 +286,23 @@ public class Scanner {
 		start.set(125, 4); 
 		start.set(59, 5); 
 		start.set(61, 6); 
-		start.set(40, 7); 
-		start.set(44, 8); 
-		start.set(41, 9); 
-		start.set(46, 19); 
-		start.set(91, 11); 
-		start.set(93, 12); 
-		start.set(43, 13); 
-		start.set(45, 14); 
-		start.set(42, 15); 
-		start.set(47, 16); 
-		start.set(37, 17); 
-		start.set(94, 18); 
+		start.set(67, 23); 
+		start.set(40, 11); 
+		start.set(44, 12); 
+		start.set(41, 13); 
+		start.set(46, 24); 
+		start.set(91, 15); 
+		start.set(93, 16); 
+		start.set(43, 17); 
+		start.set(45, 18); 
+		start.set(42, 19); 
+		start.set(47, 20); 
+		start.set(37, 21); 
+		start.set(94, 22); 
 		start.set(Buffer.EOF, -1);
 		literals.put("stencil", new Integer(3));
 		literals.put("options", new Integer(6));
 		literals.put("compatibility", new Integer(8));
-		literals.put("C", new Integer(10));
 		literals.put("Fortran", new Integer(11));
 		literals.put("t_max", new Integer(12));
 		literals.put("domainsize", new Integer(13));
@@ -315,7 +316,6 @@ public class Scanner {
 		literals.put("long", new Integer(25));
 		literals.put("grid", new Integer(26));
 		literals.put("param", new Integer(27));
-		literals.put("e", new Integer(37));
 
 	}
 	
@@ -469,32 +469,48 @@ public class Scanner {
 				case 6:
 					{t.kind = 9; break loop;}
 				case 7:
-					{t.kind = 14; break loop;}
+					if (ch == 'C') {AddCh(); state = 8; break;}
+					else {state = 0; break;}
 				case 8:
-					{t.kind = 15; break loop;}
+					if (ch == '+') {AddCh(); state = 9; break;}
+					else {state = 0; break;}
 				case 9:
-					{t.kind = 16; break loop;}
+					if (ch == '+') {AddCh(); state = 10; break;}
+					else {state = 0; break;}
 				case 10:
-					{t.kind = 17; break loop;}
+					{t.kind = 10; break loop;}
 				case 11:
-					{t.kind = 28; break loop;}
+					{t.kind = 14; break loop;}
 				case 12:
-					{t.kind = 29; break loop;}
+					{t.kind = 15; break loop;}
 				case 13:
-					{t.kind = 30; break loop;}
+					{t.kind = 16; break loop;}
 				case 14:
-					{t.kind = 31; break loop;}
+					{t.kind = 17; break loop;}
 				case 15:
-					{t.kind = 32; break loop;}
+					{t.kind = 28; break loop;}
 				case 16:
-					{t.kind = 33; break loop;}
+					{t.kind = 29; break loop;}
 				case 17:
-					{t.kind = 34; break loop;}
+					{t.kind = 30; break loop;}
 				case 18:
-					{t.kind = 35; break loop;}
+					{t.kind = 31; break loop;}
 				case 19:
+					{t.kind = 32; break loop;}
+				case 20:
+					{t.kind = 33; break loop;}
+				case 21:
+					{t.kind = 34; break loop;}
+				case 22:
+					{t.kind = 35; break loop;}
+				case 23:
+					recEnd = pos; recKind = 1;
+					if (ch >= '0' && ch <= '9' || ch >= 'A' && ch <= 'Z' || ch == '_' || ch >= 'a' && ch <= 'z') {AddCh(); state = 1; break;}
+					else if (ch == '/') {AddCh(); state = 7; break;}
+					else {t.kind = 1; t.val = new String(tval, 0, tlen); CheckLiteral(); return t;}
+				case 24:
 					recEnd = pos; recKind = 36;
-					if (ch == '.') {AddCh(); state = 10; break;}
+					if (ch == '.') {AddCh(); state = 14; break;}
 					else {t.kind = 36; break loop;}
 
 			}

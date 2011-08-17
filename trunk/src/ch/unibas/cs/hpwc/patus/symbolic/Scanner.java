@@ -123,7 +123,7 @@ public class Scanner {
 	static {
 		start = new StartStates();
 		literals = new HashMap<String, Integer>();
-		for (int i = 36; i <= 36; ++i) start.set(i, 1);
+		for (int i = 36; i <= 37; ++i) start.set(i, 1);
 		for (int i = 65; i <= 90; ++i) start.set(i, 1);
 		for (int i = 95; i <= 95; ++i) start.set(i, 1);
 		for (int i = 97; i <= 122; ++i) start.set(i, 1);
@@ -271,7 +271,7 @@ public class Scanner {
 				} // NextCh already done
 				case 1:
 					recEnd = pos; recKind = 1;
-					if (ch == '$' || ch >= '0' && ch <= '9' || ch >= 'A' && ch <= 'Z' || ch == '_' || ch >= 'a' && ch <= 'z') {AddCh(); state = 1; break;}
+					if (ch >= '$' && ch <= '%' || ch >= '0' && ch <= '9' || ch >= 'A' && ch <= 'Z' || ch == '_' || ch >= 'a' && ch <= 'z') {AddCh(); state = 1; break;}
 					else {t.kind = 1; t.val = new String(tval, 0, tlen); CheckLiteral(); return t;}
 				case 2:
 					recEnd = pos; recKind = 3;

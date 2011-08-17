@@ -700,7 +700,7 @@ PRODUCTIONS                                                                     
 	StencilOptionsCompatibility =
 		SYNC "compatibility" '='
 		(
-			"C"                                                                (. m_options.setCompatibility (CodeGenerationOptions.ECompatibility.C); .)
+			"C/C++"                                                            (. m_options.setCompatibility (CodeGenerationOptions.ECompatibility.C); .)
 			|
 			"Fortran"                                                          (. m_options.setCompatibility (CodeGenerationOptions.ECompatibility.FORTRAN); .)
 		).
@@ -881,8 +881,8 @@ PRODUCTIONS                                                                     
     	ident                                                                  (. String strIdentifier = t.val; .)
     	'='
     	StencilExpression<out ExpressionData exprRHS, stencil, false, false>   (. Expression exprSimplified = null; if (exprRHS.getExpression () instanceof FloatLiteral) exprSimplified = exprRHS.getExpression (); else exprSimplified = Symbolic.simplify (exprRHS.getExpression ()); .)
-    	                                                                       (. if (exprSimplified instanceof FloatLiteral) .)
-    	                                                                       (.     registerConstant (strIdentifier, (FloatLiteral) exprSimplified); .)
+    	                                                                       (. if (exprSimplified instanceof FloatLiteral || exprSimplified instanceof IntegerLiteral) .)
+    	                                                                       (.     registerConstant (strIdentifier, (Literal) exprSimplified); .)
     	                                                                       (. else { .)
     	                                                                       (.     registerScalar (strIdentifier, specType, new ArrayList<Integer> (), false); StencilNode node = new StencilNode (strIdentifier, specType, null); stencil.addOutputNode (node); .)
     	                                                                       (.     exprAssignment = new ExpressionData (new AssignmentExpression (node, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
@@ -1177,7 +1177,7 @@ PRODUCTIONS                                                                     
 				integer                                                        (. sb.append (t.val); .)
 			]
 		]
-		[
+		/*[
 			'e'                                                                (. sb.append (t.val); .)
 			[
 				'+'                                                            (. sb.append (t.val); .)
@@ -1185,7 +1185,7 @@ PRODUCTIONS                                                                     
 				'-'                                                            (. sb.append (t.val); .)
 			]
 			integer                                                            (. sb.append (t.val); .)
-		]                                                                      (. fValue = Double.parseDouble (sb.toString ()); .)
+		]*/                                                                      (. fValue = Double.parseDouble (sb.toString ()); .)
 		.
 		
 END StencilSpecification.

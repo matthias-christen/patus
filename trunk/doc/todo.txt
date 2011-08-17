@@ -12,3 +12,7 @@ Synchronization on parallelism levels
 	if not, do sync on level above
 	if no level above exists exit and restart kernel (=> GPU global sync)
 	
+Loop invariant code motion
+	move calculation of constants in the stencil specification out of the loops
+	store partial sums if possible? e.g. u[x-2,y-1]+u[x-1,y-1]+u[x,y-1]+u[x+1,y-1] -> s;
+		can be reused for u[x-1,y-1]+u[x,y-1]+u[x+1,y-1]+u[x+2,y-1] = s-u[x-2,y-1]+u[x+2,y-1]

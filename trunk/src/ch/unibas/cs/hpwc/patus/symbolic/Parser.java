@@ -345,7 +345,7 @@ public class Parser {
 		expr = expr0; 
 		while (la.kind == 14) {
 			Get();
-			Expression expr1 = UnaryExpression();
+			Expression expr1 = UnarySignExpression();
 			expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1); 
 		}
 		return expr;
@@ -445,7 +445,7 @@ public class Parser {
 	Expression  Identifier() {
 		Expression  expr;
 		Expect(1);
-		expr = getIdentifier (t.val); 
+		expr = t.val.equals ("%pi") ? new FloatLiteral (Math.PI) : getIdentifier (t.val); 
 		if (la.kind == 21) {
 			Get();
 			Expression exprSubscript = Identifier();

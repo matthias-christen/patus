@@ -25,6 +25,7 @@ import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.FloatLiteral;
 import cetus.hir.FunctionCall;
+import cetus.hir.IDExpression;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.Literal;
 import cetus.hir.NameID;
@@ -175,7 +176,7 @@ public class ExpressionUtil
 	 */
 	public static Expression createExponentExpression (Expression exprBase, Expression exprExponent)
 	{
-		return createExponentExpression (
+		return ExpressionUtil.createExponentExpression (
 			new ExpressionData (exprBase, 0, Symbolic.EExpressionType.EXPRESSION),
 			new ExpressionData (exprExponent, 0, Symbolic.EExpressionType.EXPRESSION)).getExpression ();
 	}
@@ -188,6 +189,9 @@ public class ExpressionUtil
 	 */
 	private static ExpressionData createExponentExpression (ExpressionData exprBase, int nExponent)
 	{
+		if (exprBase.getExpression () instanceof IDExpression && ((IDExpression) exprBase.getExpression ()).getName ().equals ("%e"))
+			return new ExpressionData (new FloatLiteral (Math.exp (nExponent)), 0, Symbolic.EExpressionType.EXPRESSION);
+			
 		switch (nExponent)
 		{
 		case 0:
@@ -254,6 +258,10 @@ public class ExpressionUtil
 			if (Math.floor (fExponent) == fExponent)
 				return ExpressionUtil.createExponentExpression (exprBase, (int) fExponent);
 
+			// exp
+			if (exprBase.getExpression () instanceof IDExpression && ((IDExpression) exprBase.getExpression ()).getName ().equals ("%e"))
+				return new ExpressionData (new FloatLiteral (Math.exp (fExponent)), 0, Symbolic.EExpressionType.EXPRESSION);
+
 			if (fExponent == 0.5)
 			{
 				return new ExpressionData (
@@ -261,6 +269,15 @@ public class ExpressionUtil
 					exprBase.getFlopsCount () + 1,
 					Symbolic.EExpressionType.EXPRESSION);
 			}
+		}
+
+		// exp
+		if (exprBase.getExpression () instanceof IDExpression && ((IDExpression) exprBase.getExpression ()).getName ().equals ("%e"))
+		{
+			return new ExpressionData (
+				new FunctionCall (new NameID ("exp"), CodeGeneratorUtil.expressions (exprExponent.getExpression ())),
+				exprExponent.getFlopsCount () + 1,
+				Symbolic.EExpressionType.EXPRESSION);
 		}
 
 		// the generic case

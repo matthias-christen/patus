@@ -188,7 +188,7 @@ public class CodeGeneratorMain
 	 */
 	private void compile ()
 	{
-		CodeGeneratorMain.LOGGER.info ("Compiling generated code...");
+		//CodeGeneratorMain.LOGGER.info ("Compiling generated code...");
 		//new Compile (m_hardwareDescription).compile (m_fileOutputDirectory);
 	}
 
@@ -197,7 +197,7 @@ public class CodeGeneratorMain
 	 */
 	private void autotune ()
 	{
-		CodeGeneratorMain.LOGGER.info ("Starting autotuner...");
+		//CodeGeneratorMain.LOGGER.info ("Starting autotuner...");
 	}
 
 	/**

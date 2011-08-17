@@ -297,6 +297,11 @@ public class FileUtil
 			String strBin = File.separator + "bin";
 			if (strMainClassPath != null && strMainClassPath.endsWith (strBin))
 				strMainClassPath = strMainClassPath.substring (0, strMainClassPath.length () - strBin.length ());
+		
+			// remove "/classes" if it ends with that
+			String strClasses = File.separator + "classes";
+			if (strMainClassPath != null && strMainClassPath.endsWith (strClasses))
+				strMainClassPath = strMainClassPath.substring (0, strMainClassPath.length () - strClasses.length ());
 		}
 
 		if (strMainClassPath == null)

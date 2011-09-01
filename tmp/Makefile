@@ -5,12 +5,14 @@
 # required runtime files by Patus.
 #
 
-CC = nvcc
-#NVCCFLAGS = -O3 -arch=sm_13 -I/home/christen/NVIDIA_GPU_Computing_SDK/C/common/inc
-NVCCFLAGS = -O0 -G -g -arch=sm_13 -I/home/christen/NVIDIA_GPU_Computing_SDK/C/common/inc
+CC = icc
+CFLAGS = -O3 -openmp
 
-bench: kernel.cu driver.cu timer.c
-	$(CC) $(NVCCFLAGS) -o $@ $+
+bench: kernel.o driver.o timer.o
+	$(CC) $(CFLAGS) -o $@ $+
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 	
 clean:
 	rm -rf *.o bench

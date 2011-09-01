@@ -1162,7 +1162,7 @@ void initialize_game_of_life(float *  u_0_0, float *  u_0_1, int width, int heig
 	/*
 	for t = 1..100 by 1 parallel 1 <level 0> schedule 1 { ... }
 	*/
-	for (t=1; t<=100; t+=1)
+	for (t=1; t<=1; t+=1)
 	{
 		start0=omp_get_thread_num();
 		end0=((((int)(((width+cb_x)-1)/cb_x))*((int)(((height+cb_y)-1)/cb_y)))-1);
@@ -1201,33 +1201,33 @@ void initialize_game_of_life(float *  u_0_0, float *  u_0_1, int width, int heig
 							*/
 							/* _idx0 = (((width+2)*(p3_idx_y-1))+(p3_idx_x-1)) */
 							_idx0=(((width+2)*(p3_idx_y-1))+(p3_idx_x-1));
-							u_0_0[_idx0]=((1.0+((p3_idx_x+-1)*0.1))+((p3_idx_y+-1)*0.01));
+							u_0_0[_idx0]=p3_idx_x % 2;
 							/* _idx1 = (((width+2)*p3_idx_y)+(p3_idx_x-1)) */
 							_idx1=((_idx0+width)+2);
-							u_0_0[_idx1]=((1.0+((p3_idx_x+-1)*0.1))+(p3_idx_y*0.01));
+							u_0_0[_idx1]=(p3_idx_x+1) % 2;
 							/* _idx2 = (((width+2)*(p3_idx_y+1))+(p3_idx_x-1)) */
 							_idx2=((_idx1+width)+2);
-							u_0_0[_idx2]=((1.0+((p3_idx_x+-1)*0.1))+((p3_idx_y+1)*0.01));
+							u_0_0[_idx2]=(p3_idx_x*(p3_idx_y+1)) % 2;
 							/* _idx3 = (((width+2)*(p3_idx_y-1))+p3_idx_x) */
 							_idx3=(_idx0+1);
-							u_0_0[_idx3]=((1.0+(p3_idx_x*0.1))+((p3_idx_y+-1)*0.01));
+							u_0_0[_idx3]=(p3_idx_x+p3_idx_y) % 2;
 							/* _idx4 = (((width+2)*(p3_idx_y+1))+p3_idx_x) */
 							_idx4=((_idx1+width)+3);
-							u_0_0[_idx4]=((1.0+(p3_idx_x*0.1))+((p3_idx_y+1)*0.01));
+							u_0_0[_idx4]=(p3_idx_x*p3_idx_y) % 2;
 							/* _idx5 = (((width+2)*(p3_idx_y-1))+(p3_idx_x+1)) */
 							_idx5=(_idx1-width);
-							u_0_0[_idx5]=((1.0+((p3_idx_x+1)*0.1))+((p3_idx_y+-1)*0.01));
+							u_0_0[_idx5]=0;
 							/* _idx6 = (((width+2)*p3_idx_y)+(p3_idx_x+1)) */
 							_idx6=(_idx1+2);
-							u_0_0[_idx6]=((1.0+((p3_idx_x+1)*0.1))+(p3_idx_y*0.01));
+							u_0_0[_idx6]=p3_idx_y % 2;
 							/* _idx7 = (((width+2)*(p3_idx_y+1))+(p3_idx_x+1)) */
 							_idx7=((_idx1+width)+4);
-							u_0_0[_idx7]=((1.0+((p3_idx_x+1)*0.1))+((p3_idx_y+1)*0.01));
+							u_0_0[_idx7]=0;
 							L=1.0;
 							/* _idx8 = (((width+2)*p3_idx_y)+p3_idx_x) */
 							_idx8=(_idx1+1);
-							u_0_0[_idx8]=((1.0+(p3_idx_x*0.1))+(p3_idx_y*0.01));
-							u_0_1[_idx8]=((11.0+(p3_idx_x*0.1))+(p3_idx_y*0.01));
+							u_0_0[_idx8]=((p3_idx_x+1)*p3_idx_y+1) % 2;
+							u_0_1[_idx8]=0;
 						}
 					}
 				}

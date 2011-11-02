@@ -4,9 +4,9 @@
 	<architectureType name="Intel x86_64">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
-      <level number="1" hasExplicitLocalDataCopy="false" asyncIO="false">
-        <barrier type="pragma" implementation="omp barrier"/>
-      </level>
+			<level number="1" hasExplicitLocalDataCopy="false" asyncIO="false">
+				<barrier type="pragma" implementation="omp barrier"/>
+			</level>
 		</parallelism>
 		<datatypes/>
 		<declspecs>
@@ -19,21 +19,7 @@
 		<build compiler-command="make" harness-template-dir="arch/CPU_OpenMP"/>
 	</architectureType>
 
-	<architectureType name="Intel x86_64 PAPI">
-		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
-		<parallelism>
-      <level number="1" hasExplicitLocalDataCopy="false" asyncIO="false">
-        <barrier type="pragma" implementation="omp barrier"/>
-      </level>
-		</parallelism>
-		<datatypes/>
-		<declspecs>
-			<declspec type="restrictedpointer" specifiers="__restrict__"/>
-		</declspecs>
-		<intrinsics/>
-		<includes>
-			<include file="omp.h"/>
-		</includes>
+	<architectureType name="Intel x86_64 PAPI" inherits-from="Intel x86_64">
 		<build compiler-command="make" harness-template-dir="arch/CPU_OpenMP_PAPI"/>
 	</architectureType>
 
@@ -41,34 +27,70 @@
 	<architectureType name="Intel x86_64 SSE">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
-      <level number="1" hasExplicitLocalDataCopy="false" asyncIO="true">
-        <barrier type="pragma" implementation="omp barrier"/>
-      </level>
+			<level number="1" hasExplicitLocalDataCopy="false" asyncIO="true">
+				<barrier type="pragma" implementation="omp barrier"/>
+			</level>
 		</parallelism>
 		<datatypes>
-			<!-- restrict alignment to 16 bytes -->
-			<alignment restrict="16"/>
 			<!-- declare SSE datatypes -->
 			<datatype basetype="float" name="__m128" simdVectorLength="4"/>
 			<datatype basetype="double" name="__m128d" simdVectorLength="2"/>
+			<!-- restrict alignment to 16 bytes -->
+			<alignment restrict="16"/>
 		</datatypes>
 		<declspecs>
 			<declspec type="restrictedpointer" specifiers="__restrict__"/>
 		</declspecs>
 		<intrinsics>
 			<!-- intrinsics for double precision arithmetic operations -->
+			<intrinsic baseName="unary_minus" name="neg_pd" datatype="__m128d"/>
 			<intrinsic baseName="plus" name="_mm_add_pd" datatype="__m128d"/>
 			<intrinsic baseName="minus" name="_mm_sub_pd" datatype="__m128d"/>
 			<intrinsic baseName="multiply" name="_mm_mul_pd" datatype="__m128d"/>
 			<intrinsic baseName="divide" name="_mm_div_pd" datatype="__m128d"/>
 			<intrinsic baseName="sqrt" name="_mm_sqrt_pd" datatype="__m128d"/>
+			<intrinsic baseName="min" name="_mm_min_pd" datatype="__m128d"/>
+			<intrinsic baseName="max" name="_mm_max_pd" datatype="__m128d"/>
+			<!-- ssemathlib.h -->
+			<intrinsic baseName="ceil" name="ceil_pd" datatype="__m128d"/>
+			<intrinsic baseName="floor" name="floor_pd" datatype="__m128d"/>
+			<intrinsic baseName="abs" name="abs_pd" datatype="__m128d"/>
+			<intrinsic baseName="exp" name="exp_pd" datatype="__m128d"/>
+			<intrinsic baseName="log" name="log_pd" datatype="__m128d"/>
+			<intrinsic baseName="log10" name="log10_pd" datatype="__m128d"/>
+			<intrinsic baseName="pow" name="pow_pd" datatype="__m128d"/>
+			<intrinsic baseName="sin" name="sin_pd" datatype="__m128d"/>
+			<intrinsic baseName="cos" name="cos_pd" datatype="__m128d"/>
+			<intrinsic baseName="tan" name="tan_pd" datatype="__m128d"/>
+			<intrinsic baseName="asin" name="asin_pd" datatype="__m128d"/>
+			<intrinsic baseName="acos" name="acos_pd" datatype="__m128d"/>
+			<intrinsic baseName="atan" name="atan_pd" datatype="__m128d"/>
+			<intrinsic baseName="atan2" name="atan2_pd" datatype="__m128d"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
+			<intrinsic baseName="unary_minus" name="neg_ps" datatype="__m128"/>
 			<intrinsic baseName="plus" name="_mm_add_ps" datatype="__m128"/>
 			<intrinsic baseName="minus" name="_mm_sub_ps" datatype="__m128"/>
 			<intrinsic baseName="multiply" name="_mm_mul_ps" datatype="__m128"/>
 			<intrinsic baseName="divide" name="_mm_div_ps" datatype="__m128"/>
 			<intrinsic baseName="sqrt" name="_mm_sqrt_ps" datatype="__m128"/>
+			<intrinsic baseName="min" name="_mm_min_ps" datatype="__m128"/>
+			<intrinsic baseName="max" name="_mm_max_ps" datatype="__m128"/>
+			<!-- ssemathlib.h -->
+			<intrinsic baseName="ceil" name="ceil_ps" datatype="__m128"/>
+			<intrinsic baseName="floor" name="floor_ps" datatype="__m128"/>
+			<intrinsic baseName="abs" name="abs_ps" datatype="__m128"/>
+			<intrinsic baseName="exp" name="exp_ps" datatype="__m128"/>
+			<intrinsic baseName="log" name="log_ps" datatype="__m128"/>
+			<intrinsic baseName="log10" name="log10_ps" datatype="__m128"/>
+			<intrinsic baseName="pow" name="pow_ps" datatype="__m128"/>
+			<intrinsic baseName="sin" name="sin_ps" datatype="__m128"/>
+			<intrinsic baseName="cos" name="cos_ps" datatype="__m128"/>
+			<intrinsic baseName="tan" name="tan_ps" datatype="__m128"/>
+			<intrinsic baseName="asin" name="asin_ps" datatype="__m128"/>
+			<intrinsic baseName="acos" name="acos_ps" datatype="__m128"/>
+			<intrinsic baseName="atan" name="atan_ps" datatype="__m128"/>
+			<intrinsic baseName="atan2" name="atan2_ps" datatype="__m128"/>
 			
 			<!-- non-arithmetic intrinsics -->
 		</intrinsics>
@@ -76,50 +98,13 @@
 			<include file="omp.h"/>
 			<include file="xmmintrin.h"/>
 			<include file="emmintrin.h"/>
+			<include file="ssemathlib.h"/>
 		</includes>
 		<build compiler-command="make" harness-template-dir="arch/CPU_OpenMP"/>
 	</architectureType>
 
 	<!-- Intel x86_64 architecture with SSE, OpenMP parallelization -->
-	<architectureType name="Intel x86_64 SSE PAPI">
-		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
-		<parallelism>
-      <level number="1" hasExplicitLocalDataCopy="false" asyncIO="true">
-        <barrier type="pragma" implementation="omp barrier"/>
-      </level>
-		</parallelism>
-		<datatypes>
-			<!-- restrict alignment to 16 bytes -->
-			<alignment restrict="16"/>
-			<!-- declare SSE datatypes -->
-			<datatype basetype="float" name="__m128" simdVectorLength="4"/>
-			<datatype basetype="double" name="__m128d" simdVectorLength="2"/>
-		</datatypes>
-		<declspecs>
-			<declspec type="restrictedpointer" specifiers="__restrict__"/>
-		</declspecs>
-		<intrinsics>
-			<!-- intrinsics for double precision arithmetic operations -->
-			<intrinsic baseName="plus" name="_mm_add_pd" datatype="__m128d"/>
-			<intrinsic baseName="minus" name="_mm_sub_pd" datatype="__m128d"/>
-			<intrinsic baseName="multiply" name="_mm_mul_pd" datatype="__m128d"/>
-			<intrinsic baseName="divide" name="_mm_div_pd" datatype="__m128d"/>
-			<intrinsic baseName="sqrt" name="_mm_sqrt_pd" datatype="__m128d"/>
-			
-			<!-- intrinsics for single precision arithmetic operations -->
-			<intrinsic baseName="plus" name="_mm_add_ps" datatype="__m128"/>
-			<intrinsic baseName="minus" name="_mm_sub_ps" datatype="__m128"/>
-			<intrinsic baseName="multiply" name="_mm_mul_ps" datatype="__m128"/>
-			<intrinsic baseName="divide" name="_mm_div_ps" datatype="__m128"/>
-			<intrinsic baseName="sqrt" name="_mm_sqrt_ps" datatype="__m128"/>
-			
-			<!-- non-arithmetic intrinsics -->
-		</intrinsics>
-		<includes>
-			<include file="omp.h"/>
-			<include file="xmmintrin.h"/>
-			<include file="emmintrin.h"/>
-		</includes>
+	<architectureType name="Intel x86_64 SSE PAPI" inherits-from="Intel x86_64 SSE">
 		<build compiler-command="make" harness-template-dir="arch/CPU_OpenMP_PAPI"/>
 	</architectureType>
 	
@@ -132,12 +117,10 @@
 			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>-->
 
 			<level number="1" name="ThreadBlock" hasExplicitLocalDataCopy="false" asyncIO="false"/>
-      <level number="2" name="Thread" hasExplicitLocalDataCopy="false" asyncIO="false">
-        <barrier type="functioncall" implementation="__syncthreads"/>
-      </level>
+			<level number="2" name="Thread" hasExplicitLocalDataCopy="false" asyncIO="false">
+				<barrier type="functioncall" implementation="__syncthreads"/>
+			</level>
 		</parallelism>
-		<datatypes>
-		</datatypes>
 		<declspecs>
 			<declspec type="kernel" specifiers="__global__"/>
 			<declspec type="localfunction" specifiers="__device__"/>
@@ -147,42 +130,12 @@
 		<build compiler-command="make" harness-template-dir="arch/GPU_CUDA"/>
 	</architectureType>
 
-	<architectureType name="NVIDIA CUDA1D">
+	<architectureType name="NVIDIA CUDA1D" inherits-from="NVIDIA CUDA">
 		<codegenerator src-suffix="cu" backend="CUDA1D" use-function-pointers="false"/>
-		<parallelism>
-      <level number="1" name="ThreadBlock" hasExplicitLocalDataCopy="false" asyncIO="false"/>
-      <level number="2" name="Thread" hasExplicitLocalDataCopy="false" asyncIO="false">
-        <barrier type="functioncall" implementation="__syncthreads"/>
-      </level>
-    </parallelism>
-		<datatypes>
-		</datatypes>
-		<declspecs>
-			<declspec type="kernel" specifiers="__global__"/>
-			<declspec type="localfunction" specifiers="__device__"/>
-		</declspecs>
-		<intrinsics/>
-		<includes/>
-		<build compiler-command="make" harness-template-dir="arch/GPU_CUDA"/>
 	</architectureType>
 
 	<!-- NVIDIA CUDA >= 4.0 Fermi GPU -->
-	<architectureType name="NVIDIA CUDA4">
+	<architectureType name="NVIDIA CUDA4" inherits-from="NVIDIA CUDA">
 		<codegenerator src-suffix="cu" backend="CUDA4" use-function-pointers="false"/>
-		<parallelism>
-      <level number="1" name="ThreadBlock" hasExplicitLocalDataCopy="false" asyncIO="false"/>
-      <level number="2" name="Thread" hasExplicitLocalDataCopy="false" asyncIO="false">
-        <barrier type="functioncall" implementation="__syncthreads"/>
-      </level>
-    </parallelism>
-		<datatypes>
-		</datatypes>
-		<declspecs>
-			<declspec type="kernel" specifiers="__global__"/>
-			<declspec type="localfunction" specifiers="__device__"/>
-		</declspecs>
-		<intrinsics/>
-		<includes/>
-		<build compiler-command="make" harness-template-dir="arch/GPU_CUDA"/>
 	</architectureType>
 </architectureTypes>

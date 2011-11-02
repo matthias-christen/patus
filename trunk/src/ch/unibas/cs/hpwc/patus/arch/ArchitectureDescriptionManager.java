@@ -4,13 +4,14 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.arch;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,27 +65,30 @@ public class ArchitectureDescriptionManager
 			m_mapDataTypes = new HashMap<String, Datatype> ();
 
 			m_mapDeclspecs = new HashMap<TypeDeclspec, Declspec> ();
-			for (Declspec d : m_type.getDeclspecs ().getDeclspec ())
-				m_mapDeclspecs.put (d.getType (), d);
+			if (m_type.getDeclspecs () != null)
+				for (Declspec d : m_type.getDeclspecs ().getDeclspec ())
+					m_mapDeclspecs.put (d.getType (), d);
 
 			m_mapDataTypesFromBase = new HashMap<String, Datatype> ();
-			for (Datatype datatype : m_type.getDatatypes ().getDatatype ())
-			{
-				m_mapDataTypes.put (datatype.getName (), datatype);
+			if (m_type.getDatatypes () != null)
+				for (Datatype datatype : m_type.getDatatypes ().getDatatype ())
+				{
+					m_mapDataTypes.put (datatype.getName (), datatype);
 
-				if (m_mapDataTypesFromBase.containsKey (datatype.getBasetype ().toString ()))
-					throw new RuntimeException ("A hardware description must not define multiple datatypes for one base type.");
-				m_mapDataTypesFromBase.put (datatype.getBasetype ().value (), datatype);
-			}
+					if (m_mapDataTypesFromBase.containsKey (datatype.getBasetype ().toString ()))
+						throw new RuntimeException ("A hardware description must not define multiple datatypes for one base type.");
+					m_mapDataTypesFromBase.put (datatype.getBasetype ().value (), datatype);
+				}
 
 			m_mapIntrinsics = new HashMap<String, List<Intrinsic>> ();
-			for (Intrinsic intrinsic : m_type.getIntrinsics ().getIntrinsic ())
-			{
-				List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (intrinsic.getBaseName ().value ());
-				if (listIntrinsics == null)
-					m_mapIntrinsics.put (intrinsic.getBaseName ().value (), listIntrinsics = new ArrayList<Intrinsic> ());
-				listIntrinsics.add (intrinsic);
-			}
+			if (m_type.getIntrinsics () != null)
+				for (Intrinsic intrinsic : m_type.getIntrinsics ().getIntrinsic ())
+				{
+					List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (intrinsic.getBaseName ());
+					if (listIntrinsics == null)
+						m_mapIntrinsics.put (intrinsic.getBaseName (), listIntrinsics = new ArrayList<Intrinsic> ());
+					listIntrinsics.add (intrinsic);
+				}
 		}
 
 		@Override
@@ -120,7 +124,7 @@ public class ArchitectureDescriptionManager
 			for (Level level : m_type.getParallelism ().getLevel ())
 				if (level.getNumber () == nParallelismLevel)
 					return level;
-			return null;			
+			return null;
 		}
 
 		@Override
@@ -136,18 +140,18 @@ public class ArchitectureDescriptionManager
 			Level level = getParallelismLevel (nParallelismLevel);
 			return level == null ? false : level.isHasExplicitLocalDataCopy ();
 		}
-		
+
 		@Override
 		public Statement getBarrier (int nParallelismLevel)
 		{
 			Level level = getParallelismLevel (nParallelismLevel);
 			if (level == null)
 				return null;
-			
+
 			Barrier barrier = level.getBarrier ();
 			if (barrier == null)
 				return null;
-			
+
 			switch (barrier.getType ())
 			{
 			case PRAGMA:
@@ -157,7 +161,7 @@ public class ArchitectureDescriptionManager
 			case STATEMENT:
 				return new ExpressionStatement (new NameID (barrier.getImplementation ()));
 			}
-			
+
 			return null;
 		}
 
@@ -225,11 +229,11 @@ public class ArchitectureDescriptionManager
 			return list;
 		}
 
-		private NameID getNameID (TypeBaseIntrinsicName name, Specifier specType)
+		private NameID getNameID (String strTypeBaseName, Specifier specType)
 		{
 			Datatype datatype = m_mapDataTypesFromBase.get (specType.toString ());
 
-			List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (name.value ());
+			List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (strTypeBaseName);
 			if (listIntrinsics == null || listIntrinsics.size () == 0)
 				return null;
 
@@ -255,15 +259,15 @@ public class ArchitectureDescriptionManager
 		public IDExpression getIntrinsicName (String strOperation, Specifier specType)
 		{
 			if ("+".equals (strOperation))
-				return getNameID (TypeBaseIntrinsicName.PLUS, specType);
+				return getNameID (TypeBaseIntrinsicEnum.PLUS.value (), specType);
 			if ("-".equals (strOperation))
-				return getNameID (TypeBaseIntrinsicName.MINUS, specType);
+				return getNameID (TypeBaseIntrinsicEnum.MINUS.value (), specType);
 			if ("*".equals (strOperation))
-				return getNameID (TypeBaseIntrinsicName.MULTIPLY, specType);
+				return getNameID (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
 			if ("/".equals (strOperation))
-				return getNameID (TypeBaseIntrinsicName.DIVIDE, specType);
+				return getNameID (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
 			if (Globals.FNX_FMA.getName ().equals (strOperation))
-				return getNameID (TypeBaseIntrinsicName.FMA, specType);
+				return getNameID (TypeBaseIntrinsicEnum.FMA.value (), specType);
 
 			return null;
 		}
@@ -272,9 +276,9 @@ public class ArchitectureDescriptionManager
 		public IDExpression getIntrinsicName (UnaryOperator op, Specifier specType)
 		{
 			if (UnaryOperator.PLUS.equals (op))
-				return getNameID (TypeBaseIntrinsicName.UNARY_PLUS, specType);
+				return getNameID (TypeBaseIntrinsicEnum.UNARY_PLUS.value (), specType);
 			if (UnaryOperator.MINUS.equals (op))
-				return getNameID (TypeBaseIntrinsicName.UNARY_MINUS, specType);
+				return getNameID (TypeBaseIntrinsicEnum.UNARY_MINUS.value (), specType);
 
 			// intrinsic not found
 			return null;
@@ -284,13 +288,13 @@ public class ArchitectureDescriptionManager
 		public IDExpression getIntrinsicName (BinaryOperator op, Specifier specType)
 		{
 			if (BinaryOperator.ADD.equals (op))
-				return getNameID (TypeBaseIntrinsicName.PLUS, specType);
+				return getNameID (TypeBaseIntrinsicEnum.PLUS.value (), specType);
 			if (BinaryOperator.SUBTRACT.equals (op))
-				return getNameID (TypeBaseIntrinsicName.MINUS, specType);
+				return getNameID (TypeBaseIntrinsicEnum.MINUS.value (), specType);
 			if (BinaryOperator.MULTIPLY.equals (op))
-				return getNameID (TypeBaseIntrinsicName.MULTIPLY, specType);
+				return getNameID (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
 			if (BinaryOperator.DIVIDE.equals (op))
-				return getNameID (TypeBaseIntrinsicName.DIVIDE, specType);
+				return getNameID (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
 			return null;
 		}
 
@@ -299,14 +303,17 @@ public class ArchitectureDescriptionManager
 		{
 			String strFnx = fnx.getName ().toString ();
 			if (Globals.FNX_BARRIER.getName ().equals (strFnx))
-				return getNameID (TypeBaseIntrinsicName.BARRIER, specType);
+				return getNameID (TypeBaseIntrinsicEnum.BARRIER.value (), specType);
 			if (Globals.FNX_FMA.getName ().equals (strFnx))
-				return getNameID (TypeBaseIntrinsicName.FMA, specType);
+				return getNameID (TypeBaseIntrinsicEnum.FMA.value (), specType);
 			if (Globals.NUMBER_OF_THREADS.getName ().equals (strFnx))
-				return getNameID (TypeBaseIntrinsicName.NUMTHREADS, specType);
+				return getNameID (TypeBaseIntrinsicEnum.NUMTHREADS.value (), specType);
 			if (Globals.THREAD_NUMBER.getName ().equals (strFnx))
-				return getNameID (TypeBaseIntrinsicName.THREADID, specType);
+				return getNameID (TypeBaseIntrinsicEnum.THREADID.value (), specType);
 
+			IDExpression exprFnx = getNameID (strFnx, specType);
+			if (exprFnx != null)
+				return exprFnx;
 			return fnx.getName () instanceof IDExpression ? (IDExpression) fnx.getName () : new NameID (fnx.getName ().toString ());
 		}
 
@@ -347,9 +354,13 @@ public class ArchitectureDescriptionManager
 	{
 		try
 		{
+			// unmarshal the architecture description
 			JAXBContext context = JAXBContext.newInstance (getClass ().getPackage ().getName ());
 			ArchitectureTypes types = (ArchitectureTypes) context.createUnmarshaller ().unmarshal (fileHardwareDescriptions);
 
+			resolveInheritsFrom (types);
+
+			// construct hardware description objects
 			m_mapDescriptions = new HashMap<String, ArchitectureDescriptionManager.HardwareDescription> ();
 			for (TypeArchitectureType type : types.getArchitectureType ())
 				m_mapDescriptions.put (type.getName (), new HardwareDescription (type));
@@ -369,6 +380,134 @@ public class ArchitectureDescriptionManager
 					e.getLinkedException ().getMessage ()));
 			}
 			System.exit (-1);
+		}
+	}
+
+	private void resolveInheritsFrom (ArchitectureTypes types)
+	{
+		// resolve "inherits-from" attributes
+		Map<String, TypeArchitectureType> mapResolved = new HashMap<String, TypeArchitectureType> ();
+		Map<String, TypeArchitectureType> mapToResolve = new HashMap<String, TypeArchitectureType> ();
+
+		// add types without "inherits-from" attributes to the map of resolved types
+		for (TypeArchitectureType type : types.getArchitectureType ())
+		{
+			if (type.getInheritsFrom () == null || "".equals (type.getInheritsFrom ()))
+				mapResolved.put (type.getName (), type);
+			else
+				mapToResolve.put (type.getName (), type);
+		}
+
+		// resolve types iteratively
+		while (!mapToResolve.isEmpty ())
+		{
+			// find a type that is resolvable
+			TypeArchitectureType type = findResolvableType (mapResolved, mapToResolve);
+			if (type == null)
+				throw new RuntimeException (StringUtil.concat ("The architecture type definition \"", mapToResolve.keySet ().iterator ().next (), "\" is not resolvable."));
+
+			copyFields (type, mapResolved.get (type.getInheritsFrom ()));
+			mapResolved.put (type.getName (), type);
+			mapToResolve.remove (type.getName ());
+		}
+	}
+
+	private TypeArchitectureType findResolvableType (Map<String, TypeArchitectureType> mapResolved, Map<String, TypeArchitectureType> mapToResolve)
+	{
+		for (TypeArchitectureType type : mapToResolve.values ())
+		{
+			TypeArchitectureType typeParent = mapResolved.get (type.getInheritsFrom ());
+			if (typeParent != null)
+				return type;
+		}
+
+		return null;
+	}
+
+	private void copyFields (Object objDest, Object objSrc)
+	{
+		for (Field fieldSrc : objSrc.getClass ().getDeclaredFields ())
+		{
+			try
+			{
+				Field fieldDest = objDest.getClass ().getDeclaredField (fieldSrc.getName ());
+
+				// nothing to do if the dest field is already set
+				if (fieldDest.get (objDest) != null)
+					continue;
+
+				// copy the src field contents
+
+				fieldSrc.setAccessible (true);
+				fieldDest.setAccessible (true);
+
+				if (fieldSrc.get (objSrc) == null)
+					fieldDest.set (objDest, null);
+				else if (fieldSrc.getType ().equals (String.class))
+					fieldDest.set (objDest, fieldSrc.get (objSrc));
+				else if (fieldSrc.getType ().equals (Integer.class))
+					fieldDest.set (objDest, new Integer ((Integer) fieldSrc.get (objSrc)));
+				else if (fieldSrc.getType ().equals (int.class))
+					fieldDest.set (objDest, ((Integer) fieldSrc.get (objSrc)).intValue ());
+				else if (fieldSrc.getType ().equals (Boolean.class))
+					fieldDest.set (objDest, new Boolean ((Boolean) fieldSrc.get (objSrc)));
+				else if (fieldSrc.getType ().equals (boolean.class))
+					fieldDest.set (objDest, ((Boolean) fieldSrc.get (objSrc)).booleanValue ());
+				else if (fieldSrc.getType ().isEnum ())
+					fieldDest.set (objDest, fieldSrc.get (objSrc));
+				else if (fieldSrc.getType ().equals (List.class))
+				{
+					List<Object> list = new ArrayList<Object> ();
+					for (Object objSrcEntry : (List<?>) fieldSrc.get (objSrc))
+					{
+						if (objSrcEntry == null)
+							list.add (null);
+						else
+						{
+							Object objDestEntry = objSrcEntry.getClass ().newInstance ();
+							copyFields (objDestEntry, objSrcEntry);
+							list.add (objDestEntry);
+						}
+					}
+					fieldDest.set (objDest, list);
+				}
+				else
+				{
+					if (fieldSrc.get (objSrc) == null)
+						fieldDest.set (objDest, null);
+					else
+					{
+						Object objVal = fieldSrc.getType ().newInstance ();
+						fieldDest.set (objDest, objVal);
+						copyFields (objVal, fieldSrc.get (objSrc));
+					}
+				}
+			}
+			catch (SecurityException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			catch (NoSuchFieldException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			catch (IllegalArgumentException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			catch (IllegalAccessException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			catch (InstantiationException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 

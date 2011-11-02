@@ -6,7 +6,7 @@
 #
 
 CC = icc
-CFLAGS = -O3 -openmp
+CFLAGS = -O3 -openmp -I.
 
 bench: kernel.o driver.o $(PATUS_RUNTIME_OBJECT_FILES)
 	$(CC) $(CFLAGS) -o $@ $+

@@ -20,4 +20,11 @@
 		<nature>org.eclipse.jdt.core.javanature</nature>
 		<nature>at.ssw.coco.eclipse.builder.CocoNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>Link</name>
+			<type>2</type>
+			<locationURI>TEMP</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>

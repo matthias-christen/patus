@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -204,10 +204,29 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 	 * @param bCanSwapWith
 	 * @return
 	 */
+	@SuppressWarnings("unchecked")
 	private Expression generateFunctionCall (FunctionCall fc, Specifier specDatatype, boolean bVectorize)
 	{
 		// try to calculate with class methods
-		Expression exprResult = invoke (fc.getName ().toString (), fc.getArguments ().toArray (), bVectorize);
+		Object[] rgArgs = new Object[fc.getArguments ().size () + 2];
+		fc.getArguments ().toArray (rgArgs);
+		rgArgs[rgArgs.length - 2] = specDatatype;
+		rgArgs[rgArgs.length - 1] = bVectorize;
+
+		Expression exprResult = invoke (fc.getName ().toString (), rgArgs);
+		if (exprResult == null)
+		{
+			IDExpression idFnxName = m_data.getArchitectureDescription ().getIntrinsicName (fc, specDatatype);
+			if (idFnxName != null)
+			{
+				List<Expression> listArgs = new ArrayList<Expression> (fc.getArguments ().size ());
+				for (Expression exprArg : (List<Expression>) fc.getArguments ())
+					listArgs.add (createExpression (exprArg.clone (), specDatatype, bVectorize));
+
+				exprResult = new FunctionCall (idFnxName, listArgs);
+			}
+		}
+
 		return exprResult == null ? fc : exprResult;
 	}
 

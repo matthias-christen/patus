@@ -6,7 +6,7 @@
 #
 
 CC = icc
-CFLAGS = -O3 -openmp
+CFLAGS = -O3 -openmp -I.
 
 bench: kernel.o driver.o timer.o
 	$(CC) $(CFLAGS) -o $@ $+

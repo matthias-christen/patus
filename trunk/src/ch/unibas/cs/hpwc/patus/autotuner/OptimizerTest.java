@@ -26,7 +26,7 @@ public class OptimizerTest
 		}
 
 		@Override
-		protected double runProgram (int[] rgParams, StringBuilder sbResult)
+		protected double runPrograms (int[] rgParams, StringBuilder sbResult)
 		{
 			if (rgParams[4] == 4 || rgParams[5] == 2)
 				return Double.MAX_VALUE;

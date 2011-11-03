@@ -147,7 +147,7 @@ public class HybridOptimizer implements IOptimizer
 		}
 
 		@Override
-		protected double runProgram (int[] rgParams, StringBuilder sbResult)
+		protected double runPrograms (int[] rgParams, StringBuilder sbResult)
 		{
 			return 0;
 		}
@@ -216,20 +216,20 @@ public class HybridOptimizer implements IOptimizer
 			IRunExecutable runExhaustive = new AbstractRunExecutable (run.getExhaustiveParamSet (), run.getConstraints ())
 			{
 				@Override
-				protected double runProgram (final int[] rgActualParamsExhaustive, StringBuilder sbResultExhaustive)
+				protected double runPrograms (final int[] rgActualParamsExhaustive, StringBuilder sbResultExhaustive)
 				{
 					// inner loop with m_optMain
 					m_optMain.optimize (new RunExecutable (run.getExecutable (), run.getMainParamSet (), run.getConstraints ())
 					{
 						@Override
-						protected double runProgram (int[] rgActualParamsInner, StringBuilder sbResult)
+						protected double runPrograms (int[] rgActualParamsInner, StringBuilder sbResult)
 						{
 							// assemble the parameter list and run the program
 							int[] rgActualTotalParams = run.assembleParameters (rgActualParamsInner, rgActualParamsExhaustive);
 							if (!OptimizerUtil.areConstraintsSatisfied (rgActualTotalParams, getConstraints ()))
 								return Double.MAX_VALUE;
 							
-							double fResult = super.runProgram (rgActualTotalParams, sbResult);
+							double fResult = super.runPrograms (rgActualTotalParams, sbResult);
 							run.addExecution (rgActualTotalParams, fResult);
 							return fResult;
 						}
@@ -270,9 +270,9 @@ public class HybridOptimizer implements IOptimizer
 			m_optMain.optimize (new RunExecutable (run.getExecutable (), run.getMainParamSet (), run.getConstraints ())
 			{
 				@Override
-				protected double runProgram (int[] rgActualParams, StringBuilder sbResult)
+				protected double runPrograms (int[] rgActualParams, StringBuilder sbResult)
 				{
-					double fResult = super.runProgram (rgActualParams, sbResult);
+					double fResult = super.runPrograms (rgActualParams, sbResult);
 					run.addExecution (rgActualParams, fResult);
 					return fResult;
 				}

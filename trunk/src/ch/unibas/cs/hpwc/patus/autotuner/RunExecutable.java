@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -37,12 +37,128 @@ public class RunExecutable extends AbstractRunExecutable
 
 
 	///////////////////////////////////////////////////////////////////
+	// Inner Types
+
+	private static class Executable
+	{
+		/**
+		 * The file descriptor for the executable
+		 */
+		private String[] m_rgExecutableFilenameAndArgs;
+
+		private double m_fWeight;
+
+
+		public Executable (List<String> listArgs, double fWeight)
+		{
+			m_rgExecutableFilenameAndArgs = new String[listArgs.size ()];
+			listArgs.toArray (m_rgExecutableFilenameAndArgs);
+			m_fWeight = fWeight;
+		}
+
+		public double getWeight ()
+		{
+			return m_fWeight;
+		}
+
+		public void setWeight (double fWeight)
+		{
+			m_fWeight = fWeight;
+		}
+
+		public double runProgram (int[] rgActualParams, StringBuilder sbResult)
+		{
+			// try to launch the executable
+			Process process = null;
+			try
+			{
+				// build the command line
+				String[] rgCmdParams = new String[m_rgExecutableFilenameAndArgs.length + rgActualParams.length];
+				rgCmdParams[0] = new File (m_rgExecutableFilenameAndArgs[0]).getAbsolutePath ();
+				for (int i = 1; i < m_rgExecutableFilenameAndArgs.length; i++)
+					rgCmdParams[i] = m_rgExecutableFilenameAndArgs[i];
+				for (int i = 0; i < rgActualParams.length; i++)
+					rgCmdParams[m_rgExecutableFilenameAndArgs.length + i] = String.valueOf (rgActualParams[i]);
+
+				RunExecutable.LOGGER.info (StringUtil.concat ("Executing ", Arrays.toString (rgCmdParams), "..."));
+
+				// run the executable
+				process = Runtime.getRuntime ().exec (rgCmdParams);
+			}
+			catch (IOException e)
+			{
+				System.out.println ("Couldn't launch executable " + m_rgExecutableFilenameAndArgs[0]);
+				return Double.MAX_VALUE;
+			}
+
+			// read the output stream
+			// the timing result is expected in the last line
+			double fResult = Double.MAX_VALUE;
+			Matcher matcher = null;
+			try
+			{
+				BufferedReader out = new BufferedReader (new InputStreamReader (process.getInputStream (), "ASCII"));
+				String strLine = null;
+				for ( ; ; )
+				{
+					strLine = out.readLine ();
+					if (strLine == null)
+						break;
+
+					if (matcher == null)
+						matcher = PATTERN_TIMING.matcher (strLine);
+					else
+						matcher.reset (strLine);
+					if (matcher.matches ())
+						fResult = Double.parseDouble (strLine);
+
+					if (sbResult != null)
+					{
+						sbResult.append (strLine);
+						sbResult.append ('\n');
+					}
+
+					RunExecutable.LOGGER.info (strLine);
+				}
+			}
+			catch (UnsupportedEncodingException e)
+			{
+				System.out.println ("Encoding not supported.");
+				return Double.MAX_VALUE;
+			}
+			catch (IOException e)
+			{
+				System.out.println ("An error occurred while reading the output of the process.");
+				return Double.MAX_VALUE;
+			}
+
+			// wait for the executable to terminate
+			int nReturnValue = -1;
+			try
+			{
+				nReturnValue = process.waitFor ();
+			}
+			catch (InterruptedException e)
+			{
+				// if an interruption occurred, kill the process
+			}
+			finally
+			{
+				process.destroy ();
+			}
+
+			return nReturnValue != 0 ? Double.MAX_VALUE : fResult;
+		}
+	}
+
+
+	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
 	/**
 	 * The file descriptor for the executable
 	 */
-	private String[] m_rgExecutableFilenameAndArgs;
+	private List<Executable> m_listExecutables;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -58,13 +174,18 @@ public class RunExecutable extends AbstractRunExecutable
 	{
 		super (listParamSets, listConstraints);
 
-		m_rgExecutableFilenameAndArgs = getCommandLine (strExecutableFilename);
-		if (m_rgExecutableFilenameAndArgs.length == 0)
+		m_listExecutables = new LinkedList<RunExecutable.Executable> ();
+		parseCommandLine (strExecutableFilename);
+		if (m_listExecutables.size () == 0)
 			throw new RuntimeException ("No executable specified");
+
+		setExecutableDefaultWeights ();
 	}
 
-	protected String[] getCommandLine (String strCmd)
+	protected void parseCommandLine (String strCmd)
 	{
+		boolean bHasWeight = false;
+
 		List<String> listArgs = new LinkedList<String> ();
 		StringBuilder sb = new StringBuilder ();
 		boolean bInQuotes = false;
@@ -94,100 +215,67 @@ public class RunExecutable extends AbstractRunExecutable
 				bInQuotes = !bInQuotes;
 				break;
 
+			case ',':
+				// next executable
+				if (!bHasWeight && sb.length () > 0)
+					listArgs.add (sb.toString ());
+
+				m_listExecutables.add (new Executable (listArgs, bHasWeight ? Double.parseDouble (sb.toString ()) : 0));
+
+				sb.setLength (0);
+				listArgs.clear ();
+				bHasWeight = false;
+				break;
+
+			case ':':
+				if (sb.length () > 0)
+					listArgs.add (sb.toString ());
+				bHasWeight = true;
+				break;
+
 			default:
 				sb.append (c);
 			}
 		}
-		if (sb.length () > 0)
+
+		if (!bHasWeight && sb.length () > 0)
 			listArgs.add (sb.toString ());
 
-		String[] rgArgs = new String[listArgs.size ()];
-		listArgs.toArray (rgArgs);
-		return rgArgs;
+		m_listExecutables.add (new Executable (listArgs, bHasWeight ? Double.parseDouble (sb.toString ()) : 0));
+	}
+
+	/**
+	 * Sets default weights for executables for which no weight has been specified.
+	 */
+	protected void setExecutableDefaultWeights ()
+	{
+		double fMinWeight = Double.MAX_VALUE;
+		for (Executable exe : m_listExecutables)
+			if (exe.getWeight () > 0)
+				fMinWeight = Math.min (fMinWeight, exe.getWeight ());
+
+		if (fMinWeight == Double.MAX_VALUE)
+			fMinWeight = 1.0;
+
+		for (Executable exe : m_listExecutables)
+			if (exe.getWeight () <= 0)
+				exe.setWeight (fMinWeight);
 	}
 
 	@Override
-	protected double runProgram (int[] rgActualParams, StringBuilder sbResult)
+	protected double runPrograms (int[] rgActualParams, StringBuilder sbResult)
 	{
-		// try to launch the executable
-		Process process = null;
-		try
-		{
-			// build the command line
-			String[] rgCmdParams = new String[m_rgExecutableFilenameAndArgs.length + rgActualParams.length];
-			rgCmdParams[0] = new File (m_rgExecutableFilenameAndArgs[0]).getAbsolutePath ();
-			for (int i = 1; i < m_rgExecutableFilenameAndArgs.length; i++)
-				rgCmdParams[i] = m_rgExecutableFilenameAndArgs[i];
-			for (int i = 0; i < rgActualParams.length; i++)
-				rgCmdParams[m_rgExecutableFilenameAndArgs.length + i] = String.valueOf (rgActualParams[i]);
+		double fResultTotal = 0;
 
-			RunExecutable.LOGGER.info (StringUtil.concat ("Executing ", Arrays.toString (rgCmdParams), "..."));
-
-			// run the executable
-			process = Runtime.getRuntime ().exec (rgCmdParams);
-		}
-		catch (IOException e)
+		for (Executable exe : m_listExecutables)
 		{
-			System.out.println ("Couldn't launch executable " + m_rgExecutableFilenameAndArgs[0]);
-			return Double.MAX_VALUE;
+			double fResult = exe.runProgram (rgActualParams, sbResult);
+			if (fResult == Double.MAX_VALUE)
+				return Double.MAX_VALUE;
+
+			fResultTotal += exe.getWeight () * fResult;
 		}
 
-		// read the output stream
-		// the timing result is expected in the last line
-		double fResult = Double.MAX_VALUE;
-		Matcher matcher = null;
-		try
-		{
-			BufferedReader out = new BufferedReader (new InputStreamReader (process.getInputStream (), "ASCII"));
-			String strLine = null;
-			for ( ; ; )
-			{
-				strLine = out.readLine ();
-				if (strLine == null)
-					break;
-
-				if (matcher == null)
-					matcher = PATTERN_TIMING.matcher (strLine);
-				else
-					matcher.reset (strLine);
-				if (matcher.matches ())
-					fResult = Double.parseDouble (strLine);
-
-				if (sbResult != null)
-				{
-					sbResult.append (strLine);
-					sbResult.append ('\n');
-				}
-
-				RunExecutable.LOGGER.info (strLine);
-			}
-		}
-		catch (UnsupportedEncodingException e)
-		{
-			System.out.println ("Encoding not supported.");
-			return Double.MAX_VALUE;
-		}
-		catch (IOException e)
-		{
-			System.out.println ("An error occurred while reading the output of the process.");
-			return Double.MAX_VALUE;
-		}
-
-		// wait for the executable to terminate
-		int nReturnValue = -1;
-		try
-		{
-			nReturnValue = process.waitFor ();
-		}
-		catch (InterruptedException e)
-		{
-			// if an interruption occurred, kill the process
-		}
-		finally
-		{
-			process.destroy ();
-		}
-
-		return nReturnValue != 0 ? Double.MAX_VALUE : fResult;
+		return fResultTotal;
 	}
 }

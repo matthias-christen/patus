@@ -229,7 +229,10 @@ public class RunExecutable extends AbstractRunExecutable
 
 			case ':':
 				if (sb.length () > 0)
+				{
 					listArgs.add (sb.toString ());
+					sb.setLength (0);
+				}
 				bHasWeight = true;
 				break;
 

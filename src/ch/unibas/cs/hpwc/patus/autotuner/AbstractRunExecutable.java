@@ -212,7 +212,7 @@ public abstract class AbstractRunExecutable implements IRunExecutable
 		if (bCheckBounds && !OptimizerUtil.areConstraintsSatisfied (rgActualParams, getConstraints ()))
 			return Double.MAX_VALUE;
 
-		double fResult = runProgram (rgActualParams, sbResult);
+		double fResult = runPrograms (rgActualParams, sbResult);
 		m_mapCachedExecutions.put (new IntArray (rgParams, true), new ProgramExecutionResult (fResult, sbResult == null ? "" : sbResult.toString ()));
 
 		return fResult;
@@ -244,7 +244,7 @@ public abstract class AbstractRunExecutable implements IRunExecutable
 		return histogram;
 	}
 
-	protected abstract double runProgram (int[] rgParams, StringBuilder sbResult);
+	protected abstract double runPrograms (int[] rgParams, StringBuilder sbResult);
 	
 	@Override
 	public int getRunsCount ()

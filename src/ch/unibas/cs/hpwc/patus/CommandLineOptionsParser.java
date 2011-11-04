@@ -73,7 +73,12 @@ public class CommandLineOptionsParser
 			else if ("outdir".equals (strOption))
 				m_fileOutDir = new File (strValue);
 			else if ("generate".equals (strOption))
-				m_options.setTarget (CodeGenerationOptions.ETarget.fromString (strValue));
+			{
+				m_options.clearTargets ();
+				String[] rgValues = strValue.split (",");
+				for (String strTarget : rgValues)
+					m_options.addTarget (CodeGenerationOptions.ETarget.fromString (strTarget));
+			}
 			else if ("kernel-file".equals (strOption))
 				m_options.setKernelFilename (strValue);
 			else if ("compatibility".equals (strOption))
@@ -88,6 +93,8 @@ public class CommandLineOptionsParser
 			}
 			else if ("use-native-simd-datatypes".equals (strOption))
 				m_options.setUseNativeSIMDDatatypes (strValue.equals ("yes"));
+			else if ("create-initialization".equals (strOption))
+				m_options.setCreateInitialization (strValue.equals ("yes"));
 			else if ("create-validation".equals (strOption))
 				m_options.setCreateValidation (!strValue.equals ("no"));
 			else if ("validation-tolerance".equals (strOption))
@@ -104,6 +111,95 @@ public class CommandLineOptionsParser
 		m_hwDesc = mgrHwDesc.getHardwareDescription (m_strArchName);
 		if (m_hwDesc == null)
 			throw new RuntimeException (StringUtil.concat ("Could not find hardware '", m_strArchName, "'"));
+	}
+
+	public static void printHelp ()
+	{
+		System.out.println ("Usage: Patus codegen[-e]");
+		System.out.println ("    --stencil=<Stencil File>  --strategy=<Strategy File>");
+		System.out.println ("    --architecture=<Architecture Description File>,<Hardware Name>");
+		System.out.println ("    [--outdir=<Output Directory>] [--generate=<Target>]");
+		System.out.println ("    [--kernel-file=<Kernel Output File Name>] [--compatibility={C|Fortran}]");
+		System.out.println ("    [--unroll=<UnrollFactor1,UnrollFactor2,...>]");
+		System.out.println ("    [--use-native-simd-datatypes={yes|no}]");
+		System.out.println ("    [--create-validation={yes|no}] [--validation-tolerance=<Tolerance>]");
+		System.out.println ("    [--debug=<Debug Option 1>,[<Debug Option 2>,[...,[<Debug Option N>]...]]");
+		System.out.println ();
+		System.out.println ();
+		System.out.println ("--stencil=<Stencil File>");
+		System.out.println ("              Specify the stencil specification file for which to generate code.");
+		System.out.println ();
+		System.out.println ("--strategy=<Strategy File>");
+		System.out.println ("              The strategy file describing the parallelization/optimization strategy.");
+		System.out.println ();
+		System.out.println ("--architecture=<Architecture Description File>,<Hardware Name>");
+		System.out.println ("              The architecture description file and the name of the selected");
+		System.out.println ("              architecture (as specified in the 'name' attribute of the");
+		System.out.println ("              'architectureType' element).");
+		System.out.println ();
+		System.out.println ("--outdir=<Output Directory>");
+		System.out.println ("              The output directory in which the generated files will be written.");
+		System.out.println ("              Optional; if not specified the generated files will be created in the");
+		System.out.println ("              current directory.");
+		System.out.println ();
+		System.out.println ("--generate=<Target>");
+		System.out.println ("              The target that will be generated. <Target> can be one or a combination");
+		System.out.println ("              (separated by commas) of:");
+		System.out.println ();
+		System.out.println ("              benchmark                This will generate a full benchmark harness");
+		System.out.println ("                                       (default).");
+		System.out.println ();
+		System.out.println ("              kernel                   This will only generate the kernel file.");
+		System.out.println ();
+		System.out.println ("--kernel-file=<Kernel Output File Name>");
+		System.out.println ("              Specify the name of the C source file to which the generated kernel");
+		System.out.println ("              is written. The suffix is appended or replaced from the definition");
+		System.out.println ("              in the hardware architecture description. Defaults to 'kernel'.");
+		System.out.println ();
+		System.out.println ("--compatibility={C|Fortran}");
+		System.out.println ("              Select whether the generated code has to be compatible with Fortran");
+		System.out.println ("              (creates pointer-only input types to the kernel selection function).");
+		System.out.println ("              Defaults to 'C'.");
+		System.out.println ("              Ignored if the (only) <Target> is 'benchmark'.");
+		System.out.println ();
+		System.out.println ("--unroll=<UnrollFactor1,UnrollFactor2,...>");
+		System.out.println ("              A list of unrolling factors applied to the inner most loop nest");
+		System.out.println ("              containing the stencil computation.");
+		System.out.println ();
+		System.out.println ("--use-native-simd-datatypes={yes|no}]");
+		System.out.println ("              Specify whether the native SSE datatype is to be used in the kernel");
+		System.out.println ("              signature. This also requires that the fields are padded correctly");
+		System.out.println ("              in unit stride direction. Defaults to 'no'.");
+		System.out.println ();
+		System.out.println ("--create-initialization={yes|no}");
+		System.out.println ("              Specifies whether to create initialization code.");
+		System.out.println ("              Defaults to \"yes\".");
+		System.out.println ("              For benchmarking kernels, the initialization is always created.");
+		System.out.println ();
+		System.out.println ("--create-validation={yes|no}");
+		System.out.println ("              Specifies whether to create code that will validate the result.");
+		System.out.println ("              If <Target> is not \"benchmark\", this option will be ignored.");
+		System.out.println ("              Defaults to \"yes\".");
+		System.out.println ();
+		System.out.println ("--validation-tolerance=<Tolerance>");
+		System.out.println ("              Sets the tolerance for the relative error in the validation.");
+		System.out.println ("              This option is only relevant if validation code is generated");
+		System.out.println (StringUtil.concat (
+			                "              (--create-validation=yes). Defaults to ", CodeGenerationOptions.TOLERANCE_DEFAULT, "."));
+		System.out.println ();
+		System.out.println ("--debug=<Debug Option 1>,[<Debug Option 2>,[...,[<Debug Option N>]...]]");
+		System.out.println ("              Specify debug options (as a comma-sperated list) that will influence");
+		System.out.println ("              the code generator.");
+		System.out.println ("              Valid debug options (for <Debug Option i>, i=1,...,N) are:");
+		System.out.println ();
+		System.out.println ("              print-stencil-indices    This will insert a printf statement for");
+		System.out.println ("                                       every stencil calculation with the index");
+		System.out.println ("                                       into the grid array at which the result");
+		System.out.println ("                                       is written.");
+		System.out.println ();
+		System.out.println ("              print-validation-errors  Prints all values if the validation fails.");
+		System.out.println ("                                       The option is ignored if no validation code");
+		System.out.println ("                                       is generated.");
 	}
 
 	public final File getStencilFile ()

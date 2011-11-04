@@ -224,7 +224,7 @@ public class CodeGenerator
 	 * @param bIncludeAutotuneParameters Flag specifying whether to include the autotuning parameters
 	 * 	in the function signatures
 	 */
-	public void generate (TranslationUnit unit, boolean bIncludeAutotuneParameters)
+	public void generate (List<KernelSourceFile> listOutputs, boolean bIncludeAutotuneParameters)
 	{
 		createFunctionParameterList (true, bIncludeAutotuneParameters);
 
@@ -243,22 +243,25 @@ public class CodeGenerator
 
 
 		// create the initialization code
+		StatementListBundle slbInitializationBody = null;
+		if (m_data.getOptions ().getCreateInitialization ())
+		{
+			m_data.getData ().setCreatingInitialization (true);
+			m_data.getCodeGenerators ().reset ();
+			m_data.getData ().reset ();
+			CodeGeneratorRuntimeOptions optionsInitialize = new CodeGeneratorRuntimeOptions ();
+			optionsInitialize.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_INITIALIZE);
+			if (m_data.getArchitectureDescription ().useSIMD ())
+				optionsInitialize.setOption (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, !m_data.getOptions ().useNativeSIMDDatatypes ());
 
-		m_data.getData ().setCreatingInitialization (true);
-		m_data.getCodeGenerators ().reset ();
-		m_data.getData ().reset ();
-		CodeGeneratorRuntimeOptions optionsInitialize = new CodeGeneratorRuntimeOptions ();
-		optionsInitialize.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_INITIALIZE);
-		if (m_data.getArchitectureDescription ().useSIMD ())
-			optionsInitialize.setOption (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, !m_data.getOptions ().useNativeSIMDDatatypes ());
-
-		CompoundStatement cmpstmtStrategyInitThreadBody = m_cgThreadCode.generate (m_data.getStrategy ().getBody (), optionsInitialize);
-		StatementListBundle slbInitializationBody = new SingleThreadCodeGenerator (m_data).generate (cmpstmtStrategyInitThreadBody, optionsInitialize);
-		addAdditionalDeclarationsAndAssignments (slbInitializationBody);
-
+			CompoundStatement cmpstmtStrategyInitThreadBody = m_cgThreadCode.generate (m_data.getStrategy ().getBody (), optionsInitialize);
+			slbInitializationBody = new SingleThreadCodeGenerator (m_data).generate (cmpstmtStrategyInitThreadBody, optionsInitialize);
+			addAdditionalDeclarationsAndAssignments (slbInitializationBody);
+		}
 
 		// add global declarations
-		addAdditionalGlobalDeclarations (unit, slbThreadBody.getDefault ());
+		for (KernelSourceFile out : listOutputs)
+			addAdditionalGlobalDeclarations (out, slbThreadBody.getDefault ());
 
 		// add internal autotune parameters to the parameter list
 		createFunctionInternalAutotuneParameterList (slbThreadBody);
@@ -267,15 +270,20 @@ public class CodeGenerator
 		optimizeCode (slbThreadBody);
 
 		// package the code into functions and add them to the translation unit
+		for (KernelSourceFile out : listOutputs)
+			packageKernelSourceFile (out, slbThreadBody, slbInitializationBody, bIncludeAutotuneParameters);
+	}
 
+	private void packageKernelSourceFile (KernelSourceFile out, StatementListBundle slbThreadBody, StatementListBundle slbInitializationBody, boolean bIncludeAutotuneParameters)
+	{
 		// stencil function(s)
-		boolean bMakeFortranCompatible = m_data.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+		boolean bMakeFortranCompatible = out.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
 		String strStencilKernelName = m_data.getStencilCalculation ().getName ();
 		packageCode (new GeneratedProcedure (
 			new NameID (bMakeFortranCompatible ? Globals.createFortranName (strStencilKernelName) : strStencilKernelName),
 			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (true, bIncludeAutotuneParameters, false, false),
 			slbThreadBody,
-			unit)
+			out.getTranslationUnit ())
 		{
 			@Override
 			protected void setGlobalGeneratedIdentifiersFunctionName (NameID nidFnxName)
@@ -285,26 +293,30 @@ public class CodeGenerator
 		}, true, bIncludeAutotuneParameters);
 
 		// initialization function
-		packageCode (new GeneratedProcedure (
-			Globals.getInitializeFunction (m_data.getStencilCalculation ().getName (), bMakeFortranCompatible),
-			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (false, bIncludeAutotuneParameters, false, false),
-			slbInitializationBody,
-			unit)
+		if (slbInitializationBody != null && out.getCreateInitialization ())
 		{
-			@Override
-			protected void setGlobalGeneratedIdentifiersFunctionName (NameID nidFnxName)
+			packageCode (new GeneratedProcedure (
+				Globals.getInitializeFunction (m_data.getStencilCalculation ().getName (), bMakeFortranCompatible),
+				m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (false, bIncludeAutotuneParameters, false, false),
+				slbInitializationBody,
+				out.getTranslationUnit ())
 			{
-				m_data.getData ().getGlobalGeneratedIdentifiers ().setInitializeFunctionName (nidFnxName);
-			}
-		}, false, bIncludeAutotuneParameters);
+				@Override
+				protected void setGlobalGeneratedIdentifiersFunctionName (NameID nidFnxName)
+				{
+					m_data.getData ().getGlobalGeneratedIdentifiers ().setInitializeFunctionName (nidFnxName);
+				}
+			}, false, bIncludeAutotuneParameters);
+		}
 	}
 
 	/**
 	 * Adds additional global declarations.
 	 * @param unit The translation unit in which the declarations are placed
 	 */
-	private void addAdditionalGlobalDeclarations (TranslationUnit unit, Traversable trvContext)
+	private void addAdditionalGlobalDeclarations (KernelSourceFile out, Traversable trvContext)
 	{
+		TranslationUnit unit = out.getTranslationUnit ();
 		for (Declaration decl : m_data.getData ().getGlobalDeclarationsToAdd ())
 		{
 			VariableDeclarator declarator = (VariableDeclarator) decl.getChildren ().get (0);

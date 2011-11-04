@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -132,7 +132,7 @@ public class ValidationCodeGenerator
 	 */
 	public StatementList generate (Set<IDExpression> setGrids)
 	{
-		if (!m_data.getOptions ().createValidationCode ())
+		if (!m_data.getOptions ().getCreateValidationCode ())
 			return m_sl;
 
 		m_setGrids = setGrids;

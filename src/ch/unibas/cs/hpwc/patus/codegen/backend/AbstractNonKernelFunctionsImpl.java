@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -328,7 +328,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 						sl.addDeclaration (decl);
 
 						// declare additional grids for validation
-						if (m_data.getOptions ().createValidationCode ())
+						if (m_data.getOptions ().getCreateValidationCode ())
 						{
 							sl.addDeclaration (new VariableDeclaration (
 								decl.getSpecifiers (),
@@ -482,7 +482,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 			));
 
 			// create the malloc statement for the reference grid (if validation code is to be generated)
-			if (m_data.getOptions ().createValidationCode ())
+			if (m_data.getOptions ().getCreateValidationCode ())
 			{
 				sl.addStatement (new ExpressionStatement (new AssignmentExpression (
 					new NameID (StringUtil.concat (idGrid.getName (), ValidationCodeGenerator.SUFFIX_REFERENCE)),
@@ -516,7 +516,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		sl.addStatement (new ExpressionStatement (new FunctionCall (nidInitialize.clone (), getFunctionArguments (listArgVars, sl, true))));
 
 		// initialize the reference grids
-		if (m_data.getOptions ().createValidationCode ())
+		if (m_data.getOptions ().getCreateValidationCode ())
 		{
 			Expression exprInit = new FunctionCall (nidInitialize.clone (), getFunctionArguments (listArgVars, sl, false));
 			exprInit = (Expression) ASTUtil.addSuffixToIdentifiers (exprInit, ValidationCodeGenerator.SUFFIX_REFERENCE, getGridSet ());
@@ -725,7 +725,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 			sl.addStatement (new ExpressionStatement (new FunctionCall (
 				new NameID ("free"), CodeGeneratorUtil.expressions (exprVar))));
 
-			if (m_data.getOptions ().createValidationCode ())
+			if (m_data.getOptions ().getCreateValidationCode ())
 			{
 				if (setGrids == null)
 					setGrids = getGridSet ();
@@ -821,7 +821,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	@Override
 	public Expression getDoValidation ()
 	{
-		return (m_data.getOptions ().createValidationCode () ? Globals.ONE : Globals.ZERO).clone ();
+		return (m_data.getOptions ().getCreateValidationCode () ? Globals.ONE : Globals.ZERO).clone ();
 	}
 
 	@Override

@@ -10,7 +10,9 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.codegen;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
@@ -28,6 +30,11 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
 public class CodeGenerationOptions
 {
 	private final static Logger LOGGER = Logger.getLogger (CodeGenerationOptions.class);
+
+	/**
+	 * The default filename for the kernel source file
+	 */
+	public final static String DEFAULT_KERNEL_FILENAME = "kernel";
 
 	/**
 	 * Tolerance for validation (if the absolute value of the difference
@@ -116,9 +123,11 @@ public class CodeGenerationOptions
 
 	private Set<EDebugOption> m_setDebugOptions;
 
-	private ETarget m_target;
+	private List<ETarget> m_listTargets;
 
 	private String m_strKernelFilename;
+
+	private boolean m_bCreateInitialization;
 
 	private boolean m_bCreateValidation;
 
@@ -135,8 +144,10 @@ public class CodeGenerationOptions
 		m_rgUnrollingFactors = new int[] { 1, 2 };
 		m_bUseNativeSIMDDatatypes = false;
 		m_setDebugOptions = new HashSet<CodeGenerationOptions.EDebugOption> ();
-		m_target = ETarget.BENCHMARK_HARNESS;
-		m_strKernelFilename = "kernel";
+		m_listTargets = new ArrayList<CodeGenerationOptions.ETarget> (1);
+		m_listTargets.add (ETarget.BENCHMARK_HARNESS);
+		m_strKernelFilename = DEFAULT_KERNEL_FILENAME;
+		m_bCreateInitialization = true;
 		m_bCreateValidation = true;
 		m_fValidationTolerance = TOLERANCE_DEFAULT;
 	}
@@ -151,9 +162,11 @@ public class CodeGenerationOptions
 		setUnrollingFactors (options.getUnrollingFactors ());
 		setUseNativeSIMDDatatypes (options.useNativeSIMDDatatypes ());
 		m_setDebugOptions.addAll (options.m_setDebugOptions);
-		setTarget (options.getTarget ());
+		for (ETarget target : options.getTargets ())
+			addTarget (target);
 		setKernelFilename (options.getKernelFilename ());
-		setCreateValidation (options.createValidationCode ());
+		setCreateInitialization (options.getCreateInitialization ());
+		setCreateValidation (options.getCreateValidationCode ());
 		setValidationTolerance (options.getValidationTolerance ());
 	}
 
@@ -228,14 +241,24 @@ public class CodeGenerationOptions
 		return isDebugOptionSet (EDebugOption.PRINT_STENCIL_INDICES);
 	}
 
-	public ETarget getTarget ()
+	public List<ETarget> getTargets ()
 	{
-		return m_target;
+		return m_listTargets;
 	}
 
-	public void setTarget (ETarget target)
+	public void clearTargets ()
 	{
-		m_target = target;
+		m_listTargets.clear ();
+	}
+
+	public void addTarget (ETarget target)
+	{
+		if (!m_listTargets.contains (target))
+			m_listTargets.add (target);
+
+		// make sure that "createInitialization" is set then the target is "benchmark"
+		if (target == CodeGenerationOptions.ETarget.BENCHMARK_HARNESS)
+			m_bCreateInitialization = true;
 	}
 
 	public String getKernelFilename ()
@@ -251,7 +274,17 @@ public class CodeGenerationOptions
 			m_strKernelFilename = strKernelFilename;
 	}
 
-	public boolean createValidationCode ()
+	public void setCreateInitialization (boolean bCreateInitialization)
+	{
+		m_bCreateInitialization = bCreateInitialization;
+	}
+
+	public boolean getCreateInitialization ()
+	{
+		return m_bCreateInitialization;
+	}
+
+	public boolean getCreateValidationCode ()
 	{
 		// TODO: implement validation for SIMD datatypes (=> remove restriction)
 		return m_bCreateValidation && !useNativeSIMDDatatypes ();

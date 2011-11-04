@@ -14,6 +14,7 @@ import org.apache.log4j.Logger;
 import ch.unibas.cs.hpwc.patus.CodeGeneratorMain;
 import ch.unibas.cs.hpwc.patus.CommandLineOptionsParser;
 import ch.unibas.cs.hpwc.patus.analysis.StrategyFix;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
 import ch.unibas.cs.hpwc.patus.codegen.Strategy;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
 import ch.unibas.cs.hpwc.patus.util.FileUtil;
@@ -34,7 +35,7 @@ public class Preprocessor
 	private final static String STENCIL_START = "begin-stencil-specification";
 	private final static String STENCIL_END = "end-stencil-specification";
 
-	private final static Pattern PATTERN_PRAGMA = Pattern.compile ("\\s*#pragma\\s+patus\\s+([A-Za-z0-9_]+)\\s*(\\(.*\\))*");
+	private final static Pattern PATTERN_PRAGMA = Pattern.compile ("\\s*#pragma\\s+patus\\s+([A-Za-z0-9-_]+)\\s*(\\(.*\\))*");
 
 
 	///////////////////////////////////////////////////////////////////
@@ -92,6 +93,7 @@ public class Preprocessor
 			if (matcherPragma.matches ())
 			{
 				String strPragma = matcherPragma.group (1);
+
 				if (strPragma.equals (STENCIL_START))
 				{
 					// extract stencil specification into new file
@@ -106,12 +108,11 @@ public class Preprocessor
 					generateCode (sb.toString ());
 					sb.setLength (0);
 				}
-
-				if (bIsExtractingStencilSpec)
-				{
-					sb.append (strLine);
-					sb.append ('\n');
-				}
+			}
+			else if (bIsExtractingStencilSpec)
+			{
+				sb.append (strLine);
+				sb.append ('\n');
 			}
 			else
 				out.println (strLine);
@@ -134,6 +135,13 @@ public class Preprocessor
 			StrategyFix.fix (m_strategy, m_options.getHardwareDescription (), m_options.getOptions ());
 		}
 
+		// we want to create both the benchmarking harness and the standalone kernel source file
+		m_options.getOptions ().addTarget (CodeGenerationOptions.ETarget.BENCHMARK_HARNESS);
+		m_options.getOptions ().addTarget (CodeGenerationOptions.ETarget.KERNEL_ONLY);
+		m_options.getOptions ().setCreateInitialization (false);
+		m_options.getOptions ().setKernelFilename (StringUtil.concat ("../", stencil.getName ()));
+
+		// create the output directory
 		File fileOutputDir = new File (m_fileOutput.getParentFile (), stencil.getName ());
 		fileOutputDir.mkdirs ();
 
@@ -150,7 +158,7 @@ public class Preprocessor
 
 		if (options.getStencilFile () == null || options.getStrategyFile () == null || options.getArchitectureDescriptionFile () == null || options.getArchitectureName () == null)
 		{
-			CodeGeneratorMain.printHelp ();
+			CommandLineOptionsParser.printHelp ();
 			return;
 		}
 

@@ -46,7 +46,7 @@ public class Main
 		String strMode = args[0];
 		if (strMode.equals ("codegen"))
 			CodeGeneratorMain.main (Arrays.copyOfRange (args, 1, args.length));
-		else if (strMode.equals ("embedded-codegen"))
+		else if (strMode.equals ("codegen-e"))
 			Preprocessor.main (Arrays.copyOfRange (args, 1, args.length));
 		else if (strMode.equals ("autotune"))
 			StandaloneAutotuner.main (Arrays.copyOfRange (args, 1, args.length));

@@ -11,23 +11,21 @@
 package ch.unibas.cs.hpwc.patus;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import cetus.hir.TranslationUnit;
 import ch.unibas.cs.hpwc.patus.analysis.StrategyFix;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions.ETarget;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
 import ch.unibas.cs.hpwc.patus.codegen.Strategy;
-import ch.unibas.cs.hpwc.patus.codegen.benchmark.BenchmarkHarness;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
 import ch.unibas.cs.hpwc.patus.symbolic.Maxima;
-import ch.unibas.cs.hpwc.patus.util.IndentOutputStream;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -114,6 +112,38 @@ public class CodeGeneratorMain
 	}
 
 	/**
+	 * Creates the list of output kernel source files.
+	 * @return
+	 */
+	private List<KernelSourceFile> createOutputsList ()
+	{
+		List<KernelSourceFile> listOutputs = new ArrayList<KernelSourceFile> ();
+
+		// create a benchmarking version?
+		if (m_options.getTargets ().contains (ETarget.BENCHMARK_HARNESS))
+		{
+			KernelSourceFile ksf = new KernelSourceFile (getOutputFile (CodeGenerationOptions.DEFAULT_KERNEL_FILENAME));
+			ksf.setCompatibility (CodeGenerationOptions.ECompatibility.C);
+			ksf.setCreateInitialization (true);
+			ksf.setCreateBenchmarkingHarness (true);
+
+			listOutputs.add (ksf);
+		}
+
+		if (m_options.getTargets ().contains (ETarget.KERNEL_ONLY))
+		{
+			KernelSourceFile ksf = new KernelSourceFile (getOutputFile (m_options.getKernelFilename ()));
+			ksf.setCompatibility (m_options.getCompatibility ());
+			ksf.setCreateInitialization (m_options.getCreateInitialization ());
+			ksf.setCreateBenchmarkingHarness (false);
+
+			listOutputs.add (ksf);
+		}
+
+		return listOutputs;
+	}
+
+	/**
 	 * Runs the code generator.
 	 */
 	public void generateCode ()
@@ -131,24 +161,13 @@ public class CodeGeneratorMain
 
 		// generate the code
 		CodeGeneratorMain.LOGGER.info ("Generating code...");
-		TranslationUnit unit = new TranslationUnit (getOutputFile ());
-		cg.generate (unit, true);
+		List<KernelSourceFile> listOutputs = createOutputsList ();
+		cg.generate (listOutputs, true);
 
-		// generate the benchmark harness
-		CodeGeneratorMain.LOGGER.info ("Creating benchmarking harness...");
-		BenchmarkHarness bh = new BenchmarkHarness (m_data);
-		bh.generate (m_fileOutputDirectory);
-
-		// write the code
-		try
-		{
-			PrintWriter outFile = new PrintWriter (new IndentOutputStream (new FileOutputStream (new File (m_fileOutputDirectory, unit.getOutputFilename ()))));
-			writeCode (outFile, cg, unit);
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace ();
-		}
+		// write code to files
+		CodeGeneratorMain.LOGGER.info ("Writing code to files...");
+		for (KernelSourceFile outSrc : listOutputs)
+			outSrc.writeCode (cg, m_data, m_fileOutputDirectory);
 	}
 
 	/**
@@ -168,31 +187,9 @@ public class CodeGeneratorMain
 		//CodeGeneratorMain.LOGGER.info ("Starting autotuner...");
 	}
 
-	/**
-	 * Writes the code file for the translation unit <code>unit</code>.
-	 * @param out The output writer
-	 * @param cg The code generator
-	 * @param unit The translation unit to write to file
-	 */
-	private void writeCode (PrintWriter out, CodeGenerator cg, TranslationUnit unit)
+	private String getOutputFile (String strKernelBaseName)
 	{
-		out.println (cg.getIncludesAndDefines (true));
-
-		String strAdditionalKernelSpecificCode = m_data.getCodeGenerators ().getBackendCodeGenerator ().getAdditionalKernelSpecificCode ();
-		if (strAdditionalKernelSpecificCode != null)
-		{
-			out.println (strAdditionalKernelSpecificCode);
-			out.println ();
-		}
-
-		unit.print (out);
-		out.flush ();
-		out.close ();
-	}
-
-	private String getOutputFile ()
-	{
-		StringBuilder sb = new StringBuilder (m_options.getKernelFilename ());
+		StringBuilder sb = new StringBuilder (strKernelBaseName);
 
 		// remove the suffix from the file name if there is any
 		int nSearchFrom = sb.lastIndexOf (File.separator);
@@ -224,86 +221,6 @@ public class CodeGeneratorMain
 		Maxima.getInstance ().close ();
 	}
 
-	public static void printHelp ()
-	{
-		System.out.println ("Usage: Patus  --stencil=<Stencil File>  --strategy=<Strategy File>");
-		System.out.println ("              --architecture=<Architecture Description File>,<Hardware Name>");
-		System.out.println ("              [--outdir=<Output Directory>] [--generate=<Target>]");
-		System.out.println ("              [--kernel-file=<Kernel Output File Name>] [--compatibility={C|Fortran}]");
-		System.out.println ("              [--unroll=<UnrollFactor1,UnrollFactor2,...>]");
-		System.out.println ("              [--use-native-simd-datatypes={yes|no}]");
-		System.out.println ("              [--create-validation={yes|no}] [--validation-tolerance=<Tolerance>]");
-		System.out.println ("              [--debug=<Debug Option 1>,[<Debug Option 2>,[...,[<Debug Option N>]...]]");
-		System.out.println ();
-		System.out.println ();
-		System.out.println ("--stencil=<Stencil File>");
-		System.out.println ("              Specify the stencil specification file for which to generate code.");
-		System.out.println ();
-		System.out.println ("--strategy=<Strategy File>");
-		System.out.println ("              The strategy file describing the parallelization/optimization strategy.");
-		System.out.println ();
-		System.out.println ("--architecture=<Architecture Description File>,<Hardware Name>");
-		System.out.println ("              The architecture description file and the name of the selected");
-		System.out.println ("              architecture (as specified in the 'name' attribute of the");
-		System.out.println ("              'architectureType' element).");
-		System.out.println ();
-		System.out.println ("--outdir=<Output Directory>");
-		System.out.println ("              The output directory in which the generated files will be written.");
-		System.out.println ("              Optional; if not specified the generated files will be created in the");
-		System.out.println ("              current directory.");
-		System.out.println ();
-		System.out.println ("--generate=<Target>");
-		System.out.println ("              The target that will be generated. <Target> can be one of:");
-		System.out.println ();
-		System.out.println ("              benchmark                This will generate a full benchmark harness");
-		System.out.println ("                                       (default).");
-		System.out.println ();
-		System.out.println ("              kernel                   This will only generate the kernel file.");
-		System.out.println ();
-		System.out.println ("--kernel-file=<Kernel Output File Name>");
-		System.out.println ("              Specify the name of the C source file to which the generated kernel");
-		System.out.println ("              is written. The suffix is appended or replaced from the definition");
-		System.out.println ("              in the hardware architecture description. Defaults to 'kernel'.");
-		System.out.println ();
-		System.out.println ("--compatibility={C|Fortran}");
-		System.out.println ("              Select whether the generated code has to be compatible with Fortran");
-		System.out.println ("              (creates pointer-only input types to the kernel selection function).");
-		System.out.println ("              Defaults to 'C'.");
-		System.out.println ();
-		System.out.println ("--unroll=<UnrollFactor1,UnrollFactor2,...>");
-		System.out.println ("              A list of unrolling factors applied to the inner most loop nest");
-		System.out.println ("              containing the stencil computation.");
-		System.out.println ();
-		System.out.println ("--use-native-simd-datatypes={yes|no}]");
-		System.out.println ("              Specify whether the native SSE datatype is to be used in the kernel");
-		System.out.println ("              signature. This also requires that the fields are padded correctly");
-		System.out.println ("              in unit stride direction. Defaults to 'no'.");
-		System.out.println ();
-		System.out.println ("--create-validation={yes|no}");
-		System.out.println ("              Specifies whether to create code that will validate the result.");
-		System.out.println ("              If <Target> is not \"benchmark\", this option will be ignored.");
-		System.out.println ("              Defaults to \"yes\".");
-		System.out.println ();
-		System.out.println ("--validation-tolerance=<Tolerance>");
-		System.out.println ("              Sets the tolerance for the relative error in the validation.");
-		System.out.println ("              This option is only relevant if validation code is generated");
-		System.out.println (StringUtil.concat ("              (--create-validation=yes). Defaults to ", CodeGenerationOptions.TOLERANCE_DEFAULT, "."));
-		System.out.println ();
-		System.out.println ("--debug=<Debug Option 1>,[<Debug Option 2>,[...,[<Debug Option N>]...]]");
-		System.out.println ("              Specify debug options (as a comma-sperated list) that will influence");
-		System.out.println ("              the code generator.");
-		System.out.println ("              Valid debug options (for <Debug Option i>, i=1,...,N) are:");
-		System.out.println ();
-		System.out.println ("              print-stencil-indices    This will insert a printf statement for");
-		System.out.println ("                                       every stencil calculation with the index");
-		System.out.println ("                                       into the grid array at which the result");
-		System.out.println ("                                       is written.");
-		System.out.println ();
-		System.out.println ("              print-validation-errors  Prints all values if the validation fails.");
-		System.out.println ("                                       The option is ignored if no validation code");
-		System.out.println ("                                       is generated.");
-	}
-
  	/**
 	 * The main entry point of Patus.
 	 * @param args Command line arguments
@@ -314,7 +231,7 @@ public class CodeGeneratorMain
 
 		if (options.getStencilFile () == null || options.getStrategyFile () == null || options.getArchitectureDescriptionFile () == null || options.getArchitectureName () == null)
 		{
-			CodeGeneratorMain.printHelp ();
+			CommandLineOptionsParser.printHelp ();
 			return;
 		}
 

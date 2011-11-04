@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -167,6 +167,14 @@ public class FileUtil
 		return "";
 	}
 
+	public static String getFilenameWithoutExtension (File f)
+	{
+		int nIdx = f.getPath ().lastIndexOf ('.');
+		if (nIdx >= 0)
+			return f.getPath ().substring (0, nIdx);
+		return f.getPath ();
+	}
+
 	/**
 	 * Copies the file <code>fileSource</code> to <code>fileDestination</code>
 	 * @param fileSource
@@ -297,7 +305,7 @@ public class FileUtil
 			String strBin = File.separator + "bin";
 			if (strMainClassPath != null && strMainClassPath.endsWith (strBin))
 				strMainClassPath = strMainClassPath.substring (0, strMainClassPath.length () - strBin.length ());
-		
+
 			// remove "/classes" if it ends with that
 			String strClasses = File.separator + "classes";
 			if (strMainClassPath != null && strMainClassPath.endsWith (strClasses))

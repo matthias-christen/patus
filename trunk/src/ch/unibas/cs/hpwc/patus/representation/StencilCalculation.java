@@ -4,12 +4,13 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.representation;
 
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -162,7 +163,16 @@ public class StencilCalculation
 	 */
 	public static StencilCalculation load (String strFilename, CodeGenerationOptions options)
 	{
-		Parser parser = new Parser (new Scanner (strFilename));
+		return parse (new Parser (new Scanner (strFilename)), options);
+	}
+
+	public static StencilCalculation parse (String strStencilSpecification, CodeGenerationOptions options)
+	{
+		return parse (new Parser (new Scanner (new ByteArrayInputStream (strStencilSpecification.getBytes ()))), options);
+	}
+
+	private static StencilCalculation parse (Parser parser, CodeGenerationOptions options)
+	{
 		parser.setOptions (options);
 		parser.Parse ();
 		if (parser.hasErrors ())

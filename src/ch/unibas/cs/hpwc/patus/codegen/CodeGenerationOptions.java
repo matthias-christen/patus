@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -15,6 +15,8 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 
+import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -153,6 +155,18 @@ public class CodeGenerationOptions
 		setKernelFilename (options.getKernelFilename ());
 		setCreateValidation (options.createValidationCode ());
 		setValidationTolerance (options.getValidationTolerance ());
+	}
+
+	/**
+	 * Check whether the code generation options are compatible.
+	 */
+	public void checkSettings (StencilCalculation stencil)
+	{
+		if (getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN)
+		{
+			if (!ExpressionUtil.isValue (stencil.getMaxIterations (), 1))
+				CodeGenerationOptions.LOGGER.error ("In Fortran compatiblity mode, the only permissible t_max is 1.");
+		}
 	}
 
 	public void setCompatibility (ECompatibility compatibility)

@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -14,14 +14,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 
 import cetus.hir.TranslationUnit;
 import ch.unibas.cs.hpwc.patus.analysis.StrategyFix;
-import ch.unibas.cs.hpwc.patus.arch.ArchitectureDescriptionManager;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerator;
@@ -30,7 +27,6 @@ import ch.unibas.cs.hpwc.patus.codegen.Strategy;
 import ch.unibas.cs.hpwc.patus.codegen.benchmark.BenchmarkHarness;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
 import ch.unibas.cs.hpwc.patus.symbolic.Maxima;
-import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.IndentOutputStream;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -45,14 +41,10 @@ public class CodeGeneratorMain
 
 	private final static Logger LOGGER = Logger.getLogger (CodeGeneratorMain.class);
 
-	private final static Pattern PATTERN_ARGUMENT = Pattern.compile ("^--([\\w-]+)=(.*)$");
-
 
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
-	private File m_fileStencil;
-	private File m_fileStrategy;
 	private IArchitectureDescription m_hardwareDescription;
 	private File m_fileOutputDirectory;
 
@@ -76,11 +68,11 @@ public class CodeGeneratorMain
 	// Implementation
 
 	public CodeGeneratorMain (
-		File fileStencil, File fileStrategy, IArchitectureDescription hardwareDescription, File fileOutputDirectory,
+		StencilCalculation stencil, Strategy strategy, IArchitectureDescription hardwareDescription, File fileOutputDirectory,
 		CodeGenerationOptions options)
 	{
-		m_fileStencil = fileStencil;
-		m_fileStrategy = fileStrategy;
+		m_stencil = stencil;
+		m_strategy = strategy;
 		m_hardwareDescription = hardwareDescription;
 		m_fileOutputDirectory = fileOutputDirectory;
 		m_options = options;
@@ -124,20 +116,8 @@ public class CodeGeneratorMain
 	/**
 	 * Runs the code generator.
 	 */
-	private void generateCode ()
+	public void generateCode ()
 	{
-		// parse the input files
-
-		// try to parse the stencil file
-		CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Reading stencil specification ", m_fileStencil.getName (), "..."));
-		m_stencil = StencilCalculation.load (m_fileStencil.getAbsolutePath (), m_options);
-		checkSettings ();
-
-		// try to parse the strategy file
-		CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Reading strategy ", m_fileStrategy.getName (), "..."));
-		m_strategy = Strategy.load (m_fileStrategy.getAbsolutePath (), m_stencil);
-		StrategyFix.fix (m_strategy, m_hardwareDescription, m_options);
-
 		// show stencil and strategy codes
 		CodeGeneratorMain.LOGGER.debug (StringUtil.concat ("Stencil Calculation:\n", m_stencil.toString ()));
 		CodeGeneratorMain.LOGGER.debug (StringUtil.concat ("Strategy:\n", m_strategy.toString ()));
@@ -172,18 +152,6 @@ public class CodeGeneratorMain
 	}
 
 	/**
-	 * Check whether the code generation options are compatible.
-	 */
-	private void checkSettings ()
-	{
-		if (m_options.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN)
-		{
-			if (!ExpressionUtil.isValue (m_stencil.getMaxIterations (), 1))
-				CodeGeneratorMain.LOGGER.error ("In Fortran compatiblity mode, the only permissible t_max is 1.");
-		}
-	}
-
-	/**
 	 * Compiles the generated code.
 	 */
 	private void compile ()
@@ -209,7 +177,7 @@ public class CodeGeneratorMain
 	private void writeCode (PrintWriter out, CodeGenerator cg, TranslationUnit unit)
 	{
 		out.println (cg.getIncludesAndDefines (true));
-		
+
 		String strAdditionalKernelSpecificCode = m_data.getCodeGenerators ().getBackendCodeGenerator ().getAdditionalKernelSpecificCode ();
 		if (strAdditionalKernelSpecificCode != null)
 		{
@@ -256,7 +224,7 @@ public class CodeGeneratorMain
 		Maxima.getInstance ().close ();
 	}
 
-	private static void printHelp ()
+	public static void printHelp ()
 	{
 		System.out.println ("Usage: Patus  --stencil=<Stencil File>  --strategy=<Strategy File>");
 		System.out.println ("              --architecture=<Architecture Description File>,<Hardware Name>");
@@ -336,86 +304,33 @@ public class CodeGeneratorMain
 		System.out.println ("                                       is generated.");
 	}
 
-	/**
+ 	/**
 	 * The main entry point of Patus.
 	 * @param args Command line arguments
 	 */
 	public static void main (String[] args) throws Exception
 	{
-		// parse the command line
-		File fileStencil = null;
-		File fileStrategy = null;
-		File fileArchitecture = null;
-		File fileOutDir = null;
-		String strArchName = null;
-		CodeGenerationOptions options = new CodeGenerationOptions ();
+		CommandLineOptionsParser options = new CommandLineOptionsParser (args);
 
-		Matcher matcher = null;
-		for (String strArg : args)
-		{
-			if (matcher == null)
-				matcher = CodeGeneratorMain.PATTERN_ARGUMENT.matcher (strArg);
-			else
-				matcher.reset (strArg);
-
-			if (!matcher.matches ())
-				continue;
-
-			String strOption = matcher.group (1);
-			String strValue = matcher.group (2);
-
-			if ("stencil".equals (strOption))
-				fileStencil = new File (strValue);
-			else if ("strategy".equals (strOption))
-				fileStrategy = new File (strValue);
-			else if ("architecture".equals (strOption))
-			{
-				String[] rgValues = strValue.split (",");
-				fileArchitecture = new File (rgValues[0]);
-				strArchName = rgValues[1];
-			}
-			else if ("outdir".equals (strOption))
-				fileOutDir = new File (strValue);
-			else if ("generate".equals (strOption))
-				options.setTarget (CodeGenerationOptions.ETarget.fromString (strValue));
-			else if ("kernel-file".equals (strOption))
-				options.setKernelFilename (strValue);
-			else if ("compatibility".equals (strOption))
-				options.setCompatibility (CodeGenerationOptions.ECompatibility.fromString (strValue));
-			else if ("unroll".equals (strOption))
-			{
-				String[] rgFactorStrings = strValue.split (",");
-				int[] rgUnrollingFactors = new int[rgFactorStrings.length];
-				for (int i = 0; i < rgFactorStrings.length; i++)
-					rgUnrollingFactors[i] = Integer.parseInt (rgFactorStrings[i]);
-				options.setUnrollingFactors (rgUnrollingFactors);
-			}
-			else if ("use-native-simd-datatypes".equals (strOption))
-				options.setUseNativeSIMDDatatypes (strValue.equals ("yes"));
-			else if ("create-validation".equals (strOption))
-				options.setCreateValidation (!strValue.equals ("no"));
-			else if ("validation-tolerance".equals (strOption))
-				options.setValidationTolerance (Double.parseDouble (strValue));
-			else if ("debug".equals (strOption))
-				options.setDebugOptions (strValue.split (","));
-		}
-
-		if (fileOutDir == null)
-			fileOutDir = new File (".").getAbsoluteFile ();
-
-		if (fileStencil == null || fileStrategy == null || fileArchitecture == null || strArchName == null)
+		if (options.getStencilFile () == null || options.getStrategyFile () == null || options.getArchitectureDescriptionFile () == null || options.getArchitectureName () == null)
 		{
 			CodeGeneratorMain.printHelp ();
 			return;
 		}
 
-		// find the hardware description
-		ArchitectureDescriptionManager mgrHwDesc = new ArchitectureDescriptionManager (fileArchitecture);
-		IArchitectureDescription hwDesc = mgrHwDesc.getHardwareDescription (strArchName);
-		if (hwDesc == null)
-			throw new RuntimeException (StringUtil.concat ("Could not find hardware '", strArchName, "'"));
+		// parse the input files
+
+		// try to parse the stencil file
+		CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Reading stencil specification ", options.getStencilFile ().getName (), "..."));
+		StencilCalculation stencil = StencilCalculation.load (options.getStencilFile ().getAbsolutePath (), options.getOptions ());
+		options.getOptions ().checkSettings (stencil);
+
+		// try to parse the strategy file
+		CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Reading strategy ", options.getStrategyFile ().getName (), "..."));
+		Strategy strategy = Strategy.load (options.getStrategyFile ().getAbsolutePath (), stencil);
+		StrategyFix.fix (strategy, options.getHardwareDescription (), options.getOptions ());
 
 		// create the Main object
-		new CodeGeneratorMain (fileStencil, fileStrategy, hwDesc, fileOutDir, options).run ();
+		new CodeGeneratorMain (stencil, strategy, options.getHardwareDescription (), options.getOutputDir (), options.getOptions ()).run ();
 	}
 }

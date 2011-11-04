@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -16,6 +16,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import ch.unibas.cs.hpwc.patus.autotuner.StandaloneAutotuner;
+import ch.unibas.cs.hpwc.patus.preprocessor.Preprocessor;
 import ch.unibas.cs.hpwc.patus.tools.Compare;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -38,13 +39,15 @@ public class Main
 
 		if (args.length < 1)
 		{
-			System.out.println ("No mode selected.\nSyntax:\n\tPatus <mode> <mode-specific params>\nwhere <mode> is one of 'codegen', 'autotune', or 'compare'.");
+			System.out.println ("No mode selected.\nSyntax:\n\tPatus <mode> <mode-specific params>\nwhere <mode> is one of 'codegen', 'embedded-codegen', 'autotune', or 'compare'.");
 			System.exit (-1);
 		}
 
 		String strMode = args[0];
 		if (strMode.equals ("codegen"))
 			CodeGeneratorMain.main (Arrays.copyOfRange (args, 1, args.length));
+		else if (strMode.equals ("embedded-codegen"))
+			Preprocessor.main (Arrays.copyOfRange (args, 1, args.length));
 		else if (strMode.equals ("autotune"))
 			StandaloneAutotuner.main (Arrays.copyOfRange (args, 1, args.length));
 		else if (strMode.equals ("compare"))

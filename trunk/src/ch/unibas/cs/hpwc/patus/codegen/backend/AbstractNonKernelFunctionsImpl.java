@@ -55,6 +55,7 @@ import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.EVariableType;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
 import ch.unibas.cs.hpwc.patus.codegen.MemoryObject;
 import ch.unibas.cs.hpwc.patus.codegen.ValidationCodeGenerator;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -103,6 +104,8 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	// Member Variables
 
 	private CodeGeneratorSharedObjects m_data;
+
+	private KernelSourceFile m_kernelSourceFile;
 
 	/**
 	 * Maps variables (input and output grids) to their identifiers in the code
@@ -187,6 +190,11 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 				break;
 			}
 		}
+	}
+
+	public void setKernelSourceFile (KernelSourceFile ksf)
+	{
+		m_kernelSourceFile = ksf;
 	}
 
 	/**
@@ -291,8 +299,8 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		initialize ();
 
 		GlobalGeneratedIdentifiers ids = m_data.getData ().getGlobalGeneratedIdentifiers ();
-		VariableDeclaration declInit = ids.getInitializeFunctionDeclaration ();
-		VariableDeclaration declStencil = ids.getStencilFunctionDeclaration ();
+		VariableDeclaration declInit = ids.getInitializeFunctionDeclaration (m_kernelSourceFile.getCompatibility ());
+		VariableDeclaration declStencil = ids.getStencilFunctionDeclaration (m_kernelSourceFile.getCompatibility ());
 
 		StatementList sl = new StatementList (new ArrayList<Statement> ());
 		if (declInit != null)
@@ -550,7 +558,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		initialize ();
 
 		// if the code is compatible with Fortran, don't include the output grids
-		boolean bIsFortran = m_data.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+		boolean bIsFortran = m_kernelSourceFile.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
 		int nMask = bIsFortran ? ~EVariableType.OUTPUT_GRID.mask () : ~0;
 
 		StatementList sl = new StatementList ();
@@ -616,7 +624,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		// get alignment restrictions
 		int nAlignRestrict = m_data.getArchitectureDescription ().getAlignmentRestriction ();
 		boolean bIsPowerOfTwo = MathUtil.isPowerOfTwo (nAlignRestrict);
-		boolean bIsFortranCompatible = m_data.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+		boolean bIsFortranCompatible = m_kernelSourceFile.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
 
 		// build the list of arguments; adjust the pointers so that the alignment restrictions are satisfied
 		List<Expression> listArgs = new ArrayList<Expression> ();

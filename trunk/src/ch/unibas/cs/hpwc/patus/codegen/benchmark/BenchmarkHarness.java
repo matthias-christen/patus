@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -29,6 +29,7 @@ import org.apache.log4j.Logger;
 import cetus.hir.Expression;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
 import ch.unibas.cs.hpwc.patus.util.FileUtil;
 import ch.unibas.cs.hpwc.patus.util.IndentOutputStream;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -73,8 +74,8 @@ public class BenchmarkHarness
 	 *
 	 * @param fileOutputDir
 	 */
-	public void generate (File fileOutputDir)
-	{		
+	public void generate (File fileOutputDir, KernelSourceFile out)
+	{
 		File f = FileUtil.getFileRelativeToJar (m_data.getArchitectureDescription ().getBuild ().getHarnessTemplateDir ());
 		if (f.equals (fileOutputDir))
 			throw new RuntimeException ("Benchmark harness directory and output directory are equal. Aborting...");
@@ -83,6 +84,7 @@ public class BenchmarkHarness
 		//FileUtil.cleanOutputDirectory (fileOutputDir);
 
 		// process the input files in the benchmark harness directory
+		m_data.getCodeGenerators ().getBackendCodeGenerator ().setKernelSourceFile (out);
 		listFiles (f, f, fileOutputDir);
 	}
 

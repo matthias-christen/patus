@@ -13,12 +13,13 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  *
  * @author Matthias-M. Christen
  */
-public class CommandLineOptionsParser
+public class CommandLineOptions
 {
 	///////////////////////////////////////////////////////////////////
 	// Constants
 
-	private final static Pattern PATTERN_ARGUMENT = Pattern.compile ("^--([\\w-]+)=(.*)$");
+	private final static Pattern PATTERN_CMDLINE_ARGUMENT = Pattern.compile ("^--([\\w-]+)=(.*)$");
+	private final static Pattern PATTERN_INTERNAL_ARGUMENT = Pattern.compile ("^([\\w-]+)\\:\\s*(.*)$");
 
 
 	///////////////////////////////////////////////////////////////////
@@ -36,7 +37,7 @@ public class CommandLineOptionsParser
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	public CommandLineOptionsParser (String[] args)
+	public CommandLineOptions (String[] args, boolean bIsCommandLineArgument)
 	{
 		// parse the command line
 		m_fileStencil = null;
@@ -44,15 +45,36 @@ public class CommandLineOptionsParser
 		m_fileArchitecture = null;
 		m_fileOutDir = null;
 		m_strArchName = null;
+		m_hwDesc = null;
 		m_options = new CodeGenerationOptions ();
 
+		parse (args, bIsCommandLineArgument);
+	}
+
+	/**
+	 * Copy constructor.
+	 * @param options
+	 */
+	public CommandLineOptions (CommandLineOptions options)
+	{
+		m_fileStencil = options.getStencilFile () == null ? null : new File (options.getStencilFile ().getAbsolutePath ());
+		m_fileStrategy = options.getStrategyFile () == null ? null : new File (options.getStrategyFile ().getAbsolutePath ());
+		m_fileArchitecture = options.getArchitectureDescriptionFile () == null ? null : new File (options.getArchitectureDescriptionFile ().getAbsolutePath ());
+		m_fileOutDir = options.getOutputDir () == null ? null : new File (options.getOutputDir ().getAbsolutePath ());
+		m_hwDesc = options.getHardwareDescription ();// == null ? null : options.getHardwareDescription ().clone ();
+		m_options = options.getOptions () == null ? null : new CodeGenerationOptions ();
+		m_options.set (options.getOptions ());
+	}
+
+	public void parse (String[] args, boolean bIsCommandLineArgument)
+	{
 		Matcher matcher = null;
 		for (String strArg : args)
 		{
 			if (matcher == null)
-				matcher = CommandLineOptionsParser.PATTERN_ARGUMENT.matcher (strArg);
+				matcher = (bIsCommandLineArgument ? CommandLineOptions.PATTERN_CMDLINE_ARGUMENT : CommandLineOptions.PATTERN_INTERNAL_ARGUMENT).matcher (strArg.trim ());
 			else
-				matcher.reset (strArg);
+				matcher.reset (strArg.trim ());
 
 			if (!matcher.matches ())
 				continue;
@@ -107,10 +129,13 @@ public class CommandLineOptionsParser
 			m_fileOutDir = new File (".").getAbsoluteFile ();
 
 		// find the hardware description
-		ArchitectureDescriptionManager mgrHwDesc = new ArchitectureDescriptionManager (m_fileArchitecture);
-		m_hwDesc = mgrHwDesc.getHardwareDescription (m_strArchName);
-		if (m_hwDesc == null)
-			throw new RuntimeException (StringUtil.concat ("Could not find hardware '", m_strArchName, "'"));
+		if (m_fileArchitecture != null && m_hwDesc == null)
+		{
+			ArchitectureDescriptionManager mgrHwDesc = new ArchitectureDescriptionManager (m_fileArchitecture);
+			m_hwDesc = mgrHwDesc.getHardwareDescription (m_strArchName);
+			if (m_hwDesc == null)
+				throw new RuntimeException (StringUtil.concat ("Could not find hardware '", m_strArchName, "'"));
+		}
 	}
 
 	public static void printHelp ()

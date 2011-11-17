@@ -46,7 +46,6 @@ public class CodeGeneratorMain
 	private IArchitectureDescription m_hardwareDescription;
 	private File m_fileOutputDirectory;
 
-	private CodeGeneratorSharedObjects m_data;
 	private CodeGenerationOptions m_options;
 
 	/**
@@ -146,7 +145,7 @@ public class CodeGeneratorMain
 	/**
 	 * Runs the code generator.
 	 */
-	public void generateCode ()
+	public CodeGeneratorSharedObjects generateCode ()
 	{
 		// show stencil and strategy codes
 		CodeGeneratorMain.LOGGER.debug (StringUtil.concat ("Stencil Calculation:\n", m_stencil.toString ()));
@@ -154,20 +153,17 @@ public class CodeGeneratorMain
 
 		// create the code generator object
 		CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Creating code generator for ", m_hardwareDescription.getBackend ()));
-		m_data = new CodeGeneratorSharedObjects (m_stencil, m_strategy, m_hardwareDescription, m_options);
-		CodeGenerator cg = new CodeGenerator (m_data);
+		CodeGeneratorSharedObjects data = new CodeGeneratorSharedObjects (m_stencil, m_strategy, m_hardwareDescription, m_options);
+		CodeGenerator cg = new CodeGenerator (data);
 
-		m_data.getCodeGenerators ().getBackendCodeGenerator ().initializeNonKernelFunctionCG ();
+		data.getCodeGenerators ().getBackendCodeGenerator ().initializeNonKernelFunctionCG ();
 
 		// generate the code
 		CodeGeneratorMain.LOGGER.info ("Generating code...");
 		List<KernelSourceFile> listOutputs = createOutputsList ();
-		cg.generate (listOutputs, true);
+		cg.generate (listOutputs, m_fileOutputDirectory, true);
 
-		// write code to files
-		CodeGeneratorMain.LOGGER.info ("Writing code to files...");
-		for (KernelSourceFile outSrc : listOutputs)
-			outSrc.writeCode (cg, m_data, m_fileOutputDirectory);
+		return data;
 	}
 
 	/**
@@ -227,11 +223,11 @@ public class CodeGeneratorMain
 	 */
 	public static void main (String[] args) throws Exception
 	{
-		CommandLineOptionsParser options = new CommandLineOptionsParser (args);
+		CommandLineOptions options = new CommandLineOptions (args, true);
 
 		if (options.getStencilFile () == null || options.getStrategyFile () == null || options.getArchitectureDescriptionFile () == null || options.getArchitectureName () == null)
 		{
-			CommandLineOptionsParser.printHelp ();
+			CommandLineOptions.printHelp ();
 			return;
 		}
 

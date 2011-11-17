@@ -10,6 +10,7 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.codegen;
 
+import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -221,10 +222,11 @@ public class CodeGenerator
 	/**
 	 * Generates the code.
 	 * @param unit The translation unit in which to place the kernels
+	 * @param fileOutputDirectory The directory into which the generated code is written
 	 * @param bIncludeAutotuneParameters Flag specifying whether to include the autotuning parameters
 	 * 	in the function signatures
 	 */
-	public void generate (List<KernelSourceFile> listOutputs, boolean bIncludeAutotuneParameters)
+	public void generate (List<KernelSourceFile> listOutputs, File fileOutputDirectory, boolean bIncludeAutotuneParameters)
 	{
 		createFunctionParameterList (true, bIncludeAutotuneParameters);
 
@@ -244,7 +246,14 @@ public class CodeGenerator
 
 		// create the initialization code
 		StatementListBundle slbInitializationBody = null;
-		if (m_data.getOptions ().getCreateInitialization ())
+		boolean bCreateInitialization = false;
+		for (KernelSourceFile out : listOutputs)
+			if (out.getCreateInitialization ())
+			{
+				bCreateInitialization = true;
+				break;
+			}
+		if (bCreateInitialization)
 		{
 			m_data.getData ().setCreatingInitialization (true);
 			m_data.getCodeGenerators ().reset ();
@@ -269,9 +278,12 @@ public class CodeGenerator
 		// do post-generation optimizations
 		optimizeCode (slbThreadBody);
 
-		// package the code into functions and add them to the translation unit
+		// package the code into functions, add them to the translation unit, and write the code files
 		for (KernelSourceFile out : listOutputs)
+		{
 			packageKernelSourceFile (out, slbThreadBody, slbInitializationBody, bIncludeAutotuneParameters);
+			out.writeCode (this, m_data, fileOutputDirectory);
+		}
 	}
 
 	private void packageKernelSourceFile (KernelSourceFile out, StatementListBundle slbThreadBody, StatementListBundle slbInitializationBody, boolean bIncludeAutotuneParameters)
@@ -290,7 +302,7 @@ public class CodeGenerator
 			{
 				m_data.getData ().getGlobalGeneratedIdentifiers ().setStencilFunctionName (nidFnxName);
 			}
-		}, true, bIncludeAutotuneParameters);
+		}, true, bIncludeAutotuneParameters, out.getCompatibility ());
 
 		// initialization function
 		if (slbInitializationBody != null && out.getCreateInitialization ())
@@ -306,7 +318,7 @@ public class CodeGenerator
 				{
 					m_data.getData ().getGlobalGeneratedIdentifiers ().setInitializeFunctionName (nidFnxName);
 				}
-			}, false, bIncludeAutotuneParameters);
+			}, false, bIncludeAutotuneParameters, out.getCompatibility ());
 		}
 	}
 
@@ -427,10 +439,10 @@ public class CodeGenerator
 	 * @param unit
 	 */
 	@SuppressWarnings("unchecked")
-	private void packageCode (GeneratedProcedure proc, boolean bIncludeStencilCommentAnnotation, boolean bIncludeAutotuneParameters)
+	private void packageCode (GeneratedProcedure proc, boolean bIncludeStencilCommentAnnotation, boolean bIncludeAutotuneParameters, CodeGenerationOptions.ECompatibility compatibility)
 	{
 		int nCodesCount = proc.getBodyCodes ().size ();
-		boolean bIsFortranCompatible = m_data.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+		boolean bIsFortranCompatible = compatibility == CodeGenerationOptions.ECompatibility.FORTRAN;
 
 		if (nCodesCount == 0)
 		{
@@ -602,7 +614,7 @@ public class CodeGenerator
 
 							// set the variable as stencil function argument in the global generated identifiers
 							m_data.getData ().getGlobalGeneratedIdentifiers ().addStencilFunctionArguments (new GlobalGeneratedIdentifiers.Variable (
-								GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID, declArg, strArgOutput, m_data));
+								GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID, declArg, strArgOutput, strArgOutput, m_data));
 						}
 
 						// add arguments (grids and parameters)
@@ -614,8 +626,11 @@ public class CodeGenerator
 							GlobalGeneratedIdentifiers.EVariableType typeVar = StencilCalculation.EArgumentType.PARAMETER.equals (typeArg) ?
 								GlobalGeneratedIdentifiers.EVariableType.KERNEL_PARAMETER : GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID;
 
+							StencilNode node = m_data.getStencilCalculation ().getReferenceStencilNode (strArgument);
+							String strOrigName = node == null ? strArgument : node.getName ();
+
 							m_data.getData ().getGlobalGeneratedIdentifiers ().addStencilFunctionArguments (
-								new GlobalGeneratedIdentifiers.Variable (typeVar, declArg, strArgument, m_data));
+								new GlobalGeneratedIdentifiers.Variable (typeVar, declArg, strArgument, strOrigName, m_data));
 						}
 
 						// add size parameters (all variables used to specify domain size and the grid size arguments to the operation)
@@ -623,7 +638,13 @@ public class CodeGenerator
 						{
 							VariableDeclaration declSize = (VariableDeclaration) CodeGeneratorUtil.createVariableDeclaration (Globals.SPECIFIER_SIZE, nidSizeParam.clone (), null);
 							m_data.getData ().getGlobalGeneratedIdentifiers ().addStencilFunctionArguments (
-								new GlobalGeneratedIdentifiers.Variable (GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER, declSize, new SizeofExpression (CodeGeneratorUtil.specifiers (Globals.SPECIFIER_SIZE)), null));
+								new GlobalGeneratedIdentifiers.Variable (
+									GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER,
+									declSize,
+									nidSizeParam.getName (),
+									new SizeofExpression (CodeGeneratorUtil.specifiers (Globals.SPECIFIER_SIZE)),
+									null)
+							);
 						}
 					}
 					else if (listSpecifiers.size () == 1 && StencilSpecifier.STRATEGY_AUTO.equals (listSpecifiers.get (0)))
@@ -634,7 +655,13 @@ public class CodeGenerator
 						VariableDeclaration declAutoParam = (VariableDeclaration) CodeGeneratorUtil.createVariableDeclaration (Globals.SPECIFIER_SIZE, strParamName, null);
 
 						m_data.getData ().getGlobalGeneratedIdentifiers ().addStencilFunctionArguments (
-							new GlobalGeneratedIdentifiers.Variable (GlobalGeneratedIdentifiers.EVariableType.AUTOTUNE_PARAMETER, declAutoParam, new SizeofExpression (CodeGeneratorUtil.specifiers (Specifier.INT)), null));
+							new GlobalGeneratedIdentifiers.Variable (
+								GlobalGeneratedIdentifiers.EVariableType.AUTOTUNE_PARAMETER,
+								declAutoParam,
+								strParamName,
+								new SizeofExpression (CodeGeneratorUtil.specifiers (Specifier.INT)),
+								null)
+						);
 					}
 				}
 			}
@@ -658,6 +685,7 @@ public class CodeGenerator
 				new GlobalGeneratedIdentifiers.Variable (
 					GlobalGeneratedIdentifiers.EVariableType.INTERNAL_AUTOTUNE_PARAMETER,
 					new VariableDeclaration (Specifier.INT, decl),
+					param.getName (),
 					new SizeofExpression (CodeGeneratorUtil.specifiers (Specifier.INT)),
 					null)
 			);

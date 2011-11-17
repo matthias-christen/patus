@@ -41,7 +41,7 @@ public class KernelSourceFile
 	public KernelSourceFile (File f)
 	{
 		m_file = f;
-		m_unit = new TranslationUnit (f.getName ());
+		m_unit = new TranslationUnit (f.getPath ());
 	}
 
 	public KernelSourceFile (String strFilename)
@@ -56,7 +56,7 @@ public class KernelSourceFile
 			KernelSourceFile.LOGGER.info ("Creating benchmarking harness...");
 
 			BenchmarkHarness bh = new BenchmarkHarness (data);
-			bh.generate (fileOutputDirectory);
+			bh.generate (fileOutputDirectory, this);
 		}
 
 		// write the code

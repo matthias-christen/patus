@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -75,7 +75,7 @@ public interface IArchitectureDescription
 	 * @return
 	 */
 	public abstract boolean supportsAsynchronousIO (int nParallelismLevel);
-	
+
 	public abstract Statement getBarrier (int nParallelismLevel);
 
 	/**
@@ -160,4 +160,6 @@ public interface IArchitectureDescription
 	 * @return The build information
 	 */
 	public abstract Build getBuild ();
+
+	public IArchitectureDescription clone ();
 }

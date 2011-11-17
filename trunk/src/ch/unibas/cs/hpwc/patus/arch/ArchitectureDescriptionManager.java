@@ -331,6 +331,12 @@ public class ArchitectureDescriptionManager
 		{
 			return m_type.getBuild ();
 		}
+
+		@Override
+		public IArchitectureDescription clone ()
+		{
+			return new HardwareDescription (m_type);
+		}
 	}
 
 

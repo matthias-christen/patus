@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -80,6 +80,8 @@ public class GlobalGeneratedIdentifiers
 		private EVariableType m_type;
 		private List<Specifier> m_listSpecifiers;
 		private String m_strName;
+		private String m_strOriginalName;
+
 
 		/**
 		 * Size of the array
@@ -94,23 +96,25 @@ public class GlobalGeneratedIdentifiers
 		private VariableDeclaration m_declaration;
 
 
-		public Variable (EVariableType type, List<Specifier> listSpecifiers, String strName, Expression exprSize)
+		public Variable (EVariableType type, List<Specifier> listSpecifiers, String strName, String strOriginalName, Expression exprSize)
 		{
 			m_type = type;
 			m_listSpecifiers = listSpecifiers;
 			m_strName = strName;
+			m_strName = strOriginalName;
 			m_exprSize = exprSize;
 			m_sizeBox = null;
 
 			m_declaration = new VariableDeclaration (listSpecifiers, new VariableDeclarator (new NameID (strName)));
 		}
 
-		public Variable (EVariableType type, VariableDeclaration decl, Expression exprSize, Size sizeBox)
+		public Variable (EVariableType type, VariableDeclaration decl, String strOriginalName, Expression exprSize, Size sizeBox)
 		{
 			m_type = type;
 			m_declaration = decl;
 			m_listSpecifiers = decl.getSpecifiers ();
 			m_strName = decl.getDeclarator (0).getID ().getName ();
+			m_strOriginalName = strOriginalName;
 			m_exprSize = exprSize;
 			m_sizeBox = sizeBox;
 		}
@@ -123,11 +127,12 @@ public class GlobalGeneratedIdentifiers
 		 * @param strArgumentName The name of the variable
 		 * @param data
 		 */
-		public Variable (EVariableType type, VariableDeclaration decl, String strArgumentName, CodeGeneratorSharedObjects data)
+		public Variable (EVariableType type, VariableDeclaration decl, String strArgumentName, String strOriginalName, CodeGeneratorSharedObjects data)
 		{
 			this (
 				type,
 				decl,
+				strOriginalName,
 				type.isGrid () ?
 					GlobalGeneratedIdentifiers.getGridMemorySize (decl, strArgumentName, data) :
 					new SizeofExpression (decl.getSpecifiers ()),
@@ -153,6 +158,11 @@ public class GlobalGeneratedIdentifiers
 		public final String getName ()
 		{
 			return m_strName;
+		}
+
+		public final String getOriginalName ()
+		{
+			return m_strOriginalName;
 		}
 
 		public final Expression getSize ()
@@ -329,9 +339,9 @@ public class GlobalGeneratedIdentifiers
 	 * 	params). If set to <code>false</code>, the corresponding derived types (e.g., SIMD types) are used
 	 * @return
 	 */
-	private List<Declaration> getDeclarations (Iterable<Variable> itVars)
+	private List<Declaration> getDeclarations (Iterable<Variable> itVars, CodeGenerationOptions.ECompatibility compatibility)
 	{
-		boolean bIsFortranCompatible = m_data.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+		boolean bIsFortranCompatible = compatibility == CodeGenerationOptions.ECompatibility.FORTRAN;
 
 		List<Declaration> listDecls = new ArrayList<Declaration> ();
 		for (Variable v : itVars)
@@ -351,7 +361,7 @@ public class GlobalGeneratedIdentifiers
 	 *
 	 * @return
 	 */
-	public VariableDeclaration getInitializeFunctionDeclaration ()
+	public VariableDeclaration getInitializeFunctionDeclaration (CodeGenerationOptions.ECompatibility compatibility)
 	{
 		if (m_nidInitializeFunction == null)
 			return null;
@@ -367,8 +377,8 @@ public class GlobalGeneratedIdentifiers
 				getDeclarations (getVariables (
 					~EVariableType.OUTPUT_GRID.mask () &
 					~EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask () &
-					~EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask ())
-				)
+					~EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask ()),
+				compatibility)
 			)
 		);
 	}
@@ -395,20 +405,20 @@ public class GlobalGeneratedIdentifiers
 	 *
 	 * @return
 	 */
-	public VariableDeclaration getStencilFunctionDeclaration ()
+	public VariableDeclaration getStencilFunctionDeclaration (CodeGenerationOptions.ECompatibility compatibility)
 	{
 		List<Specifier> listSpecs = new ArrayList<Specifier> ();
 		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
 		listSpecs.add (Specifier.VOID);
 
 		// if Fortran-compatibility mode is turned on, don't include the output grids in the stencil kernel declaration
-		boolean bIsFortranCompatible = m_data.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+		boolean bIsFortranCompatible = compatibility == CodeGenerationOptions.ECompatibility.FORTRAN;
 		List<Variable> listVariables = getVariables (
 			~EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask () & (bIsFortranCompatible ? ~EVariableType.OUTPUT_GRID.mask () : ~0));
 
 		return new VariableDeclaration (
 			listSpecs,
-			new ProcedureDeclarator (m_nidStencilFunction.clone (), getDeclarations (listVariables)));
+			new ProcedureDeclarator (m_nidStencilFunction.clone (), getDeclarations (listVariables, compatibility)));
 	}
 
 	/**
@@ -442,20 +452,12 @@ public class GlobalGeneratedIdentifiers
 	 * 	parameters (<code>bMakeCompatibleWithFortran == true</code>) or use the default C convention
 	 * @return
 	 */
-	public List<Declaration> getFunctionParameterList (boolean bIncludeOutputGrids, boolean bIncludeAutotuneParameters, boolean bIncludeInternalAutotuneParameters, boolean bMakeCompatibleWithFortran)
+	public List<Declaration> getFunctionParameterList (
+		boolean bIncludeOutputGrids, boolean bIncludeAutotuneParameters, boolean bIncludeInternalAutotuneParameters, boolean bMakeCompatibleWithFortran)
 	{
 		List<Declaration> listDecls = new ArrayList<Declaration> (m_listVariables.size ());
-		for (Variable v : m_listVariables)
+		for (Variable v : getFunctionParameterVarList (bIncludeOutputGrids, bIncludeAutotuneParameters, bIncludeInternalAutotuneParameters, bMakeCompatibleWithFortran))
 		{
-			if (v.getType ().equals (EVariableType.OUTPUT_GRID) && (!bIncludeOutputGrids || bMakeCompatibleWithFortran))
-				continue;
-			if (v.getType ().equals (EVariableType.AUTOTUNE_PARAMETER) && !bIncludeAutotuneParameters)
-				continue;
-			if (v.getType ().equals (EVariableType.INTERNAL_AUTOTUNE_PARAMETER) && !bIncludeInternalAutotuneParameters)
-				continue;
-			if (v.getType ().equals (EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER))
-				continue;
-
 			if (bMakeCompatibleWithFortran)
 			{
 				// add the pointer specifier
@@ -477,5 +479,26 @@ public class GlobalGeneratedIdentifiers
 		}
 
 		return listDecls;
+	}
+
+	public List<Variable> getFunctionParameterVarList (
+		boolean bIncludeOutputGrids, boolean bIncludeAutotuneParameters, boolean bIncludeInternalAutotuneParameters, boolean bMakeCompatibleWithFortran)
+	{
+		List<Variable> listVars = new ArrayList<Variable> (m_listVariables.size ());
+		for (Variable v : m_listVariables)
+		{
+			if (v.getType ().equals (EVariableType.OUTPUT_GRID) && (!bIncludeOutputGrids || bMakeCompatibleWithFortran))
+				continue;
+			if (v.getType ().equals (EVariableType.AUTOTUNE_PARAMETER) && !bIncludeAutotuneParameters)
+				continue;
+			if (v.getType ().equals (EVariableType.INTERNAL_AUTOTUNE_PARAMETER) && !bIncludeInternalAutotuneParameters)
+				continue;
+			if (v.getType ().equals (EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER))
+				continue;
+
+			listVars.add (v);
+		}
+
+		return listVars;
 	}
 }

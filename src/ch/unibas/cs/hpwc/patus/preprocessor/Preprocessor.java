@@ -6,17 +6,21 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 
 import ch.unibas.cs.hpwc.patus.CodeGeneratorMain;
-import ch.unibas.cs.hpwc.patus.CommandLineOptionsParser;
+import ch.unibas.cs.hpwc.patus.CommandLineOptions;
 import ch.unibas.cs.hpwc.patus.analysis.StrategyFix;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
 import ch.unibas.cs.hpwc.patus.codegen.Strategy;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
+import ch.unibas.cs.hpwc.patus.symbolic.Maxima;
 import ch.unibas.cs.hpwc.patus.util.FileUtil;
 import ch.unibas.cs.hpwc.patus.util.IndentOutputStream;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -35,13 +39,13 @@ public class Preprocessor
 	private final static String STENCIL_START = "begin-stencil-specification";
 	private final static String STENCIL_END = "end-stencil-specification";
 
-	private final static Pattern PATTERN_PRAGMA = Pattern.compile ("\\s*#pragma\\s+patus\\s+([A-Za-z0-9-_]+)\\s*(\\(.*\\))*");
+	private final static Pattern PATTERN_PRAGMA = Pattern.compile ("\\s*#pragma\\s+patus\\s+([A-Za-z0-9-_]+)\\s*(\\((.*)\\))*");
 
 
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
-	protected CommandLineOptionsParser m_options;
+	protected CommandLineOptions m_options;
 
 	protected File m_fileInput;
 	protected File m_fileOutput;
@@ -52,7 +56,7 @@ public class Preprocessor
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	public Preprocessor (File file, CommandLineOptionsParser options)
+	public Preprocessor (File file, CommandLineOptions options)
 	{
 		m_fileInput = file;
 		m_fileOutput = new File (getOutputFilename (file));
@@ -77,6 +81,8 @@ public class Preprocessor
 
 		// process the file and replace Patus pragmas by the appropriate code
 		Matcher matcherPragma = null;
+		CommandLineOptions options = m_options;
+
 		for ( ; ; )
 		{
 			String strLine = in.readLine ();
@@ -85,7 +91,7 @@ public class Preprocessor
 
 			// create or reset the #pragma matcher and the variable matcher
 			if (matcherPragma == null)
-				matcherPragma = Preprocessor.PATTERN_PRAGMA.matcher (strLine);
+ 				matcherPragma = Preprocessor.PATTERN_PRAGMA.matcher (strLine);
 			else
 				matcherPragma.reset (strLine);
 
@@ -93,11 +99,20 @@ public class Preprocessor
 			if (matcherPragma.matches ())
 			{
 				String strPragma = matcherPragma.group (1);
+				String strOptions = matcherPragma.group (3);
 
 				if (strPragma.equals (STENCIL_START))
 				{
 					// extract stencil specification into new file
 					bIsExtractingStencilSpec = true;
+
+					// parse the local code generation options, which override the default options
+					options = m_options;
+					if (strOptions != null && !"".equals (strOptions))
+					{
+						options = new CommandLineOptions (m_options);
+						options.parse (strOptions.split (","), false);
+					}
 				}
 				else if (strPragma.equals (STENCIL_END))
 				{
@@ -105,8 +120,44 @@ public class Preprocessor
 					bIsExtractingStencilSpec = false;
 
 					// generate the code for the stencil and reset the stencil specification buffer
-					generateCode (sb.toString ());
+					CodeGeneratorSharedObjects data = generateCode (sb.toString (), options);
 					sb.setLength (0);
+
+					// insert the function call into the original file
+					boolean bMakeFortranCompatible = options.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+					List<GlobalGeneratedIdentifiers.Variable> listParams = data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterVarList (
+						!bMakeFortranCompatible, true, true, bMakeFortranCompatible);
+					if (bMakeFortranCompatible)
+					{
+						// Fortran version
+						out.print ("      call ");
+						out.print (data.getStencilCalculation ().getName ());
+						out.print (" (");
+						boolean bFirst = true;
+						for (GlobalGeneratedIdentifiers.Variable v : listParams)
+						{
+							if (!bFirst)
+								out.print (", ");
+							out.print (v.getOriginalName ());
+							bFirst = false;
+						}
+						out.println (")");
+					}
+					else
+					{
+						// C version
+						out.print (data.getStencilCalculation ().getName ());
+						out.print (" (");
+						boolean bFirst = true;
+						for (GlobalGeneratedIdentifiers.Variable v : listParams)
+						{
+							if (!bFirst)
+								out.print (", ");
+							out.print (v.getOriginalName ());
+							bFirst = false;
+						}
+						out.println (");");
+					}
 				}
 			}
 			else if (bIsExtractingStencilSpec)
@@ -122,30 +173,30 @@ public class Preprocessor
 		out.close ();
 	}
 
-	protected void generateCode (String strStencilSpecification)
+	protected CodeGeneratorSharedObjects generateCode (String strStencilSpecification, CommandLineOptions options)
 	{
 		// parse the stencil specification
-		StencilCalculation stencil = StencilCalculation.parse (strStencilSpecification, m_options.getOptions ());
+		StencilCalculation stencil = StencilCalculation.parse (strStencilSpecification, options.getOptions ());
 
 		// try to parse the strategy file
 		if (m_strategy == null)
 		{
-			Preprocessor.LOGGER.info (StringUtil.concat ("Reading strategy ", m_options.getStrategyFile ().getName (), "..."));
-			m_strategy = Strategy.load (m_options.getStrategyFile ().getAbsolutePath (), stencil);
-			StrategyFix.fix (m_strategy, m_options.getHardwareDescription (), m_options.getOptions ());
+			Preprocessor.LOGGER.info (StringUtil.concat ("Reading strategy ", options.getStrategyFile ().getName (), "..."));
+			m_strategy = Strategy.load (options.getStrategyFile ().getAbsolutePath (), stencil);
+			StrategyFix.fix (m_strategy, options.getHardwareDescription (), options.getOptions ());
 		}
 
 		// we want to create both the benchmarking harness and the standalone kernel source file
-		m_options.getOptions ().addTarget (CodeGenerationOptions.ETarget.BENCHMARK_HARNESS);
-		m_options.getOptions ().addTarget (CodeGenerationOptions.ETarget.KERNEL_ONLY);
-		m_options.getOptions ().setCreateInitialization (false);
-		m_options.getOptions ().setKernelFilename (StringUtil.concat ("../", stencil.getName ()));
+		options.getOptions ().addTarget (CodeGenerationOptions.ETarget.BENCHMARK_HARNESS);
+		options.getOptions ().addTarget (CodeGenerationOptions.ETarget.KERNEL_ONLY);
+		options.getOptions ().setCreateInitialization (false);
+		options.getOptions ().setKernelFilename (StringUtil.concat ("../", stencil.getName ()));
 
 		// create the output directory
 		File fileOutputDir = new File (m_fileOutput.getParentFile (), stencil.getName ());
 		fileOutputDir.mkdirs ();
 
-		new CodeGeneratorMain (stencil, m_strategy, m_options.getHardwareDescription (), fileOutputDir, m_options.getOptions ()).generateCode ();
+		return new CodeGeneratorMain (stencil, m_strategy, options.getHardwareDescription (), fileOutputDir, options.getOptions ()).generateCode ();
 	}
 
  	/**
@@ -154,21 +205,33 @@ public class Preprocessor
 	 */
 	public static void main (String[] args)
 	{
-		CommandLineOptionsParser options = new CommandLineOptionsParser (args);
+		CommandLineOptions options = new CommandLineOptions (args, true);
 
 		if (options.getStencilFile () == null || options.getStrategyFile () == null || options.getArchitectureDescriptionFile () == null || options.getArchitectureName () == null)
 		{
-			CommandLineOptionsParser.printHelp ();
+			CommandLineOptions.printHelp ();
 			return;
 		}
 
+		boolean bHasError = false;
+
 		try
 		{
+			// initialize
+			Maxima.getInstance ();
+
 			new Preprocessor (options.getStencilFile (), options).start ();
+
+			// terminate
+			Maxima.getInstance ().close ();
 		}
 		catch (IOException e)
 		{
+			bHasError = true;
 			LOGGER.error (StringUtil.concat ("An error occurred during processing ", options.getStencilFile ()), e);
 		}
+
+		if (!bHasError)
+			LOGGER.info ("Terminated successfully.");
 	}
 }

@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -20,6 +20,7 @@ import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
+import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
 import ch.unibas.cs.hpwc.patus.codegen.backend.AbstractNonKernelFunctionsImpl.EOutputGridType;
 
 /**
@@ -70,6 +71,12 @@ public abstract class AbstractBackend implements IBackend
 	}
 
 	@Override
+	public void setKernelSourceFile (KernelSourceFile ksf)
+	{
+		m_mixinNonKernelFunctions.setKernelSourceFile (ksf);
+	}
+
+	@Override
 	public IIndexingLevel getIndexingLevelFromParallelismLevel (int nParallelismLevel)
 	{
 		return IndexingLevelUtil.getIndexingLevelFromParallelismLevel (this, nParallelismLevel);
@@ -110,13 +117,13 @@ public abstract class AbstractBackend implements IBackend
 
 	///////////////////////////////////////////////////////////////////
 	// IParallel Implementation
-	
+
 	@Override
 	public Statement getBarrier (int nParallelismLevel)
 	{
 		return m_data.getArchitectureDescription ().getBarrier (nParallelismLevel);
 	}
-	
+
 
 	///////////////////////////////////////////////////////////////////
 	// IIArithmetic Implementation
@@ -184,11 +191,11 @@ public abstract class AbstractBackend implements IBackend
 	{
 		return null;
 	}
-	
-	
+
+
 	///////////////////////////////////////////////////////////////////
 	// INonKernelFunctions Implementation
-	
+
 	@Override
 	public void initializeNonKernelFunctionCG ()
 	{

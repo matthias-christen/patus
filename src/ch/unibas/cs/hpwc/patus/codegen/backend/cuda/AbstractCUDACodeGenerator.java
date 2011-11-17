@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -716,7 +716,13 @@ public abstract class AbstractCUDACodeGenerator extends AbstractBackend
 
 					rgBlockSize[i] = new Identifier (decl);
 					m_data.getData ().getGlobalGeneratedIdentifiers ().addStencilFunctionArguments (
-						new Variable (EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER, new VariableDeclaration (Globals.SPECIFIER_SIZE, decl), strBlockSizeName, m_data));
+						new Variable (
+							EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER,
+							new VariableDeclaration (Globals.SPECIFIER_SIZE, decl),
+							strBlockSizeName,
+							strBlockSizeName,
+							m_data)
+					);
 				}
 
 				sizeLevel2 = new Size (rgBlockSize);

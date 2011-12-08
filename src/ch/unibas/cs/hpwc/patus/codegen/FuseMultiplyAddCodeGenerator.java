@@ -73,7 +73,7 @@ public class FuseMultiplyAddCodeGenerator
 							// conditions are met: create the FMA call
 
 							Expression exprFMA = m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
-								bexprTop.getRHS (), bexprLeft.getLHS (), bexprLeft.getRHS (), specDatatype, false);
+								bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false);
 
 							if (bexprTop == exprNew)
 								exprNew = exprFMA;
@@ -93,7 +93,7 @@ public class FuseMultiplyAddCodeGenerator
 						if (BinaryOperator.MULTIPLY.equals (bexprRight.getOperator ()))
 						{
 							Expression exprFMA = m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
-								bexprTop.getLHS (), bexprRight.getLHS (), bexprRight.getRHS (), specDatatype, false);
+								bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false);
 
 							if (bexprTop == exprNew)
 								exprNew = exprFMA;

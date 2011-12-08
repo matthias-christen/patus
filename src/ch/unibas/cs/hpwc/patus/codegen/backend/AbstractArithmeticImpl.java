@@ -223,7 +223,7 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 				for (Expression exprArg : (List<Expression>) fc.getArguments ())
 					listArgs.add (createExpression (exprArg.clone (), specDatatype, bVectorize));
 
-				exprResult = new FunctionCall (idFnxName, listArgs);
+				exprResult = new FunctionCall (idFnxName.clone (), listArgs);
 			}
 		}
 

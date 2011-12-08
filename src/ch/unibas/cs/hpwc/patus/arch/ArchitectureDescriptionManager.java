@@ -50,6 +50,8 @@ public class ArchitectureDescriptionManager
 
 	protected static class HardwareDescription implements IArchitectureDescription
 	{
+		private File m_file;
+		
 		private TypeArchitectureType m_type;
 
 		private Map<String, Datatype> m_mapDataTypes;
@@ -58,8 +60,9 @@ public class ArchitectureDescriptionManager
 		private Map<String, List<Intrinsic>> m_mapIntrinsics;
 
 
-		public HardwareDescription (TypeArchitectureType type)
+		public HardwareDescription (File file, TypeArchitectureType type)
 		{
+			m_file = file;
 			m_type = type;
 
 			m_mapDataTypes = new HashMap<String, Datatype> ();
@@ -335,7 +338,13 @@ public class ArchitectureDescriptionManager
 		@Override
 		public IArchitectureDescription clone ()
 		{
-			return new HardwareDescription (m_type);
+			return new HardwareDescription (m_file, m_type);
+		}
+
+		@Override
+		public File getFile ()
+		{
+			return m_file;
 		}
 	}
 
@@ -369,7 +378,7 @@ public class ArchitectureDescriptionManager
 			// construct hardware description objects
 			m_mapDescriptions = new HashMap<String, ArchitectureDescriptionManager.HardwareDescription> ();
 			for (TypeArchitectureType type : types.getArchitectureType ())
-				m_mapDescriptions.put (type.getName (), new HardwareDescription (type));
+				m_mapDescriptions.put (type.getName (), new HardwareDescription (fileHardwareDescriptions, type));
 		}
 		catch (JAXBException e)
 		{

@@ -1006,7 +1006,7 @@ public class CodeGenerator
 		}
 
 		sb.append ("#include <stdint.h>\n");
-		//sb.append ("#include \"patusrt.h\"\n");
+		sb.append ("#include \"patusrt.h\"\n");
 
 		////////
 		//sb.append ("#define t_max 1");

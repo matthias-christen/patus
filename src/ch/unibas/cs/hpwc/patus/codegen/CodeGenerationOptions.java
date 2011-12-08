@@ -120,6 +120,8 @@ public class CodeGenerationOptions
 	 * If so, correct padding is assumed
 	 */
 	private boolean m_bUseNativeSIMDDatatypes;
+	
+	private boolean m_bBalanceBinaryExpressions;
 
 	private Set<EDebugOption> m_setDebugOptions;
 
@@ -143,6 +145,7 @@ public class CodeGenerationOptions
 		m_compatibility = ECompatibility.C;
 		m_rgUnrollingFactors = new int[] { 1, 2 };
 		m_bUseNativeSIMDDatatypes = false;
+		m_bBalanceBinaryExpressions = true;
 		m_setDebugOptions = new HashSet<CodeGenerationOptions.EDebugOption> ();
 		m_listTargets = new ArrayList<CodeGenerationOptions.ETarget> (1);
 		m_listTargets.add (ETarget.BENCHMARK_HARNESS);
@@ -161,6 +164,7 @@ public class CodeGenerationOptions
 		setCompatibility (options.getCompatibility ());
 		setUnrollingFactors (options.getUnrollingFactors ());
 		setUseNativeSIMDDatatypes (options.useNativeSIMDDatatypes ());
+		setBalanceBinaryExpressions (options.getBalanceBinaryExpressions ());
 		m_setDebugOptions.addAll (options.m_setDebugOptions);
 		for (ETarget target : options.getTargets ())
 			addTarget (target);
@@ -217,6 +221,16 @@ public class CodeGenerationOptions
 	public boolean useNativeSIMDDatatypes ()
 	{
 		return m_bUseNativeSIMDDatatypes;
+	}
+	
+	public void setBalanceBinaryExpressions (boolean bBalanceBinaryExpressions)
+	{
+		m_bBalanceBinaryExpressions = bBalanceBinaryExpressions;
+	}
+	
+	public boolean getBalanceBinaryExpressions ()
+	{
+		return m_bBalanceBinaryExpressions;
 	}
 
 	public void setDebugOptions (String[] rgDebugOptions)

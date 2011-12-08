@@ -249,6 +249,22 @@ public class OpenMPCodeGenerator extends AbstractBackend
 		// return default implementation
 		return super.minus (expr, specDatatype, bVectorize);
 	}
+	
+	protected String getVecLoadFunctionName (Specifier specDatatype)
+	{
+		String strFunction = null;
+		if (Specifier.FLOAT.equals (specDatatype))
+			strFunction = "_mm_load1_ps";
+		else if (Specifier.DOUBLE.equals (specDatatype))
+			strFunction = "_mm_load1_pd";
+		
+		return strFunction;
+	}
+	
+	protected boolean hasVecLoadFunctionPointerArg ()
+	{
+		return true;
+	}
 
 	@Override
 	public Traversable splat (Expression expr, Specifier specDatatype)
@@ -268,16 +284,17 @@ public class OpenMPCodeGenerator extends AbstractBackend
 		{
 			// _mm_load1_p{s|d} (*p)
 
-			String strFunction = null;
-			if (Specifier.FLOAT.equals (specDatatype))
-				strFunction = "_mm_load1_ps";
-			else if (Specifier.DOUBLE.equals (specDatatype))
-				strFunction = "_mm_load1_pd";
-
+			String strFunction = getVecLoadFunctionName (specDatatype);
 			if (strFunction == null)
-				throw new RuntimeException ("");
+				throw new RuntimeException ("Unknown data type");
 
-			return new FunctionCall (new NameID (strFunction), CodeGeneratorUtil.expressions (new UnaryExpression (UnaryOperator.ADDRESS_OF, expr.clone ())));
+			Expression exprArg = null;
+			if (hasVecLoadFunctionPointerArg ())
+				exprArg = new UnaryExpression (UnaryOperator.ADDRESS_OF, expr.clone ());
+			else
+				exprArg = expr.clone ();
+			
+			return new FunctionCall (new NameID (strFunction), CodeGeneratorUtil.expressions (exprArg));
 		}
 		else
 		{

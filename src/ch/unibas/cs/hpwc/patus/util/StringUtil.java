@@ -198,4 +198,26 @@ public class StringUtil
 		// default
 		return obj.toString ();
 	}
+
+	public static String trimLeft (String s, char[] rgTrim)
+	{
+		int nIdx = 0;
+		String strTrim = new String (rgTrim);
+		
+		while (nIdx < s.length () && strTrim.indexOf (s.charAt (nIdx)) >= 0)
+			nIdx++;
+		
+		return s.substring (nIdx);
+	}
+	
+	public static String trimRight (String s, char[] rgTrim)
+	{
+		int nIdx = s.length () - 1;
+		String strTrim = new String (rgTrim);
+		
+		while (nIdx >= 0 && strTrim.indexOf (s.charAt (nIdx)) >= 0)
+			nIdx--;
+		
+		return s.substring (0, nIdx + 1);		
+	}
 }

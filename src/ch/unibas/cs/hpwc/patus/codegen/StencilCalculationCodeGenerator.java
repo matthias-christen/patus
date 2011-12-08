@@ -505,12 +505,19 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				exprStencil = exprStencil.clone ();
 
 				// check whether the hardware / programming model supports explicit FMAs
-				if (m_hw.getIntrinsicName (Globals.FNX_FMA.getName (), specDatatype) != null)
-					exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype);
+				// TODO: support FMA when not vectorizing? (need to distinguish between non-vectorizing and vectorizing in HardwareDescription#getIntrinsicName)				
+//				if (m_hw.getIntrinsicName (Globals.FNX_FMA.getName (), specDatatype) != null)
+//					exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype);
 
 				boolean bSuppressVectorization = m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, false);
 				boolean bFirst = true;
 
+				if (!bSuppressVectorization)
+				{
+					if (m_hw.getIntrinsicName (Globals.FNX_FMA.getName (), specDatatype) != null)
+						exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype);
+				}
+				
 				// add the stencil computation to the generated code
 				for (StencilNode nodeOutput : stencil.getOutputNodes ())
 				{

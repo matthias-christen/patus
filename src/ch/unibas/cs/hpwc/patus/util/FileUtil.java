@@ -20,12 +20,18 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.log4j.Logger;
+
+import ch.unibas.cs.hpwc.patus.CodeGeneratorMain;
+
 public class FileUtil
 {
 	///////////////////////////////////////////////////////////////////
 	// Static Member Variables
 
 	private static File BASE_DIR = null;
+	
+	private final static Logger LOGGER = Logger.getLogger (FileUtil.class);
 
 
 	///////////////////////////////////////////////////////////////////
@@ -300,20 +306,27 @@ public class FileUtil
 					break;
 				}
 			}
-
-			// remove "/bin" if it ends with that
-			String strBin = File.separator + "bin";
-			if (strMainClassPath != null && strMainClassPath.endsWith (strBin))
-				strMainClassPath = strMainClassPath.substring (0, strMainClassPath.length () - strBin.length ());
-
-			// remove "/classes" if it ends with that
-			String strClasses = File.separator + "classes";
-			if (strMainClassPath != null && strMainClassPath.endsWith (strClasses))
-				strMainClassPath = strMainClassPath.substring (0, strMainClassPath.length () - strClasses.length ());
 		}
 
 		if (strMainClassPath == null)
 			return FileUtil.BASE_DIR = new File ("");
+		
+		// remove "patus.jar" if it ends with that
+		String strJar = File.separator + "patus.jar";
+		if (strMainClassPath.endsWith (strJar))
+			strMainClassPath = StringUtil.trimRight (strMainClassPath.substring (0, strMainClassPath.length () - strJar.length ()), new char[] { File.separatorChar });
+		
+		LOGGER.debug (StringUtil.concat ("Main class path = ", strMainClassPath));
+
+		// remove "/bin" if it ends with that
+		String strBin = File.separator + "bin";
+		if (strMainClassPath.endsWith (strBin))
+			strMainClassPath = strMainClassPath.substring (0, strMainClassPath.length () - strBin.length ());
+
+		// remove "/classes" if it ends with that
+		String strClasses = File.separator + "classes";
+		if (strMainClassPath.endsWith (strClasses))
+			strMainClassPath = strMainClassPath.substring (0, strMainClassPath.length () - strClasses.length ());
 
 		FileUtil.BASE_DIR = new File (strMainClassPath);
 		if (strMainClassPath.endsWith (".jar"))

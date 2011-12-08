@@ -16,6 +16,7 @@ import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.backend.cuda.CUDA1DCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.cuda.CUDA4CodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.cuda.CUDACodeGenerator;
+import ch.unibas.cs.hpwc.patus.codegen.backend.openmp.OpenMPAVXCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.openmp.OpenMPCodeGenerator;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -34,6 +35,8 @@ public class BackendFactory
 		// try to instantiate by name
 		if ("OpenMP".equals (strBackend))
 			return new OpenMPCodeGenerator (data);
+		if ("OpenMP_AVX".equals (strBackend))
+			return new OpenMPAVXCodeGenerator (data);
 		if ("CUDA".equals (strBackend))
 			return new CUDACodeGenerator (data);
 		if ("CUDA4".equals (strBackend))

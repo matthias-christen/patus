@@ -76,7 +76,19 @@ public class BenchmarkHarness
 	 */
 	public void generate (File fileOutputDir, KernelSourceFile out)
 	{
-		File f = FileUtil.getFileRelativeToJar (m_data.getArchitectureDescription ().getBuild ().getHarnessTemplateDir ());
+		File f = null;
+		File fileArchDescr = m_data.getArchitectureDescription ().getFile ();
+		if (fileArchDescr != null)
+		{
+			f = new File (fileArchDescr.getParent (), m_data.getArchitectureDescription ().getBuild ().getHarnessTemplateDir ());
+			if (!f.exists ())
+				f = null;
+		}
+
+		if (f == null)
+			f = FileUtil.getFileRelativeToJar (m_data.getArchitectureDescription ().getBuild ().getHarnessTemplateDir ());
+		
+		LOGGER.info (StringUtil.concat ("Using directory ", f.getPath (), " for benchmarking harness..."));
 		if (f.equals (fileOutputDir))
 			throw new RuntimeException ("Benchmark harness directory and output directory are equal. Aborting...");
 
@@ -183,6 +195,7 @@ public class BenchmarkHarness
 
 		// copy runtime files
 		File fileRuntimeDir = FileUtil.getFileRelativeToJar ("runtime");
+		LOGGER.info (StringUtil.concat ("Copying runtime files from ", fileRuntimeDir.getPath ()));
 		File[] rgFiles = fileRuntimeDir.listFiles ();
 		if (rgFiles != null)
 		{
@@ -193,7 +206,9 @@ public class BenchmarkHarness
 				{
 					try
 					{
-						FileUtil.copy (f, new File (fileRelOutputDir, f.getName ()));
+						File fileDest = new File (fileRelOutputDir, f.getName ());
+						LOGGER.info (StringUtil.concat ("Copying file ", f.getPath (), " to ", fileDest.getPath ()));
+						FileUtil.copy (f, fileDest);
 					}
 					catch (IOException e)
 					{

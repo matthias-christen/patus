@@ -115,6 +115,8 @@ public class CommandLineOptions
 			}
 			else if ("use-native-simd-datatypes".equals (strOption))
 				m_options.setUseNativeSIMDDatatypes (strValue.equals ("yes"));
+			else if ("balance-binary-expressions".equals (strOption))
+				m_options.setBalanceBinaryExpressions (!strValue.equals ("no"));
 			else if ("create-initialization".equals (strOption))
 				m_options.setCreateInitialization (strValue.equals ("yes"));
 			else if ("create-validation".equals (strOption))
@@ -140,7 +142,7 @@ public class CommandLineOptions
 
 	public static void printHelp ()
 	{
-		System.out.println ("Usage: Patus codegen[-e]");
+		System.out.println ("Usage: Patus codegen[-x]");
 		System.out.println ("    --stencil=<Stencil File>  --strategy=<Strategy File>");
 		System.out.println ("    --architecture=<Architecture Description File>,<Hardware Name>");
 		System.out.println ("    [--outdir=<Output Directory>] [--generate=<Target>]");

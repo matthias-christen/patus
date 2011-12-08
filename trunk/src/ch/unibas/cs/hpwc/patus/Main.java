@@ -18,6 +18,7 @@ import org.apache.log4j.Logger;
 import ch.unibas.cs.hpwc.patus.autotuner.StandaloneAutotuner;
 import ch.unibas.cs.hpwc.patus.preprocessor.Preprocessor;
 import ch.unibas.cs.hpwc.patus.tools.Compare;
+import ch.unibas.cs.hpwc.patus.util.FileUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -39,14 +40,14 @@ public class Main
 
 		if (args.length < 1)
 		{
-			System.out.println ("No mode selected.\nSyntax:\n\tPatus <mode> <mode-specific params>\nwhere <mode> is one of 'codegen', 'embedded-codegen', 'autotune', or 'compare'.");
+			System.out.println ("No mode selected.\nSyntax:\n\tPatus <mode> <mode-specific params>\nwhere <mode> is one of 'codegen', 'codegen-x', 'autotune', or 'compare'.");
 			System.exit (-1);
 		}
 
 		String strMode = args[0];
 		if (strMode.equals ("codegen"))
 			CodeGeneratorMain.main (Arrays.copyOfRange (args, 1, args.length));
-		else if (strMode.equals ("codegen-e"))
+		else if (strMode.equals ("codegen-x"))
 			Preprocessor.main (Arrays.copyOfRange (args, 1, args.length));
 		else if (strMode.equals ("autotune"))
 			StandaloneAutotuner.main (Arrays.copyOfRange (args, 1, args.length));

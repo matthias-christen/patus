@@ -277,7 +277,11 @@ public class Parser {
 		if (fSum != 0)
 			listSummandsSimplified.add (exprExplicitSum);
 			
-		return balancedBinaryExpression (listSummandsSimplified, BinaryOperator.ADD);
+		if (m_options.getBalanceBinaryExpressions ())
+			return balancedBinaryExpression (listSummandsSimplified, BinaryOperator.ADD);
+			
+		// don't balance expressions
+		return leftToRightBinaryExpression (listSummandsSimplified, BinaryOperator.ADD);
 	}
 	
 	/**
@@ -302,7 +306,12 @@ public class Parser {
 		if (fProduct != 1)
 			listFactorsSimplified.add (exprExplicitProduct);
 			
-		return balancedBinaryExpression (listFactorsSimplified, BinaryOperator.MULTIPLY);
+		if (m_options.getBalanceBinaryExpressions ())
+			return balancedBinaryExpression (listFactorsSimplified, BinaryOperator.MULTIPLY);
+
+		// don't balance expressions
+		return leftToRightBinaryExpression (listFactorsSimplified, BinaryOperator.MULTIPLY);
+
 	}
 	
 	private ExpressionData balancedBinaryExpression (List<ExpressionData> listOperands, BinaryOperator op)
@@ -319,6 +328,25 @@ public class Parser {
 			new BinaryExpression (exprLeft.getExpression (), op, exprRight.getExpression ()),
 			exprLeft.getFlopsCount () + 1 + exprRight.getFlopsCount (),
 			Symbolic.EExpressionType.EXPRESSION);
+	}
+	
+	private ExpressionData leftToRightBinaryExpression (List<ExpressionData> listOperands, BinaryOperator op)
+	{
+		Expression exprSum = null;
+		int nFlops = 0;
+		for (ExpressionData expr : listOperands)
+		{
+			if (exprSum == null)
+				exprSum = expr.getExpression ();
+			else
+			{
+				exprSum = new BinaryExpression (exprSum.clone (), op, expr.getExpression ());
+				nFlops++;
+			}
+			nFlops += expr.getFlopsCount ();
+		}
+		
+		return new ExpressionData (exprSum, nFlops, Symbolic.EExpressionType.EXPRESSION);	
 	}
 	
 	private ExpressionData subtract (ExpressionData expr1, ExpressionData expr2, boolean bIsInteger)

@@ -138,7 +138,7 @@ public class Preprocessor
 						{
 							if (!bFirst)
 								out.print (", ");
-							out.print (v.getOriginalName ());
+							out.print (StringUtil.trimLeft (v.getOriginalName (), new char[] { '_' }));
 							bFirst = false;
 						}
 						out.println (")");

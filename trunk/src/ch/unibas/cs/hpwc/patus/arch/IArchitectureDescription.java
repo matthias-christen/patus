@@ -10,6 +10,7 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.arch;
 
+import java.io.File;
 import java.util.List;
 
 import cetus.hir.BinaryOperator;
@@ -162,4 +163,10 @@ public interface IArchitectureDescription
 	public abstract Build getBuild ();
 
 	public IArchitectureDescription clone ();
+	
+	/**
+	 * Returns the file from which the hardware description was loaded or <code>null</code> if it wasn't loaded from file.
+	 * @return The file from which the hardware description was loaded or <code>null</code> if it wasn't loaded from file
+	 */
+	public File getFile ();
 }

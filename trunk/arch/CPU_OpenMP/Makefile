@@ -8,7 +8,7 @@
 CC = icc
 CFLAGS = -O3 -openmp -I.
 
-bench: kernel.o driver.o $(PATUS_RUNTIME_OBJECT_FILES)
+bench: kernel.o driver.o ssemathlib.o $(PATUS_RUNTIME_OBJECT_FILES)
 	$(CC) $(CFLAGS) -o $@ $+
 
 %.o: %.c

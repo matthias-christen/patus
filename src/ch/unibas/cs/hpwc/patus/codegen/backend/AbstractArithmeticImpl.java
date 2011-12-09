@@ -13,21 +13,26 @@ package ch.unibas.cs.hpwc.patus.codegen.backend;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import org.apache.log4j.Logger;
 
 import cetus.hir.ArrayAccess;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.FunctionCall;
-import cetus.hir.IDExpression;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  * Provides a default implementation for arithmetic operations for
@@ -40,6 +45,12 @@ import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
  */
 public abstract class AbstractArithmeticImpl implements IArithmetic
 {
+	///////////////////////////////////////////////////////////////////
+	// Constants
+
+	private final static Logger LOGGER = Logger.getLogger (AbstractArithmeticImpl.class);
+
+
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
@@ -160,9 +171,9 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 
 	private Expression internalGenerateUnaryExpression (UnaryOperator op, Expression expr, Specifier specDatatype, boolean bVectorize)
 	{
-		IDExpression opFnx = m_data.getArchitectureDescription ().getIntrinsicName (op, specDatatype);
+		Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (op, specDatatype);
 		Expression exprNew = createExpression (expr, specDatatype, bVectorize);
-		return opFnx != null ? new FunctionCall (opFnx, CodeGeneratorUtil.expressions (exprNew)) : new UnaryExpression (op, exprNew);
+		return intrinsic != null ? new FunctionCall (new NameID (intrinsic.getName ()), CodeGeneratorUtil.expressions (exprNew)) : new UnaryExpression (op, exprNew);
 	}
 
 	/**
@@ -191,10 +202,13 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 
 	private Expression internalGenerateBinaryExpression (BinaryOperator op, Expression expr1, Expression expr2, Specifier specDatatype, boolean bVectorize)
 	{
-		IDExpression opFnx = m_data.getArchitectureDescription ().getIntrinsicName (op, specDatatype);
+		Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (op, specDatatype);
 		Expression exprNew1 = createExpression (expr1, specDatatype, bVectorize);
 		Expression exprNew2 = createExpression (expr2, specDatatype, bVectorize);
-		return opFnx != null ? new FunctionCall (opFnx.clone (), CodeGeneratorUtil.expressions (exprNew1, exprNew2)) : new BinaryExpression (exprNew1, op, exprNew2);
+
+		return intrinsic != null ?
+			new FunctionCall (new NameID (intrinsic.getName ()), CodeGeneratorUtil.expressions (exprNew1, exprNew2)) :
+			new BinaryExpression (exprNew1, op, exprNew2);
 	}
 
 	/**
@@ -216,27 +230,70 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 		Expression exprResult = invoke (fc.getName ().toString (), rgArgs);
 		if (exprResult == null)
 		{
-			IDExpression idFnxName = m_data.getArchitectureDescription ().getIntrinsicName (fc, specDatatype);
-			if (idFnxName != null)
+			Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (fc, specDatatype);
+			if (intrinsic != null)
 			{
 				List<Expression> listArgs = new ArrayList<Expression> (fc.getArguments ().size ());
 				for (Expression exprArg : (List<Expression>) fc.getArguments ())
 					listArgs.add (createExpression (exprArg.clone (), specDatatype, bVectorize));
 
-				exprResult = new FunctionCall (idFnxName.clone (), listArgs);
+				exprResult = new FunctionCall (new NameID (intrinsic.getName ()), listArgs);
 			}
 		}
 
 		return exprResult == null ? fc : exprResult;
 	}
 
-	private Expression internalGenerateFunctionCall (String strFunctionName, Specifier specDatatype, boolean bVectorize, Expression... rgArguments)
+	private int findIndex (String[] rgHaystack, String strNeedle)
 	{
-		IDExpression op = m_data.getArchitectureDescription ().getIntrinsicName (new FunctionCall (new NameID (strFunctionName)), specDatatype);
+		for (int i = 0; i < rgHaystack.length; i++)
+			if (rgHaystack[i].equals (strNeedle))
+				return i;
+		return -1;
+	}
+
+	private Expression internalGenerateFunctionCall (String strFunctionName, Specifier specDatatype, boolean bVectorize, Expression[] rgArguments, String[] rgArgNames)
+	{
+		Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (new FunctionCall (new NameID (strFunctionName)), specDatatype);
+
+		// create the list of arguments; permute according to the definition of the intrinsic's "argument" attribute
 		List<Expression> listArgs = new ArrayList<Expression> (rgArguments.length);
-		for (Expression exprArg : rgArguments)
-			listArgs.add (createExpression (exprArg, specDatatype, bVectorize));
-		return new FunctionCall (op != null ? op : new NameID (strFunctionName), listArgs);
+
+		boolean bArgsFilled = false;
+		if (intrinsic.getArguments () != null && !"".equals (intrinsic.getArguments ()))
+		{
+			if (rgArgNames == null)
+			{
+				LOGGER.warn (StringUtil.concat ("No argument names provided in the code generator for the function ",
+					strFunctionName, ", but argument names are given in the architecture description"));
+			}
+			else
+			{
+				// match the arguments
+				for (String strExpectedArg : intrinsic.getArguments ().split (","))
+				{
+					// find the index
+					int nIdx = findIndex (rgArgNames, strExpectedArg);
+					if (nIdx < 0)
+					{
+						LOGGER.error (StringUtil.concat ("The expected argument '", strExpectedArg,
+							"' defined in the architecture description doesn't match any of the function arguments. Admissible function arguments are: ",
+							Arrays.toString (rgArgNames)));
+					}
+					else
+						listArgs.add (createExpression (rgArguments[nIdx], specDatatype, bVectorize));
+				}
+				bArgsFilled = true;
+			}
+		}
+
+		if (!bArgsFilled)
+		{
+			for (Expression exprArg : rgArguments)
+				listArgs.add (createExpression (exprArg, specDatatype, bVectorize));
+		}
+
+		return new FunctionCall (intrinsic != null ? new NameID (intrinsic.getName ()) : new NameID (strFunctionName), listArgs);
 	}
 
 	@Override
@@ -284,13 +341,19 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 	@Override
 	public Expression sqrt (Expression expr, Specifier spec, boolean bVectorize)
 	{
-		return internalGenerateFunctionCall ("sqrt", spec, bVectorize, expr);
+		return internalGenerateFunctionCall ("sqrt", spec, bVectorize, new Expression[] { expr }, null);
 	}
 
 
 	@Override
-	public Expression fma (Expression expr1, Expression expr2, Expression expr3, Specifier spec, boolean bVectorize)
+	public Expression fma (Expression exprSummand, Expression exprFactor1, Expression exprFactor2, Specifier spec, boolean bVectorize)
 	{
-		return internalGenerateFunctionCall ("fma", spec, bVectorize, expr1, expr2, expr3);
+		return internalGenerateFunctionCall (
+			Globals.FNX_FMA.getName (),
+			spec,
+			bVectorize,
+			new Expression[] { exprSummand, exprFactor1, exprFactor2 },
+			new String[] { "summand", "factor1", "factor2" }
+		);
 	}
 }

@@ -85,13 +85,13 @@ public interface IArithmetic
 	/**
 	 * Creates a fused multiply-add (FMA) expression: Returns an expression for
 	 * <code>expr1</code> + <code>expr2</code> * <code>expr3</code>.
-	 * @param expr1 The summand
-	 * @param expr2 The first factor
-	 * @param expr3 The second factor
+	 * @param exprSummand The summand
+	 * @param exprFactor1 The first factor
+	 * @param exprFactor2 The second factor
 	 * @param specDatatype The basic datatype of the expression (<code>float</code>, <code>double</code>, ...)
 	 * @return An expression for <code>expr1</code> + <code>expr2</code> * <code>expr3</code>
 	 */
-	public abstract Expression fma (Expression expr1, Expression expr2, Expression expr3, Specifier specDatatype, boolean bVectorize);
+	public abstract Expression fma (Expression exprSummand, Expression exprFactor1, Expression exprFactor2, Specifier specDatatype, boolean bVectorize);
 
 	/**
 	 * Calculates the square root of <code>expr</code>.

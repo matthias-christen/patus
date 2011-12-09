@@ -15,12 +15,12 @@ import java.util.List;
 
 import cetus.hir.BinaryOperator;
 import cetus.hir.FunctionCall;
-import cetus.hir.IDExpression;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 
 /**
  * Describes data types, SIMD vector lengths, etc. for a certain
@@ -122,7 +122,7 @@ public interface IArchitectureDescription
 	 * @param specType The type for which to get the intrinsic
 	 * @return The {@link NameID} for the intrinsic replacing the operation <code>strOperation</code>
 	 */
-	public abstract IDExpression getIntrinsicName (String strOperation, Specifier specType);
+	public abstract Intrinsic getIntrinsic (String strOperation, Specifier specType);
 
 	/**
 	 * Returns the {@link NameID} for the intrinsic replacing the unary arithmetic operator <code>op</code>
@@ -131,7 +131,7 @@ public interface IArchitectureDescription
 	 * @param specType The type for which to get the intrinsic
 	 * @return The {@link NameID} for the intrinsic replacing the arithmetic operator <code>op</code>
 	 */
-	public abstract IDExpression getIntrinsicName (UnaryOperator op, Specifier specType);
+	public abstract Intrinsic getIntrinsic (UnaryOperator op, Specifier specType);
 
 	/**
 	 * Returns the {@link NameID} for the intrinsic replacing the arithmetic operator <code>op</code>
@@ -140,7 +140,7 @@ public interface IArchitectureDescription
 	 * @param specType The type for which to get the intrinsic
 	 * @return The {@link NameID} for the intrinsic replacing the arithmetic operator <code>op</code>
 	 */
-	public abstract IDExpression getIntrinsicName (BinaryOperator op, Specifier specType);
+	public abstract Intrinsic getIntrinsic (BinaryOperator op, Specifier specType);
 
 	/**
 	 * Returns the name of the intrinsic for the function <code>fnx</code>.
@@ -148,7 +148,7 @@ public interface IArchitectureDescription
 	 * @param specType
 	 * @return
 	 */
-	public abstract IDExpression getIntrinsicName (FunctionCall fnx, Specifier specType);
+	public abstract Intrinsic getIntrinsic (FunctionCall fnx, Specifier specType);
 
 	/**
 	 * Returns a list of architecture-specific header files that need to be included.
@@ -163,7 +163,7 @@ public interface IArchitectureDescription
 	public abstract Build getBuild ();
 
 	public IArchitectureDescription clone ();
-	
+
 	/**
 	 * Returns the file from which the hardware description was loaded or <code>null</code> if it wasn't loaded from file.
 	 * @return The file from which the hardware description was loaded or <code>null</code> if it wasn't loaded from file

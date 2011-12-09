@@ -147,6 +147,7 @@
 								<xs:attribute name="name" type="xs:string" use="required"/>
 								<xs:attribute name="baseName" type="typeBaseIntrinsicName" use="required"/>
 								<xs:attribute name="datatype" type="xs:string" use="required"/>
+								<xs:attribute name="arguments" type="xs:string" use="optional"/>
 							</xs:complexType>
 						</xs:element>
 					</xs:sequence>
@@ -202,8 +203,7 @@
 						Promotes a scalar constant to a vector with that constant in each entry.
 					</xs:documentation>
 				</xs:annotation>
-			</xs:enumeration>
-			
+			</xs:enumeration>			
 		</xs:restriction>
 	</xs:simpleType>
 	<xs:simpleType name="typeDeclspec">

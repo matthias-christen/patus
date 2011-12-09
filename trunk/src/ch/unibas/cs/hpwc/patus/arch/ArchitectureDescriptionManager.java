@@ -24,7 +24,6 @@ import cetus.hir.AnnotationStatement;
 import cetus.hir.BinaryOperator;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.FunctionCall;
-import cetus.hir.IDExpression;
 import cetus.hir.NameID;
 import cetus.hir.PragmaAnnotation;
 import cetus.hir.Specifier;
@@ -51,7 +50,7 @@ public class ArchitectureDescriptionManager
 	protected static class HardwareDescription implements IArchitectureDescription
 	{
 		private File m_file;
-		
+
 		private TypeArchitectureType m_type;
 
 		private Map<String, Datatype> m_mapDataTypes;
@@ -232,26 +231,28 @@ public class ArchitectureDescriptionManager
 			return list;
 		}
 
-		private NameID getNameID (String strTypeBaseName, Specifier specType)
+		private Intrinsic getIntrinsicInternal (String strTypeBaseName, Specifier specType)
 		{
 			Datatype datatype = m_mapDataTypesFromBase.get (specType.toString ());
 
+			// get the list of intrinsics for the function base name
 			List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (strTypeBaseName);
 			if (listIntrinsics == null || listIntrinsics.size () == 0)
 				return null;
 
+			// find the intrinsic for the correct data type
 			for (Intrinsic intrinsic : listIntrinsics)
 			{
 				String strDatatype = intrinsic.getDatatype ();
 				if (strDatatype == null)
 				{
 					if (datatype == null || datatype.getName () == null || "".equals (datatype.getName ()))
-						return new NameID (intrinsic.getName ());
+						return intrinsic;
 				}
 				else
 				{
 					if (datatype != null && strDatatype.equals (datatype.getName ()))
-						return new NameID (intrinsic.getName ());
+						return intrinsic;
 				}
 			}
 
@@ -259,65 +260,68 @@ public class ArchitectureDescriptionManager
 		}
 
 		@Override
-		public IDExpression getIntrinsicName (String strOperation, Specifier specType)
+		public Intrinsic getIntrinsic (String strOperation, Specifier specType)
 		{
 			if ("+".equals (strOperation))
-				return getNameID (TypeBaseIntrinsicEnum.PLUS.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.PLUS.value (), specType);
 			if ("-".equals (strOperation))
-				return getNameID (TypeBaseIntrinsicEnum.MINUS.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MINUS.value (), specType);
 			if ("*".equals (strOperation))
-				return getNameID (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
 			if ("/".equals (strOperation))
-				return getNameID (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
 			if (Globals.FNX_FMA.getName ().equals (strOperation))
-				return getNameID (TypeBaseIntrinsicEnum.FMA.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.FMA.value (), specType);
 
 			return null;
 		}
 
 		@Override
-		public IDExpression getIntrinsicName (UnaryOperator op, Specifier specType)
+		public Intrinsic getIntrinsic (UnaryOperator op, Specifier specType)
 		{
 			if (UnaryOperator.PLUS.equals (op))
-				return getNameID (TypeBaseIntrinsicEnum.UNARY_PLUS.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.UNARY_PLUS.value (), specType);
 			if (UnaryOperator.MINUS.equals (op))
-				return getNameID (TypeBaseIntrinsicEnum.UNARY_MINUS.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.UNARY_MINUS.value (), specType);
 
 			// intrinsic not found
 			return null;
 		}
 
 		@Override
-		public IDExpression getIntrinsicName (BinaryOperator op, Specifier specType)
+		public Intrinsic getIntrinsic (BinaryOperator op, Specifier specType)
 		{
 			if (BinaryOperator.ADD.equals (op))
-				return getNameID (TypeBaseIntrinsicEnum.PLUS.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.PLUS.value (), specType);
 			if (BinaryOperator.SUBTRACT.equals (op))
-				return getNameID (TypeBaseIntrinsicEnum.MINUS.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MINUS.value (), specType);
 			if (BinaryOperator.MULTIPLY.equals (op))
-				return getNameID (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
 			if (BinaryOperator.DIVIDE.equals (op))
-				return getNameID (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
 			return null;
 		}
 
 		@Override
-		public IDExpression getIntrinsicName (FunctionCall fnx, Specifier specType)
+		public Intrinsic getIntrinsic (FunctionCall fnx, Specifier specType)
 		{
 			String strFnx = fnx.getName ().toString ();
 			if (Globals.FNX_BARRIER.getName ().equals (strFnx))
-				return getNameID (TypeBaseIntrinsicEnum.BARRIER.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.BARRIER.value (), specType);
 			if (Globals.FNX_FMA.getName ().equals (strFnx))
-				return getNameID (TypeBaseIntrinsicEnum.FMA.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.FMA.value (), specType);
 			if (Globals.NUMBER_OF_THREADS.getName ().equals (strFnx))
-				return getNameID (TypeBaseIntrinsicEnum.NUMTHREADS.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.NUMTHREADS.value (), specType);
 			if (Globals.THREAD_NUMBER.getName ().equals (strFnx))
-				return getNameID (TypeBaseIntrinsicEnum.THREADID.value (), specType);
+				return getIntrinsicInternal (TypeBaseIntrinsicEnum.THREADID.value (), specType);
 
-			IDExpression exprFnx = getNameID (strFnx, specType);
-			if (exprFnx != null)
-				return exprFnx;
-			return fnx.getName () instanceof IDExpression ? (IDExpression) fnx.getName () : new NameID (fnx.getName ().toString ());
+			Intrinsic intfnx = getIntrinsicInternal (strFnx, specType);
+			if (intfnx != null)
+				return intfnx;
+
+			intfnx = new Intrinsic ();
+			intfnx.setBaseName (fnx.getName ().toString ());
+			return intfnx;
 		}
 
 		@Override

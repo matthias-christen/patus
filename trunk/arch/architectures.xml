@@ -108,8 +108,8 @@
 		<build compiler-command="make" harness-template-dir="CPU_OpenMP_PAPI"/>
 	</architectureType>
 	
-	<!-- Architecture with AVX+FMA4, OpenMP parallelization -->
-	<architectureType name="x86_64 AVX FMA4">
+	<!-- Architecture with AVX, OpenMP parallelization -->
+	<architectureType name="x86_64 AVX">
 		<codegenerator src-suffix="c" backend="OpenMP_AVX" use-function-pointers="true"/>
 		<parallelism>
 			<level number="1" hasExplicitLocalDataCopy="false" asyncIO="true">
@@ -136,7 +136,6 @@
 			<intrinsic baseName="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
 			<intrinsic baseName="min" name="_mm256_min_pd" datatype="__m256d"/>
 			<intrinsic baseName="max" name="_mm256_max_pd" datatype="__m256d"/>
-			<!--<intrinsic baseName="fma" name="_mm256_macc_pd" datatype="__m256d"/>-->
 			
 			<!-- intrinsics for single precision arithmetic operations -->
 			<intrinsic baseName="unary_minus" name="neg_ps" datatype="__m256"/>
@@ -147,7 +146,6 @@
 			<intrinsic baseName="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
 			<intrinsic baseName="min" name="_mm256_min_ps" datatype="__m256"/>
 			<intrinsic baseName="max" name="_mm256_max_ps" datatype="__m256"/>
-			<!--<intrinsic baseName="fma" name="_mm256_macc_ps" datatype="__m256"/>-->
 			
 			<!-- non-arithmetic intrinsics -->
 		</intrinsics>
@@ -158,6 +156,17 @@
 			<include file="avxmathlib.h"/>
 		</includes>
 		<build compiler-command="make" harness-template-dir="CPU_OpenMP"/>
+	</architectureType>
+
+	<!-- Architecture with AVX+FMA4, OpenMP parallelization -->
+	<architectureType name="x86_64 AVX FMA4" inherits-from="x86_64 AVX">
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			<intrinsic baseName="fma" name="_mm256_macc_pd" datatype="__m256d" arguments="factor1,factor2,summand"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			<intrinsic baseName="fma" name="_mm256_macc_ps" datatype="__m256" arguments="factor1,factor2,summand"/>
+		</intrinsics>
 	</architectureType>
 	
 	<!-- NVIDIA CUDA GPU -->

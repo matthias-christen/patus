@@ -171,9 +171,9 @@ public abstract class AbstractBackend implements IBackend
 	}
 
 	@Override
-	public Expression fma (Expression expr1, Expression expr2, Expression expr3, Specifier specDatatype, boolean bVectorize)
+	public Expression fma (Expression exprSummand, Expression exprFactor1, Expression exprFactor2, Specifier specDatatype, boolean bVectorize)
 	{
-		return m_mixinArithmetic.fma (expr1, expr2, expr3, specDatatype, bVectorize);
+		return m_mixinArithmetic.fma (exprSummand, exprFactor1, exprFactor2, specDatatype, bVectorize);
 	}
 
 	@Override

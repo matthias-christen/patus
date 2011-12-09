@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Lesser Public License v2.1
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
  ******************************************************************************/
@@ -505,7 +505,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				exprStencil = exprStencil.clone ();
 
 				// check whether the hardware / programming model supports explicit FMAs
-				// TODO: support FMA when not vectorizing? (need to distinguish between non-vectorizing and vectorizing in HardwareDescription#getIntrinsicName)				
+				// TODO: support FMA when not vectorizing? (need to distinguish between non-vectorizing and vectorizing in HardwareDescription#getIntrinsicName)
 //				if (m_hw.getIntrinsicName (Globals.FNX_FMA.getName (), specDatatype) != null)
 //					exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype);
 
@@ -514,10 +514,10 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 
 				if (!bSuppressVectorization)
 				{
-					if (m_hw.getIntrinsicName (Globals.FNX_FMA.getName (), specDatatype) != null)
+					if (m_hw.getIntrinsic (Globals.FNX_FMA.getName (), specDatatype) != null)
 						exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype);
 				}
-				
+
 				// add the stencil computation to the generated code
 				for (StencilNode nodeOutput : stencil.getOutputNodes ())
 				{

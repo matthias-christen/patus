@@ -26,19 +26,23 @@ void toc (long nFlopsPerStencil, long nStencilComputationsCount, long nBytesTran
 
 
 #ifndef __cplusplus
+/*
 inline int min (int a, int b)
 {
 	if (a < b)
 		return a;
 	return b;
-}
+}*/
+#define min(a, b) (((a) < (b)) ? (a) : (b))
 
+/*
 inline int max (int a, int b)
 {
 	if (a < b)
 		return b;
 	return a;
-}
+}*/
+#define max(a, b) (((a) < (b)) ? (b) : (a))
 #endif
 
 

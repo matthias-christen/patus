@@ -162,9 +162,25 @@
 	<architectureType name="x86_64 AVX FMA4" inherits-from="x86_64 AVX">
 		<intrinsics>
 			<!-- intrinsics for double precision arithmetic operations -->
+			<intrinsic baseName="unary_minus" name="neg_pd" datatype="__m256d"/>
+			<intrinsic baseName="plus" name="_mm256_add_pd" datatype="__m256d"/>
+			<intrinsic baseName="minus" name="_mm256_sub_pd" datatype="__m256d"/>
+			<intrinsic baseName="multiply" name="_mm256_mul_pd" datatype="__m256d"/>
+			<intrinsic baseName="divide" name="_mm256_div_pd" datatype="__m256d"/>
+			<intrinsic baseName="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
+			<intrinsic baseName="min" name="_mm256_min_pd" datatype="__m256d"/>
+			<intrinsic baseName="max" name="_mm256_max_pd" datatype="__m256d"/>
 			<intrinsic baseName="fma" name="_mm256_macc_pd" datatype="__m256d" arguments="factor1,factor2,summand"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
+			<intrinsic baseName="unary_minus" name="neg_ps" datatype="__m256"/>
+			<intrinsic baseName="plus" name="_mm256_add_ps" datatype="__m256"/>
+			<intrinsic baseName="minus" name="_mm256_sub_ps" datatype="__m256"/>
+			<intrinsic baseName="multiply" name="_mm256_mul_ps" datatype="__m256"/>
+			<intrinsic baseName="divide" name="_mm256_div_ps" datatype="__m256"/>
+			<intrinsic baseName="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
+			<intrinsic baseName="min" name="_mm256_min_ps" datatype="__m256"/>
+			<intrinsic baseName="max" name="_mm256_max_ps" datatype="__m256"/>
 			<intrinsic baseName="fma" name="_mm256_macc_ps" datatype="__m256" arguments="factor1,factor2,summand"/>
 		</intrinsics>
 	</architectureType>

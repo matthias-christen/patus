@@ -320,7 +320,9 @@ public class ArchitectureDescriptionManager
 				return intfnx;
 
 			intfnx = new Intrinsic ();
-			intfnx.setBaseName (fnx.getName ().toString ());
+			String strName = fnx.getName ().toString ();
+			intfnx.setBaseName (strName);
+			intfnx.setName (strName);
 			return intfnx;
 		}
 

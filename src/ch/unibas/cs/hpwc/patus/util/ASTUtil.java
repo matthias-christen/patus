@@ -10,19 +10,30 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.util;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import cetus.hir.ArrayAccess;
 import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
+import cetus.hir.FloatLiteral;
 import cetus.hir.IDExpression;
+import cetus.hir.Identifier;
+import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.PointerSpecifier;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
+import cetus.hir.Symbol;
 import cetus.hir.Symbolic;
 import cetus.hir.Traversable;
+import cetus.hir.Typecast;
+import cetus.hir.UnaryExpression;
+import cetus.hir.UnaryOperator;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
 
 public class ASTUtil
 {
@@ -127,11 +138,92 @@ public class ASTUtil
 	{
 		if (listSpecifiers == null)
 			return null;
-		if (PointerSpecifier.UNQUALIFIED.equals (listSpecifiers.get (listSpecifiers.size () - 1)))
+		
+		Specifier specLast = listSpecifiers.get (listSpecifiers.size () - 1);
+		if (ASTUtil.isPointer (specLast))
 			return listSpecifiers.subList (0, listSpecifiers.size () - 1);
+
 		return listSpecifiers;
 	}
-
+	
+	public static boolean isPointer (Specifier spec)
+	{
+		return spec.equals (PointerSpecifier.UNQUALIFIED) || spec.equals (PointerSpecifier.CONST) || spec.equals (PointerSpecifier.VOLATILE) || spec.equals (PointerSpecifier.CONST_VOLATILE);
+	}
+	
+	public static Expression getPointerTo (Expression expr)
+	{
+		if (expr instanceof UnaryExpression && ((UnaryExpression) expr).getOperator ().equals (UnaryOperator.DEREFERENCE))
+			return ((UnaryExpression) expr).getExpression ().clone ();
+		return new UnaryExpression (UnaryOperator.ADDRESS_OF, expr.clone ());
+	}
+	
+	public static Expression castTo (Expression expr, List<Specifier> listType)
+	{
+		Expression exprToCast = expr;
+		
+		// remove any existing leading type casts
+		while (exprToCast instanceof Typecast)
+			exprToCast = (Expression) ((Typecast) exprToCast).getChildren ().get (0);		
+		
+		// try to determine the type of the expression
+		List<Specifier> listExprToCastType = ASTUtil.getExpressionType (exprToCast);
+		
+		if (listExprToCastType.equals (listType))
+			return exprToCast.clone ();
+		return new Typecast (listType, exprToCast.clone ());
+	}
+	
+	/**
+	 * Tries to determine the type of the expression <code>expr</code>.
+	 * @param expr
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private static List<Specifier> getExpressionType (Expression expr)
+	{
+		if (expr instanceof IntegerLiteral)
+			return CodeGeneratorUtil.specifiers (Specifier.INT);	// TODO: might be "long"
+		if (expr instanceof FloatLiteral)
+			return CodeGeneratorUtil.specifiers (Specifier.DOUBLE);	// TODO: might be "float"
+		if (expr instanceof ArrayAccess)
+		{
+			Expression exprArray = ((ArrayAccess) expr).getArrayName ();
+			if (exprArray instanceof Identifier)
+			{
+				Symbol sym = ((Identifier) exprArray).getSymbol ();
+				// sym.getArraySpecifiers ()... TODO: handle array specifiers
+				try
+				{
+					return ASTUtil.dereference ((List<Specifier>) sym.getTypeSpecifiers ());
+				}
+				catch (Exception e)
+				{
+					return new ArrayList<Specifier> (0);
+				}				
+			}
+			return ASTUtil.dereference (getExpressionType (((ArrayAccess) expr).getArrayName ()));
+		}
+		if (expr instanceof UnaryExpression)
+		{
+			UnaryOperator op = ((UnaryExpression) expr).getOperator ();
+			if (op.equals (UnaryOperator.ADDRESS_OF))
+			{
+				List<Specifier> l = CodeGeneratorUtil.specifiers (PointerSpecifier.UNQUALIFIED);
+				l.addAll (getExpressionType (((UnaryExpression) expr).getExpression ()));
+				return l;
+			}
+			else if (op.equals (UnaryOperator.DEREFERENCE))
+				return ASTUtil.dereference (getExpressionType (((UnaryExpression) expr).getExpression ()));
+		}
+		if (expr instanceof Typecast)
+			return ((Typecast) expr).getSpecifiers ();
+		
+		// TODO: handle binary expressions
+		
+		return new ArrayList<Specifier> (0);
+	}
+	
 	/**
 	 * Tests whether the expression <code>expr</code> depends directly on <code>id</code>.
 	 * @param expr

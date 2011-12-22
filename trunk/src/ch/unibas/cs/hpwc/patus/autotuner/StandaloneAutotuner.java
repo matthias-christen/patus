@@ -43,7 +43,7 @@ public class StandaloneAutotuner
 
 	private boolean m_bInitSuccessful;
 
-	private String m_strOptimizerKey;
+	private IOptimizer m_optimizer;
 
 	/**
 	 * The command line parameters
@@ -77,7 +77,7 @@ public class StandaloneAutotuner
 	{
 		m_bInitSuccessful = false;
 		m_rgParams = rgParams;
-		m_strOptimizerKey = "";
+		m_optimizer = null;
 
 		// check whether the call is valid
 		if (!checkCommandLine ())
@@ -166,6 +166,104 @@ public class StandaloneAutotuner
 
 		return true;
 	}
+	
+	private boolean parseRange (String strParam)
+	{
+		try
+		{
+			if (strParam.indexOf (':') >= 0)
+			{
+				// variant "startvalue:[[*]step:]endvalue"
+	
+				// parse the input
+				String[] rgValues = strParam.split (":");
+	
+				boolean bUseExhaustive = false;
+				if (rgValues[rgValues.length - 1].endsWith ("!"))
+				{
+					rgValues[rgValues.length - 1] = rgValues[rgValues.length - 1].substring (0, rgValues[rgValues.length - 1].length () - 1);
+					bUseExhaustive = true;
+				}
+	
+				int nStartValue = Integer.parseInt (rgValues[0]);
+				int nEndValue = 0;
+				int nStep = 1;
+				boolean bIsStepMultiplicative = false;
+	
+				if (rgValues.length == 2)
+					nEndValue = Integer.parseInt (rgValues[1]);
+				else if (rgValues.length == 3)
+				{
+					bIsStepMultiplicative = rgValues[1].charAt (0) == '*';
+					nStep = Integer.parseInt (bIsStepMultiplicative ? rgValues[1].substring (1) : rgValues[1]);
+					nEndValue = Integer.parseInt (rgValues[2]);
+				}
+				else
+					return false;
+	
+				// assign the parameter list
+				List<Integer> listValues = new LinkedList<Integer> ();
+				int nParamsCount = 0;
+				for (int k = nStartValue; k <= nEndValue; k = bIsStepMultiplicative ? k * nStep : k + nStep)
+				{
+					if (nParamsCount > StandaloneAutotuner.MAX_PARAM_VALUES)
+						break;
+					listValues.add (k);
+					nParamsCount++;
+				}
+	
+				int[] rgParamSet = new int[listValues.size ()];
+				int j = 0;
+				for (int nValue : listValues)
+				{
+					rgParamSet[j] = nValue;
+					j++;
+				}
+				
+				ParamSet ps = new ParamSet (rgParamSet, bUseExhaustive);
+				LOGGER.info (ps.toString ());
+				m_listParamSets.add (ps);
+			}
+			else if (strParam.indexOf (',') >= 0)
+			{
+				// variant "value1[,value2[,value3...]]"
+	
+				String[] rgValues = strParam.split (",");
+	
+				boolean bUseExhaustive = false;
+				if (rgValues[rgValues.length - 1].endsWith ("!"))
+				{
+					rgValues[rgValues.length - 1] = rgValues[rgValues.length - 1].substring (0, rgValues[rgValues.length - 1].length () - 2);
+					bUseExhaustive = true;
+				}
+	
+				int[] rgParamSet = new int[rgValues.length];
+				int j = 0;
+				for (String strValue : rgValues)
+				{
+					rgParamSet[j] = Integer.parseInt (strValue);
+					j++;
+				}
+				
+				ParamSet ps = new ParamSet (rgParamSet, bUseExhaustive);
+				LOGGER.info (ps.toString ());
+				m_listParamSets.add (ps);
+			}
+			else
+			{
+				// assume this is only a single number
+				ParamSet ps = new ParamSet (new int[] { Integer.parseInt (strParam) }, false);
+				LOGGER.info (ps.toString ());
+				m_listParamSets.add (ps);
+			}
+		}
+		catch (NumberFormatException e)
+		{
+			return false;
+		}
+		
+		return true;
+	}
 
 	/**
 	 * Parses the command line parameters.
@@ -182,6 +280,7 @@ public class StandaloneAutotuner
 		for (int i = 1; i < m_rgParams.length; i++)
 		{
 			// expects the command line argument to be in the form "startvalue:[[*]step:]endvalue[!]", or "value1[,value2[,value3...]][!]".
+			boolean bArgParsed = true;
 			try
 			{
 				if (m_rgParams[i].charAt (0) == 'C')
@@ -192,7 +291,8 @@ public class StandaloneAutotuner
 					m_listConstraints.add (exprConstraint);
 				}
 				else if (m_rgParams[i].startsWith ("-m"))
-					m_strOptimizerKey = m_rgParams[i].substring (2);
+					m_optimizer = OptimizerFactory.getOptimizer (m_rgParams[i].substring (2));
+				
 				else if (m_rgParams[i].indexOf (':') >= 0)
 				{
 					// variant "startvalue:[[*]step:]endvalue"
@@ -281,7 +381,16 @@ public class StandaloneAutotuner
 			}
 			catch (NumberFormatException e)
 			{
-				throw new RuntimeException ("Malformed argument " + m_rgParams[i]);
+				bArgParsed = false;
+				//throw new RuntimeException ("Malformed argument " + m_rgParams[i]);
+			}
+			
+			if (!bArgParsed)
+			{
+				// the argument hasn't been parsed yet; assume it is of the form ".*({<arg>})*.*" (regex; i.e., contains
+				// some text and the parameter to vary in curly braces
+				
+				// TODO
 			}
 		}
 	}
@@ -291,11 +400,13 @@ public class StandaloneAutotuner
 	 */
 	private void optimize ()
 	{
+		if (m_optimizer == null)
+			throw new RuntimeException ("Optimizer not found.");
+		
 		// run the optimizer
-		IOptimizer optimizer = OptimizerFactory.getOptimizer (m_strOptimizerKey);
-		StandaloneAutotuner.LOGGER.info (StringUtil.concat ("Using optimizer: ", optimizer.getName ()));
+		StandaloneAutotuner.LOGGER.info (StringUtil.concat ("Using optimizer: ", m_optimizer.getName ()));
 
-		HybridOptimizer optMain = new HybridOptimizer (optimizer);
+		HybridOptimizer optMain = new HybridOptimizer (m_optimizer);
 
 		IRunExecutable run = new HybridRunExecutable (m_strFilename, m_listParamSets, m_listConstraints);
 		optMain.optimize (run);

@@ -1075,14 +1075,21 @@ PRODUCTIONS                                                                     
         	(
         		'*'                                                            (. op = BinaryOperator.MULTIPLY; .)
         		|
-        		'/'                                                            (. op = BinaryOperator.DIVIDE; expr = product (listFactors, bIsInteger); listFactors.clear (); .)
+        		'/'                                                            (. op = BinaryOperator.DIVIDE; .)
         		|
         		'%'                                                            (. if (!bIsInteger) { errors.SemErr (la.line, la.col, "'%' is only defined for integers"); } .)
         		                                                               (. else { op = BinaryOperator.MODULUS; expr = product (listFactors, bIsInteger); listFactors.clear (); } .)
         	)
         	UnarySignExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger>
         	                                                                   (. if (op == BinaryOperator.MULTIPLY) listFactors.add (expr1); .)
-        	                                                                   (. else if (op == BinaryOperator.DIVIDE) listFactors.add (divide (expr.clone (), expr1, bIsInteger)); .)
+        	                                                                   (. else if (op == BinaryOperator.DIVIDE) { .)
+        	                                                                   (.	if (expr1.getExpression () instanceof Literal) .)
+        	                                                                   (. 		listFactors.add (new ExpressionData (new FloatLiteral (1.0 / ExpressionUtil.getFloatValue (expr1.getExpression ())), 0, Symbolic.EExpressionType.EXPRESSION)); .)
+        	                                                                   (.	else { .)
+																			   (. 		expr = product (listFactors, bIsInteger); listFactors.clear (); .)
+																			   (. 		listFactors.add (divide (expr.clone (), expr1, bIsInteger)); .)
+        	                                                                   (.	} .)
+        	                                                                   (. } .)
         	                                                                   (. else if (op == BinaryOperator.MODULUS) listFactors.add (modulus (expr.clone (), expr1, bIsInteger)); .)
         	                                                                   (. else errors.SemErr (la.line, la.col, "No multiplicative operator defined"); .)
         }                                                                      (. expr = product (listFactors, bIsInteger); .)

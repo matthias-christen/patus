@@ -128,10 +128,20 @@ public class StandaloneAutotuner
 		{
 			System.out.println ("Usage: ");
 			System.out.println ();
-			System.out.println ("    StandaloneAutotuner ExecutableFilename Param1 Param2 ... ParamN");
+			System.out.println ("    StandaloneAutotuner ExecutableFilename(s) Param1 Param2 ... ParamN");
 			System.out.println ("           [ Constraint1 Constraint2 ... ConstraintM ] [ -mMethod ]");
 			System.out.println ();
-			System.out.println ("where ParamI has the following syntax:");
+			System.out.println ("You can provide multiple executables, which will be auto-tuned simultaneously,");
+			System.out.println ("i.e., the auto-tuner then tries to find the parameter set that minimizes the");
+			System.out.println ("execution time for all the executables at the same time.");
+			System.out.println ("Executable file names have to be separated by commas.");
+			System.out.println ("Optionally, each executable can be weighted with a real number. The syntax for");
+			System.out.println ("adding a weight to an executable is");
+			System.out.println ("    ExecutableFilename:weight");
+			System.out.println ("In this case, the auto-tuner tries to minimize the sum");
+			System.out.println ("    weight_1*time_1 + ... weight_k*time_k.");
+			System.out.println ();
+			System.out.println ("ParamI has the following syntax:");
 			System.out.println ("    startvalue:[[*]step:]endvalue[!]");
 			System.out.println (" - or -");
 			System.out.println ("    value1[,value2[,value3...]][!]");

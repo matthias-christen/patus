@@ -13,7 +13,6 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.openmp;
 import java.util.ArrayList;
 import java.util.List;
 
-import cetus.hir.AnnotationStatement;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
 import cetus.hir.BinaryExpression;
@@ -27,10 +26,8 @@ import cetus.hir.IntegerLiteral;
 import cetus.hir.Literal;
 import cetus.hir.NameID;
 import cetus.hir.PointerSpecifier;
-import cetus.hir.PragmaAnnotation;
 import cetus.hir.SizeofExpression;
 import cetus.hir.Specifier;
-import cetus.hir.Statement;
 import cetus.hir.Traversable;
 import cetus.hir.Typecast;
 import cetus.hir.UnaryExpression;
@@ -238,13 +235,14 @@ public class OpenMPCodeGenerator extends AbstractBackend
 	@Override
 	public Expression minus (Expression expr, Specifier specDatatype, boolean bVectorize)
 	{
+		/*
 		if (bVectorize)
 		{
 			if (Specifier.FLOAT.equals (specDatatype))
 				return subtract (new FunctionCall (new NameID ("_mm_setzero_ps")), expr.clone (), specDatatype, true);
 			else if (Specifier.DOUBLE.equals (specDatatype))
 				return subtract (new FunctionCall (new NameID ("_mm_setzero_pd")), expr.clone (), specDatatype, true);
-		}
+		}*/
 
 		// return default implementation
 		return super.minus (expr, specDatatype, bVectorize);

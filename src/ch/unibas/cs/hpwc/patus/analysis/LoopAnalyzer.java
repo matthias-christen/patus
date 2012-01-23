@@ -10,19 +10,13 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.analysis;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
-import cetus.hir.ForLoop;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.Typecast;
 import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
-import ch.unibas.cs.hpwc.patus.codegen.unrollloop.UniformlyIncrementingLoopNestPart;
-import ch.unibas.cs.hpwc.patus.codegen.unrollloop.UnrollLoopSharedObjects;
 import ch.unibas.cs.hpwc.patus.symbolic.MaximaTimeoutException;
 import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
@@ -37,21 +31,6 @@ public class LoopAnalyzer
 {
 	///////////////////////////////////////////////////////////////////
 	// Implementation
-
-	/**
-	 * Determines whether the <code>loop</code> has a constant trip count.
-	 * @param loop
-	 * @return
-	 */
-	public static boolean isConstantTripCount (ForLoop loop)
-	{
-		UniformlyIncrementingLoopNestPart loopInfo = new UniformlyIncrementingLoopNestPart ();
-		List<int[]> l = new ArrayList<int[]> ();
-		l.add (new int[] { 1 });
-		UnrollLoopSharedObjects data = new UnrollLoopSharedObjects (l);
-		loopInfo.init (data, loop, 0);
-		return loopInfo.isConstantTripCount ();
-	}
 
 	/**
 	 * Determines whether the <code>loop</code> has a constant trip count.

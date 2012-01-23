@@ -1,7 +1,7 @@
 stencil game_of_life
 {
     domainsize = (1 .. width, 1 .. height);
-    t_max = 1;
+    t_max = 100;
     
     operation (float grid u)
     {

@@ -68,7 +68,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 	// Constants and Static Types
 
 	private final static Logger LOGGER = Logger.getLogger (StencilCalculationCodeGenerator.class);
-
+	
 
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
@@ -89,7 +89,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		 * The list of generated statements to which additional code
 		 * (temporary calculations) is added
 		 */
-		protected StatementListBundle m_slGenerated;
+		protected StatementListBundle m_slbGenerated;
 
 		/**
 		 * The hardware description
@@ -127,7 +127,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			m_options = options;
 
 			m_expr = expr;
-			m_slGenerated = slGenerated;
+			m_slbGenerated = slGenerated;
 
 			m_hw = m_data.getArchitectureDescription ();
 			m_nLcmSIMDVectorLengths = getLcmSIMDVectorLengths ();
@@ -145,7 +145,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		public void generate ()
 		{
 			// annotate with original stencil expression
-			m_slGenerated.addStatement (new AnnotationStatement (new CommentAnnotation (m_expr.toString ())));
+			m_slbGenerated.addStatement (new AnnotationStatement (new CommentAnnotation (m_expr.toString ())));
 
 			// the the loop unrolling configuration (if any)
 			StencilLoopUnrollingConfiguration configUnroll =
@@ -153,6 +153,18 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			byte nDimensionality = m_sdidStencilArg.getDimensionality ();
 			boolean bSuppressVectorization = m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, false);
 			boolean bUseNativeSIMDDatatypes = m_data.getOptions ().useNativeSIMDDatatypes () && m_data.getArchitectureDescription ().useSIMD ();
+			
+			// determine whether the code is generated for calculation, initialization, or validation
+			// in case it is generated for validation, do not treat constant stencils specially (no loop invariant code motion)
+			// in the other cases, add the constant expression to the respective initialization statement
+			// (identified by the parameter paramComputationType)
+			
+			boolean bIsCreatingValidation = m_options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE);
+			
+			ParameterAssignment paComputationType = new ParameterAssignment (
+				CodeGeneratorData.PARAM_COMPUTATION_TYPE,
+				m_options.getIntValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL)
+			);
 
 			// generate the code for the stencil calculations
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
@@ -171,17 +183,20 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				else
 					nEndOffset = (bSuppressVectorization ? 1 : (m_nLcmSIMDVectorLengths / nSIMDVectorLength));
 
-				for (ParameterAssignment pa : m_slGenerated)
+				for (ParameterAssignment pa : m_slbGenerated)
 				{
 					
-					if (stencil.isConstant ())
+					if (!bIsCreatingValidation && stencil.isConstant ())
 					{
 						// if the stencil is constant, add the computation to the head of the
 						// function instead within the computation loop and, if the loop is unrolled,
 						// avoid creating the statement multiple times
 						// (loop-invariant code motion)
 						
-						generateSingleCalculation (stencil, specDatatype, m_rgDefaultOffset, m_data.getData ().getInitializationStatements ());
+						generateSingleCalculation (
+							stencil, specDatatype, m_rgDefaultOffset,
+							m_data.getData ().getInitializationStatements (paComputationType)
+						);
 					}
 					else
 					{
@@ -199,7 +214,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 							for (int nOffset = 0; nOffset < nEndOffset; nOffset += nOffsetStep)
 							{
 								rgOffset[0] = nOffsetDim0 + nOffset;
-								generateSingleCalculation (stencil, specDatatype, rgOffset, m_slGenerated.getStatementList (pa));
+								generateSingleCalculation (stencil, specDatatype, rgOffset, m_slbGenerated.getStatementList (pa));
 							}
 						}
 					}
@@ -272,7 +287,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			if ((trv instanceof Identifier) || (trv instanceof Literal) || ((trv instanceof NameID) && m_data.getStencilCalculation ().isArgument (((NameID) trv).getName ())))
 			{
 				return m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalar (
-					(Expression) trv, specDatatype, m_slGenerated, m_options);
+					(Expression) trv, specDatatype, m_slbGenerated, m_options);
 			}
 
 			if (trv instanceof NameID)
@@ -291,7 +306,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 					rgOffset = m_rgDefaultOffset;
 					
 				return m_data.getCodeGenerators ().getUnrollGeneratedIdentifiers ().createIdentifier (
-					(IDExpression) trv, rgOffset, specDatatype, m_slGenerated, m_options);
+					(IDExpression) trv, rgOffset, specDatatype, m_slbGenerated, m_options);
 			}
 
 			// other cases: recursively find subexpressions that match one of the above
@@ -337,7 +352,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			if (nodeInput.isScalar ())
 			{
 				IDExpression idNodeTmp = m_data.getCodeGenerators ().getUnrollGeneratedIdentifiers ().createIdentifier (
-					nodeInput, rgOffsetIndex, specDatatype, m_slGenerated, m_options);
+					nodeInput, rgOffsetIndex, specDatatype, m_slbGenerated, m_options);
 
 				if (idNodeTmp != node)
 					node = new StencilNode (idNodeTmp.getName (), nodeInput.getSpecifier (), nodeInput.getIndex ());
@@ -506,7 +521,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			Expression exprShuffle = m_data.getCodeGenerators ().getBackendCodeGenerator ().shuffle (exprLeft, exprRight, specDatatype, nShuffleOffset);
 			if (exprShuffle == null)
 				throw new RuntimeException ("IBackend#shuffle is required to be implemented.");
-			m_slGenerated.addStatement (new ExpressionStatement (new AssignmentExpression (idTmpVar.clone (), AssignmentOperator.NORMAL, exprShuffle)));
+			m_slbGenerated.addStatement (new ExpressionStatement (new AssignmentExpression (idTmpVar.clone (), AssignmentOperator.NORMAL, exprShuffle)));
 
 			return idTmpVar;
 		}
@@ -687,7 +702,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				}
 
 				Expression exprRHS = bVectorize ?
-					m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalar (exprValue, specDatatype, m_slGenerated, m_options) :
+					m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalar (exprValue, specDatatype, m_slbGenerated, m_options) :
 					exprValue;
 
 				slGenerated.addStatement (new ExpressionStatement (new AssignmentExpression (exprLHS, AssignmentOperator.NORMAL, exprRHS)));
@@ -724,15 +739,21 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		if (!(trvInput instanceof Expression))
 			throw new RuntimeException ("Expression as input to StencilCalculationCodeGenerator expected.");
 
-		String strOption = options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
-		if (CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL.equals (strOption) || CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE.equals (strOption))
-			new StencilCodeGenerator ((Expression) trvInput, slb, options).generate ();
-		else if (CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_INITIALIZE.equals (strOption))
-			new InitializeCodeGenerator ((Expression) trvInput, slb, options).generate ();
-		else
+		int nComputationType = options.getIntValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
+		switch (nComputationType)
 		{
+		case CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL:
+		case CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE:
+			new StencilCodeGenerator ((Expression) trvInput, slb, options).generate ();
+			break;
+			
+		case CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_INITIALIZE:
+			new InitializeCodeGenerator ((Expression) trvInput, slb, options).generate ();
+			break;
+			
+		default:
 			throw new RuntimeException (StringUtil.concat (
-				"Unknown option for ", CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION,	": ", strOption));
+				"Unknown option for ", CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION,	": ", nComputationType));
 		}
 
 		return slb;

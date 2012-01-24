@@ -22,9 +22,13 @@ import java.util.TreeSet;
 import cetus.hir.Declaration;
 import cetus.hir.IDExpression;
 import cetus.hir.Statement;
+import ch.unibas.cs.hpwc.patus.ast.Parameter;
+import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
+import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
+import ch.unibas.cs.hpwc.patus.ast.UniqueStatementList;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 
 /**
@@ -37,6 +41,17 @@ public class CodeGeneratorData
 	// Constants
 
 	private final static Object OBJ_DUMMY = new Object ();
+
+	public final static Parameter PARAM_COMPUTATION_TYPE = new Parameter ("__computation_type__");
+	public final static int CALCTYPE_STENCIL = 0;
+	public final static int CALCTYPE_INITIALIZATION = 1;
+	
+	static
+	{
+		PARAM_COMPUTATION_TYPE.addValue (CALCTYPE_STENCIL);
+		PARAM_COMPUTATION_TYPE.addValue (CALCTYPE_INITIALIZATION);
+	}
+
 
 
 	///////////////////////////////////////////////////////////////////
@@ -70,7 +85,7 @@ public class CodeGeneratorData
 	 * List of statements to which initialization code can be appended.
 	 * The statements in this list will be added immediately below the variable declarations.
 	 */
-	private StatementList m_slInitializationStatements;
+	private StatementListBundle m_slbInitializationStatements;
 
 	/**
 	 * Manages the identifiers created from {@link SubdomainIterator}s
@@ -117,32 +132,8 @@ public class CodeGeneratorData
 		m_listInternalAutotuningParameters.add (IInternalAutotuningParameters.PADDING);
 
 		m_setDeclarationsToAdd = new TreeMap<Declaration, Object> (m_comparatorDeclarations);
-		m_setGlobalDeclarationsToAdd = new TreeSet<Declaration> (m_comparatorDeclarations);
-		//m_cmpstmtInitialization = new CompoundStatement ();
-		
-		m_slInitializationStatements = new StatementList ()
-		{
-			@Override
-			public void addStatement (Statement stmtInit)
-			{
-				// only insert a statement if it hasn't been inserted already 
-				
-				boolean bContainsStatement = false;
-				String strStmtInit = stmtInit.toString ();
-				for (Statement stmt : m_slInitializationStatements)
-				{
-					if (stmt.toString ().equals (strStmtInit))
-					{
-						bContainsStatement = true;
-						break;
-					}
-				}
-
-				if (!bContainsStatement)
-					super.addStatement (stmtInit);
-			}
-		};
-		
+		m_setGlobalDeclarationsToAdd = new TreeSet<Declaration> (m_comparatorDeclarations);		
+		m_slbInitializationStatements = new StatementListBundle (new UniqueStatementList ());
 		m_stackDeclarations = new Stack<Map<Declaration, Object>> ();
 
 		m_generatedGlobalIdentifiers = new GlobalGeneratedIdentifiers (objects);
@@ -253,20 +244,41 @@ public class CodeGeneratorData
 
 	public void addInitializationStatement (Statement stmtInit)
 	{
-		m_slInitializationStatements.addStatement (stmtInit);
+		// add the statement
+		m_slbInitializationStatements.addStatement (stmtInit);
+	}	
+
+	public void addInitializationStatement (ParameterAssignment pa, Statement stmtInit)
+	{
+		// make sure the statement list exists (we don't want the default statement list to be created)
+		getInitializationStatements (pa);
+
+		// add the statement
+		for (Parameter param : pa)
+			m_slbInitializationStatements.addStatement (stmtInit, param, pa.getParameterValue (param));
 	}
 
 	public void addInitializationStatements (Statement... rgStatements)
 	{
+		// add the statements
 		for (Statement stmt : rgStatements)
 			addInitializationStatement (stmt);
 	}
 
-	public StatementList getInitializationStatements ()
+	public void addInitializationStatements (ParameterAssignment pa, Statement... rgStatements)
 	{
-		return m_slInitializationStatements;
+		for (Statement stmt : rgStatements)
+			addInitializationStatement (pa, stmt);
 	}
 
+	public StatementList getInitializationStatements (ParameterAssignment pa)
+	{
+		StatementList sl = m_slbInitializationStatements.getStatementList (pa);
+		if (sl == null)
+			m_slbInitializationStatements.replaceStatementList (pa, sl = new UniqueStatementList ());
+		return sl;
+	}
+	
 	/**
 	 *
 	 * @return

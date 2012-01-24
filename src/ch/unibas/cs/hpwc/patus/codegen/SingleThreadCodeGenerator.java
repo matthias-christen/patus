@@ -146,7 +146,7 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 
 		// generate the pointer swapping code if this is the inner most temporal loop
 		if (m_data.getCodeGenerators ().getStrategyAnalyzer ().isInnerMostTemporalLoop (it) ||
-			CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE.equals (options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION)))
+			options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE))
 		{
 			m_data.getData ().getMemoryObjectManager ().swapMemoryObjectPointers (it, slbLoopBody, options);
 		}

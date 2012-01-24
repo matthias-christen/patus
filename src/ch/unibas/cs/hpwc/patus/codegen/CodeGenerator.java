@@ -235,13 +235,14 @@ public class CodeGenerator
 
 		m_data.getData ().setCreatingInitialization (false);
 		CodeGeneratorRuntimeOptions optionsStencil = new CodeGeneratorRuntimeOptions ();
+		optionsStencil.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 
 		// create the code that one thread executes
 		CompoundStatement cmpstmtStrategyKernelThreadBody = m_cgThreadCode.generate (m_data.getStrategy ().getBody (), optionsStencil);
 		m_data.getData ().capture ();
 
 		StatementListBundle slbThreadBody = new SingleThreadCodeGenerator (m_data).generate (cmpstmtStrategyKernelThreadBody, optionsStencil);
-		addAdditionalDeclarationsAndAssignments (slbThreadBody);
+		addAdditionalDeclarationsAndAssignments (slbThreadBody, optionsStencil);
 
 
 		// create the initialization code
@@ -265,7 +266,7 @@ public class CodeGenerator
 
 			CompoundStatement cmpstmtStrategyInitThreadBody = m_cgThreadCode.generate (m_data.getStrategy ().getBody (), optionsInitialize);
 			slbInitializationBody = new SingleThreadCodeGenerator (m_data).generate (cmpstmtStrategyInitThreadBody, optionsInitialize);
-			addAdditionalDeclarationsAndAssignments (slbInitializationBody);
+			addAdditionalDeclarationsAndAssignments (slbInitializationBody, optionsInitialize);
 		}
 
 		// add global declarations
@@ -390,7 +391,7 @@ public class CodeGenerator
 	 * function body.
 	 * @param cmpstmt The kernel body
 	 */
-	private void addAdditionalDeclarationsAndAssignments (StatementListBundle slbCode)
+	private void addAdditionalDeclarationsAndAssignments (StatementListBundle slbCode, CodeGeneratorRuntimeOptions options)
 	{
 		// if necessary, add the pointer initializers
 		setBaseMemoryObjectInitializers ();
@@ -409,8 +410,16 @@ public class CodeGenerator
 
 		// add the initialization code
 		listDeclarationsAndAssignments.add (new AnnotationStatement (new CommentAnnotation ("Initializations")));
-		for (Statement stmt : m_data.getData ().getInitializationStatements ())
+		
+		for (Statement stmt : m_data.getData ().getInitializationStatements (
+			new ParameterAssignment (
+				CodeGeneratorData.PARAM_COMPUTATION_TYPE,
+				options.getIntValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL)
+			)))
+		{
 			listDeclarationsAndAssignments.add (stmt);
+		}
+		
 		listDeclarationsAndAssignments.add (new AnnotationStatement (new CommentAnnotation ("Implementation")));
 
 		// add the statements at the top

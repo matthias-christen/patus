@@ -29,9 +29,9 @@ public class CodeGeneratorRuntimeOptions implements Cloneable
 	public final static String OPTION_STENCILLOOPUNROLLINGFACTOR = "StencilLoopUnrollingFactor";
 
 	public final static String OPTION_STENCILCALCULATION = "StencilCalculation";
-	public final static String VALUE_STENCILCALCULATION_STENCIL = "stencil";
-	public final static String VALUE_STENCILCALCULATION_INITIALIZE = "initialize";
-	public final static String VALUE_STENCILCALCULATION_VALIDATE = "validate";
+	public final static int VALUE_STENCILCALCULATION_STENCIL = 0;
+	public final static int VALUE_STENCILCALCULATION_INITIALIZE = 1;
+	public final static int VALUE_STENCILCALCULATION_VALIDATE = 2;
 
 	/**
 	 * Suppresses vectorization of the stencil calculation code (if the value is {@link Boolean#TRUE})
@@ -113,6 +113,20 @@ public class CodeGeneratorRuntimeOptions implements Cloneable
 	{
 		String s = getStringValue (strOption);
 		return s == null ? strDefault : s;
+	}
+	
+	/**
+	 * Determines whether the option <code>strOption</code> has the value <code>oValue</code>.
+	 * @param strOption The option to check
+	 * @param oValue The expected value
+	 * @return <code>true</code> iff the option <code>strOption</code> is set to the value <code>oValue</code>
+	 */
+	public boolean hasValue (String strOption, Object oValue)
+	{
+		Object oActualValue = getObjectValue (strOption);
+		if (oValue == null)
+			return oActualValue == null;
+		return oValue.equals (oActualValue);
 	}
 
 	@Override

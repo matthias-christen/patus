@@ -22,6 +22,7 @@ import java.util.TreeSet;
 import cetus.hir.Declaration;
 import cetus.hir.IDExpression;
 import cetus.hir.Statement;
+import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -69,7 +70,7 @@ public class CodeGeneratorData
 	 * List of statements to which initialization code can be appended.
 	 * The statements in this list will be added immediately below the variable declarations.
 	 */
-	private List<Statement> m_listInitializationStatements;
+	private StatementList m_slInitializationStatements;
 
 	/**
 	 * Manages the identifiers created from {@link SubdomainIterator}s
@@ -118,7 +119,30 @@ public class CodeGeneratorData
 		m_setDeclarationsToAdd = new TreeMap<Declaration, Object> (m_comparatorDeclarations);
 		m_setGlobalDeclarationsToAdd = new TreeSet<Declaration> (m_comparatorDeclarations);
 		//m_cmpstmtInitialization = new CompoundStatement ();
-		m_listInitializationStatements = new ArrayList<Statement> ();
+		
+		m_slInitializationStatements = new StatementList ()
+		{
+			@Override
+			public void addStatement (Statement stmtInit)
+			{
+				// only insert a statement if it hasn't been inserted already 
+				
+				boolean bContainsStatement = false;
+				String strStmtInit = stmtInit.toString ();
+				for (Statement stmt : m_slInitializationStatements)
+				{
+					if (stmt.toString ().equals (strStmtInit))
+					{
+						bContainsStatement = true;
+						break;
+					}
+				}
+
+				if (!bContainsStatement)
+					super.addStatement (stmtInit);
+			}
+		};
+		
 		m_stackDeclarations = new Stack<Map<Declaration, Object>> ();
 
 		m_generatedGlobalIdentifiers = new GlobalGeneratedIdentifiers (objects);
@@ -229,19 +253,7 @@ public class CodeGeneratorData
 
 	public void addInitializationStatement (Statement stmtInit)
 	{
-		boolean bContainsStatement = false;
-		String strStmtInit = stmtInit.toString ();
-		for (Statement stmt : m_listInitializationStatements)
-		{
-			if (stmt.toString ().equals (strStmtInit))
-			{
-				bContainsStatement = true;
-				break;
-			}
-		}
-
-		if (!bContainsStatement)
-			m_listInitializationStatements.add (stmtInit);
+		m_slInitializationStatements.addStatement (stmtInit);
 	}
 
 	public void addInitializationStatements (Statement... rgStatements)
@@ -250,9 +262,9 @@ public class CodeGeneratorData
 			addInitializationStatement (stmt);
 	}
 
-	public Iterable<Statement> getInitializationStatements ()
+	public StatementList getInitializationStatements ()
 	{
-		return m_listInitializationStatements;
+		return m_slInitializationStatements;
 	}
 
 	/**

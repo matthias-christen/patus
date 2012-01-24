@@ -43,7 +43,6 @@ import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IIndexing.IIndexingLevel;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
-import ch.unibas.cs.hpwc.patus.geometry.Box;
 import ch.unibas.cs.hpwc.patus.geometry.Point;
 import ch.unibas.cs.hpwc.patus.geometry.Size;
 import ch.unibas.cs.hpwc.patus.symbolic.ExpressionOptimizer;

@@ -11,6 +11,7 @@
 package ch.unibas.cs.hpwc.patus.codegen;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -110,6 +111,11 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		 * Temporary shuffled stencil node variables
 		 */
 		protected Map<IntArray, Identifier> m_mapShuffledNodes;
+		
+		/**
+		 * The (0,...,0) offset
+		 */
+		private int[] m_rgDefaultOffset;
 
 
 		///////////////////////////////////////////////////////////////////
@@ -128,6 +134,9 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			m_sdidStencilArg = (SubdomainIdentifier) StrategyAnalyzer.getStencilArgument (m_expr);
 
 			m_mapShuffledNodes = new HashMap<IntArray, Identifier> ();
+			
+			m_rgDefaultOffset = new int[m_data.getStencilCalculation ().getDimensionality ()];
+			Arrays.fill (m_rgDefaultOffset, 0);
 		}
 
 		/**
@@ -164,24 +173,40 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 
 				for (ParameterAssignment pa : m_slGenerated)
 				{
-					for (int[] rgOffset : (configUnroll == null ?
-						StencilLoopUnrollingConfiguration.getDefaultSpace (nDimensionality) :
-						configUnroll.getConfigurationSpace (nDimensionality)))
+					
+					if (stencil.isConstant ())
 					{
-						int nOffsetDim0 = rgOffset[0];
-						if (!bUseNativeSIMDDatatypes && !bSuppressVectorization)
-							nOffsetDim0 *= nSIMDVectorLength;
-
-						for (int nOffset = 0; nOffset < nEndOffset; nOffset += nOffsetStep)
+						// if the stencil is constant, add the computation to the head of the
+						// function instead within the computation loop and, if the loop is unrolled,
+						// avoid creating the statement multiple times
+						// (loop-invariant code motion)
+						
+						generateSingleCalculation (stencil, specDatatype, m_rgDefaultOffset, m_data.getData ().getInitializationStatements ());
+					}
+					else
+					{
+						// regular, non-constant stencils
+						// add the statement to the loop body
+						
+						for (int[] rgOffset : (configUnroll == null ?
+							StencilLoopUnrollingConfiguration.getDefaultSpace (nDimensionality) :
+							configUnroll.getConfigurationSpace (nDimensionality)))
 						{
-							rgOffset[0] = nOffsetDim0 + nOffset;
-							generateSingleCalculation (stencil, specDatatype, rgOffset, m_slGenerated.getStatementList (pa));
+							int nOffsetDim0 = rgOffset[0];
+							if (!bUseNativeSIMDDatatypes && !bSuppressVectorization)
+								nOffsetDim0 *= nSIMDVectorLength;
+	
+							for (int nOffset = 0; nOffset < nEndOffset; nOffset += nOffsetStep)
+							{
+								rgOffset[0] = nOffsetDim0 + nOffset;
+								generateSingleCalculation (stencil, specDatatype, rgOffset, m_slGenerated.getStatementList (pa));
+							}
 						}
 					}
 				}
 			}
 		}
-
+		
 		protected abstract void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated);
 
 		/**
@@ -254,13 +279,19 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			{
 				// NameID found in the expression: e.g. a variable that was assigned a value by another stencil expression:
 				// float d = ...                                        <-- stencil 1
-				// u[x,y,z;t+1] = ... f(d) ... (some function of d)     <-- stencil 2
+				// u[x,y,z;t+1] = ... f(d) ... (some function of d)     <-- stencil 2; we are here
 
 				// TODO: other cases? when is there a NameID in the expression instead of an Identifier? When are there Identifiers?
 				// should the above branch not have Identifier, but add to this one?
 
+				// if the stencil node corresponding to trv is a constant-output stencil node,
+				// there are no versions for unrolling (they remain the same for each unrolling index)
+				int[] rgOffset = rgOffsetIndex;
+				if (m_data.getStencilCalculation ().getStencilBundle ().isConstantOutputStencilNode ((NameID) trv))
+					rgOffset = m_rgDefaultOffset;
+					
 				return m_data.getCodeGenerators ().getUnrollGeneratedIdentifiers ().createIdentifier (
-					(IDExpression) trv, rgOffsetIndex, specDatatype, m_slGenerated, m_options);
+					(IDExpression) trv, rgOffset, specDatatype, m_slGenerated, m_options);
 			}
 
 			// other cases: recursively find subexpressions that match one of the above
@@ -706,7 +737,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 
 		return slb;
 	}
-
+	
 	/**
 	 * Returns the least common multiple (LCM) of the SIMD vector lengths of
 	 * all the stencil computations in the bundle.

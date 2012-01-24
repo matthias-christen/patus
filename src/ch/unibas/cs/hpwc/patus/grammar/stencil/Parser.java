@@ -277,7 +277,11 @@ public class Parser {
 		if (fSum != 0)
 			listSummandsSimplified.add (exprExplicitSum);
 			
-		return balancedBinaryExpression (listSummandsSimplified, BinaryOperator.ADD);
+		if (m_options.getBalanceBinaryExpressions ())
+			return balancedBinaryExpression (listSummandsSimplified, BinaryOperator.ADD);
+			
+		// don't balance expressions
+		return leftToRightBinaryExpression (listSummandsSimplified, BinaryOperator.ADD);
 	}
 	
 	/**
@@ -302,7 +306,12 @@ public class Parser {
 		if (fProduct != 1)
 			listFactorsSimplified.add (exprExplicitProduct);
 			
-		return balancedBinaryExpression (listFactorsSimplified, BinaryOperator.MULTIPLY);
+		if (m_options.getBalanceBinaryExpressions ())
+			return balancedBinaryExpression (listFactorsSimplified, BinaryOperator.MULTIPLY);
+
+		// don't balance expressions
+		return leftToRightBinaryExpression (listFactorsSimplified, BinaryOperator.MULTIPLY);
+
 	}
 	
 	private ExpressionData balancedBinaryExpression (List<ExpressionData> listOperands, BinaryOperator op)
@@ -319,6 +328,25 @@ public class Parser {
 			new BinaryExpression (exprLeft.getExpression (), op, exprRight.getExpression ()),
 			exprLeft.getFlopsCount () + 1 + exprRight.getFlopsCount (),
 			Symbolic.EExpressionType.EXPRESSION);
+	}
+	
+	private ExpressionData leftToRightBinaryExpression (List<ExpressionData> listOperands, BinaryOperator op)
+	{
+		Expression exprSum = null;
+		int nFlops = 0;
+		for (ExpressionData expr : listOperands)
+		{
+			if (exprSum == null)
+				exprSum = expr.getExpression ();
+			else
+			{
+				exprSum = new BinaryExpression (exprSum.clone (), op, expr.getExpression ());
+				nFlops++;
+			}
+			nFlops += expr.getFlopsCount ();
+		}
+		
+		return new ExpressionData (exprSum, nFlops, Symbolic.EExpressionType.EXPRESSION);	
 	}
 	
 	private ExpressionData subtract (ExpressionData expr1, ExpressionData expr2, boolean bIsInteger)
@@ -1142,7 +1170,7 @@ public class Parser {
 				op = BinaryOperator.MULTIPLY; 
 			} else if (la.kind == 33) {
 				Get();
-				op = BinaryOperator.DIVIDE; expr = product (listFactors, bIsInteger); listFactors.clear (); 
+				op = BinaryOperator.DIVIDE; 
 			} else {
 				Get();
 				if (!bIsInteger) { errors.SemErr (la.line, la.col, "'%' is only defined for integers"); } 
@@ -1150,7 +1178,14 @@ public class Parser {
 			}
 			ExpressionData expr1 = UnarySignExpression(stencil, bIsDecl, bIsInteger);
 			if (op == BinaryOperator.MULTIPLY) listFactors.add (expr1); 
-			else if (op == BinaryOperator.DIVIDE) listFactors.add (divide (expr.clone (), expr1, bIsInteger)); 
+			else if (op == BinaryOperator.DIVIDE) { 
+			if (expr1.getExpression () instanceof Literal) 
+			listFactors.add (new ExpressionData (new FloatLiteral (1.0 / ExpressionUtil.getFloatValue (expr1.getExpression ())), 0, Symbolic.EExpressionType.EXPRESSION)); 
+			else { 
+			expr = product (listFactors, bIsInteger); listFactors.clear (); 
+			listFactors.add (divide (expr.clone (), expr1, bIsInteger)); 
+			} 
+			} 
 			else if (op == BinaryOperator.MODULUS) listFactors.add (modulus (expr.clone (), expr1, bIsInteger)); 
 			else errors.SemErr (la.line, la.col, "No multiplicative operator defined"); 
 		}

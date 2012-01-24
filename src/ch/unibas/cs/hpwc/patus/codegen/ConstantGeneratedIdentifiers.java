@@ -79,7 +79,9 @@ public class ConstantGeneratedIdentifiers
 	}
 
 	/**
-	 *
+	 * Creates an identifier for a constant value. The identifier is declared and
+	 * the constant value is assigned to the identifier.
+	 * 
 	 * @param exprConstant
 	 * @param strIdentifierName
 	 * @param specDatatype

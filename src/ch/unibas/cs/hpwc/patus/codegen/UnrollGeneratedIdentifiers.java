@@ -34,6 +34,11 @@ public class UnrollGeneratedIdentifiers
 	// Member Variables
 
 	private CodeGeneratorSharedObjects m_objects;
+	
+	/**
+	 * The map of identifiers duplicated during the vectorization.<br/>
+	 * Maps <code>IsVectorized</code> -&gt; <code>Identifier</code> -&gt; <code>Offset</code> -&gt; <code>Expression</code>
+	 */
 	private Map<Boolean, Map<String, Map<IntArray, IDExpression>>> m_mapIdentifiers;
 
 

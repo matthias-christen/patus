@@ -240,9 +240,9 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		{
 			// do we need prologue and epilogue loops?
 			// we don't need a clean up loop in the inner most loop if we have prologue and epilogue loops (bUseNativeSIMD == false)
+			boolean bIsStencilCalculation = m_options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL).equals (CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 			boolean bHasProEpiLoops =
-				m_data.getArchitectureDescription ().useSIMD () && !m_data.getOptions ().useNativeSIMDDatatypes () &&
-				m_options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL).equals (CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
+				m_data.getArchitectureDescription ().useSIMD () && !m_data.getOptions ().useNativeSIMDDatatypes () && bIsStencilCalculation;
 			boolean bHasCleanupLoops = nDimension > 0 || (nDimension == 0 && !bHasProEpiLoops);
 
 			if (nDimension >= 0)
@@ -253,7 +253,13 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 				StatementListBundle slbInnerLoop =
 					generateIteratorForDimension (nDimension, slbParent, null, bHasCleanupLoops ? new IntegerLiteral (nUnrollFactor - 1) : null, nUnrollFactor);
 
-				recursiveGenerateInner (slbInnerLoop == null ? slbParent : slbInnerLoop, nDimension - 1, slbInnerLoop != null, config);
+				recursiveGenerateInner (
+					slbInnerLoop == null ? slbParent : slbInnerLoop,
+					nDimension - 1,
+					slbInnerLoop != null,
+					config
+				);
+				
 				if (slbInnerLoop != null)
 				{
 					if (bHasParentLoop)
@@ -270,7 +276,13 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 					StencilLoopUnrollingConfiguration configCleanup = config.clone ();
 					configCleanup.setUnrollingForDimension (nDimension, 1, 1);
 
-					recursiveGenerateInner (slbInnerLoop == null ? slbParent : slbInnerLoop, nDimension - 1, slbInnerLoop != null, configCleanup);
+					recursiveGenerateInner (
+						slbInnerLoop == null ? slbParent : slbInnerLoop,
+						nDimension - 1,
+						slbInnerLoop != null,
+						configCleanup
+					);
+					
 					if (slbInnerLoop != null)
 					{
 						if (bHasParentLoop)

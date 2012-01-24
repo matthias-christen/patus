@@ -5,10 +5,13 @@ package ch.unibas.cs.hpwc.patus.representation;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
+import cetus.hir.IDExpression;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 import ch.unibas.cs.hpwc.patus.util.VectorUtil;
 
@@ -36,6 +39,13 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	 * The list of stencils in the bundle
 	 */
 	private List<Stencil> m_listStencils;
+	
+	/**
+	 * The set of stencil output nodes to which a constant expression (i.e., depending
+	 * only on <code>operation</code> parameters and number literals) is assigned.
+	 * The set just stores the names of the stencil nodes.
+	 */
+	private Set<String> m_setConstantOutputNodes;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -48,6 +58,7 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	{
 		m_stencilFused = null;
 		m_listStencils = new LinkedList<Stencil> ();
+		m_setConstantOutputNodes = new HashSet<String> ();
 	}
 
 	/**
@@ -62,7 +73,7 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 		{
 			m_stencilFused = createStencilFromTemplate (bundle.getFusedStencil (), true);
 			for (Stencil stencil : bundle)
-				m_listStencils.add (createStencilFromTemplate (stencil, true));
+				addStencilToList (createStencilFromTemplate (stencil, true));
 		}
 		catch (SecurityException e)
 		{
@@ -110,10 +121,22 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	public void addStencil (Stencil stencil) throws NoSuchMethodException, SecurityException
 	{
 		// add the stencil to the list
-		m_listStencils.add (stencil);
+		addStencilToList (stencil);
 
 		// add the stencil nodes to the fused stencil
 		addStencilToFused (stencil, true);
+	}
+	
+	private void addStencilToList (Stencil stencil)
+	{
+		// add the stencil to the list of stencils
+		m_listStencils.add (stencil);
+		
+		// if the stencil is constant (i.e., depends only on parameters and number literals),
+		// add its output nodes to the set of constant ouput nodes
+		if (stencil.isConstant ())
+			for (StencilNode nodeOut : stencil.getOutputNodes ())
+				m_setConstantOutputNodes.add (nodeOut.getName ());
 	}
 
 	/**
@@ -362,6 +385,16 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 //	{
 //		return m_stencilFused == null ? new GhostZoneSize (0) : m_stencilFused.getPlaneGhostZoneSize (nTimeIndex, nInputVectorComponentIndex);
 //	}
+	
+	public boolean isConstantOutputStencilNode (IDExpression node)
+	{
+		return isConstantOutputStencilNode (node.getName ());
+	}
+	
+	public boolean isConstantOutputStencilNode (String strNodeName)
+	{
+		return m_setConstantOutputNodes.contains (strNodeName);
+	}
 
 
 	///////////////////////////////////////////////////////////////////

@@ -200,6 +200,16 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	{
 		return !(m_setAllInputNodes.size () > 0 || (m_setAllInputNodes.size () == 0 && m_edStencilCalculation != null));
 	}
+	
+	/**
+	 * Determines whether the stencil is constant, i.e., does not depend on any grid points, but
+	 * is an expression depending only on operation parameters and number literals.
+	 * @return <code>true</code> iff the stencil is constant
+	 */
+	public boolean isConstant ()
+	{
+		return m_setAllInputNodes.isEmpty ();
+	}
 
 	@Override
 	public Iterable<Index> getOutputIndices ()

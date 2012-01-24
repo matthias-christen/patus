@@ -1511,7 +1511,7 @@ public class MemoryObjectManager
 
 		// if no native SIMD types are used, but this call is within a vectorized section,
 		// we need to cast the types to native SIMD types
-		boolean bIsStencilCalculation = options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL).equals (CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
+		boolean bIsStencilCalculation = options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 		if (!bUseNativeSIMD && bUseSIMD && !bNoVectorize && bIsStencilCalculation)
 		{
 			List<Specifier> listSpecs = new ArrayList<Specifier> ();
@@ -1606,11 +1606,9 @@ public class MemoryObjectManager
 	 */
 	public void swapMemoryObjectPointers (RangeIterator loopTemporal, StatementListBundle slb, CodeGeneratorRuntimeOptions options)
 	{
-		String strOption = options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
-
 		// only generate the swapping code in the stencil calculation
-		if (CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL.equals (strOption) ||
-			CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE.equals (strOption))
+		if (options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL) ||
+			options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE))
 		{
 			StrategyAnalyzer analyzer = m_data.getCodeGenerators ().getStrategyAnalyzer ();
 
@@ -1629,7 +1627,7 @@ public class MemoryObjectManager
 				Expression exprGrid = new NameID (StringUtil.concat (MemoryObjectManager.createMemoryObjectName (null, node, null, true), SUFFIX_OUTPUTGRID));
 
 				// dereference if the _out grid is a double pointer (usually it is, it only isn't in validation)
-				if (!CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE.equals (options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION)))
+				if (!options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE))
 					exprGrid = new UnaryExpression (UnaryOperator.DEREFERENCE, exprGrid);
 
 				slb.addStatement (new ExpressionStatement (new AssignmentExpression (

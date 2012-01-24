@@ -44,36 +44,21 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	/**
-	 * Creates a new statement list bundle.
-	 */
 	public StatementListBundle ()
 	{
 		this (new StatementList (new LinkedList<Statement> ()));
 	}
 
-	/**
-	 *
-	 * @param listStatements
-	 */
 	public StatementListBundle (List<Statement> listStatements)
 	{
 		this (new StatementList (listStatements));
 	}
 
-	/**
-	 *
-	 * @param cmpstmt
-	 */
 	public StatementListBundle (CompoundStatement cmpstmt)
 	{
 		this (new StatementList (cmpstmt));
 	}
 
-	/**
-	 *
-	 * @param stmt
-	 */
 	public StatementListBundle (Statement stmt)
 	{
 		this (new StatementList (stmt));
@@ -267,7 +252,7 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 		for (StatementList sl : getStatementLists (param, nParamValue))
 			sl.addStatementsAtTop (listStatements, strTag);
 	}
-
+	
 	/**
 	 * Adds another statement list bundle to this one.
 	 * @param slb
@@ -283,6 +268,20 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 			StatementList sl = slb.getStatementList (pa);
 			if (sl != null)
 				m_mapStatementLists.get (pa).addStatements (sl);
+		}
+	}
+
+	public void addStatementsAtTop (StatementListBundle slb)
+	{
+		if (slb.isEmpty ())
+			return;
+
+		compatibilize (slb);
+		for (ParameterAssignment pa : m_mapStatementLists.keySet ())
+		{
+			StatementList sl = slb.getStatementList (pa);
+			if (sl != null)
+				m_mapStatementLists.get (pa).addStatementsAtTop (sl);
 		}
 	}
 

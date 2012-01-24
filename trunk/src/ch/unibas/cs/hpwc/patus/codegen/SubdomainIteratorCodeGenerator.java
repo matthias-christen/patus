@@ -128,7 +128,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 			// do loop unrolling? (only if we generate code for the stencil computation
 			// and only if the structure is "eligible" (i.e., the loop contains exactly a stencil call))
 			m_bIsEligibleForStencilLoopUnrolling = false;
-			if (options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL).equals (CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL))
+			if (options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL))
 				m_bIsEligibleForStencilLoopUnrolling = StrategyAnalyzer.isEligibleForStencilLoopUnrolling (m_sdIterator);
 
 			m_bLoadData = m_data.getCodeGenerators ().getStrategyAnalyzer ().isDataLoadedInIterator (m_sdIterator, m_data.getArchitectureDescription ());
@@ -240,7 +240,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		{
 			// do we need prologue and epilogue loops?
 			// we don't need a clean up loop in the inner most loop if we have prologue and epilogue loops (bUseNativeSIMD == false)
-			boolean bIsStencilCalculation = m_options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL).equals (CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
+			boolean bIsStencilCalculation = m_options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 			boolean bHasProEpiLoops =
 				m_data.getArchitectureDescription ().useSIMD () && !m_data.getOptions ().useNativeSIMDDatatypes () && bIsStencilCalculation;
 			boolean bHasCleanupLoops = nDimension > 0 || (nDimension == 0 && !bHasProEpiLoops);
@@ -415,7 +415,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 			Expression exprDomainSize = m_sdIterator.getDomainSubdomain ().getBox ().getSize ().getCoord (nDim);
 
 			boolean bUseNativeSIMDDatatypes = m_data.getOptions ().useNativeSIMDDatatypes ();
-			boolean bIsStencilKernel = m_options.getStringValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL).equals (CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
+			boolean bIsStencilKernel = m_options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 
 			// if no native SIMD datatypes are used, create prologue and epilogue loops
 			// prologue and epilogue loops are only generated if

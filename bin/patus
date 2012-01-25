@@ -1,0 +1,29 @@
+#!/bin/bash
+PATUS_HOME=/home/christen/workspace/Patus-GoogleCode
+
+if [ $# -eq 0 ]
+then
+    echo
+    echo "Syntax: patus <stencil-file> [ <output-dir> [ <arch> ]]"
+    echo
+    echo "Available architecture names <arch> are:"
+    echo
+    grep "architectureType name=" $PATUS_HOME/arch/architectures.xml | sed s/.\\+name=\"//g | sed s/\".\\+//g
+    echo
+
+    exit
+fi
+
+OUTDIR=`pwd`
+ARCH_NAME="Intel x86_64 SSE"
+
+if [ $# -gt 1 ]
+then
+    OUTDIR=$2
+fi
+if [ $# -gt 2 ]
+then
+    ARCH_NAME=$3
+fi
+
+java -jar $PATUS_HOME/bin/patus.jar codegen --stencil=$1 --strategy=$PATUS_HOME/strategy/cacheblocked.stg --outdir=$OUTDIR --unroll=1,2 --architecture="$PATUS_HOME/arch/architectures.xml,$ARCH_NAME"

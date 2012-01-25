@@ -160,6 +160,7 @@
 
 	<!-- Architecture with AVX+FMA4, OpenMP parallelization -->
 	<architectureType name="x86_64 AVX FMA4" inherits-from="x86_64 AVX">
+		<codegenerator src-suffix="c" backend="OpenMP_AVX" use-function-pointers="true"/>
 		<intrinsics>
 			<!-- intrinsics for double precision arithmetic operations -->
 			<intrinsic baseName="unary_minus" name="neg_pd" datatype="__m256d"/>

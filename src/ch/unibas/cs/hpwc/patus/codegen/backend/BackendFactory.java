@@ -13,6 +13,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend;
 import java.lang.reflect.InvocationTargetException;
 
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.x86_64.X86_64AssemblyCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.cuda.CUDA1DCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.cuda.CUDA4CodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.cuda.CUDACodeGenerator;
@@ -91,6 +92,66 @@ public class BackendFactory
 		catch (ClassNotFoundException e)
 		{
 			throw new RuntimeException (StringUtil.concat ("The backend '", strBackend, "' could not be found."));
+		}
+	}
+	
+	@SuppressWarnings ("unchecked")
+	public static IBackendAssemblyCodeGenerator createAssemblyCodeGenerator (String strBackend, CodeGeneratorSharedObjects data)
+	{
+		if (strBackend == null || "".equals (strBackend))
+			return null;
+
+		// try to instantiate by name
+		if ("x86_64".equals (strBackend))
+			return new X86_64AssemblyCodeGenerator (data);
+
+		// interpret the string as class name; try to instantiate it
+		try
+		{
+			// try to get the class
+			Class<? extends IBackendAssemblyCodeGenerator> clsBackendCG = (Class<? extends IBackendAssemblyCodeGenerator>) Class.forName (strBackend);
+
+			// find a constructor
+			try
+			{
+				return clsBackendCG.getConstructor (CodeGeneratorSharedObjects.class).newInstance (data);
+			}
+			catch (SecurityException e)
+			{
+			}
+			catch (NoSuchMethodException e)
+			{
+			}
+			catch (IllegalArgumentException e)
+			{
+			}
+			catch (InstantiationException e)
+			{
+			}
+			catch (IllegalAccessException e)
+			{
+			}
+			catch (InvocationTargetException e)
+			{
+			}
+
+			// try the default constructor
+			try
+			{
+				return clsBackendCG.newInstance ();
+			}
+			catch (InstantiationException e)
+			{
+			}
+			catch (IllegalAccessException e)
+			{
+			}
+
+			throw new RuntimeException (StringUtil.concat ("Could not instantiate assembly backend '", strBackend, "'."));
+		}
+		catch (ClassNotFoundException e)
+		{
+			throw new RuntimeException (StringUtil.concat ("The assembly backend '", strBackend, "' could not be found."));
 		}
 	}
 }

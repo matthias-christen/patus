@@ -18,5 +18,8 @@ import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
  */
 public interface IBackend extends IParallel, IDataTransfer, IIndexing, IArithmetic, IAdditionalKernelSpecific, INonKernelFunctions
 {
-	abstract public void setKernelSourceFile (KernelSourceFile ksf);
+	public abstract void setKernelSourceFile (KernelSourceFile ksf);
+
+	public abstract boolean hasAssemblyCodeGenerator ();
+	public abstract IBackendAssemblyCodeGenerator getAssemblyCodeGenerator ();
 }

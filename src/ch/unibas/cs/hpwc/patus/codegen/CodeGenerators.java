@@ -15,6 +15,7 @@ import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.BackendFactory;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IBackend;
+import ch.unibas.cs.hpwc.patus.codegen.backend.IBackendAssemblyCodeGenerator;
 
 /**
  *
@@ -29,6 +30,8 @@ public class CodeGenerators
 	 * The code generator that generates backend-specific code
 	 */
 	private IBackend m_backendCodeGenerator;
+	
+	private IBackendAssemblyCodeGenerator m_backendAssemblyCodeGenerator;
 
 	/**
 	 * The code generator responsible for expanding loops ({@link RangeIterator}s, {@link SubdomainIterator}s)
@@ -70,6 +73,7 @@ public class CodeGenerators
 	public CodeGenerators (CodeGeneratorSharedObjects objects)
 	{
 		m_backendCodeGenerator = BackendFactory.create (objects.getArchitectureDescription ().getBackend (), objects);
+		m_backendAssemblyCodeGenerator = m_backendCodeGenerator.getAssemblyCodeGenerator ();
 		m_loopCodeGenerator = new LoopCodeGenerator (objects);
 		m_indexCalculator = new IndexCalculatorCodeGenerator (objects);
 		m_stencilCodeGenerator = new StencilCalculationCodeGenerator (objects);
@@ -93,6 +97,11 @@ public class CodeGenerators
 	public IBackend getBackendCodeGenerator ()
 	{
 		return m_backendCodeGenerator;
+	}
+	
+	public IBackendAssemblyCodeGenerator getBackendAssemblyCodeGenerator ()
+	{
+		return m_backendAssemblyCodeGenerator;
 	}
 
 	/**

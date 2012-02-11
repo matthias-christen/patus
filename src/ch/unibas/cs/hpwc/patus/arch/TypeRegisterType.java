@@ -13,33 +13,33 @@ import javax.xml.bind.annotation.XmlEnumValue;
 
 
 /**
- * <p>Java class for typeDeclspec.
+ * <p>Java class for typeRegisterType.
  * 
  * <p>The following schema fragment specifies the expected content contained within this class.
  * <p>
  * <pre>
- * &lt;simpleType name="typeDeclspec">
+ * &lt;simpleType name="typeRegisterType">
  *   &lt;restriction base="{http://www.w3.org/2001/XMLSchema}string">
- *     &lt;enumeration value="kernel"/>
- *     &lt;enumeration value="localfunction"/>
- *     &lt;enumeration value="restrictedpointer"/>
+ *     &lt;enumeration value="gpr"/>
+ *     &lt;enumeration value="fpr"/>
+ *     &lt;enumeration value="simd"/>
  *   &lt;/restriction>
  * &lt;/simpleType>
  * </pre>
  * 
  */
 @XmlEnum
-public enum TypeDeclspec {
+public enum TypeRegisterType {
 
-    @XmlEnumValue("kernel")
-    KERNEL("kernel"),
-    @XmlEnumValue("localfunction")
-    LOCALFUNCTION("localfunction"),
-    @XmlEnumValue("restrictedpointer")
-    RESTRICTEDPOINTER("restrictedpointer");
+    @XmlEnumValue("gpr")
+    GPR("gpr"),
+    @XmlEnumValue("fpr")
+    FPR("fpr"),
+    @XmlEnumValue("simd")
+    SIMD("simd");
     private final String value;
 
-    TypeDeclspec(String v) {
+    TypeRegisterType(String v) {
         value = v;
     }
 
@@ -47,8 +47,8 @@ public enum TypeDeclspec {
         return value;
     }
 
-    public static TypeDeclspec fromValue(String v) {
-        for (TypeDeclspec c: TypeDeclspec.values()) {
+    public static TypeRegisterType fromValue(String v) {
+        for (TypeRegisterType c: TypeRegisterType.values()) {
             if (c.value.equals(v)) {
                 return c;
             }

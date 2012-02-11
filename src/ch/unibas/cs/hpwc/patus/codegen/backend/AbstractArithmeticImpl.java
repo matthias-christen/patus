@@ -29,6 +29,7 @@ import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
@@ -187,13 +188,13 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 	{
 		String strMethod = null;
 		if (be.getOperator ().equals (BinaryOperator.ADD))
-			strMethod = "add";
+			strMethod = TypeBaseIntrinsicEnum.PLUS.value ();
 		else if (be.getOperator ().equals (BinaryOperator.SUBTRACT))
-			strMethod = "subtract";
+			strMethod = TypeBaseIntrinsicEnum.MINUS.value ();
 		else if (be.getOperator ().equals (BinaryOperator.MULTIPLY))
-			strMethod = "multiply";
+			strMethod = TypeBaseIntrinsicEnum.MULTIPLY.value ();
 		else if (be.getOperator ().equals (BinaryOperator.DIVIDE))
-			strMethod = "divide";
+			strMethod = TypeBaseIntrinsicEnum.DIVIDE.value ();
 
 		// calculate
 		Expression exprResult = invoke (strMethod, be.getLHS (), be.getRHS (), specDatatype, bVectorize);

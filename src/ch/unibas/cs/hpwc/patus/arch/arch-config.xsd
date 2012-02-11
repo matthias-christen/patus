@@ -1,10 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
 	<xs:element name="architectureTypes">
 		<xs:complexType>
 			<xs:sequence maxOccurs="unbounded" minOccurs="0">
 				<xs:element name="architectureType" type="typeArchitectureType">
+					<!--
+					** Check this programmatically (since we have "inherit-from" attributes) **
 					<xs:key name="keyDatatype">
 						<xs:selector xpath="./datatypes/datatype"/>
 						<xs:field xpath="@name"/>
@@ -13,13 +14,14 @@
 						<xs:selector xpath="./intrinsics/intrinsic"/>
 						<xs:field xpath="@datatype"/>
 					</xs:keyref>
+					-->
 				</xs:element>
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
 	<xs:complexType name="typeArchitectureType">
 		<xs:sequence>
-			<xs:element name="codegenerator" minOccurs="0" maxOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="codegenerator">
 				<xs:complexType>
 					<xs:attribute name="src-suffix" type="xs:string" use="required">
 						<xs:annotation>
@@ -34,7 +36,7 @@
 					</xs:attribute>
 				</xs:complexType>
 			</xs:element>
-			<xs:element name="parallelism" minOccurs="0" maxOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="parallelism">
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element maxOccurs="unbounded" minOccurs="1" name="level">
@@ -109,7 +111,7 @@
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
-			<xs:element name="datatypes" minOccurs="0" maxOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="datatypes">
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element maxOccurs="unbounded" minOccurs="0" name="datatype">
@@ -117,17 +119,14 @@
 								<xs:attribute name="name" type="xs:string" use="required"/>
 								<xs:attribute default="1" name="simdVectorLength" type="xs:int" use="optional"/>
 								<xs:attribute name="basetype" type="typeBaseDatatype" use="required"/>
-							</xs:complexType>
-						</xs:element>
-						<xs:element name="alignment" maxOccurs="1" minOccurs="0">
-							<xs:complexType>
-								<xs:attribute name="restrict" type="xs:int"/>
+								<xs:attribute name="width" type="xs:int" use="required"/>
+								<xs:attribute name="alignment" type="xs:int" use="optional"/>
 							</xs:complexType>
 						</xs:element>
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
-			<xs:element name="declspecs" minOccurs="0" maxOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="declspecs">
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element maxOccurs="unbounded" minOccurs="0" name="declspec">
@@ -139,7 +138,7 @@
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
-			<xs:element name="intrinsics" minOccurs="0" maxOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="intrinsics">
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element maxOccurs="unbounded" minOccurs="0" name="intrinsic">
@@ -153,7 +152,21 @@
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
-			<xs:element name="includes" minOccurs="0" maxOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="assembly">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="registers" minOccurs="0" maxOccurs="1">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="register" minOccurs="0" maxOccurs="unbounded" type="typeRegister"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute name="backend" type="xs:string" use="required"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="1" minOccurs="0" name="includes">
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element maxOccurs="unbounded" minOccurs="0" name="include">
@@ -164,7 +177,7 @@
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
-			<xs:element name="build" minOccurs="0" maxOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="build">
 				<xs:complexType>
 					<xs:attribute name="compiler-command" type="xs:string" use="required"/>
 					<xs:attribute name="harness-template-dir" type="xs:string" use="required"/>
@@ -190,20 +203,60 @@
 			<xs:enumeration value="barrier"/>
 			<xs:enumeration value="threadid"/>
 			<xs:enumeration value="numthreads"/>
+			<xs:enumeration value="malloc"/>
 			<xs:enumeration value="unary_plus"/>
 			<xs:enumeration value="unary_minus"/>
 			<xs:enumeration value="plus"/>
 			<xs:enumeration value="minus"/>
 			<xs:enumeration value="multiply"/>
 			<xs:enumeration value="divide"/>
-			<xs:enumeration value="fma"/>
+			<xs:enumeration value="fma">
+				<xs:annotation>
+					<xs:documentation>
+						fused multiply-add
+					</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
 			<xs:enumeration value="splat">
 				<xs:annotation>
 					<xs:documentation>
 						Promotes a scalar constant to a vector with that constant in each entry.
 					</xs:documentation>
 				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="fms">
+				<xs:annotation>
+					<xs:documentation>
+						fused multiply-subtract
+					</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="move-gpr">
+				<xs:annotation>
+					<xs:documentation>
+						the move instruction, moving data between general purpose registers (GPRs),
+						from memory to a register, or vice versa
+					</xs:documentation>
+				</xs:annotation>
 			</xs:enumeration>			
+			<xs:enumeration value="move-fpr">
+				<xs:annotation>
+					<xs:documentation>
+						the move instruction, moving data between general purpose registers (GPRs),
+						from memory to a register, or vice versa
+					</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>			
+			<xs:enumeration value="move-fpr-unaligned">
+				<xs:annotation>
+					<xs:documentation>
+						the move instruction, moving unaligned data between floating point unit registers (FPRs),
+						from memory to a register, or vice versa
+					</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="min"/>
+			<xs:enumeration value="max"/>
 		</xs:restriction>
 	</xs:simpleType>
 	<xs:simpleType name="typeDeclspec">
@@ -218,6 +271,62 @@
 			<xs:enumeration value="pragma"/>
 			<xs:enumeration value="functioncall"/>
 			<xs:enumeration value="statement"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="typeRegister">
+		<xs:sequence>
+			<xs:element name="subregister" minOccurs="0" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:attribute name="name" type="xs:string" use="required"/>
+					<xs:attribute name="bitrange" type="typeRangeType" use="required">
+						<xs:annotation>
+							<xs:documentation>
+								The range of bits of the main register this subregister contains.
+							</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="name" type="xs:string" use="required"/>
+		<xs:attribute name="type" type="typeRegisterType" use="required"/>
+		<xs:attribute name="width" type="xs:integer" use="required">
+			<xs:annotation>
+				<xs:documentation>
+					Register width in bits (e.g., general purpose registers on x86_64
+					(rax, rbx, ...) are 64 bits wide.
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:simpleType name="typeRegisterType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="gpr">
+				<xs:annotation>
+					<xs:documentation>
+						general purpose register
+					</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="fpr">
+				<xs:annotation>
+					<xs:documentation>
+						floating point register
+					</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="simd">
+				<xs:annotation>
+					<xs:documentation>
+						SIMD floating point register
+					</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeRangeType">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[0-9]+\.\.[0-9]+"/>
 		</xs:restriction>
 	</xs:simpleType>
 </xs:schema>

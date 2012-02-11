@@ -50,7 +50,7 @@ public class MathUtil
 		{
 			p = a;
 			a = b;
-			b %= p;
+			b = p % b;
 		}
 
 		return a;
@@ -111,5 +111,14 @@ public class MathUtil
     		if (nNum == i)
     			return true;
     	return false;
+	}
+	
+	public static int sgn (int a)
+	{
+		if (a < 0)
+			return -1;
+		if (a > 0)
+			return 1;
+		return 0;
 	}
 }

@@ -19,6 +19,7 @@ import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.UnaryOperator;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Assembly;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 
@@ -102,11 +103,12 @@ public interface IArchitectureDescription
 	public abstract int getSIMDVectorLength (Specifier specType);
 
 	/**
-	 * Returns the factor at which memory addresses must be aligned.
+	 * Returns the factor at which memory addresses must be aligned for the
+	 * promoted type corresponding to the primitive type <code>specType</code>.
 	 * Returns 1 if no restrictions apply.
 	 * @return
 	 */
-	public abstract int getAlignmentRestriction ();
+	public abstract int getAlignmentRestriction (Specifier specType);
 
 	/**
 	 * Gets additional declspecs for a type (e.g., the kernel function)
@@ -149,6 +151,8 @@ public interface IArchitectureDescription
 	 * @return
 	 */
 	public abstract Intrinsic getIntrinsic (FunctionCall fnx, Specifier specType);
+	
+	public abstract Assembly getAssemblySpec ();
 
 	/**
 	 * Returns a list of architecture-specific header files that need to be included.

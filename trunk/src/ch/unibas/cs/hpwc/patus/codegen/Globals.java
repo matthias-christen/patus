@@ -15,6 +15,7 @@ import cetus.hir.CodeAnnotation;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -28,6 +29,8 @@ public class Globals
 
 	public static final IntegerLiteral ZERO = new IntegerLiteral (0);
 	public static final IntegerLiteral ONE = new IntegerLiteral (1);
+	
+	public static final Specifier[] BASE_DATATYPES = new Specifier[] { Specifier.FLOAT, Specifier.DOUBLE };
 
 
 	// ----------------------------------------------------------------
@@ -40,14 +43,15 @@ public class Globals
 	// ----------------------------------------------------------------
 	// Generated Code
 
-	public static final NameID NUMBER_OF_THREADS = new NameID ("NUMBER_OF_THREADS");
-	public static final NameID THREAD_NUMBER = new NameID ("THREAD_NUMBER");
+	public static final NameID NUMBER_OF_THREADS = new NameID (TypeBaseIntrinsicEnum.NUMTHREADS.value ());
+	public static final NameID THREAD_NUMBER = new NameID (TypeBaseIntrinsicEnum.THREADID.value ());
 
-	public static final NameID FNX_BARRIER = new NameID ("barrier");
-	public static final NameID FNX_MIN = new NameID ("min");
-	public static final NameID FNX_MAX = new NameID ("max");
-	public static final NameID FNX_FMA = new NameID ("fma");
-	public static final NameID FNX_MALLOC = new NameID ("malloc");
+	public static final NameID FNX_BARRIER = new NameID (TypeBaseIntrinsicEnum.BARRIER.value ());
+	public static final NameID FNX_MIN = new NameID (TypeBaseIntrinsicEnum.MIN.value ());
+	public static final NameID FNX_MAX = new NameID (TypeBaseIntrinsicEnum.MAX.value ());
+	public static final NameID FNX_FMA = new NameID (TypeBaseIntrinsicEnum.FMA.value ());
+	public static final NameID FNX_FMS = new NameID (TypeBaseIntrinsicEnum.FMS.value ());
+	public static final NameID FNX_MALLOC = new NameID (TypeBaseIntrinsicEnum.MALLOC.value ());
 
 	public static final Specifier SPECIFIER_INDEX = Specifier.INT;
 	public static final Specifier SPECIFIER_SIZE = Specifier.INT;
@@ -71,5 +75,18 @@ public class Globals
 	public static String createFortranName (String strStencilKernelName)
 	{
 		return StringUtil.concat (strStencilKernelName, "_");
+	}
+	
+	/**
+	 * Determines whether the specifier <code>specType</code> is a base type specifier.
+	 * @param specType The specifier to examine
+	 * @return <code>true</code> iff the specifier <code>specType</code> is a base data type specifier
+	 */
+	public static boolean isBaseDatatype (Specifier specType)
+	{
+		for (Specifier s : BASE_DATATYPES)
+			if (s.equals (specType))
+				return true;
+		return false;
 	}
 }

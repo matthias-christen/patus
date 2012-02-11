@@ -38,6 +38,7 @@ import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.ReturnStatement;
 import cetus.hir.SizeofExpression;
+import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.StringLiteral;
 import cetus.hir.Typecast;
@@ -438,7 +439,8 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	{
 		initialize ();
 
-		int nAlignRestrict = m_data.getArchitectureDescription ().getAlignmentRestriction ();
+		// default alignment; will be adjusted in the loop
+		int nAlignRestrict = 1;
 
 		StatementList sl = new StatementList (new ArrayList<Statement> ());
 		for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getInputGrids ())
@@ -446,7 +448,12 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 			// check whether size is compatible with SIMD vector length
 			if (m_data.getArchitectureDescription ().useSIMD () && !m_data.getOptions ().useNativeSIMDDatatypes ())
 			{
-				int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (varGrid.getSpecifiers ().get (0));
+				Specifier specType = varGrid.getSpecifiers ().get (0);
+				int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (specType);
+				
+				int nAlignRestrictForType = m_data.getArchitectureDescription ().getAlignmentRestriction (specType);
+				nAlignRestrict = nAlignRestrict == 1 ? nAlignRestrictForType : MathUtil.getLCM (nAlignRestrict, nAlignRestrictForType);
+				
 				if (nSIMDVectorLength > 1)
 				{
 					Expression exprUnitStrideSize = varGrid.getBoxSize ().getCoord (0);
@@ -613,6 +620,35 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 
 		return sl;
 	}
+	
+	/**
+	 * Returns a global alignment restriction that is valid for all types of the used variables
+	 * in <code>listVariables</code>.
+	 * @param listVariables The list of variables for which to determine the common alignment restriction
+	 * @return The alignment restriction common to the types of the variables in <code>listVariables</code>
+	 */
+	private int getGlobalAlignmentRestriction (List<Variable> listVariables)
+	{
+		Set<Specifier> setTypes = new HashSet<Specifier> ();
+		for (Variable v : listVariables)
+		{
+			for (Specifier s : v.getSpecifiers ())
+				if (Globals.isBaseDatatype (s))
+				{
+					setTypes.add (s);
+					break;
+				}
+		}
+
+		int nAlignRestrict = 1;
+		for (Specifier s : setTypes)
+		{
+			int nAlignRestrForType = m_data.getArchitectureDescription ().getAlignmentRestriction (s);
+			nAlignRestrict = nAlignRestrict == 1 ? nAlignRestrForType : MathUtil.getLCM (nAlignRestrict, nAlignRestrForType);
+		}
+		
+		return nAlignRestrict;
+	}
 
 	/**
 	 * Creates a list of arguments to the <code>initialize</code> and the <code>kernel</code>
@@ -622,7 +658,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	private List<Expression> getFunctionArguments (List<Variable> listVariables, StatementList sl, boolean bForceAlign)
 	{
 		// get alignment restrictions
-		int nAlignRestrict = m_data.getArchitectureDescription ().getAlignmentRestriction ();
+		int nAlignRestrict = getGlobalAlignmentRestriction (listVariables);		
 		boolean bIsPowerOfTwo = MathUtil.isPowerOfTwo (nAlignRestrict);
 		boolean bIsFortranCompatible = m_kernelSourceFile.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
 

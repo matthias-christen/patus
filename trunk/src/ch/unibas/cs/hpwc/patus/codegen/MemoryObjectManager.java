@@ -570,7 +570,6 @@ public class MemoryObjectManager
 			for (int nVecIdx = 0; nVecIdx < nVectorIndicesCount; nVecIdx++)
 			{
 				// TODO: !!!time indices if no pointer swapping can be used!!!
-//				for (Integer nTimeIdx = bCanUsePointerSwapping ? m_rgMinTimeIndexPerVectorIndex[nVecIdx] : null; nTimeIdx != null && nTimeIdx <= m_rgMaxTimeIndexPerVectorIndex[nVecIdx]; nTimeIdx++)
 				for (Integer nTimeIdx = bCanUsePointerSwapping ? m_rgMinTimeIndexPerVectorIndex[nVecIdx] : null; nTimeIdx != null && nTimeIdx <= m_rgMaxTimeIndexPerVectorIndex[nVecIdx]; nTimeIdx++)
 				{
 					// get the first stencil node for the vector index nVecIdx

@@ -30,9 +30,8 @@ import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.UnaryOperator;
 import cetus.hir.UserSpecifier;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Assembly;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Datatypes;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Datatypes.Alignment;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Datatypes.Datatype;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Declspecs.Declspec;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Includes.Include;
@@ -202,15 +201,15 @@ public class ArchitectureDescriptionManager
 		}
 
 		@Override
-		public int getAlignmentRestriction ()
+		public int getAlignmentRestriction (Specifier specType)
 		{
-			Datatypes datatypes = m_type.getDatatypes ();
-			if (datatypes == null)
+			Datatype type = m_mapDataTypesFromBase.get (specType.toString ());
+
+			// if the type couldn't be found, return the default value (1)
+			if (type == null)
 				return 1;
-			Alignment alignment = datatypes.getAlignment ();
-			if (alignment == null)
-				return 1;
-			return alignment.getRestrict () ==  null ? 1 : alignment.getRestrict ();
+
+			return type.getAlignment ();
 		}
 
 		@Override
@@ -231,12 +230,12 @@ public class ArchitectureDescriptionManager
 			return list;
 		}
 
-		private Intrinsic getIntrinsicInternal (String strTypeBaseName, Specifier specType)
+		private Intrinsic getIntrinsicInternal (String strIntrinsicName, Specifier specType)
 		{
 			Datatype datatype = m_mapDataTypesFromBase.get (specType.toString ());
 
 			// get the list of intrinsics for the function base name
-			List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (strTypeBaseName);
+			List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (strIntrinsicName);
 			if (listIntrinsics == null || listIntrinsics.size () == 0)
 				return null;
 
@@ -270,10 +269,8 @@ public class ArchitectureDescriptionManager
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
 			if ("/".equals (strOperation))
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
-			if (Globals.FNX_FMA.getName ().equals (strOperation))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.FMA.value (), specType);
 
-			return null;
+			return getIntrinsicInternal (strOperation, specType);
 		}
 
 		@Override
@@ -306,6 +303,7 @@ public class ArchitectureDescriptionManager
 		public Intrinsic getIntrinsic (FunctionCall fnx, Specifier specType)
 		{
 			String strFnx = fnx.getName ().toString ();
+			/*
 			if (Globals.FNX_BARRIER.getName ().equals (strFnx))
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.BARRIER.value (), specType);
 			if (Globals.FNX_FMA.getName ().equals (strFnx))
@@ -314,6 +312,7 @@ public class ArchitectureDescriptionManager
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.NUMTHREADS.value (), specType);
 			if (Globals.THREAD_NUMBER.getName ().equals (strFnx))
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.THREADID.value (), specType);
+			*/
 
 			Intrinsic intfnx = getIntrinsicInternal (strFnx, specType);
 			if (intfnx != null)
@@ -324,6 +323,12 @@ public class ArchitectureDescriptionManager
 			intfnx.setBaseName (strName);
 			intfnx.setName (strName);
 			return intfnx;
+		}
+		
+		@Override
+		public Assembly getAssemblySpec ()
+		{
+			return m_type.getAssembly ();
 		}
 
 		@Override

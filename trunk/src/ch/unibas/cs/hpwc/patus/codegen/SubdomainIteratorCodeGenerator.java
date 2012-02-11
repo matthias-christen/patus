@@ -627,7 +627,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 			if (!(exprGridAccess instanceof UnaryExpression) || !((UnaryExpression) exprGridAccess).getOperator ().equals (UnaryOperator.ADDRESS_OF))
 				exprGridAccess = new UnaryExpression (UnaryOperator.ADDRESS_OF, exprGridAccess);
 
-			int nAlignRestrict = m_data.getArchitectureDescription ().getAlignmentRestriction ();
+			int nAlignRestrict = m_data.getArchitectureDescription ().getAlignmentRestriction (node.getSpecifier ());
 
 			// create a new variable that will hold the prologue length
 			VariableDeclarator decl = new VariableDeclarator (CodeGeneratorUtil.createNameID ("prologueend", m_nPrologueLengthIdentifiersCount++));

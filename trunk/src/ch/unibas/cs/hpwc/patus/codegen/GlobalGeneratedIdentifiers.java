@@ -79,6 +79,7 @@ public class GlobalGeneratedIdentifiers
 	{
 		private EVariableType m_type;
 		private List<Specifier> m_listSpecifiers;
+		private Specifier m_specType;
 		private String m_strName;
 		private String m_strOriginalName;
 
@@ -100,6 +101,7 @@ public class GlobalGeneratedIdentifiers
 		{
 			m_type = type;
 			m_listSpecifiers = listSpecifiers;
+			m_specType = findDatatype ();
 			m_strName = strName;
 			m_strName = strOriginalName;
 			m_exprSize = exprSize;
@@ -113,6 +115,7 @@ public class GlobalGeneratedIdentifiers
 			m_type = type;
 			m_declaration = decl;
 			m_listSpecifiers = decl.getSpecifiers ();
+			m_specType = findDatatype ();
 			m_strName = decl.getDeclarator (0).getID ().getName ();
 			m_strOriginalName = strOriginalName;
 			m_exprSize = exprSize;
@@ -153,6 +156,19 @@ public class GlobalGeneratedIdentifiers
 		public final List<Specifier> getSpecifiers ()
 		{
 			return m_listSpecifiers;
+		}
+		
+		public final Specifier getDatatype ()
+		{
+			return m_specType;
+		}
+		
+		private Specifier findDatatype ()
+		{
+			for (Specifier s : m_listSpecifiers)
+				if (Globals.isBaseDatatype (s))
+					return s;
+			return null;	/* TODO: what should happen if no data type is found? */
 		}
 
 		public final String getName ()

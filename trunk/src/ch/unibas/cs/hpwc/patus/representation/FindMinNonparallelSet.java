@@ -11,7 +11,7 @@ import ch.unibas.cs.hpwc.patus.util.MathUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class FindMinNonparallelSet
-{
+{	
 	/**
 	 * Determines whether <code>node2</code> is parallel to <code>node1</code>.
 	 * @param node1
@@ -99,8 +99,8 @@ public class FindMinNonparallelSet
 	{
 		Collection<StencilNode> nodes = new ArrayList<StencilNode> ();
 		nodes.add (new StencilNode ("n0", Specifier.FLOAT, new Index (0, new int[] { 0, 0, 0 }, 0)));
-		nodes.add (new StencilNode ("n1", Specifier.FLOAT, new Index (0, new int[] { 1, 0, 0 }, 0)));
-		nodes.add (new StencilNode ("n2", Specifier.FLOAT, new Index (0, new int[] { -1, 0, 0 }, 0)));
+		nodes.add (new StencilNode ("n1", Specifier.FLOAT, new Index (0, new int[] { 3, 0, 0 }, 0)));
+		nodes.add (new StencilNode ("n2", Specifier.FLOAT, new Index (0, new int[] { -2, 0, 0 }, 0)));
 		nodes.add (new StencilNode ("n3", Specifier.FLOAT, new Index (0, new int[] { 2, 0, 0 }, 0)));
 		nodes.add (new StencilNode ("n4", Specifier.FLOAT, new Index (0, new int[] { 0, 1, 0 }, 0)));
 		nodes.add (new StencilNode ("n5", Specifier.FLOAT, new Index (0, new int[] { 1, 1, 0 }, 0)));

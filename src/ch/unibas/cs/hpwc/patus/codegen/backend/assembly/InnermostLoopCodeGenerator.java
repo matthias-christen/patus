@@ -2,7 +2,6 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
-import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 
@@ -19,7 +18,7 @@ public abstract class InnermostLoopCodeGenerator
 	 */
 	private boolean m_bArchSupportsUnalignedMoves;
 	
-	private TypeRegister m_regCounter;
+	private IOperand.IRegisterOperand m_regCounter;
 	
 	
 	public InnermostLoopCodeGenerator (AssemblySection as, CodeGeneratorSharedObjects data)
@@ -55,7 +54,7 @@ public abstract class InnermostLoopCodeGenerator
 		return m_bArchSupportsUnalignedMoves;
 	}
 	
-	public TypeRegister getCounterRegister ()
+	public IOperand.IRegisterOperand getCounterRegister ()
 	{
 		return m_regCounter;
 	}

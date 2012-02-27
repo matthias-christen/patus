@@ -5,10 +5,17 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public interface IOperand
 {
+	///////////////////////////////////////////////////////////////////
+	// Sub-Interfaces
+
 	public interface IRegisterOperand extends IOperand
 	{
 	}
 	
+
+	///////////////////////////////////////////////////////////////////
+	// Implementing Classes
+
 	public static class Register implements IRegisterOperand
 	{
 		private TypeRegister m_register;
@@ -17,11 +24,30 @@ public interface IOperand
 		{
 			m_register = register;
 		}
+		
+		public String getBaseName ()
+		{
+			return m_register.getName ();
+		}
 				
 		@Override
-		public String toString ()
+		public String getAsString ()
 		{
 			return StringUtil.concat ("%%", m_register.getName ());
+		}
+		
+		@Override
+		public boolean equals (Object obj)
+		{
+			if (!(obj instanceof Register))
+				return false;
+			return ((Register) obj).m_register.getName ().equals (m_register.getName ());
+		}
+		
+		@Override
+		public int hashCode ()
+		{
+			return m_register.getName ().hashCode ();
 		}
 	}
 	
@@ -35,7 +61,7 @@ public interface IOperand
 		}
 		
 		@Override
-		public String toString ()
+		public String getAsString ()
 		{
 			return StringUtil.concat ("%", m_nIndex);
 		}
@@ -51,7 +77,7 @@ public interface IOperand
 		}
 		
 		@Override
-		public String toString ()
+		public String getAsString ()
 		{
 			return StringUtil.concat ("$", m_nValue);
 		}
@@ -95,8 +121,7 @@ public interface IOperand
 		/**
 		 * Format: [ displ ] "(" base [ "," index [ "," scale ]] ")"
 		 */
-		@Override
-		public String toString ()
+		public String getAsString ()
 		{
 			StringBuilder sb = new StringBuilder ();
 			
@@ -124,4 +149,29 @@ public interface IOperand
 			return sb.toString ();
 		}
 	}
+	
+	public static class LabelOperand implements IOperand
+	{
+		public LabelOperand (String strLabelIdentifier)
+		{
+			
+		}
+		
+		@Override
+		public String getAsString ()
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+	}
+	
+
+	///////////////////////////////////////////////////////////////////
+	// Method Definitions
+
+	/**
+	 * Returns a string representation of the operand for the generation of the assembly code.
+	 * @return The assembly string representation
+	 */
+	public abstract String getAsString ();
 }

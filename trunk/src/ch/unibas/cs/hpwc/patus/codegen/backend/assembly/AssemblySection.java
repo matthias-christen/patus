@@ -15,6 +15,7 @@ import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -28,17 +29,17 @@ public class AssemblySection
 	/**
 	 * The list of instructions in the inline assembly section
 	 */
-	private List<Instruction> m_listInstructions;
+	private List<TypedInstruction> m_listInstructions;
 	
 	/**
 	 * The set of registers which got clobbered during the inline assembly section
 	 */
-	private Set<TypeRegister> m_setClobberedRegisters;
+	private Set<IOperand.Register> m_setClobberedRegisters;
 	
 	/**
 	 * Data structure identifying which registers are currently in use
 	 */
-	private Map<TypeRegister, Boolean> m_mapRegisterUsage;
+	private Map<IOperand.Register, Boolean> m_mapRegisterUsage;
 	
 	private Map<String, IOperand> m_mapInputs;
 	
@@ -50,10 +51,10 @@ public class AssemblySection
 	{
 		m_data = data;
 		
-		m_listInstructions = new ArrayList<Instruction> ();
+		m_listInstructions = new ArrayList<TypedInstruction> ();
 
-		m_setClobberedRegisters = new HashSet<TypeRegister> ();
-		m_mapRegisterUsage = new HashMap<TypeRegister, Boolean> ();
+		m_setClobberedRegisters = new HashSet<IOperand.Register> ();
+		m_mapRegisterUsage = new HashMap<IOperand.Register, Boolean> ();
 		m_mapInputs = new HashMap<String, IOperand> ();
 	}
 	
@@ -72,13 +73,13 @@ public class AssemblySection
 	
 	public void addInstruction (Instruction instruction, Specifier specDatatype)
 	{
-		m_listInstructions.add (instruction);
+		m_listInstructions.add (new TypedInstruction (instruction, specDatatype));
 	}
 	
 	public void addInstructions (InstructionList instructions, Specifier specDatatype)
 	{
-		for (Instruction i : instructions)
-			m_listInstructions.add (i);
+		for (IInstruction i : instructions)
+			m_listInstructions.add (new TypedInstruction (i, specDatatype));
 	}
 
 	/**
@@ -86,19 +87,20 @@ public class AssemblySection
 	 * @param regtype The desired type of the register
 	 * @return The next free register
 	 */
-	public TypeRegister getFreeRegister (TypeRegisterType regtype)
+	public IRegisterOperand getFreeRegister (TypeRegisterType regtype)
 	{
 		for (TypeRegister reg : m_data.getArchitectureDescription ().getAssemblySpec ().getRegisters ().getRegister ())
 		{
 			if (!reg.getType ().equals (regtype))
 				continue;
 			
-			Boolean bIsRegUsed = m_mapRegisterUsage.get (reg);
+			IOperand.Register register = new IOperand.Register (reg);
+			Boolean bIsRegUsed = m_mapRegisterUsage.get (register);
 			if (bIsRegUsed == null || bIsRegUsed == false)
 			{
-				m_mapRegisterUsage.put (reg, true);
-				m_setClobberedRegisters.add (reg);
-				return reg;
+				m_mapRegisterUsage.put (register, true);
+				m_setClobberedRegisters.add (register);
+				return register;
 			}
 		}
 		
@@ -106,7 +108,7 @@ public class AssemblySection
 		return null;
 	}
 	
-	public void killRegister (TypeRegister register)
+	public void killRegister (IOperand.Register register)
 	{
 		m_mapRegisterUsage.put (register, false);
 	}
@@ -116,15 +118,15 @@ public class AssemblySection
 		// create a C statement wrapping the inline assembly
 		
 		StringBuilder sbInstructions = new StringBuilder ();
-		for (Instruction instruction : m_listInstructions)
-			instruction.issue (null, arch, sbInstructions);
+		for (TypedInstruction instruction : m_listInstructions)
+			instruction.issue (arch, sbInstructions);
 
 		StringBuilder sbClobberedRegisters = new StringBuilder ();
-		for (TypeRegister reg : m_setClobberedRegisters)
+		for (IOperand.Register reg : m_setClobberedRegisters)
 		{
 			if (sbClobberedRegisters.length () > 0)
 				sbClobberedRegisters.append (",");
-			sbClobberedRegisters.append (reg.getName ());
+			sbClobberedRegisters.append (reg.getBaseName ());
 		}
 				
 		return new ExpressionStatement (new SomeExpression (

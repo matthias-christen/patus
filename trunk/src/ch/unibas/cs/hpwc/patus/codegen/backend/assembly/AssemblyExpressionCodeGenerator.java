@@ -7,24 +7,20 @@ import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
-import cetus.hir.ExpressionStatement;
 import cetus.hir.FunctionCall;
 import cetus.hir.Literal;
 import cetus.hir.NameID;
-import cetus.hir.SomeExpression;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
-import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IBackendAssemblyCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
-import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class AssemblyExpressionCodeGenerator
 {
@@ -55,7 +51,7 @@ public class AssemblyExpressionCodeGenerator
 		return m_cg.generate (options);
 	}
 	
-	private String traverse (Expression expr, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
+	private IOperand traverse (Expression expr, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
 	{
 		if (isAddSubSubtree (expr))
 			return processAddSubSubtree (expr, specDatatype, nUnrollFactor, sb);
@@ -86,17 +82,17 @@ public class AssemblyExpressionCodeGenerator
 	 * @param sb
 	 * @return
 	 */
-	private String processAddSubSubtree (Expression expr, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
+	private IOperand processAddSubSubtree (Expression expr, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
 	{
 		List<AddSub> list = new LinkedList<AddSub> ();
 		linearizeAddSubSubtree (expr, list, BinaryOperator.ADD);
 		
-		TypeRegister regSum = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
+		IOperand.IRegisterOperand regSum = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
 		
 		boolean bIsFirst = true;
 		for (AddSub addsub : list)
 		{
-			String strSummand = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, sb);
+			IOperand opSummand = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, sb);
 			
 			if (bIsFirst)
 			{
@@ -125,7 +121,7 @@ public class AssemblyExpressionCodeGenerator
 			bIsFirst = false;
 		}
 		
-		return regSum.getName ();		
+		return regSum;		
 	}
 
 	/**
@@ -136,7 +132,7 @@ public class AssemblyExpressionCodeGenerator
 	 * @param sb
 	 * @return
 	 */
-	private String processBinaryExpression (BinaryExpression expr, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
+	private IOperand processBinaryExpression (BinaryExpression expr, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
 	{
 		Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (expr.getOperator (), specDatatype);
 		i.getArguments ();
@@ -161,7 +157,7 @@ public class AssemblyExpressionCodeGenerator
 	 * @param sb
 	 * @return
 	 */
-	private String processFunctionCall (FunctionCall fnxCall, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
+	private IOperand processFunctionCall (FunctionCall fnxCall, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
 	{
 		Expression exprFuncName = fnxCall.getName ();
 		Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (exprFuncName.toString (), specDatatype);
@@ -196,7 +192,7 @@ public class AssemblyExpressionCodeGenerator
 	 * @param sb
 	 * @return
 	 */
-	private String processUnaryExpression (UnaryExpression expr, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
+	private IOperand processUnaryExpression (UnaryExpression expr, Specifier specDatatype, int nUnrollFactor, StringBuilder sb)
 	{
 		if (((UnaryExpression) expr).getOperator ().equals (UnaryOperator.MINUS))
 		{

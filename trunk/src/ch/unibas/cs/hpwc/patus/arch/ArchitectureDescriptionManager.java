@@ -38,7 +38,6 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Includes.Include;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level.Barrier;
-import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class ArchitectureDescriptionManager
@@ -259,18 +258,18 @@ public class ArchitectureDescriptionManager
 		}
 
 		@Override
-		public Intrinsic getIntrinsic (String strOperation, Specifier specType)
+		public Intrinsic getIntrinsic (String strOperationOrBaseName, Specifier specType)
 		{
-			if ("+".equals (strOperation))
+			if ("+".equals (strOperationOrBaseName))
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.PLUS.value (), specType);
-			if ("-".equals (strOperation))
+			if ("-".equals (strOperationOrBaseName))
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MINUS.value (), specType);
-			if ("*".equals (strOperation))
+			if ("*".equals (strOperationOrBaseName))
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
-			if ("/".equals (strOperation))
+			if ("/".equals (strOperationOrBaseName))
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
 
-			return getIntrinsicInternal (strOperation, specType);
+			return getIntrinsicInternal (strOperationOrBaseName, specType);
 		}
 
 		@Override

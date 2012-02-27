@@ -4,28 +4,34 @@ import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 
-public class Instruction
+/**
+ * This class encapsulates a single inline assembly instruction (mnemonic + operands).
+ * 
+ * @author Matthias-M. Christen
+ */
+public class Instruction implements IInstruction
 {
-	private Intrinsic m_intrinsic;
+	private String m_strIntrinsicBaseName;
 	private IOperand[] m_rgOperands;
 	
-	public Instruction (Intrinsic intrinsic, IOperand... rgOperands)
+	public Instruction (String strIntrinsicBaseName, IOperand... rgOperands)
 	{
-		m_intrinsic = intrinsic;
+		m_strIntrinsicBaseName = strIntrinsicBaseName;
 		m_rgOperands = rgOperands;
-	}
-	
-	public Instruction (String strInstruction, IOperand... rgOperands)
-	{
-		this (new Intrinsic (), rgOperands);
-		m_intrinsic.setName (strInstruction);
 	}
 	
 	public void issue (Specifier specDatatype, IArchitectureDescription arch, StringBuilder sbResult)
 	{
-		boolean bIsVectorInstruction = arch.getSIMDVectorLength (specDatatype) > 1;
+		// try to find the intrinsic corresponding to m_strIntrinsicBaseName
+		Intrinsic intrinsic = arch.getIntrinsic (m_strIntrinsicBaseName, specDatatype);
+		
+		// if the base name doesn't correspond to an intrinsic defined in the architecture description,
+		// use m_strIntrinsicBaseName as instruction mnemonic
+		String strInstruction = intrinsic == null ? m_strIntrinsicBaseName : intrinsic.getName ();
+	
+		//boolean bIsVectorInstruction = arch.getSIMDVectorLength (specDatatype) > 1;
 
-		sbResult.append (m_intrinsic.getName ());
+		sbResult.append (strInstruction);
 		sbResult.append (" ");
 		
 		boolean bFirst = true;

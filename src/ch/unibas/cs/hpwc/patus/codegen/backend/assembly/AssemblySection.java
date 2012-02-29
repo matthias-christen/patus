@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.SomeExpression;
 import cetus.hir.Specifier;
@@ -19,29 +20,67 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperan
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
+/**
+ * 
+ * @author Matthias-M. Christen
+ */
 public class AssemblySection
 {
 	///////////////////////////////////////////////////////////////////
+	// Inner Types
+	
+	public static class AssemblySectionInput
+	{
+		private Object m_objKey;
+		private IOperand m_operand;
+		private Expression m_exprValue;
+		
+
+		public AssemblySectionInput (Object objKey, IOperand op, Expression exprValue)
+		{
+			m_objKey = objKey;
+			m_operand = op;
+			m_exprValue = exprValue;
+		}
+
+		public Object getKey ()
+		{
+			return m_objKey;
+		}
+
+		public IOperand getOperand ()
+		{
+			return m_operand;
+		}
+
+		public Expression getValue ()
+		{
+			return m_exprValue;
+		}
+	}
+
+	
+	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
-	private CodeGeneratorSharedObjects m_data;
+	protected CodeGeneratorSharedObjects m_data;
 	
 	/**
 	 * The list of instructions in the inline assembly section
 	 */
-	private List<TypedInstruction> m_listInstructions;
+	protected List<TypedInstruction> m_listInstructions;
 	
 	/**
 	 * The set of registers which got clobbered during the inline assembly section
 	 */
-	private Set<IOperand.Register> m_setClobberedRegisters;
+	protected Set<IOperand.Register> m_setClobberedRegisters;
 	
 	/**
 	 * Data structure identifying which registers are currently in use
 	 */
-	private Map<IOperand.Register, Boolean> m_mapRegisterUsage;
+	protected Map<IOperand.Register, Boolean> m_mapRegisterUsage;
 	
-	private Map<String, IOperand> m_mapInputs;
+	protected List<AssemblySectionInput> m_listInputs;
 	
 	
 	///////////////////////////////////////////////////////////////////
@@ -55,27 +94,52 @@ public class AssemblySection
 
 		m_setClobberedRegisters = new HashSet<IOperand.Register> ();
 		m_mapRegisterUsage = new HashMap<IOperand.Register, Boolean> ();
-		m_mapInputs = new HashMap<String, IOperand> ();
-	}
-	
-	public void addInput (String strInputName)
-	{
-		if (m_mapInputs.containsKey (strInputName))
-			return;
 		
-		m_mapInputs.put (strInputName, new IOperand.InputRef (m_mapInputs.size ()));
+		m_listInputs = new ArrayList<AssemblySectionInput> ();
 	}
 	
-	public IOperand getInput (String strInputName)
+	/**
+	 * Adds an input to the assembly section.
+	 * @param input The input key with which the corresponding generated operand can be retrieved
+	 * @param exprValue The expression to assign to the operand (register) on entry into the assembly section
+	 * @return The operand generated for the input
+	 */
+	public IOperand addInput (Object input, Expression exprValue)
 	{
-		return m_mapInputs.get (strInputName);
+		IOperand op = new IOperand.InputRef (m_listInputs.size ());
+		m_listInputs.add (new AssemblySectionInput (input, op, exprValue));
+
+		return op;
 	}
 	
+	/**
+	 * Retrieves the operand corresponding to the assembly section input <code>input</code>.
+	 * @param input The input for which the retrieve the corresponding operand
+	 * @return The operand corresponding to <code>input</code>
+	 */
+	public IOperand getInput (Object input)
+	{
+		for (AssemblySectionInput asi : m_listInputs)
+			if (asi.getKey ().equals (input))
+				return asi.getOperand ();
+		return null;
+	}
+	
+	/**
+	 * Adds one instruction to the assembly section.
+	 * @param instruction The instruction to add
+	 * @param specDatatype The data type used for the floating point instructions
+	 */
 	public void addInstruction (Instruction instruction, Specifier specDatatype)
 	{
 		m_listInstructions.add (new TypedInstruction (instruction, specDatatype));
 	}
 	
+	/**
+	 * Adds a list of instructions to the assembly section.
+	 * @param instructions The instructions to add
+	 * @param specDatatype The data type used for the floating point instructions
+	 */
 	public void addInstructions (InstructionList instructions, Specifier specDatatype)
 	{
 		for (IInstruction i : instructions)
@@ -108,36 +172,68 @@ public class AssemblySection
 		return null;
 	}
 	
+	/**
+	 * Removes the register <code>register</code> from the list of currently used registers.
+	 * @param register The register to remove from the list of currently used registers
+	 */
 	public void killRegister (IOperand.Register register)
 	{
 		m_mapRegisterUsage.put (register, false);
 	}
-
+	
 	public Statement generate (IArchitectureDescription arch, CodeGeneratorRuntimeOptions options)
 	{
 		// create a C statement wrapping the inline assembly
 		
+		// create the string of instructions
 		StringBuilder sbInstructions = new StringBuilder ();
 		for (TypedInstruction instruction : m_listInstructions)
 			instruction.issue (arch, sbInstructions);
+		
+		// create the inputs string
+		StringBuilder sbInputs = new StringBuilder ();
+		for (AssemblySectionInput asi : m_listInputs)
+		{
+			if (sbInputs.length () > 0)
+				sbInputs.append (", ");
+			sbInputs.append ("r(");
+			sbInputs.append (asi.getValue ().toString ());
+			sbInputs.append (")");
+		}
 
+		// create the clobbered registers string
 		StringBuilder sbClobberedRegisters = new StringBuilder ();
 		for (IOperand.Register reg : m_setClobberedRegisters)
 		{
 			if (sbClobberedRegisters.length () > 0)
-				sbClobberedRegisters.append (",");
+				sbClobberedRegisters.append (", ");
 			sbClobberedRegisters.append (reg.getBaseName ());
 		}
-				
+		
+		// build the IR object
 		return new ExpressionStatement (new SomeExpression (
 			StringUtil.concat (
 				"__asm__ __volatile__ (\n",
 				sbInstructions.toString (),
 				":\n",
-				":\n",
+				": ", sbInputs.toString (), "\n",
 				":", sbClobberedRegisters.toString (), "\n",
 				")"
 			), null)
 		);
+	}
+	
+	/**
+	 * Returns the size of a floating point data type.
+	 * @param specDatatype
+	 * @return
+	 */
+	public static int getTypeSize (Specifier specDatatype)
+	{
+		if (specDatatype.equals (Specifier.FLOAT))
+			return Float.SIZE / 8;
+		if (specDatatype.equals (Specifier.DOUBLE))
+			return Double.SIZE / 8;
+		return 0;
 	}
 }

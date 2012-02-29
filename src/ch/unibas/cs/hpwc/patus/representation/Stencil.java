@@ -24,6 +24,7 @@ import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
+import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
 import ch.unibas.cs.hpwc.patus.symbolic.ExpressionData;
 
@@ -61,18 +62,18 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	 * The set of all input indices that are required to compute all vector
 	 * components of the stencil
 	 */
-	protected Set<StencilNode> m_setAllInputNodes;
+	protected StencilNodeSet m_setAllInputNodes;
 
 	/**
 	 * List of node sets; the list has one stencil node set per vector
 	 * component of the output node
 	 */
-	protected List<Set<StencilNode>> m_listInputNodeSets;
+	protected List<StencilNodeSet> m_listInputNodeSets;
 
 	/**
 	 * The set of output indices of the stencil
 	 */
-	protected Set<StencilNode> m_setOutputNodes;
+	protected StencilNodeSet m_setOutputNodes;
 
 	/**
 	 * The number of dimensions in which the stencil is defined
@@ -100,9 +101,9 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	public Stencil ()
 	{
 		m_edStencilCalculation = null;
-		m_setAllInputNodes = new TreeSet<StencilNode> ();
-		m_listInputNodeSets = new ArrayList<Set<StencilNode>> ();
-		m_setOutputNodes = new TreeSet<StencilNode> ();
+		m_setAllInputNodes = new StencilNodeSet ();
+		m_listInputNodeSets = new ArrayList<StencilNodeSet> ();
+		m_setOutputNodes = new StencilNodeSet ();
 
 		m_nDimensionality = 0;
 		m_nMaxTimeIndex = 0;
@@ -125,7 +126,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	{
 		// ensure that the list is big enough
 		for (int i = m_listInputNodeSets.size (); i <= node.getIndex ().getVectorIndex (); i++)
-			m_listInputNodeSets.add (new TreeSet<StencilNode> ());
+			m_listInputNodeSets.add (new StencilNodeSet ());
 
 		if (node.getIndex ().getSpaceIndex ().length > m_nDimensionality)
 			m_nDimensionality = (byte) node.getIndex ().getSpaceIndex ().length;
@@ -249,12 +250,9 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	}
 
 	@Override
-	public Set<StencilNode> getAllNodes ()
+	public StencilNodeSet getAllNodes ()
 	{
-		Set<StencilNode> set = new TreeSet<StencilNode> ();
-		set.addAll (m_setAllInputNodes);
-		set.addAll (m_setOutputNodes);
-		return set;
+		return m_setAllInputNodes.union (m_setOutputNodes);
 	}
 
 	@Override

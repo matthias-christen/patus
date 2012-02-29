@@ -13,6 +13,7 @@ package ch.unibas.cs.hpwc.patus.codegen;
 import java.util.HashMap;
 import java.util.Map;
 
+import cetus.hir.ArraySpecifier;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
 import cetus.hir.Expression;
@@ -77,6 +78,16 @@ public class ConstantGeneratedIdentifiers
 		m_mapTempIdentifierSuffices.put (strIdentifier, nSuffix + 1);
 		return nSuffix;
 	}
+	
+	public VariableDeclarator createDeclarator (String strIdentifierName, Specifier specDatatype, boolean bIsArray)
+	{
+		NameID nid = new NameID (StringUtil.concat (strIdentifierName, getTempIdentifierSuffix (strIdentifierName)));
+		VariableDeclarator decl = bIsArray ? new VariableDeclarator (nid, new ArraySpecifier ()) : new VariableDeclarator (nid);
+		VariableDeclaration declaration = new VariableDeclaration (m_data.getArchitectureDescription ().getType (specDatatype), decl);
+		m_data.getData ().addDeclaration (declaration);
+		
+		return decl;
+	}
 
 	/**
 	 * Creates an identifier for a constant value. The identifier is declared and
@@ -134,10 +145,7 @@ public class ConstantGeneratedIdentifiers
 				return exprConstant;
 		}
 
-		VariableDeclarator decl = new VariableDeclarator (new NameID (StringUtil.concat (strIdentifierName, getTempIdentifierSuffix (strIdentifierName))));
-		VariableDeclaration declaration = new VariableDeclaration (m_data.getArchitectureDescription ().getType (specDatatype), decl);
-		m_data.getData ().addDeclaration (declaration);
-
+		VariableDeclarator decl = createDeclarator (strIdentifierName, specDatatype, false);
 		exprResult = new Identifier (decl);
 
 		// determine where to declare the variable (local or global)

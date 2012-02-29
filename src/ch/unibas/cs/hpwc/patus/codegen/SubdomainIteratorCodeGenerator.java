@@ -27,6 +27,7 @@ import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.ForLoop;
+import cetus.hir.IDExpression;
 import cetus.hir.Identifier;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
@@ -170,6 +171,11 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 
 			return generateInner (m_sdIterator.getIterator ().getDimensionality (), new StatementListBundle ());
 		}
+		
+		private boolean isStencilCalculation ()
+		{
+			return m_options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
+		}
 
 		/**
 		 * Generates the C code for the loop nest.
@@ -238,11 +244,24 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		 */
 		private void recursiveGenerateInner (StatementListBundle slbParent, int nDimension, boolean bHasParentLoop, StencilLoopUnrollingConfiguration config)
 		{
+			if (nDimension == 0 && isAssemblyUsedForInnerMost ())
+			{
+				// this is an innermost loop (containing a stencil computation), and an assembly code
+				// generator, which generates code for the innermost loop and the contained stencil expression,
+				// was specified
+				
+				generateInnerMostAssembly ();
+			}
+			else
+				recursiveGenerateInnerDefault (slbParent, nDimension, bHasParentLoop, config);
+		}
+			
+		private void recursiveGenerateInnerDefault (StatementListBundle slbParent, int nDimension, boolean bHasParentLoop, StencilLoopUnrollingConfiguration config)
+		{			
 			// do we need prologue and epilogue loops?
 			// we don't need a clean up loop in the inner most loop if we have prologue and epilogue loops (bUseNativeSIMD == false)
-			boolean bIsStencilCalculation = m_options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 			boolean bHasProEpiLoops =
-				m_data.getArchitectureDescription ().useSIMD () && !m_data.getOptions ().useNativeSIMDDatatypes () && bIsStencilCalculation;
+				m_data.getArchitectureDescription ().useSIMD () && !m_data.getOptions ().useNativeSIMDDatatypes () && isStencilCalculation ();
 			boolean bHasCleanupLoops = nDimension > 0 || (nDimension == 0 && !bHasProEpiLoops);
 
 			if (nDimension >= 0)
@@ -250,8 +269,13 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 				int nUnrollFactor = config.getUnrollingFactor (nDimension);
 
 				// unrolled loop
-				StatementListBundle slbInnerLoop =
-					generateIteratorForDimension (nDimension, slbParent, null, bHasCleanupLoops ? new IntegerLiteral (nUnrollFactor - 1) : null, nUnrollFactor);
+				StatementListBundle slbInnerLoop = generateIteratorForDimension (
+					nDimension,
+					slbParent,
+					null,
+					bHasCleanupLoops ? new IntegerLiteral (nUnrollFactor - 1) : null,
+					nUnrollFactor
+				);
 
 				recursiveGenerateInner (
 					slbInnerLoop == null ? slbParent : slbInnerLoop,
@@ -341,13 +365,12 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		private Expression getLowerLoopBound (int nDim)
 		{
 			if (m_sdIterator.getDomainSubdomain ().isBaseGrid ())
-//			if (m_sgIterator.getDomainIdentifier ().equals (m_data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid ()))
-////			if (m_sgIterator.getDomainIdentifier () == m_data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid ())
 				return m_sdIterator.getDomainIdentifier ().getSubdomain ().getBox ().getMin ().getCoord (nDim).clone ();
 
 			Expression exprMin = m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (m_sdIterator.getDomainIdentifier (), nDim).clone ();
 			if (exprMin == null)
 				exprMin = m_sdIterator.getDomainSubdomain ().getBox ().getMin ().getCoord (nDim).clone ();
+			
 			return exprMin;
 		}
 
@@ -359,8 +382,6 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		private Expression getUpperLoopBound (int nDim)
 		{
 			if (m_sdIterator.getDomainSubdomain ().isBaseGrid ())
-//			if (m_sgIterator.getDomainIdentifier ().equals (m_data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid ()))
-////			if (m_sgIterator.getDomainIdentifier () == m_data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid ())
 				return ExpressionUtil.increment (m_sdIterator.getDomainIdentifier ().getSubdomain ().getBox ().getMax ().getCoord (nDim).clone ());
 
 			Expression exprMax = m_data.getData ().getGeneratedIdentifiers ().getDimensionMaxIdentifier (m_sdIterator.getDomainIdentifier (), nDim).clone ();
@@ -413,21 +434,6 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		{
 			Expression exprIteratorSize = m_sdIterator.getIteratorSubdomain ().getBox ().getSize ().getCoord (nDim);
 			Expression exprDomainSize = m_sdIterator.getDomainSubdomain ().getBox ().getSize ().getCoord (nDim);
-
-			boolean bUseNativeSIMDDatatypes = m_data.getOptions ().useNativeSIMDDatatypes ();
-			boolean bIsStencilKernel = m_options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
-
-			// if no native SIMD datatypes are used, create prologue and epilogue loops
-			// prologue and epilogue loops are only generated if
-			// - the loop contains a stencil call
-			// - the loop is the inner most loop of a loop nest (nDim == 0)
-			// - SIMD is used with no native SIMD data types
-			// - within the stencil calculation (not within the initialization, for instance)
-			boolean bHasSIMDPrologueAndEpilogueLoops =
-				m_bContainsStencilCall && nDim == 0 &&
-				m_data.getArchitectureDescription ().useSIMD () && !bUseNativeSIMDDatatypes &&
-				bIsStencilKernel;
-
 
 			// prepare loop creation
 			Identifier idIdx = m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (m_sdIterator.getIterator (), nDim);
@@ -482,90 +488,174 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 
 			// account for SIMD
 			int nSIMDVectorLength = m_data.getCodeGenerators ().getStencilCalculationCodeGenerator ().getLcmSIMDVectorLengths ();
-			if (m_bContainsStencilCall && nDim == 0 && (bIsStencilKernel || bUseNativeSIMDDatatypes))
+			if (m_bContainsStencilCall && nDim == 0 && (isStencilCalculation () || m_data.getOptions ().useNativeSIMDDatatypes ()))
 				exprMainLoopStep = ExpressionUtil.product (exprMainLoopStep.clone (), new IntegerLiteral (nSIMDVectorLength));
 
 			// list to which the loop statements will be added
 			StatementListBundle slbStatements = new StatementListBundle ();
 
-			// for-loop initial statement
-			Statement stmtStart = exprStart == null ?
-				new NullStatement () :
-				new ExpressionStatement (new AssignmentExpression (idIdx.clone (), AssignmentOperator.NORMAL, exprStart));
-			Expression exprCondition = new BinaryExpression (idIdx.clone (), BinaryOperator.COMPARE_LT, exprEnd);
-
 			// create the loops
 			CompoundStatement cmpstmtMainLoopBody = new CompoundStatement ();
-			if (bHasSIMDPrologueAndEpilogueLoops)
-			{
-				// create the prologue loop
-				Expression exprStartPrologue = null;
-				if (exprStart == null)
-				{
-					VariableDeclarator decl = new VariableDeclarator (new NameID (StringUtil.concat (idIdx.getName (), "_start")));
-					slbStatements.addDeclaration (new VariableDeclaration (Globals.SPECIFIER_INDEX, decl));
-					exprStartPrologue = new Identifier (decl);
-				}
-				else
-					exprStartPrologue = exprStart.clone ();
-
-				slbStatements.addStatement (
-					new ForLoop (
-						stmtStart,
-						new BinaryExpression (
-							idIdx.clone (),
-							BinaryOperator.COMPARE_LT,
-							getPrologueEnd (exprStartPrologue, exprEnd, slbStatements)),
-						new UnaryExpression (UnaryOperator.POST_INCREMENT, idIdx.clone ()),
-						new CompoundStatement ()
-					),
-					SubdomainIteratorCodeGenerator.TAG_PROEPILOOP
-				);
-
-				// create the main loop if the dimension of the domain is > 1
-				slbStatements.addStatement (
-					new ForLoop (
-						new NullStatement (),
-						new BinaryExpression (
-							idIdx.clone (),
-							BinaryOperator.COMPARE_LT,
-							Symbolic.simplify (new BinaryExpression (
-								exprEnd.clone (),
-								BinaryOperator.SUBTRACT,
-								ExpressionUtil.decrement (exprMainLoopStep.clone ())
-							))),
-						new AssignmentExpression (idIdx.clone (), AssignmentOperator.ADD, exprMainLoopStep.clone ()),
-						cmpstmtMainLoopBody
-					),
-					SubdomainIteratorCodeGenerator.TAG_MAINLOOP
-				);
-
-				// create the epilogue loop
-				slbStatements.addStatement (
-					new ForLoop (
-						new NullStatement (),
-						exprCondition,
-						new UnaryExpression (UnaryOperator.POST_INCREMENT, idIdx.clone ()),
-						new CompoundStatement ()
-					),
-					SubdomainIteratorCodeGenerator.TAG_PROEPILOOP
-				);
-			}
+			if (hasSIMDPrologueAndEpilogueLoops (nDim))
+				createLoopWithProAndEpi (slbStatements, idIdx, exprStart, exprEnd, exprMainLoopStep, cmpstmtMainLoopBody);
 			else
 			{
 				// create the main loop if the dimension of the domain is > 1
-				slbStatements.addStatement (new ForLoop (
-					stmtStart,
-					exprCondition,
-					new AssignmentExpression (idIdx.clone (), AssignmentOperator.ADD, exprMainLoopStep.clone ()),
-					cmpstmtMainLoopBody)
-				);
+				createDefaultLoop (slbStatements, idIdx, exprStart, exprEnd, exprMainLoopStep, cmpstmtMainLoopBody);
 			}
 
 			// create and set the new named maximum point
 			if (m_bHasNestedLoops)
 				cmpstmtMainLoopBody.addStatement (generateNamedMaximumIdentifier (nDim));
 			return slbStatements;
+		}
+		
+		/**
+		 * <p>Determines whether prologue and epilogue loops should be generated.</p>
+		 * If no native SIMD datatypes are used, create prologue and epilogue loops
+		 * prologue and epilogue loops are only generated if:
+		 * <ul>
+		 * <li>the loop contains a stencil call</li>
+		 * <li>the loop is the inner most loop of a loop nest (<code>nDim == 0</code>)</li>
+		 * <li>SIMD is used with no native SIMD data types</li>
+		 * <li>within the stencil calculation (not within the initialization, for instance)</li>
+		 * </ul>
+		 * 
+		 * @param nDim The dimension of the loop
+		 * @return <code>true</code> iff prologue and epilogue loop are to be generated for the loop in dimension <code>nDim</code>
+		 */
+		private boolean hasSIMDPrologueAndEpilogueLoops (int nDim)
+		{
+			return m_bContainsStencilCall &&
+				nDim == 0 &&
+				m_data.getArchitectureDescription ().useSIMD () &&
+				!m_data.getOptions ().useNativeSIMDDatatypes () &&
+				isStencilCalculation ();
+		}
+		
+		/**
+		 * Determines whether inline assembly is to be used for the innermost loop
+		 * @return <code>true</code> iff inline assembly is to be used for the innermost loop
+		 */
+		private boolean isAssemblyUsedForInnerMost ()
+		{
+			return m_bContainsStencilCall && m_data.getCodeGenerators ().getBackendCodeGenerator ().hasAssemblyCodeGenerator () && isStencilCalculation ();
+		}
+		
+		private void generateInnerMostAssembly ()
+		{
+			throw new RuntimeException ("Not implemented");
+		}
+		
+		/**
+		 * Returns a statement initializing the loop index <code>idIdx</code> with the start expression <code>exprStart</code>.
+		 * @param idIdx The loop index
+		 * @param exprStart The start value or <code>null</code> if no initialization is desired
+		 * @return The statement initializing the loop index
+		 */
+		private Statement getStartStatement (IDExpression idIdx, Expression exprStart)
+		{
+			return exprStart == null ?
+				new NullStatement () :
+				new ExpressionStatement (new AssignmentExpression (idIdx.clone (), AssignmentOperator.NORMAL, exprStart));			
+		}
+		
+		/**
+		 * Returns the condition expression comparing the loop index to the end value.
+		 * @param idIdx The loop index
+		 * @param exprEnd The end value
+		 * @return The loop condition expression
+		 */
+		private Expression getConditionExpression (IDExpression idIdx, Expression exprEnd)
+		{
+			return new BinaryExpression (idIdx.clone (), BinaryOperator.COMPARE_LT, exprEnd);
+		}
+		
+		/**
+		 * Creates the default loop<br/>
+		 * <code>for (<i>idIdx</i> = <i>exprStart</i>; <i>idIdx</i> &lt; <i>exprEnd</i>; <i>idIdx</i> += <i>exprMainLoopStep</i>) { <i>stmtMainLoopBody</i> }</code>
+		 * @param slbStatements The {@link StatementListBundle} to which the generated code is added
+		 * @param idIdx The loop index
+		 * @param exprStart The start value
+		 * @param exprEnd The end value
+		 * @param exprMainLoopStep The step
+		 * @param stmtMainLoopBody The loop body
+		 */
+		private void createDefaultLoop (StatementListBundle slbStatements, IDExpression idIdx, Expression exprStart, Expression exprEnd, Expression exprMainLoopStep, Statement stmtMainLoopBody)
+		{
+			slbStatements.addStatement (new ForLoop (
+				getStartStatement (idIdx, exprStart),
+				getConditionExpression (idIdx, exprEnd),
+				new AssignmentExpression (idIdx.clone (), AssignmentOperator.ADD, exprMainLoopStep.clone ()),
+				stmtMainLoopBody)
+			);			
+		}
+		
+		/**
+		 * Creates a loop with a prologue and an epilogue loop.
+		 * @param slbStatements The {@link StatementListBundle} to which the generated code is added
+		 * @param idIdx The loop index
+		 * @param exprStart The starting expression
+		 * @param exprEnd The end expression
+		 * @param exprMainLoopStep The step
+		 * @param stmtMainLoopBody The loop body
+		 */
+		private void createLoopWithProAndEpi (StatementListBundle slbStatements,
+			IDExpression idIdx, Expression exprStart, Expression exprEnd, Expression exprMainLoopStep,
+			Statement stmtMainLoopBody)
+		{
+			// create the prologue loop
+			Expression exprStartPrologue = null;
+			if (exprStart == null)
+			{
+				VariableDeclarator decl = new VariableDeclarator (new NameID (StringUtil.concat (idIdx.getName (), "_start")));
+				slbStatements.addDeclaration (new VariableDeclaration (Globals.SPECIFIER_INDEX, decl));
+				exprStartPrologue = new Identifier (decl);
+			}
+			else
+				exprStartPrologue = exprStart.clone ();
+
+			slbStatements.addStatement (
+				new ForLoop (
+					getStartStatement (idIdx, exprStart),
+					new BinaryExpression (
+						idIdx.clone (),
+						BinaryOperator.COMPARE_LT,
+						getPrologueEnd (exprStartPrologue, exprEnd, slbStatements)),
+					new UnaryExpression (UnaryOperator.POST_INCREMENT, idIdx.clone ()),
+					new CompoundStatement ()
+				),
+				SubdomainIteratorCodeGenerator.TAG_PROEPILOOP
+			);
+
+			// create the main loop if the dimension of the domain is > 1
+			slbStatements.addStatement (
+				new ForLoop (
+					new NullStatement (),
+					new BinaryExpression (
+						idIdx.clone (),
+						BinaryOperator.COMPARE_LT,
+						Symbolic.simplify (new BinaryExpression (
+							exprEnd.clone (),
+							BinaryOperator.SUBTRACT,
+							ExpressionUtil.decrement (exprMainLoopStep.clone ())
+						))),
+					new AssignmentExpression (idIdx.clone (), AssignmentOperator.ADD, exprMainLoopStep.clone ()),
+					stmtMainLoopBody
+				),
+				SubdomainIteratorCodeGenerator.TAG_MAINLOOP
+			);
+
+			// create the epilogue loop
+			slbStatements.addStatement (
+				new ForLoop (
+					new NullStatement (),
+					getConditionExpression (idIdx, exprEnd),
+					new UnaryExpression (UnaryOperator.POST_INCREMENT, idIdx.clone ()),
+					new CompoundStatement ()
+				),
+				SubdomainIteratorCodeGenerator.TAG_PROEPILOOP
+			);	
 		}
 
 		/**

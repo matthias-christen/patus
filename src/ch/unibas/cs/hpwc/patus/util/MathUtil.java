@@ -121,4 +121,20 @@ public class MathUtil
 			return 1;
 		return 0;
 	}
+
+	/**
+	 * Computes log2 (ceil (<code>a</code>)).
+	 * @param a
+	 * @return
+	 */
+	public static long log2 (int a)
+	{
+		if (a <= 0)
+			throw new RuntimeException ("The argument must be strictly positive");
+		
+		int j = -1;
+		for (int i = a; i > 0; i >>= 1)
+			j++;
+		return j;
+	}
 }

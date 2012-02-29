@@ -20,6 +20,24 @@ public class Instruction implements IInstruction
 		m_rgOperands = rgOperands;
 	}
 	
+	/**
+	 * 
+	 * @return
+	 */
+	public String getIntrinsicBaseName ()
+	{
+		return m_strIntrinsicBaseName;
+	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	public IOperand[] getOperands ()
+	{
+		return m_rgOperands;
+	}
+
 	public void issue (Specifier specDatatype, IArchitectureDescription arch, StringBuilder sbResult)
 	{
 		// try to find the intrinsic corresponding to m_strIntrinsicBaseName

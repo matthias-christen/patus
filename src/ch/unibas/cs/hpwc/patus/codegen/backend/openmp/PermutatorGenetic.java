@@ -370,7 +370,7 @@ public class PermutatorGenetic
 				@Override
 				protected double evaluate (IChromosome chromosome)
 				{
-					// reward numbers at the correct position, reward numbers occuring in the result,
+					// reward numbers at the correct position, reward numbers occurring in the result,
 					// and reward shorter path lengths
 					
 					double fResult = 0;

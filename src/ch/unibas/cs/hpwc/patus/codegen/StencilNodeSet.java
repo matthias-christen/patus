@@ -20,9 +20,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import ch.unibas.cs.hpwc.patus.representation.Index;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 
+/**
+ * A set of {@link StencilNode}s with set operations.
+ * 
+ * @author Matthias-M. Christen
+ */
 public class StencilNodeSet implements Iterable<StencilNode>
 {
 	///////////////////////////////////////////////////////////////////
@@ -96,7 +102,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	}
 
 	/**
-	 *
+	 * Builds a new {@linke StencilNodeSet} from an array of stencil nodes.
 	 * @param rgNodes
 	 */
 	public StencilNodeSet (StencilNode... rgNodes)
@@ -107,7 +113,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	}
 
 	/**
-	 *
+	 * Copy constructor.
 	 * @param set
 	 */
 	public StencilNodeSet (StencilNodeSet set)
@@ -132,6 +138,40 @@ public class StencilNodeSet implements Iterable<StencilNode>
 		if (types == ENodeTypes.OUTPUT_NODES || types == ENodeTypes.ALL_NODES)
 			for (StencilNode node : stencil.getOutputNodes ())
 				m_set.add (node);
+	}
+	
+	public void add (StencilNode node)
+	{
+		m_set.add (node);
+	}
+	
+	public void add (Iterable<StencilNode> nodes)
+	{
+		for (StencilNode node : nodes)
+			m_set.add (node);
+	}
+	
+	public void clear ()
+	{
+		m_set.clear ();
+	}
+	
+	public boolean isEmpty ()
+	{
+		return m_set.isEmpty ();
+	}
+	
+	public boolean contains (StencilNode node)
+	{
+		return m_set.contains (node);
+	}
+	
+	public boolean contains (Index index)
+	{
+		// the "equals" method of StencilNode also works for Index,
+		// and "hashCode" of StencilNode delegates to Index
+		
+		return m_set.contains (index);
 	}
 
 	/**

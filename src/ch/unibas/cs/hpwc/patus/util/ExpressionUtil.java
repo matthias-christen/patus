@@ -294,13 +294,23 @@ public class ExpressionUtil
 	 */
 	public static Expression sum (Expression... rgExpressions)
 	{
+		return ExpressionUtil.sum (rgExpressions, 0, rgExpressions.length - 1);
+	}
+
+	/**
+	 * Calculates the sum of the expressions <code>rgExpressions</code>.
+	 * @param rgExpressions The expressions to add
+	 * @return The sum of all the expressions <code>rgExpressions</code>
+	 */
+	public static Expression sum (Expression[] rgExpressions, int nStart, int nEnd)
+	{
 		Expression exprSum = null;
-		for (Expression expr : rgExpressions)
+		for (int i = nStart; i <= nEnd; i++)
 		{
 			if (exprSum == null)
-				exprSum = expr.clone ();
+				exprSum = rgExpressions[i].clone ();
 			else
-				exprSum = new BinaryExpression (exprSum, BinaryOperator.ADD, expr.clone ());
+				exprSum = new BinaryExpression (exprSum, BinaryOperator.ADD, rgExpressions[i].clone ());
 		}
 
 		return exprSum == null ? new IntegerLiteral (0) : Symbolic.optimizeExpression (exprSum);
@@ -313,13 +323,23 @@ public class ExpressionUtil
 	 */
 	public static Expression product (Expression... rgExpressions)
 	{
+		return ExpressionUtil.product (rgExpressions, 0, rgExpressions.length - 1);
+	}
+
+	/**
+	 * Calculates the product of the expressions <code>rgExpressions</code>.
+	 * @param rgExpressions The expressions to multiply
+	 * @return The product of all the expressions <code>rgExpressions</code>
+	 */
+	public static Expression product (Expression[] rgExpressions, int nStart, int nEnd)
+	{
 		Expression exprProduct = null;
-		for (Expression expr : rgExpressions)
+		for (int i = nStart; i <= nEnd; i++)
 		{
 			if (exprProduct == null)
-				exprProduct = expr.clone ();
+				exprProduct = rgExpressions[i].clone ();
 			else
-				exprProduct = new BinaryExpression (exprProduct, BinaryOperator.MULTIPLY, expr.clone ());
+				exprProduct = new BinaryExpression (exprProduct, BinaryOperator.MULTIPLY, rgExpressions[i].clone ());
 		}
 
 		return exprProduct == null ? new IntegerLiteral (1) : Symbolic.optimizeExpression (exprProduct);

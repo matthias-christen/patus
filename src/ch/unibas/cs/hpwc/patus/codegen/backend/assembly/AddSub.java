@@ -5,6 +5,10 @@ import cetus.hir.Expression;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IBackendAssemblyCodeGenerator;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
+/**
+ * 
+ * @author Matthias-M. Christen
+ */
 class AddSub
 {
 	///////////////////////////////////////////////////////////////////

@@ -6,6 +6,8 @@ package ch.unibas.cs.hpwc.patus.representation;
 import java.util.Iterator;
 import java.util.Set;
 
+import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
+
 /**
  * @author Matthias-M. Christen
  */
@@ -85,7 +87,7 @@ public interface IStencilStructure extends Iterable<StencilNode>
 	 * the input and the output indices.
 	 * @return A set containing both input and output indices
 	 */
-	public abstract Set<StencilNode> getAllNodes ();
+	public abstract StencilNodeSet getAllNodes ();
 
 	/**
 	 * Returns a set of all nodes contained in the stencil, i.e. both

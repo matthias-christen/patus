@@ -35,6 +35,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Datatypes.Datatype;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Declspecs.Declspec;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Includes.Include;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level.Barrier;
@@ -209,6 +210,12 @@ public class ArchitectureDescriptionManager
 				return 1;
 
 			return type.getAlignment ();
+		}
+		
+		@Override
+		public boolean supportsUnalignedSIMD ()
+		{
+			return m_mapIntrinsics.containsKey (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ());
 		}
 
 		@Override

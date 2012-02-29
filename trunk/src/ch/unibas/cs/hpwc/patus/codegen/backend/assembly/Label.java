@@ -22,7 +22,7 @@ public class Label implements IInstruction
 	
 
 	///////////////////////////////////////////////////////////////////
-	// Inner Types
+	// Implementation
 
 	public Label (String strLabelIdentifier)
 	{

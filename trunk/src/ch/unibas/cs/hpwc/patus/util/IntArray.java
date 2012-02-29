@@ -14,7 +14,9 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 /**
- *
+ * An array of integers that provides some operations on the array (adding offsets, appending new data)
+ * and can be used as key in maps.
+ * 
  * @author Matthias-M. Christen
  */
 public class IntArray implements Iterable<Integer>, Comparable<IntArray>
@@ -28,11 +30,28 @@ public class IntArray implements Iterable<Integer>, Comparable<IntArray>
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
+	/**
+	 * Constructs a new {@link IntArray} and initializes it with the values in <code>rgValues</code>.
+	 * The value array is used by reference, i.e., if values in the original <code>rgValues</code>
+	 * array are changed, the changes will be reflected in the values of this {@link IntArray} instance.
+	 * 
+	 * @param rgValues The values to assign to the array
+	 */
 	public IntArray (int[] rgValues)
 	{
 		this (rgValues, false);
 	}
 
+	/**
+	 * Constructs a new {@link IntArray} and initializes it with the values in <code>rgValues</code>.
+	 * The value array is either used by reference (if <code>bCreateCopy == false</code>) or the
+	 * values are copied to the internal array and don't change if entries of the original <code>rgValues</code>
+	 * are modified (if <code>bCreateCopy == true</code>).
+	 * 
+	 * @param rgValues The values to assign to the array
+	 * @param bCreateCopy Determines whether a copy of the original array is created or the internal array
+	 * 	is assigned by reference
+	 */
 	public IntArray (int[] rgValues, boolean bCreateCopy)
 	{
 		if (bCreateCopy)
@@ -49,16 +68,39 @@ public class IntArray implements Iterable<Integer>, Comparable<IntArray>
 			m_rgValues = rgValues;
 	}
 
+	/**
+	 * Returns the values as <code>int[]</code>.
+	 * @return The array values
+	 */
 	public int[] get ()
 	{
 		return m_rgValues;
 	}
 
+	/**
+	 * Returns one entry of the array.
+	 * @param nIdx The index of the entry to retrieve
+	 * @return The value of the entry at index <code>nIdx</code>
+	 */
 	public int get (int nIdx)
 	{
 		return m_rgValues[nIdx];
 	}
+	
+	/**
+	 * Sets the entry at index <code>nIdx</code> to <code>nValue</code>.
+	 * @param nIdx The index of the entry to modify
+	 * @param nValue The new value
+	 */
+	public void set (int nIdx, int nValue)
+	{
+		m_rgValues[nIdx] = nValue;
+	}
 
+	/**
+	 * Returns the length of the array.
+	 * @return
+	 */
 	public int length ()
 	{
 		return m_rgValues.length;
@@ -74,6 +116,13 @@ public class IntArray implements Iterable<Integer>, Comparable<IntArray>
 			m_rgValues[i] += rgOffset[i];
 	}
 
+	/**
+	 * Appends new values to the array. The values are by-value, i.e., if an entry in the
+	 * original array <code>rgValue</code> is modified, the changes won't be reflected
+	 * in this {@link IntArray instance.
+	 * 
+	 * @param rgValues The values to append
+	 */
 	public void append (int... rgValues)
 	{
 		int[] rgValuesOld = m_rgValues;

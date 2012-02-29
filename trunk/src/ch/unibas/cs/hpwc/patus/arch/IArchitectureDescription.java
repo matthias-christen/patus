@@ -78,6 +78,12 @@ public interface IArchitectureDescription
 	 */
 	public abstract boolean supportsAsynchronousIO (int nParallelismLevel);
 
+	/**
+	 * Returns a barrier intrinsic statement, which will synchronize all execution
+	 * units in parallelism level <code>nParallelismLevel</code>
+	 * @param nParallelismLevel The parallelism level on which to generate a barrier
+	 * @return A barrier statement for parallelism level <code>nParallelismLevel</code>
+	 */
 	public abstract Statement getBarrier (int nParallelismLevel);
 
 	/**
@@ -109,6 +115,12 @@ public interface IArchitectureDescription
 	 * @return
 	 */
 	public abstract int getAlignmentRestriction (Specifier specType);
+	
+	/**
+	 * Determines whether the architecture supports unaligned SIMD vector loads and stores.
+	 * @return <code>true</code> iff unaligned vector moves are supported
+	 */
+	public abstract boolean supportsUnalignedSIMD ();
 
 	/**
 	 * Gets additional declspecs for a type (e.g., the kernel function)
@@ -152,6 +164,10 @@ public interface IArchitectureDescription
 	 */
 	public abstract Intrinsic getIntrinsic (FunctionCall fnx, Specifier specType);
 	
+	/**
+	 * Returns the assembly specification (registers, ...)
+	 * @return
+	 */
 	public abstract Assembly getAssemblySpec ();
 
 	/**
@@ -166,6 +182,10 @@ public interface IArchitectureDescription
 	 */
 	public abstract Build getBuild ();
 
+	/**
+	 * Clones the architecture description.
+	 * @return A copy of this architecture description
+	 */
 	public IArchitectureDescription clone ();
 
 	/**

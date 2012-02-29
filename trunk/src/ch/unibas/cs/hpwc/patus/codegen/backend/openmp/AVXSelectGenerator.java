@@ -236,9 +236,9 @@ public class AVXSelectGenerator
 	public static void main (String[] args)
 	{
 		// single precision ("_ps")
-		new AVXSelectGenerator (8, 7, new Operator[] { new MMShufflePS (), new MMPermutePS (), new MMPermuteF128PS (), new MMBlendPS () }, "Op1", "Op2");
+		new AVXSelectGenerator (8, 7, new Operator[] { new MMShufflePS (), new MMPermutePS (), new MMPermuteF128PS (), new MMBlendPS () }, "expr1", "expr2");
 		
 		// double precision ("_pd")
-//		new AVXSelectGenerator (4, 3, new Operator[] { new MMShufflePD (), new MMPermutePD (), new MMPermuteF128PD (), new MMBlendPD () }, "Op3", "Op4");
+//		new AVXSelectGenerator (4, 3, new Operator[] { new MMShufflePD (), new MMPermutePD (), new MMPermuteF128PD (), new MMBlendPD () }, "expr1", "expr2");
 	}
 }

@@ -1363,6 +1363,9 @@ public class MemoryObjectManager
 	 * Constructs an expression to access a memory object array.
 	 * @param sdid The subdomain identifier for which to generate the memory object expression
 	 * @param node The stencil node that is accessed
+	 * @param vecOffsetWithinMemObj An offset from the index point defined by
+	 * 	<code>sdid</code> or <code>null</code> if no offset is to be added. The offset point must
+	 * 	lie within the same memory object.
 	 * @param bIsDataAccess
 	 * @param bIndex Tells the method to index the memory object to access a single grid point if set to <code>true</code>,
 	 * 	if set to <code>false</code> a pointer to the memory object is returned
@@ -1370,6 +1373,7 @@ public class MemoryObjectManager
 	 * 	memory object associated with <code>sdid</code>.
 	 * @param slGenerated The list of statements to which index calculations will be added. Can be <code>null</code> if <code>bIndex</code>
 	 * 	is set to <code>false</code>
+	 * @param options
 	 * @return
 	 */
 	public Expression getMemoryObjectExpression (

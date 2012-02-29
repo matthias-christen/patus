@@ -767,7 +767,8 @@ public class ThreadCodeGenerator
 				nInnerStep == 1 ? exprBlockStep.clone () : new BinaryExpression (exprBlockStep.clone (), BinaryOperator.MULTIPLY, new IntegerLiteral (nInnerStep)),
 					
 				cmpstmtLoopBody,
-				sdit.getParallelismLevel ());
+				sdit.getParallelismLevel ()
+			);
 		}
 		else
 			idOuterLoopIdx = idInnerLoopIdx;
@@ -886,7 +887,15 @@ public class ThreadCodeGenerator
 				// determines the step in the outer loop
 				iccg.calculateTotalHardwareSize (i, nParallelismLevelStart, nParallelismLevelEnd),
 				
-				stmtBody, rgIndices, cmpstmtOutput, i, i, false, bContainsStencilCall, options);
+				stmtBody,
+				rgIndices,
+				cmpstmtOutput,
+				i,
+				i,
+				false,
+				bContainsStencilCall,
+				options
+			);
 		}
 		
 		// last indexing dimension, if it has to emulate multiple dimensions

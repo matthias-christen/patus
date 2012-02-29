@@ -254,6 +254,7 @@ public class CodeGenerator
 				bCreateInitialization = true;
 				break;
 			}
+		
 		if (bCreateInitialization)
 		{
 			m_data.getData ().setCreatingInitialization (true);
@@ -292,6 +293,7 @@ public class CodeGenerator
 		// stencil function(s)
 		boolean bMakeFortranCompatible = out.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
 		String strStencilKernelName = m_data.getStencilCalculation ().getName ();
+		
 		packageCode (new GeneratedProcedure (
 			new NameID (bMakeFortranCompatible ? Globals.createFortranName (strStencilKernelName) : strStencilKernelName),
 			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (true, bIncludeAutotuneParameters, false, false),

@@ -41,7 +41,7 @@ public class IntArray implements Iterable<Integer>, Comparable<IntArray>
 	{
 		this (rgValues, false);
 	}
-
+	
 	/**
 	 * Constructs a new {@link IntArray} and initializes it with the values in <code>rgValues</code>.
 	 * The value array is either used by reference (if <code>bCreateCopy == false</code>) or the
@@ -55,17 +55,25 @@ public class IntArray implements Iterable<Integer>, Comparable<IntArray>
 	public IntArray (int[] rgValues, boolean bCreateCopy)
 	{
 		if (bCreateCopy)
-		{
-			if (rgValues == null)
-				m_rgValues = null;
-			else
-			{
-				m_rgValues = new int[rgValues.length];
-				System.arraycopy (rgValues, 0, m_rgValues, 0, rgValues.length);
-			}
-		}
+			initialize (rgValues, 0, rgValues.length - 1);
 		else
 			m_rgValues = rgValues;
+	}
+	
+	public IntArray (int[] rgValues, int nStart, int nEnd)
+	{
+		initialize (rgValues, nStart, nEnd);
+	}
+	
+	private void initialize (int[] rgValues, int nStart, int nEnd)
+	{
+		if (rgValues == null)
+			m_rgValues = null;
+		else
+		{
+			m_rgValues = new int[nEnd - nStart + 1];
+			System.arraycopy (rgValues, nStart, m_rgValues, 0, nEnd - nStart + 1);
+		}
 	}
 
 	/**

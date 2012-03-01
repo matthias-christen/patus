@@ -255,6 +255,15 @@ public class StencilAssemblySection extends AssemblySection
 			m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalars (rgConstants, m_specDatatype, m_slbGeneratedCode, m_options)
 		);
 	}
+	
+	/**
+	 * Determines the number of constants within the entire stencil bundle.
+	 * @return The number of constants used
+	 */
+	public int getConstantsCount ()
+	{
+		return m_mapConstants.size ();
+	}
 		
 	/**
 	 * Returns an iterable over the register containing the grid pointers
@@ -268,27 +277,34 @@ public class StencilAssemblySection extends AssemblySection
 	/**
 	 * 
 	 * @param node
+	 * @param nElementsShift The number of elements by which the node is shifted to the right
+	 * 	for unrolling
 	 * @return
 	 */
-	public IOperand getGrid (StencilNode node)
+	public IOperand getGrid (StencilNode node, int nElementsShift)
 	{
 		// TODO: if too many grids need to use LEA...
 		IOperand.IRegisterOperand opBase = m_mapGrids.get (node);
 		
 		// no index register is needed if the offset is only in the unit stride direction (dimension 0)
-		boolean bHasOffsetInNonUnitStride = false;
-		for (int i = 1; i < node.getSpaceIndex ().length; i++)
-			if (node.getSpaceIndex ()[i] != 0)
-			{
-				bHasOffsetInNonUnitStride = true;
-				break;
-			}
+		boolean bHasOffsetInNonUnitStride = false || (nElementsShift > 0);
+		if (!bHasOffsetInNonUnitStride)
+		{
+			for (int i = 1; i < node.getSpaceIndex ().length; i++)
+				if (node.getSpaceIndex ()[i] != 0)
+				{
+					bHasOffsetInNonUnitStride = true;
+					break;
+				}
+		}
 		
 		if (!m_data.getArchitectureDescription ().supportsUnalignedSIMD ())
 			throw new RuntimeException ("Currently only architectures which support unaligned SIMD vector loads/stores are supported");
 		
 		// get the offset in unit stride direction (will become the displacement in inline assembly)
-		int nUnitStrideOffset = node.getSpaceIndex ()[0] * AssemblySection.getTypeSize (getDatatype ());
+		Specifier specDatatype = getDatatype ();
+		int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (specDatatype);
+		int nUnitStrideOffset = (node.getSpaceIndex ()[0] + nElementsShift * nSIMDVectorLength) * AssemblySection.getTypeSize (specDatatype);
 		
 		if (!bHasOffsetInNonUnitStride)
 			return new IOperand.Address (opBase, nUnitStrideOffset);

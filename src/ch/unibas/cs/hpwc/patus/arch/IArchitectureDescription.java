@@ -171,6 +171,13 @@ public interface IArchitectureDescription
 	public abstract Assembly getAssemblySpec ();
 
 	/**
+	 * Returns the number of available registers of type <code>type</code>
+	 * @param type The register type
+	 * @return The number of available registers
+	 */
+	public abstract int getRegistersCount (TypeRegisterType type);
+
+	/**
 	 * Returns a list of architecture-specific header files that need to be included.
 	 * @return
 	 */
@@ -186,11 +193,11 @@ public interface IArchitectureDescription
 	 * Clones the architecture description.
 	 * @return A copy of this architecture description
 	 */
-	public IArchitectureDescription clone ();
+	public abstract IArchitectureDescription clone ();
 
 	/**
 	 * Returns the file from which the hardware description was loaded or <code>null</code> if it wasn't loaded from file.
 	 * @return The file from which the hardware description was loaded or <code>null</code> if it wasn't loaded from file
 	 */
-	public File getFile ();
+	public abstract File getFile ();
 }

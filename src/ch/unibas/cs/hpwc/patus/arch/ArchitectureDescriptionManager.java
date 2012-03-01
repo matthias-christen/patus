@@ -35,7 +35,6 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Datatypes.Datatype;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Declspecs.Declspec;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Includes.Include;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level.Barrier;
@@ -335,6 +334,16 @@ public class ArchitectureDescriptionManager
 		public Assembly getAssemblySpec ()
 		{
 			return m_type.getAssembly ();
+		}
+		
+		@Override
+		public int getRegistersCount (TypeRegisterType type)
+		{
+			int nRegsCount = 0;
+			for (TypeRegister reg : m_type.getAssembly ().getRegisters ().getRegister ())
+				if (reg.getType ().equals (type))
+					nRegsCount++;
+			return nRegsCount;
 		}
 
 		@Override

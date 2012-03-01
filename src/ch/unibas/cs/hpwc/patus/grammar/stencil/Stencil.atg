@@ -936,19 +936,19 @@ PRODUCTIONS                                                                     
 		'['
 			ident                                                              (. int nIdx = 0; if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); .)
 			{
-				',' ident                                                      (. nIdx++; if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); .)
+				SYNC ',' ident                                                 (. nIdx++; if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); .)
 			}
-			';' ident                                                          (. index.setSpaceIndex (IntArray.getArray (nIdx + 1, 0)); if (!t.val.equals ("t")) errors.SemErr (la.line, la.col, "\"t\" expected"); .)
+			SYNC ';' ident                                                     (. index.setSpaceIndex (IntArray.getArray (nIdx + 1, 0)); if (!t.val.equals ("t")) errors.SemErr (la.line, la.col, "\"t\" expected"); .)
 			[
 				OffsetExpression<out int nValue>                               (. index.setTimeIndex (nValue); .)
 			]                                                                  (. List<Integer> listVectorComponents = new ArrayList<Integer> (); .) //(. exprIdLHS = new ArrayAccess (new ArrayAccess (new ArrayAccess (new ArrayAccess (ident, new IntegerLiteral (0)), new IntegerLiteral (0)), new IntegerLiteral (0)), new IntegerLiteral (nOffsetT)); .)
 			[                                                                  // creates additional accesses
-				';'
+				SYNC ';'
 				StencilExpression<out ExpressionData exprIdx, null,false,true> (. if (exprIdx.getExpression () instanceof IntegerLiteral) listVectorComponents.add ((int) ((IntegerLiteral) exprIdx.getExpression ()).getValue ()); .)
 				                                                               (. else if (exprIdx.getExpression () instanceof FloatLiteral) listVectorComponents.add ((int) ((FloatLiteral) exprIdx.getExpression ()).getValue ()); .)
 				                                                               (. else errors.SemErr (la.line, la.col, "Indices must evaluate to constant numbers"); .)//(. exprIdLHS = new ArrayAccess ((Expression) exprIdLHS.clone (), exprIdx); .)
 				{                                                                  
-					',' StencilExpression<out exprIdx, null, false, true>      (. if (exprIdx.getExpression () instanceof IntegerLiteral) listVectorComponents.add ((int) ((IntegerLiteral) exprIdx.getExpression ()).getValue ()); .)
+					SYNC ',' StencilExpression<out exprIdx, null, false, true> (. if (exprIdx.getExpression () instanceof IntegerLiteral) listVectorComponents.add ((int) ((IntegerLiteral) exprIdx.getExpression ()).getValue ()); .)
 				                                                               (. else if (exprIdx.getExpression () instanceof FloatLiteral) listVectorComponents.add ((int) ((FloatLiteral) exprIdx.getExpression ()).getValue ()); .)
 				                                                               (. else errors.SemErr (la.line, la.col, "Indices must evaluate to constant numbers"); .)//(. exprIdLHS = new ArrayAccess ((Expression) exprIdLHS.clone (), exprIdx); .)
 				}

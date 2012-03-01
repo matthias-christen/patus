@@ -76,7 +76,15 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
+	/**
+	 * The actual underlying data structure
+	 */
 	private Set<StencilNode> m_set;
+	
+	/**
+	 * Some application-specific data
+	 */
+	private Object m_objData;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -567,6 +575,25 @@ public class StencilNodeSet implements Iterable<StencilNode>
 		}
 
 		return -1;
+	}
+	
+	/**
+	 * Sets the application-specific data.
+	 * @param objData The data to associate with the stencil node set
+	 */
+	public void setData (Object objData)
+	{
+		m_objData = objData;
+	}
+	
+	/**
+	 * Returns the application-specific data previously set by calling the
+	 * {@link StencilNodeSet#setData(Object)} method.
+	 * @return The application-specific data
+	 */
+	public Object getData ()
+	{
+		return m_objData;
 	}
 
 	@Override

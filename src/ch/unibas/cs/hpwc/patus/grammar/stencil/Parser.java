@@ -1003,10 +1003,12 @@ public class Parser {
 		Expect(1);
 		int nIdx = 0; if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); 
 		while (la.kind == 15) {
+			while (!(la.kind == 0 || la.kind == 15)) {SynErr(51); Get();}
 			Get();
 			Expect(1);
 			nIdx++; if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); 
 		}
+		while (!(la.kind == 0 || la.kind == 7)) {SynErr(52); Get();}
 		Expect(7);
 		Expect(1);
 		index.setSpaceIndex (IntArray.getArray (nIdx + 1, 0)); if (!t.val.equals ("t")) errors.SemErr (la.line, la.col, "\"t\" expected"); 
@@ -1016,12 +1018,14 @@ public class Parser {
 		}
 		List<Integer> listVectorComponents = new ArrayList<Integer> (); 
 		if (la.kind == 7) {
+			while (!(la.kind == 0 || la.kind == 7)) {SynErr(53); Get();}
 			Get();
 			ExpressionData exprIdx = StencilExpression(null,false,true);
 			if (exprIdx.getExpression () instanceof IntegerLiteral) listVectorComponents.add ((int) ((IntegerLiteral) exprIdx.getExpression ()).getValue ()); 
 			else if (exprIdx.getExpression () instanceof FloatLiteral) listVectorComponents.add ((int) ((FloatLiteral) exprIdx.getExpression ()).getValue ()); 
 			else errors.SemErr (la.line, la.col, "Indices must evaluate to constant numbers"); 
 			while (la.kind == 15) {
+				while (!(la.kind == 0 || la.kind == 15)) {SynErr(54); Get();}
 				Get();
 				exprIdx = StencilExpression(null, false, true);
 				if (exprIdx.getExpression () instanceof IntegerLiteral) listVectorComponents.add ((int) ((IntegerLiteral) exprIdx.getExpression ()).getValue ()); 
@@ -1043,7 +1047,7 @@ public class Parser {
 		} else if (la.kind == 31) {
 			Get();
 			bIsNegative = true; 
-		} else SynErr(51);
+		} else SynErr(55);
 		Expect(2);
 		nValue = Integer.parseInt (t.val); if (bIsNegative) nValue = -nValue; 
 		return nValue;
@@ -1061,7 +1065,7 @@ public class Parser {
 			listOffsets.set (nIdx, nValue); 
 		}
 		while (la.kind == 15) {
-			while (!(la.kind == 0 || la.kind == 15)) {SynErr(52); Get();}
+			while (!(la.kind == 0 || la.kind == 15)) {SynErr(56); Get();}
 			Get();
 			Expect(1);
 			nIdx++; listOffsets.add (0); if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); 
@@ -1071,7 +1075,7 @@ public class Parser {
 			}
 		}
 		index.setSpaceIndex (listOffsets); 
-		while (!(la.kind == 0 || la.kind == 7)) {SynErr(53); Get();}
+		while (!(la.kind == 0 || la.kind == 7)) {SynErr(57); Get();}
 		Expect(7);
 		Expect(1);
 		if (!t.val.equals ("t")) errors.SemErr (la.line, la.col, "\"t\" expected"); 
@@ -1081,12 +1085,12 @@ public class Parser {
 		}
 		List<Integer> listVectorComponents = new ArrayList<Integer> (); 
 		if (la.kind == 7) {
-			while (!(la.kind == 0 || la.kind == 7)) {SynErr(54); Get();}
+			while (!(la.kind == 0 || la.kind == 7)) {SynErr(58); Get();}
 			Get();
 			ExpressionData exprIdx = StencilExpression(null,false,true);
 			listVectorComponents.add (getInteger (exprIdx.getExpression ())); 
 			while (la.kind == 15) {
-				while (!(la.kind == 0 || la.kind == 15)) {SynErr(55); Get();}
+				while (!(la.kind == 0 || la.kind == 15)) {SynErr(59); Get();}
 				Get();
 				exprIdx = StencilExpression(null, false, true);
 				listVectorComponents.add (getInteger (exprIdx.getExpression ())); 
@@ -1110,7 +1114,7 @@ public class Parser {
 			listOffsets.set (nIdx, nValue); 
 		}
 		while (la.kind == 15) {
-			while (!(la.kind == 0 || la.kind == 15)) {SynErr(56); Get();}
+			while (!(la.kind == 0 || la.kind == 15)) {SynErr(60); Get();}
 			Get();
 			Expect(1);
 			nIdx++; listOffsets.add (0); if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); 
@@ -1121,12 +1125,12 @@ public class Parser {
 		}
 		index.setSpaceIndex (listOffsets); List<Integer> listVectorComponents = new ArrayList<Integer> (); 
 		if (la.kind == 7) {
-			while (!(la.kind == 0 || la.kind == 7)) {SynErr(57); Get();}
+			while (!(la.kind == 0 || la.kind == 7)) {SynErr(61); Get();}
 			Get();
 			ExpressionData exprIdx = StencilExpression(null,false,true);
 			listVectorComponents.add (getInteger (exprIdx.getExpression ())); 
 			while (la.kind == 15) {
-				while (!(la.kind == 0 || la.kind == 15)) {SynErr(58); Get();}
+				while (!(la.kind == 0 || la.kind == 15)) {SynErr(62); Get();}
 				Get();
 				exprIdx = StencilExpression(null, false, true);
 				listVectorComponents.add (getInteger (exprIdx.getExpression ())); 
@@ -1148,7 +1152,7 @@ public class Parser {
 			ExpressionData exprIdx = StencilExpression(null, bIsDecl, true);
 			exprParam = new ArrayAccess (exprParam.clone (), new IntegerLiteral (getInteger (exprIdx.getExpression ()))); 
 			while (la.kind == 15) {
-				while (!(la.kind == 0 || la.kind == 15)) {SynErr(59); Get();}
+				while (!(la.kind == 0 || la.kind == 15)) {SynErr(63); Get();}
 				Get();
 				exprIdx = StencilExpression(null, bIsDecl, true);
 				((ArrayAccess) exprParam).addIndex (new IntegerLiteral (getInteger (exprIdx.getExpression ()))); 
@@ -1247,7 +1251,7 @@ public class Parser {
 		} else if (la.kind == 1) {
 			Expression exprParam = ScalarIdentifier(bIsDecl, bIsInteger);
 			expr = new ExpressionData (exprParam, 0, Symbolic.EExpressionType.EXPRESSION); 
-		} else SynErr(60);
+		} else SynErr(64);
 		return expr;
 	}
 
@@ -1259,7 +1263,7 @@ public class Parser {
 		} else if (la.kind == 2) {
 			Get();
 			fValue = Integer.parseInt (t.val); 
-		} else SynErr(61);
+		} else SynErr(65);
 		return fValue;
 	}
 
@@ -1281,7 +1285,7 @@ public class Parser {
 			ExpressionData expr = StencilExpression(stencil, bIsDecl, bIsInteger);
 			listArgs.add (expr.getExpression ()); nFlopsCount += expr.getFlopsCount (); 
 			while (la.kind == 15) {
-				while (!(la.kind == 0 || la.kind == 15)) {SynErr(62); Get();}
+				while (!(la.kind == 0 || la.kind == 15)) {SynErr(66); Get();}
 				Get();
 				expr = StencilExpression(stencil, bIsDecl, bIsInteger);
 				listArgs.add (expr.getExpression ()); nFlopsCount += expr.getFlopsCount (); 
@@ -1401,18 +1405,22 @@ class Errors {
 			case 48: s = "invalid AssignmentStatement"; break;
 			case 49: s = "this symbol not expected in AssignmentStatement"; break;
 			case 50: s = "invalid ScalarAssignment"; break;
-			case 51: s = "invalid OffsetExpression"; break;
-			case 52: s = "this symbol not expected in RightHandStencilIdentifier"; break;
-			case 53: s = "this symbol not expected in RightHandStencilIdentifier"; break;
-			case 54: s = "this symbol not expected in RightHandStencilIdentifier"; break;
-			case 55: s = "this symbol not expected in RightHandStencilIdentifier"; break;
-			case 56: s = "this symbol not expected in RightHandStencilConstIdentifier"; break;
-			case 57: s = "this symbol not expected in RightHandStencilConstIdentifier"; break;
-			case 58: s = "this symbol not expected in RightHandStencilConstIdentifier"; break;
-			case 59: s = "this symbol not expected in ScalarIdentifier"; break;
-			case 60: s = "invalid UnaryExpression"; break;
-			case 61: s = "invalid NumberLiteral"; break;
-			case 62: s = "this symbol not expected in FunctionCall"; break;
+			case 51: s = "this symbol not expected in LeftHandStencilIdentifier"; break;
+			case 52: s = "this symbol not expected in LeftHandStencilIdentifier"; break;
+			case 53: s = "this symbol not expected in LeftHandStencilIdentifier"; break;
+			case 54: s = "this symbol not expected in LeftHandStencilIdentifier"; break;
+			case 55: s = "invalid OffsetExpression"; break;
+			case 56: s = "this symbol not expected in RightHandStencilIdentifier"; break;
+			case 57: s = "this symbol not expected in RightHandStencilIdentifier"; break;
+			case 58: s = "this symbol not expected in RightHandStencilIdentifier"; break;
+			case 59: s = "this symbol not expected in RightHandStencilIdentifier"; break;
+			case 60: s = "this symbol not expected in RightHandStencilConstIdentifier"; break;
+			case 61: s = "this symbol not expected in RightHandStencilConstIdentifier"; break;
+			case 62: s = "this symbol not expected in RightHandStencilConstIdentifier"; break;
+			case 63: s = "this symbol not expected in ScalarIdentifier"; break;
+			case 64: s = "invalid UnaryExpression"; break;
+			case 65: s = "invalid NumberLiteral"; break;
+			case 66: s = "this symbol not expected in FunctionCall"; break;
 			default: s = "error " + n; break;
 		}
 		printMsg(line, col, s);

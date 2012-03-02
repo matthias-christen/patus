@@ -28,6 +28,12 @@ public class InstructionList implements Iterable<IInstruction>
 	{
 		m_listInstructions.add (instruction);
 	}
+	
+	public void addInstructions (InstructionList il)
+	{
+		for (IInstruction instr : il)
+			m_listInstructions.add (instr);
+	}
 
 	@Override
 	public Iterator<IInstruction> iterator ()

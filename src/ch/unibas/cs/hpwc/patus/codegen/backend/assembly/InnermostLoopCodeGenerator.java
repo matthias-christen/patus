@@ -9,9 +9,11 @@ import java.util.List;
 import java.util.Map;
 
 import cetus.hir.Specifier;
+import cetus.hir.Statement;
 import ch.unibas.cs.hpwc.patus.analysis.ReuseNodesCollector;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
@@ -83,6 +85,8 @@ public abstract class InnermostLoopCodeGenerator
 	private Map<String, Map<StencilNode, IOperand.IRegisterOperand>> m_mapReuseNodesToRegisters;
 	private List<List<IOperand.IRegisterOperand>> m_listReuseRegisterSets;
 	
+	private Map<Double, IOperand.IRegisterOperand> m_mapConstants;
+	
 
 	///////////////////////////////////////////////////////////////////
 	// Implementation
@@ -105,15 +109,59 @@ public abstract class InnermostLoopCodeGenerator
 		m_assemblySection.addInput (INPUT_LOOPMAX, m_sdit.getDomainSubdomain ().getSize ().getCoord (0));
 		
 		// request a register to be used as loop counter
-		m_regCounter = m_assemblySection.getFreeRegister (TypeRegisterType.GPR);
-		
+		m_regCounter = m_assemblySection.getFreeRegister (TypeRegisterType.GPR);		
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public StatementListBundle generate ()
+	{
 		// assign registers to the stencil nodes, which are to be reused in unit stride direction
 		assignReuseRegisters ();
-	}
+		assignConstantRegisters ();
 		
-	public void generate ()
-	{
+		StatementListBundle slb = new StatementListBundle ();
 		
+		// generate the instruction list doing the computation
+		Map<StencilNode, IOperand.IRegisterOperand> mapReuse = new HashMap<StencilNode, IOperand.IRegisterOperand> ();
+		for (String strGrid : m_mapReuseNodesToRegisters.keySet ())
+		{
+			Map<StencilNode, IOperand.IRegisterOperand> map = m_mapReuseNodesToRegisters.get (strGrid);
+			for (StencilNode node : map.keySet ())
+				mapReuse.put (node, map.get (node));
+		}
+		AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (m_assemblySection, m_data, mapReuse, m_mapConstants);
+		
+		InstructionList listInstrComputation = new InstructionList ();
+		for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
+			listInstrComputation.addInstructions (cgExpr.generate (stencil.getExpression (), m_options));
+		
+		// generate the loop
+		Map<String, String> mapUnalignedMoves = new HashMap<String, String> ();
+		mapUnalignedMoves.put (TypeBaseIntrinsicEnum.MOVE_FPR.value (), TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ());
+		InstructionList listInstr = new InstructionList ();
+		
+		listInstr.addInstructions (generatePrologHeader ());
+		listInstr.addInstructions (listInstrComputation.replaceInstructions (mapUnalignedMoves));
+		listInstr.addInstructions (generatePrologFooter ());
+		
+		listInstr.addInstructions (generateMainHeader ());
+		listInstr.addInstructions (listInstrComputation);
+		listInstr.addInstructions (generateMainFooter ());
+		
+		listInstr.addInstructions (generateEpilogHeader ());
+		listInstr.addInstructions (listInstrComputation.replaceInstructions (mapUnalignedMoves));
+		listInstr.addInstructions (generateEpilogFooter ());
+		
+		// create the inline assembly statement
+		Statement stmt = m_assemblySection.generate (m_options);
+		
+		slb.addStatements (m_assemblySection.getAuxiliaryStatements ());
+		slb.addStatement (stmt);
+		
+		return slb;
 	}
 	
 	/**
@@ -181,7 +229,7 @@ public abstract class InnermostLoopCodeGenerator
 			nAvailableRegisters -= m_assemblySection.getConstantsCount ();
 		
 		// subtract the registers used for the calculations
-		RegisterAllocator regcnt = new RegisterAllocator (null);
+		RegisterAllocator regcnt = new RegisterAllocator (m_data, m_assemblySection, null);
 		int nRegsForCalculations = 0;
 		for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
 			nRegsForCalculations = Math.max (nRegsForCalculations, regcnt.countRegistersNeeded (stencil.getExpression ()));
@@ -199,6 +247,19 @@ public abstract class InnermostLoopCodeGenerator
 		// find stencil node sets to reuse within the innermost loop
 		ReuseNodesCollector reuse = new ReuseNodesCollector (m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ().getAllNodes (), 0);
 		return reuse.getSetsWithMaxNodesConstraint (nAvailableRegisters, m_nUnrollFactor);
+	}
+	
+	/**
+	 * Assigns constants to SIMD registers
+	 */
+	private void assignConstantRegisters ()
+	{
+		m_mapConstants = new HashMap<Double, IOperand.IRegisterOperand> ();
+		if (m_assemblySection.getConstantsCount () < MAX_REGISTERS_FOR_CONSTANTS)
+		{
+			for (double fConstant : m_assemblySection.getConstants ())
+				m_mapConstants.put (fConstant, m_assemblySection.getFreeRegister (TypeRegisterType.SIMD));
+		}
 	}
 	
 	protected CodeGeneratorRuntimeOptions getRuntimeOptions ()

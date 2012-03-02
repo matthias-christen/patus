@@ -53,9 +53,13 @@ public class Globals
 	public static final NameID FNX_FMS = new NameID (TypeBaseIntrinsicEnum.FMS.value ());
 	public static final NameID FNX_MALLOC = new NameID (TypeBaseIntrinsicEnum.MALLOC.value ());
 
+	/**
+	 * Parameters for {@link Globals#FNX_FMA} and {@link Globals#FNX_FMS}
+	 */
+	public static final String[] PARAMSTRINGS_FMA = new String[] { "summand", "factor1", "factor2" };
+
 	public static final Specifier SPECIFIER_INDEX = Specifier.INT;
 	public static final Specifier SPECIFIER_SIZE = Specifier.INT;
-
 
 	public static final AnnotationStatement ANNOTATION_DISPAYPERFORMANCE_START = new AnnotationStatement (new CodeAnnotation ("#ifdef DISPLAY_PERFORMANCE"));
 	public static final AnnotationStatement ANNOTATION_DISPAYPERFORMANCE_END = new AnnotationStatement (new CodeAnnotation ("#endif"));

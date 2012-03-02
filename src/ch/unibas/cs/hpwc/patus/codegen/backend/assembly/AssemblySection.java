@@ -12,7 +12,6 @@ import cetus.hir.ExpressionStatement;
 import cetus.hir.SomeExpression;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
-import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
@@ -80,6 +79,9 @@ public class AssemblySection
 	 */
 	protected Map<IOperand.Register, Boolean> m_mapRegisterUsage;
 	
+	/**
+	 * The list of inputs to the assembly section
+	 */
 	protected List<AssemblySectionInput> m_listInputs;
 	
 	
@@ -181,14 +183,19 @@ public class AssemblySection
 		m_mapRegisterUsage.put (register, false);
 	}
 	
-	public Statement generate (IArchitectureDescription arch, CodeGeneratorRuntimeOptions options)
+	/**
+	 * 
+	 * @param options
+	 * @return
+	 */
+	public Statement generate (CodeGeneratorRuntimeOptions options)
 	{
 		// create a C statement wrapping the inline assembly
 		
 		// create the string of instructions
 		StringBuilder sbInstructions = new StringBuilder ();
 		for (TypedInstruction instruction : m_listInstructions)
-			instruction.issue (arch, sbInstructions);
+			instruction.issue (m_data.getArchitectureDescription (), sbInstructions);
 		
 		// create the inputs string
 		StringBuilder sbInputs = new StringBuilder ();

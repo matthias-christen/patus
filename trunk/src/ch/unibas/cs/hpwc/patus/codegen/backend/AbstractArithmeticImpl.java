@@ -354,7 +354,7 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 			spec,
 			bVectorize,
 			new Expression[] { exprSummand, exprFactor1, exprFactor2 },
-			new String[] { "summand", "factor1", "factor2" }
+			Globals.PARAMSTRINGS_FMA
 		);
 	}
 }

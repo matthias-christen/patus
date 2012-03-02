@@ -93,6 +93,20 @@ public class Arguments
 		return arg;		
 	}
 	
+	public static Argument getFirstInput (Argument[] rgArgs)
+	{
+		if (rgArgs.length == 0)
+			return null;
+		if (rgArgs.length == 1)
+			return rgArgs[0];
+		
+		for (Argument arg : rgArgs)
+			if (!arg.isOutput ())
+				return arg;
+		
+		return null;
+	}
+
 	/**
 	 * 
 	 * @param rgArgs

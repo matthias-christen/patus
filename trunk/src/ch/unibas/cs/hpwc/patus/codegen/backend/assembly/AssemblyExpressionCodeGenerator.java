@@ -1,11 +1,12 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
-import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.FunctionCall;
 import cetus.hir.Literal;
@@ -19,6 +20,7 @@ import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IBackendAssemblyCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
+import ch.unibas.cs.hpwc.patus.representation.Index;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -35,17 +37,33 @@ public class AssemblyExpressionCodeGenerator
 	private IBackendAssemblyCodeGenerator m_cg;
 	
 	private StencilAssemblySection m_assemblySection;
+	
+	private Map<StencilNode, IOperand.IRegisterOperand> m_mapReuseNodesToRegisters;
+	
+	private Map<Double, IOperand.IRegisterOperand> m_mapConstants;
+	
+	private RegisterAllocator m_allocator;
 		
 	
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	public AssemblyExpressionCodeGenerator (StencilAssemblySection as, CodeGeneratorSharedObjects data)
+	public AssemblyExpressionCodeGenerator (StencilAssemblySection as, CodeGeneratorSharedObjects data,
+		Map<StencilNode, IOperand.IRegisterOperand> mapReuseNodesToRegisters,
+		Map<Double, IOperand.IRegisterOperand> mapConstants)
 	{
 		m_data = data;
 		m_assemblySection = as;
+		m_mapReuseNodesToRegisters = mapReuseNodesToRegisters;
+		m_mapConstants = mapConstants;
 		
 		m_cg = m_data.getCodeGenerators ().getBackendAssemblyCodeGenerator ();
+		
+		Map<StencilNode, Boolean> mapReuse = new HashMap<StencilNode, Boolean> ();
+		for (StencilNode node : m_mapReuseNodesToRegisters.keySet ())
+			mapReuse.put (node, true);
+		
+		m_allocator = new RegisterAllocator (m_data, m_assemblySection, mapReuse);
 	}
 	
 	/**
@@ -58,6 +76,8 @@ public class AssemblyExpressionCodeGenerator
 	{		
 		// generate the inline assembly code
 		int nUnrollFactor = options.getIntValue (IBackendAssemblyCodeGenerator.OPTION_ASSEMBLY_UNROLLFACTOR);
+		
+		m_allocator.countRegistersNeeded (expr);
 
 		InstructionList il = new InstructionList ();
 		traverse (expr, null, nUnrollFactor, il);
@@ -75,7 +95,7 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] traverse (Expression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		if (isAddSubSubtree (expr))
+		if (RegisterAllocator.isAddSubSubtree (expr))
 			return processAddSubSubtree (expr, specDatatype, nUnrollFactor, il);
 		if (expr instanceof BinaryExpression)
 			return processBinaryExpression ((BinaryExpression) expr, specDatatype, nUnrollFactor, il);
@@ -85,13 +105,7 @@ public class AssemblyExpressionCodeGenerator
 			return processUnaryExpression ((UnaryExpression) expr, specDatatype, nUnrollFactor, il);
 		
 		if (expr instanceof StencilNode)
-		{
-			// load the value of the stencil node into a register
-			IOperand[] rgOpResults = new IOperand[nUnrollFactor];
-			for (int i = 0; i < nUnrollFactor; i++)
-				rgOpResults[i] = m_assemblySection.getGrid ((StencilNode) expr, i);
-			return rgOpResults;
-		}
+			return processStencilNode ((StencilNode) expr, nUnrollFactor);
 		if (expr instanceof Literal)
 		{
 			// find the register the constant is saved in or load the constant into a register (if too many registers)
@@ -112,7 +126,7 @@ public class AssemblyExpressionCodeGenerator
 	private IOperand[] processAddSubSubtree (Expression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
 		List<AddSub> list = new LinkedList<AddSub> ();
-		linearizeAddSubSubtree (expr, list, BinaryOperator.ADD);
+		RegisterAllocator.linearizeAddSubSubtree (expr, list, BinaryOperator.ADD);
 		
 		IOperand.IRegisterOperand regSum = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
 		
@@ -164,8 +178,16 @@ public class AssemblyExpressionCodeGenerator
 		IOperand[] rgOpResult = new IOperand[nUnrollFactor];
 
 		// get the operands for the binary expression
-		IOperand[] rgOpLHS = traverse (expr.getLHS (), specDatatype, nUnrollFactor, il);
+		int nNumRegsLHS = m_allocator.getNumRegistersUsed (expr.getLHS ());
+		int nNumRegsRHS = m_allocator.getNumRegistersUsed (expr.getRHS ());
+		
+		// Sethi-Ullman: traverse the left tree first if it requires more registers than the right
+		IOperand[] rgOpLHS = null;
+		if (nNumRegsLHS >= nNumRegsRHS)
+			rgOpLHS = traverse (expr.getLHS (), specDatatype, nUnrollFactor, il);
 		IOperand[] rgOpRHS = traverse (expr.getRHS (), specDatatype, nUnrollFactor, il);
+		if (nNumRegsLHS < nNumRegsRHS)
+			rgOpLHS = traverse (expr.getLHS (), specDatatype, nUnrollFactor, il);
 
 		// get the intrinsic corresponding to the operator of the binary expression
 		Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (expr.getOperator (), specDatatype);		
@@ -184,10 +206,13 @@ public class AssemblyExpressionCodeGenerator
 			
 			rgOperands[Arguments.getLHS (rgArgs).getNumber ()] = rgOpLHS[i];
 			rgOperands[Arguments.getRHS (rgArgs).getNumber ()] = rgOpRHS[i];
+			
+			IOperand opResult = isReservedRegister (rgOpRHS[i]) ? m_assemblySection.getFreeRegister (TypeRegisterType.SIMD) : rgOpRHS[i];
+			
 			if (bHasOutput && rgArgs.length > 2)
 			{
 				// the instruction requires an output operand distinct from the LHS and RHS operands
-				
+				rgOperands[nOutputArgNum] = opResult;
 			}
 			
 			il.addInstruction (new Instruction (intrinsic.getName (), rgOperands));			
@@ -245,72 +270,54 @@ public class AssemblyExpressionCodeGenerator
 
 		return rgOps;
 	}
+	
+	/**
+	 * 
+	 * @param node
+	 * @param nUnrollFactor
+	 * @return
+	 */
+	private IOperand[] processStencilNode (StencilNode node, int nUnrollFactor)
+	{
+		IOperand[] rgOpResults = new IOperand[nUnrollFactor];
+		boolean bIsReuse = true;
 
-	/**
-	 * Detects whether only additions and subtractions are done in the expression <code>expr</code>.
-	 * @param expr The expression to check
-	 * @return <code>true</code> iff only additions and subtractions are performed in <code>expr</code>
-	 */
-	private boolean isAddSubSubtree (Expression expr)
-	{
-		for (DepthFirstIterator it = new DepthFirstIterator (expr); it.hasNext (); )
+		// check whether the stencil node is saved in a reuse register
+		for (int i = 0; i < nUnrollFactor; i++)
 		{
-			Object oChild = it.next ();
-			
-			if (oChild instanceof BinaryExpression)
+			Index idx = new Index (node.getIndex ());
+			idx.getSpaceIndex ()[0] += i;
+			IOperand.IRegisterOperand op = m_mapReuseNodesToRegisters.get (idx);
+			if (op == null)
 			{
-				BinaryOperator op = ((BinaryExpression) oChild).getOperator ();
-				if (!op.equals (BinaryOperator.ADD) && !op.equals (BinaryOperator.SUBTRACT))
-					return false;
+				bIsReuse = false;
+				break;
 			}
-			else if (oChild instanceof FunctionCall)
-				return false;
+			
+			rgOpResults[i] = op;
 		}
 		
-		return true;
+		// load the value of the stencil node into a register
+		if (!bIsReuse)
+			for (int i = 0; i < nUnrollFactor; i++)
+				rgOpResults[i] = m_assemblySection.getGrid (node, i);
+		
+		return rgOpResults;
 	}
 	
 	/**
-	 * Assuming that <code>expr</code> is a binary expression tree with only additions and
-	 * subtractions, this method creates a flat list of (operator, expression) pairs
-	 * equivalent to <code>expr</code>. 
-	 * @param expr The expression to linearize
-	 * @param list An empty list that will contain the linearized version on output
-	 * @param op Set to {@link BinaryOperator#ADD} when calling the method
+	 * Determines whether <code>opReg</code> is a register reserved for stencil node
+	 * reuse or for constants.
+	 * @param opReg The register operand to test
+	 * @return <code>true</code> iff <code>opReg</code> is a reserved register
 	 */
-	private void linearizeAddSubSubtree (Expression expr, List<AddSub> list, BinaryOperator op)
+	private boolean isReservedRegister (IOperand opReg)
 	{
-		if (expr instanceof BinaryExpression)
-		{
-			BinaryExpression bexpr = (BinaryExpression) expr;
-			linearizeAddSubSubtree (bexpr.getLHS (), list, op);
-			linearizeAddSubSubtree (bexpr.getRHS (), list,
-				op.equals (BinaryOperator.SUBTRACT) ?
-					(bexpr.getOperator ().equals (BinaryOperator.ADD) ? BinaryOperator.SUBTRACT : BinaryOperator.ADD) :
-					bexpr.getOperator ()
-			);
-		}
-		else
-			list.add (new AddSub (op, expr));
-	}
-	
-	
-	public static void main (String[] args)
-	{
-		AssemblyExpressionCodeGenerator acg = new AssemblyExpressionCodeGenerator (null, null);
+		if (m_mapReuseNodesToRegisters.containsValue (opReg))
+			return true;
+		if (m_mapConstants.containsValue (opReg))
+			return true;
 		
-		List<AddSub> list = new LinkedList<AddSub> ();
-		acg.linearizeAddSubSubtree (
-			new BinaryExpression (
-				new BinaryExpression (
-					new BinaryExpression (new NameID ("a1"), BinaryOperator.ADD, new NameID ("a2")),
-					BinaryOperator.SUBTRACT,
-					new BinaryExpression (new NameID ("a3"), BinaryOperator.SUBTRACT, new NameID ("a4"))),
-				BinaryOperator.SUBTRACT,
-				new BinaryExpression (new NameID ("a5"), BinaryOperator.ADD, new NameID ("a6"))
-			),
-			list, BinaryOperator.ADD);
-		
-		System.out.println (list);
+		return false;
 	}
 }

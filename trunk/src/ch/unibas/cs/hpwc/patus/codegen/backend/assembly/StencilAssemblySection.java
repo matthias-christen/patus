@@ -1,8 +1,6 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 import cetus.hir.BinaryExpression;
@@ -264,6 +262,11 @@ public class StencilAssemblySection extends AssemblySection
 	{
 		return m_mapConstants.size ();
 	}
+	
+	public Iterable<Double> getConstants ()
+	{
+		return m_mapConstants.keySet ();
+	}
 		
 	/**
 	 * Returns an iterable over the register containing the grid pointers
@@ -330,5 +333,14 @@ public class StencilAssemblySection extends AssemblySection
 		if (regBase == null)
 			return null;
 		return new IOperand.Address ((IRegisterOperand) regBase, m_mapConstants.get (fValue) * AssemblySection.getTypeSize (specDatatype));
+	}
+
+	/**
+	 * Returns the auxiliary statements generated for the assembly section.
+	 * @return
+	 */
+	public StatementListBundle getAuxiliaryStatements ()
+	{
+		return m_slbGeneratedCode;
 	}
 }

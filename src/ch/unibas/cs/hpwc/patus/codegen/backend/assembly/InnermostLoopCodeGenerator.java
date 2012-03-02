@@ -1,6 +1,11 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import cetus.hir.Specifier;
@@ -9,9 +14,11 @@ import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  * 
@@ -73,7 +80,8 @@ public abstract class InnermostLoopCodeGenerator
 	 */
 	private IOperand.IRegisterOperand m_regCounter;
 	
-	private Map<String, Map<StencilNode, IOperand.IRegisterOperand>> m_mapReuseRegisters;
+	private Map<String, Map<StencilNode, IOperand.IRegisterOperand>> m_mapReuseNodesToRegisters;
+	private List<List<IOperand.IRegisterOperand>> m_listReuseRegisterSets;
 	
 
 	///////////////////////////////////////////////////////////////////
@@ -99,8 +107,8 @@ public abstract class InnermostLoopCodeGenerator
 		// request a register to be used as loop counter
 		m_regCounter = m_assemblySection.getFreeRegister (TypeRegisterType.GPR);
 		
-		m_mapReuseRegisters = new HashMap<String, Map<StencilNode, IOperand.IRegisterOperand>> ();
-		findReuseRegisters ();
+		// assign registers to the stencil nodes, which are to be reused in unit stride direction
+		assignReuseRegisters ();
 	}
 		
 	public void generate ()
@@ -109,9 +117,61 @@ public abstract class InnermostLoopCodeGenerator
 	}
 	
 	/**
-	 * 
+	 * Assign registers to the stencil nodes, which are to be reused in unit stride
+	 * direction within the innermost loop.
 	 */
-	private void findReuseRegisters ()
+	private void assignReuseRegisters ()
+	{
+		m_mapReuseNodesToRegisters = new HashMap<String, Map<StencilNode, IOperand.IRegisterOperand>> ();
+		m_listReuseRegisterSets = new LinkedList<List<IOperand.IRegisterOperand>> ();
+		
+		for (StencilNodeSet set : findReuseStencilNodeSets ())
+		{
+			// sort nodes by unit stride direction coordinate
+			List<StencilNode> listNodes = new ArrayList<StencilNode> (set.size ());
+			for (StencilNode n : set)
+				listNodes.add (n);
+			Collections.sort (listNodes, new Comparator<StencilNode> ()
+			{
+				@Override
+				public int compare (StencilNode n1, StencilNode n2)
+				{
+					return n1.getSpaceIndex ()[0] - n2.getSpaceIndex ()[0];
+				}
+			});
+			
+			// request registers for reuse stencil nodes
+			List<IOperand.IRegisterOperand> listSet = new LinkedList<IOperand.IRegisterOperand> ();
+			m_listReuseRegisterSets.add (listSet);
+			
+			int nPrevCoord = Integer.MIN_VALUE;
+			for (StencilNode node : listNodes)
+			{
+				// add missing intermediates
+				if (nPrevCoord != Integer.MIN_VALUE)
+				{
+					for (int i = nPrevCoord; i < node.getSpaceIndex ()[0]; i++)
+						listSet.add (m_assemblySection.getFreeRegister (TypeRegisterType.SIMD));
+				}
+				
+				Map<StencilNode, IOperand.IRegisterOperand> map = m_mapReuseNodesToRegisters.get (node.getName ());
+				if (map == null)
+					m_mapReuseNodesToRegisters.put (node.getName (), map = new HashMap<StencilNode, IOperand.IRegisterOperand> ());
+				
+				// request a new register for the
+				IOperand.IRegisterOperand opReg = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
+				listSet.add (opReg);
+				map.put (node, opReg);
+			}
+		}
+	}
+	
+	/**
+	 * Finds sets of stencil nodes which can be reused cyclically during iterating over the
+	 * unit stride dimension.
+	 * @return An iterable over reuse stencil node sets
+	 */
+	private Iterable<StencilNodeSet> findReuseStencilNodeSets ()
 	{
 		// estimate the registers used
 		int nAvailableRegisters = m_data.getArchitectureDescription ().getRegistersCount (TypeRegisterType.SIMD);
@@ -121,16 +181,24 @@ public abstract class InnermostLoopCodeGenerator
 			nAvailableRegisters -= m_assemblySection.getConstantsCount ();
 		
 		// subtract the registers used for the calculations
-		// TODO: unrolling?
 		RegisterAllocator regcnt = new RegisterAllocator (null);
 		int nRegsForCalculations = 0;
 		for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
 			nRegsForCalculations = Math.max (nRegsForCalculations, regcnt.countRegistersNeeded (stencil.getExpression ()));
-		nAvailableRegisters -= nRegsForCalculations;
+		nAvailableRegisters -= nRegsForCalculations * m_nUnrollFactor;
+		
+		// error if there are too few registers
+		if (nAvailableRegisters < 0)
+		{
+			if (m_nUnrollFactor > 1)
+				throw new RuntimeException (StringUtil.concat ("Not enough registers available for the loop unrolling factor ", m_nUnrollFactor));
+			else
+				throw new RuntimeException ("Not enough registers available for the inline assembly code generation.");
+		}
 		
 		// find stencil node sets to reuse within the innermost loop
 		ReuseNodesCollector reuse = new ReuseNodesCollector (m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ().getAllNodes (), 0);
-		reuse.getSetsWithMaxNodesConstraint (nAvailableRegisters, m_nUnrollFactor);
+		return reuse.getSetsWithMaxNodesConstraint (nAvailableRegisters, m_nUnrollFactor);
 	}
 	
 	protected CodeGeneratorRuntimeOptions getRuntimeOptions ()

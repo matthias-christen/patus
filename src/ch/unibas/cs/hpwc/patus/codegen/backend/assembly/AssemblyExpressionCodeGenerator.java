@@ -11,7 +11,6 @@ import cetus.hir.FunctionCall;
 import cetus.hir.Literal;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
-import cetus.hir.Statement;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;

@@ -15,7 +15,6 @@ import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.BackendFactory;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IBackend;
-import ch.unibas.cs.hpwc.patus.codegen.backend.IBackendAssemblyCodeGenerator;
 
 /**
  *
@@ -31,12 +30,17 @@ public class CodeGenerators
 	 */
 	private IBackend m_backendCodeGenerator;
 	
-	private IBackendAssemblyCodeGenerator m_backendAssemblyCodeGenerator;
-
 	/**
 	 * The code generator responsible for expanding loops ({@link RangeIterator}s, {@link SubdomainIterator}s)
 	 */
 	private LoopCodeGenerator m_loopCodeGenerator;
+
+	/**
+	 * The code generator responsible for generating the code for the innermost loop containing the
+	 * stencil computations &mdash; or <code>null</code> if no specialized code for the innermost
+	 * loop is to be generated
+	 */
+	private IInnermostLoopCodeGenerator m_innermostLoopCodeGenerator;
 
 	/**
 	 * The code generator that calculates indices
@@ -60,7 +64,7 @@ public class CodeGenerators
 	 * The code generator that creates FMA calls
 	 */
 	private FuseMultiplyAddCodeGenerator m_fmaCodeGenerator;
-
+	
 	/**
 	 * The strategy analyzer
 	 */
@@ -73,8 +77,8 @@ public class CodeGenerators
 	public CodeGenerators (CodeGeneratorSharedObjects objects)
 	{
 		m_backendCodeGenerator = BackendFactory.create (objects.getArchitectureDescription ().getBackend (), objects);
-		m_backendAssemblyCodeGenerator = m_backendCodeGenerator.getAssemblyCodeGenerator ();
 		m_loopCodeGenerator = new LoopCodeGenerator (objects);
+		m_innermostLoopCodeGenerator = BackendFactory.createInnermostLoopCodeGenerator (objects.getArchitectureDescription ().getInnermostLoopCodeGenerator (), objects);
 		m_indexCalculator = new IndexCalculatorCodeGenerator (objects);
 		m_stencilCodeGenerator = new StencilCalculationCodeGenerator (objects);
 		m_constCodeGenerator = new ConstantGeneratedIdentifiers (objects);
@@ -99,11 +103,6 @@ public class CodeGenerators
 		return m_backendCodeGenerator;
 	}
 	
-	public IBackendAssemblyCodeGenerator getBackendAssemblyCodeGenerator ()
-	{
-		return m_backendAssemblyCodeGenerator;
-	}
-
 	/**
 	 * Returns the loop code generator, which is responsible for expanding loops
 	 * {@link RangeIterator}s and {@link SubdomainIterator}s.
@@ -121,6 +120,16 @@ public class CodeGenerators
 	public IndexCalculatorCodeGenerator getIndexCalculator ()
 	{
 		return m_indexCalculator;
+	}
+
+	/**
+	 * Returns the inline assembly code generator module if there is one for the selected architecture
+	 * or <code>null</code> if there is none.
+	 * @return The inline assembly code generator
+	 */
+	public IInnermostLoopCodeGenerator getInnermostLoopCodeGenerator ()
+	{
+		return m_innermostLoopCodeGenerator;
 	}
 
 	/**

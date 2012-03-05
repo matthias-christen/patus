@@ -96,6 +96,12 @@ public class ArchitectureDescriptionManager
 		{
 			return m_type.getCodegenerator ().getBackend ();
 		}
+		
+		@Override
+		public String getInnermostLoopCodeGenerator ()
+		{
+			return m_type.getCodegenerator ().getInnermostLoopCg ();
+		}
 
 		@Override
 		public String getGeneratedFileSuffix ()

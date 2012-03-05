@@ -270,7 +270,20 @@ public class RegisterAllocator
 	 * @param list An empty list that will contain the linearized version on output
 	 * @param op Set to {@link BinaryOperator#ADD} when calling the method
 	 */
-	public static void linearizeAddSubSubtree (Expression expr, List<AddSub> list, BinaryOperator op)
+	public static void linearizeAddSubSubtree (Expression expr, List<AddSub> list)
+	{
+		RegisterAllocator.linearizeAddSubSubtree (expr, list, BinaryOperator.ADD);
+	}
+
+	/**
+	 * Assuming that <code>expr</code> is a binary expression tree with only additions and
+	 * subtractions, this method creates a flat list of (operator, expression) pairs
+	 * equivalent to <code>expr</code>. 
+	 * @param expr The expression to linearize
+	 * @param list An empty list that will contain the linearized version on output
+	 * @param op Set to {@link BinaryOperator#ADD} when calling the method
+	 */
+	private static void linearizeAddSubSubtree (Expression expr, List<AddSub> list, BinaryOperator op)
 	{
 		if (expr instanceof BinaryExpression)
 		{

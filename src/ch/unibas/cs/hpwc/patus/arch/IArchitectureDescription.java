@@ -37,6 +37,13 @@ public interface IArchitectureDescription
 	 * @return The backend name
 	 */
 	public abstract String getBackend ();
+	
+	/**
+	 * Returns the name of the backend code generator used to generate the innermost loops
+	 * containing the stencil computation.
+	 * @return The name of the innermost loop code generator
+	 */
+	public abstract String getInnermostLoopCodeGenerator ();
 
 	/**
 	 * Returns the file suffix of the file to which the code generator writes the output.

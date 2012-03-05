@@ -233,7 +233,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		}
 
 		/**
-		 *
+		 * Recursively generates a nested loop.
 		 * @param slbParent
 		 * @param nDimension
 		 * @param bHasParentLoop Flag indicating whether the parent structure is a loop
@@ -244,13 +244,12 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		 */
 		private void recursiveGenerateInner (StatementListBundle slbParent, int nDimension, boolean bHasParentLoop, StencilLoopUnrollingConfiguration config)
 		{
-			if (nDimension == 0 && isAssemblyUsedForInnerMost ())
+			if (nDimension == 0 && isSpecializedCGUsedForInnerMost ())
 			{
-				// this is an innermost loop (containing a stencil computation), and an assembly code
-				// generator, which generates code for the innermost loop and the contained stencil expression,
-				// was specified
-				
-				generateInnerMostAssembly ();
+				// this is an innermost loop (containing a stencil computation)
+				// if a specialized code generator for the innermost loop and the contained stencil expression
+				// was specified, use it				
+				generateInnerMost ();
 			}
 			else
 				recursiveGenerateInnerDefault (slbParent, nDimension, bHasParentLoop, config);
@@ -537,13 +536,14 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		 * Determines whether inline assembly is to be used for the innermost loop
 		 * @return <code>true</code> iff inline assembly is to be used for the innermost loop
 		 */
-		private boolean isAssemblyUsedForInnerMost ()
+		private boolean isSpecializedCGUsedForInnerMost ()
 		{
-			return m_bContainsStencilCall && m_data.getCodeGenerators ().getBackendCodeGenerator ().hasAssemblyCodeGenerator () && isStencilCalculation ();
+			return m_bContainsStencilCall && m_data.getCodeGenerators ().getInnermostLoopCodeGenerator () != null && isStencilCalculation ();
 		}
 		
-		private void generateInnerMostAssembly ()
+		private void generateInnerMost ()
 		{
+			
 			throw new RuntimeException ("Not implemented");
 		}
 		

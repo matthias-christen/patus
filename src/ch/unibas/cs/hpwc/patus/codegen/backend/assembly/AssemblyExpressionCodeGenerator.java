@@ -10,11 +10,11 @@ import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.FunctionCall;
 import cetus.hir.Literal;
-import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
@@ -105,7 +105,7 @@ public class AssemblyExpressionCodeGenerator
 			return processUnaryExpression ((UnaryExpression) expr, specDatatype, nUnrollFactor, il);
 		
 		if (expr instanceof StencilNode)
-			return processStencilNode ((StencilNode) expr, nUnrollFactor);
+			return processStencilNode ((StencilNode) expr, nUnrollFactor, il);
 		if (expr instanceof Literal)
 		{
 			// find the register the constant is saved in or load the constant into a register (if too many registers)
@@ -128,7 +128,7 @@ public class AssemblyExpressionCodeGenerator
 		List<AddSub> list = new LinkedList<AddSub> ();
 		RegisterAllocator.linearizeAddSubSubtree (expr, list, BinaryOperator.ADD);
 		
-		IOperand.IRegisterOperand regSum = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
+		IOperand.IRegisterOperand regSum = new IOperand.PseudoRegister (); //m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
 		
 		boolean bIsFirst = true;
 		for (AddSub addsub : list)
@@ -207,7 +207,7 @@ public class AssemblyExpressionCodeGenerator
 			rgOperands[Arguments.getLHS (rgArgs).getNumber ()] = rgOpLHS[i];
 			rgOperands[Arguments.getRHS (rgArgs).getNumber ()] = rgOpRHS[i];
 			
-			IOperand opResult = isReservedRegister (rgOpRHS[i]) ? m_assemblySection.getFreeRegister (TypeRegisterType.SIMD) : rgOpRHS[i];
+			IOperand opResult = isReservedRegister (rgOpRHS[i]) ? new IOperand.PseudoRegister () : rgOpRHS[i];
 			
 			if (bHasOutput && rgArgs.length > 2)
 			{
@@ -277,7 +277,7 @@ public class AssemblyExpressionCodeGenerator
 	 * @param nUnrollFactor
 	 * @return
 	 */
-	private IOperand[] processStencilNode (StencilNode node, int nUnrollFactor)
+	private IOperand[] processStencilNode (StencilNode node, int nUnrollFactor, InstructionList il)
 	{
 		IOperand[] rgOpResults = new IOperand[nUnrollFactor];
 		boolean bIsReuse = true;
@@ -299,8 +299,25 @@ public class AssemblyExpressionCodeGenerator
 		
 		// load the value of the stencil node into a register
 		if (!bIsReuse)
+		{
 			for (int i = 0; i < nUnrollFactor; i++)
-				rgOpResults[i] = m_assemblySection.getGrid (node, i);
+			{
+				IOperand op = m_assemblySection.getGrid (node, i);
+				if (op instanceof IOperand.Address)
+				{
+					// if the operand is an address, check whether memory operands are supported for the argument
+					if (!RegisterAllocator.canBeMemoryOperand (node, m_data, m_assemblySection))
+					{
+						// no: we need to load the data into a register first
+						IOperand opAddr = op;
+						op = new IOperand.PseudoRegister ();
+						il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR.value (), new IOperand[] { opAddr, op }));
+					}
+				}
+				
+				rgOpResults[i] = op;
+			}
+		}
 		
 		return rgOpResults;
 	}

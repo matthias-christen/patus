@@ -14,9 +14,12 @@ import cetus.hir.Literal;
 import cetus.hir.NameID;
 import cetus.hir.Traversable;
 import cetus.hir.UnaryExpression;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
+import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphColoringGreedy;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -283,9 +286,28 @@ public class RegisterAllocator
 			list.add (new AddSub (op, expr));
 	}
 	
-	public static Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapPseudoRegistersToRegisters (LAGraph graph)
+	/**
+	 * Runs the register allocation algorithm on the live analysis graph <code>graph</code> and
+	 * returns a map specifying how to map the {@link PseudoRegister}s used in the generated
+	 * {@link InstructionList} to actual register names. 
+	 * @param graph The live analysis graph
+	 * @return A map mapping {@link PseudoRegister} to register names
+	 */
+	public static Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapPseudoRegistersToRegisters (LAGraph graph, AssemblySection as)
 	{
 		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapRegisters = new HashMap<IOperand.PseudoRegister, IOperand.IRegisterOperand> ();
+		
+		// color the graph
+		int nColorsCount = GraphColoringGreedy.run (graph);
+		
+		// allocate registers
+		IOperand.IRegisterOperand[] rgRegisters = new IOperand.IRegisterOperand[nColorsCount];
+		for (int i = 0; i < nColorsCount; i++)
+			rgRegisters[i] = as.getFreeRegister (TypeRegisterType.SIMD);
+		
+		// create the map
+		for (LAGraph.Vertex vertex : graph.getVertices ())
+			mapRegisters.put ((IOperand.PseudoRegister) vertex.getOperand (), rgRegisters[vertex.getColor ()]);
 		
 		return mapRegisters;
 	}

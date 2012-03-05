@@ -1,11 +1,14 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 
+ * @author Matthias-M. Christen
+ */
 public class InstructionList implements Iterable<IInstruction>
 {
 	///////////////////////////////////////////////////////////////////
@@ -42,7 +45,30 @@ public class InstructionList implements Iterable<IInstruction>
 		return m_listInstructions.iterator ();
 	}
 	
-	public InstructionList replacePseudoRegisters (LAGraph graph)
+	/**
+	 * 
+	 * @param as
+	 * @return
+	 */
+	public InstructionList allocateRegisters (AssemblySection as)
+	{
+		// do a live analysis
+		LiveAnalysis analysis = new LiveAnalysis (this);
+		LAGraph graph = analysis.run ();
+		
+		// allocate registers
+		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> map = RegisterAllocator.mapPseudoRegistersToRegisters (graph, as);
+		
+		// replace the pseudo registers by allocated registers
+		return replacePseudoRegisters (map);
+	}
+	
+	/**
+	 * 
+	 * @param graph
+	 * @return
+	 */
+	public InstructionList replacePseudoRegisters (Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapPseudoRegsToRegs)
 	{
 		InstructionList il = new InstructionList ();
 		for (IInstruction instr : this)
@@ -67,7 +93,9 @@ public class InstructionList implements Iterable<IInstruction>
 							bConstructedNew = true;
 						}
 						
-//						rgOps[i] = mapRegisters.get ();
+						IOperand.IRegisterOperand reg = mapPseudoRegsToRegs.get (rgOps[i]);
+						if (reg != null)
+							rgOps[i] = reg;
 					}
 				}
 			}
@@ -78,6 +106,13 @@ public class InstructionList implements Iterable<IInstruction>
 		return il;
 	}
 	
+	/**
+	 * Replaces the instructions in the key set of the map <code>mapInstructionReplacements</code>
+	 * by the corresponding map values.
+	 * @param mapInstructionReplacements The map defining the mapping between old and new instruction names
+	 * @return A new instruction list with instructions replaced as defined in the map
+	 * 	<code>mapInstructionReplacements</code>
+	 */
 	public InstructionList replaceInstructions (Map<String, String> mapInstructionReplacements)
 	{
 		InstructionList il = new InstructionList ();

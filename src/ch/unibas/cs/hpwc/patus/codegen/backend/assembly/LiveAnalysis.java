@@ -60,6 +60,10 @@ public class LiveAnalysis
 		return nMaxIdx;
 	}
 	
+	/**
+	 * 
+	 * @return
+	 */
 	public LAGraph run ()
 	{
 		LAGraph graph = new LAGraph ();
@@ -78,14 +82,18 @@ public class LiveAnalysis
 						continue;
 					
 					if (m_rgLivePseudoRegisters[i][j] == STATE_LIVE && m_rgLivePseudoRegisters[i][k] == STATE_LIVE)
-						graph.addEdge (m_rgPseudoRegisters[j], m_rgPseudoRegisters[k]);
+						graph.addEdge (new LAGraph.Vertex (m_rgPseudoRegisters[j]), new LAGraph.Vertex (m_rgPseudoRegisters[k]));
 				}
 			}
 		}
-		
+				
 		return graph;
 	}
 	
+	/**
+	 * 
+	 * @param graph
+	 */
 	private void createStateMatrix (LAGraph graph)
 	{
 		// create the matrix of pseudo registers
@@ -113,7 +121,7 @@ public class LiveAnalysis
 					if (rgOps[j] instanceof IOperand.PseudoRegister)
 					{
 						IOperand.PseudoRegister reg = (IOperand.PseudoRegister) rgOps[j];
-						graph.addNode (reg);
+						graph.addVertex (new LAGraph.Vertex (reg));
 						m_rgPseudoRegisters[reg.getNumber ()] = reg;
 						
 						if (isLastRead (reg, i))
@@ -125,7 +133,7 @@ public class LiveAnalysis
 				if (rgOps[rgOps.length - 1] instanceof IOperand.PseudoRegister)
 				{
 					IOperand.PseudoRegister reg = (IOperand.PseudoRegister) rgOps[rgOps.length - 1];
-					graph.addNode (reg);
+					graph.addVertex (new LAGraph.Vertex (reg));
 					m_rgPseudoRegisters[reg.getNumber ()] = reg;
 					
 					m_rgLivePseudoRegisters[i][reg.getNumber ()] = STATE_LIVE;
@@ -149,6 +157,12 @@ public class LiveAnalysis
 		}
 	}
 	
+	/**
+	 * 
+	 * @param reg
+	 * @param nCurrentInstrIdx
+	 * @return
+	 */
 	private boolean isLastRead (IOperand.PseudoRegister reg, int nCurrentInstrIdx)
 	{
 		for (int i = nCurrentInstrIdx + 1; i < m_rgInstructions.length; i++)

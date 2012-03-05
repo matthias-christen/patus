@@ -171,27 +171,32 @@ public class RegisterAllocator
 		return Integer.MAX_VALUE;
 	}
 	
+	private boolean canBeMemoryOperand (Expression expr)
+	{
+		return RegisterAllocator.canBeMemoryOperand (expr, m_data, m_assemblySection);
+	}
+	
 	/**
 	 * Determines whether the expression <code>expr</code> can be a memory operand of the instruction
 	 * corresponding to the operation the expression occurs in.
 	 * @param expr
 	 * @return
 	 */
-	private boolean canBeMemoryOperand (Expression expr)
+	public static boolean canBeMemoryOperand (Expression expr, CodeGeneratorSharedObjects data, StencilAssemblySection as)
 	{
 		Traversable trvParent = expr.getParent ();
 		Argument arg = null;
 		
 		if (trvParent instanceof UnaryExpression)
 		{
-			Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (((UnaryExpression) trvParent).getOperator (), m_assemblySection.getDatatype ());
+			Intrinsic intrinsic = data.getArchitectureDescription ().getIntrinsic (((UnaryExpression) trvParent).getOperator (), as.getDatatype ());
 			Argument[] rgArgs = Arguments.parseArguments (intrinsic.getArguments ());
 			
 			arg = Arguments.getFirstInput (rgArgs);
 		}
 		else if (trvParent instanceof BinaryExpression)
 		{
-			Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (((BinaryExpression) trvParent).getOperator (), m_assemblySection.getDatatype ());
+			Intrinsic intrinsic = data.getArchitectureDescription ().getIntrinsic (((BinaryExpression) trvParent).getOperator (), as.getDatatype ());
 			Argument[] rgArgs = Arguments.parseArguments (intrinsic.getArguments ());
 			
 			if (expr == ((BinaryExpression) trvParent).getLHS ())
@@ -208,7 +213,7 @@ public class RegisterAllocator
 			// fused multiply-add / multiply-subtract
 			if (exprFuncName.equals (Globals.FNX_FMA) || exprFuncName.equals (Globals.FNX_FMS))
 			{
-				Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic ((FunctionCall) trvParent, m_assemblySection.getDatatype ());
+				Intrinsic intrinsic = data.getArchitectureDescription ().getIntrinsic ((FunctionCall) trvParent, as.getDatatype ());
 				Argument[] rgArgs = Arguments.parseArguments (intrinsic.getArguments ());
 				
 				for (int i = 0; i < ((FunctionCall) trvParent).getNumArguments (); i++)
@@ -276,6 +281,13 @@ public class RegisterAllocator
 		}
 		else
 			list.add (new AddSub (op, expr));
+	}
+	
+	public static Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapPseudoRegistersToRegisters (LAGraph graph)
+	{
+		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapRegisters = new HashMap<IOperand.PseudoRegister, IOperand.IRegisterOperand> ();
+		
+		return mapRegisters;
 	}
 
 	

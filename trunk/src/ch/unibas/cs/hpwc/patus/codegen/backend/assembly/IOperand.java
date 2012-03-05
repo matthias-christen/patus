@@ -67,6 +67,42 @@ public interface IOperand
 		}
 	}
 	
+	public static class PseudoRegister implements IRegisterOperand
+	{
+		private static int m_nPseudoRegisterNumber = 0;
+		private int m_nNumber;
+		
+		public PseudoRegister ()
+		{
+			m_nNumber = m_nPseudoRegisterNumber++;
+		}
+		
+		public int getNumber ()
+		{
+			return m_nNumber;
+		}
+		
+		@Override
+		public String getAsString ()
+		{
+			return StringUtil.concat ("{pseudoreg-", m_nNumber, "}");
+		}
+		
+		@Override
+		public boolean equals (Object obj)
+		{
+			if (!(obj instanceof PseudoRegister))
+				return false;
+			return ((PseudoRegister) obj).m_nNumber == m_nNumber;
+		}
+		
+		@Override
+		public int hashCode ()
+		{
+			return m_nNumber;
+		}
+	}
+	
 	public static class Immediate implements IOperand
 	{
 		private long m_nValue;

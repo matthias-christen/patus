@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import cetus.hir.BinaryExpression;
-import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.FunctionCall;
 import cetus.hir.Literal;
@@ -15,10 +14,8 @@ import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
-import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
-import ch.unibas.cs.hpwc.patus.codegen.backend.IBackendAssemblyCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Index;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -34,7 +31,6 @@ public class AssemblyExpressionCodeGenerator
 	// Member Variables
 
 	private CodeGeneratorSharedObjects m_data;
-	private IBackendAssemblyCodeGenerator m_cg;
 	
 	private StencilAssemblySection m_assemblySection;
 	
@@ -43,7 +39,7 @@ public class AssemblyExpressionCodeGenerator
 	private Map<Double, IOperand.IRegisterOperand> m_mapConstants;
 	
 	private RegisterAllocator m_allocator;
-		
+
 	
 	///////////////////////////////////////////////////////////////////
 	// Implementation
@@ -56,8 +52,6 @@ public class AssemblyExpressionCodeGenerator
 		m_assemblySection = as;
 		m_mapReuseNodesToRegisters = mapReuseNodesToRegisters;
 		m_mapConstants = mapConstants;
-		
-		m_cg = m_data.getCodeGenerators ().getBackendAssemblyCodeGenerator ();
 		
 		Map<StencilNode, Boolean> mapReuse = new HashMap<StencilNode, Boolean> ();
 		for (StencilNode node : m_mapReuseNodesToRegisters.keySet ())
@@ -75,12 +69,12 @@ public class AssemblyExpressionCodeGenerator
 	public InstructionList generate (Expression expr, CodeGeneratorRuntimeOptions options)
 	{		
 		// generate the inline assembly code
-		int nUnrollFactor = options.getIntValue (IBackendAssemblyCodeGenerator.OPTION_ASSEMBLY_UNROLLFACTOR);
+		int nUnrollFactor = options.getIntValue (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR);
 		
 		m_allocator.countRegistersNeeded (expr);
 
 		InstructionList il = new InstructionList ();
-		traverse (expr, null, nUnrollFactor, il);
+		traverse (expr, m_assemblySection.getDatatype (), nUnrollFactor, il);
 		
 		return il;
 	}
@@ -126,7 +120,7 @@ public class AssemblyExpressionCodeGenerator
 	private IOperand[] processAddSubSubtree (Expression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
 		List<AddSub> list = new LinkedList<AddSub> ();
-		RegisterAllocator.linearizeAddSubSubtree (expr, list, BinaryOperator.ADD);
+		RegisterAllocator.linearizeAddSubSubtree (expr, list);
 		
 		IOperand.IRegisterOperand regSum = new IOperand.PseudoRegister (); //m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
 		
@@ -177,17 +171,8 @@ public class AssemblyExpressionCodeGenerator
 	{
 		IOperand[] rgOpResult = new IOperand[nUnrollFactor];
 
-		// get the operands for the binary expression
-		int nNumRegsLHS = m_allocator.getNumRegistersUsed (expr.getLHS ());
-		int nNumRegsRHS = m_allocator.getNumRegistersUsed (expr.getRHS ());
-		
-		// Sethi-Ullman: traverse the left tree first if it requires more registers than the right
-		IOperand[] rgOpLHS = null;
-		if (nNumRegsLHS >= nNumRegsRHS)
-			rgOpLHS = traverse (expr.getLHS (), specDatatype, nUnrollFactor, il);
+		IOperand[] rgOpLHS = traverse (expr.getLHS (), specDatatype, nUnrollFactor, il);
 		IOperand[] rgOpRHS = traverse (expr.getRHS (), specDatatype, nUnrollFactor, il);
-		if (nNumRegsLHS < nNumRegsRHS)
-			rgOpLHS = traverse (expr.getLHS (), specDatatype, nUnrollFactor, il);
 
 		// get the intrinsic corresponding to the operator of the binary expression
 		Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (expr.getOperator (), specDatatype);		

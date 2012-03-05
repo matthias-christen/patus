@@ -29,6 +29,7 @@
 						</xs:annotation>
 					</xs:attribute>
 					<xs:attribute name="backend" type="xs:string" use="required"/>
+					<xs:attribute name="innermost-loop-cg" type="xs:string" use="optional"/>
 					<xs:attribute name="use-function-pointers" type="xs:boolean" use="required">
 						<xs:annotation>
 							<xs:documentation>Specifies whether function pointers can be used to select code variants.</xs:documentation>

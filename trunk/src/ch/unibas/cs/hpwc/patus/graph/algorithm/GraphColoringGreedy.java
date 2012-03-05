@@ -17,6 +17,8 @@ import ch.unibas.cs.hpwc.patus.graph.IParametrizedVertex;
  *
  * @param <V> The graph's vertex type
  * @param <E> The graph's edge type
+ * 
+ * <p>See also <a href="http://code.google.com/p/annas/">http://code.google.com/p/annas/</a></p>
  */
 public class GraphColoringGreedy<V extends IParametrizedVertex<Integer>, E extends IEdge<V>>
 {
@@ -34,10 +36,19 @@ public class GraphColoringGreedy<V extends IParametrizedVertex<Integer>, E exten
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 	
+	/**
+	 * The graph to color
+	 */
 	private IGraph<V, E> m_graph;
 	
+	/**
+	 * The current list of colors
+	 */
 	private List<Integer> m_listColors;
 	
+	/**
+	 * The color which was inserted last
+	 */
 	private int m_nLastColor;
 	
 

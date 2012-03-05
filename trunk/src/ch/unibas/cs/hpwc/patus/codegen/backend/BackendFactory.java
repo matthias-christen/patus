@@ -13,7 +13,8 @@ package ch.unibas.cs.hpwc.patus.codegen.backend;
 import java.lang.reflect.InvocationTargetException;
 
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.x86_64.X86_64AssemblyCodeGenerator;
+import ch.unibas.cs.hpwc.patus.codegen.IInnermostLoopCodeGenerator;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.x86_64.X86_64InnermostLoopCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.cuda.CUDA1DCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.cuda.CUDA4CodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.cuda.CUDACodeGenerator;
@@ -96,62 +97,74 @@ public class BackendFactory
 	}
 	
 	@SuppressWarnings ("unchecked")
-	public static IBackendAssemblyCodeGenerator createAssemblyCodeGenerator (String strBackend, CodeGeneratorSharedObjects data)
+	public static IInnermostLoopCodeGenerator createInnermostLoopCodeGenerator (String strBackend, CodeGeneratorSharedObjects data)
 	{
 		if (strBackend == null || "".equals (strBackend))
 			return null;
+		
+		IInnermostLoopCodeGenerator cg = null;
 
 		// try to instantiate by name
 		if ("x86_64".equals (strBackend))
-			return new X86_64AssemblyCodeGenerator (data);
+			cg = new X86_64InnermostLoopCodeGenerator (data);
 
+				
 		// interpret the string as class name; try to instantiate it
-		try
+		if (cg == null)
 		{
-			// try to get the class
-			Class<? extends IBackendAssemblyCodeGenerator> clsBackendCG = (Class<? extends IBackendAssemblyCodeGenerator>) Class.forName (strBackend);
-
-			// find a constructor
 			try
 			{
-				return clsBackendCG.getConstructor (CodeGeneratorSharedObjects.class).newInstance (data);
+				// try to get the class
+				Class<? extends IInnermostLoopCodeGenerator> clsBackendCG = (Class<? extends IInnermostLoopCodeGenerator>) Class.forName (strBackend);
+	
+				// find a constructor
+				try
+				{
+					return clsBackendCG.getConstructor (CodeGeneratorSharedObjects.class).newInstance (data);
+				}
+				catch (SecurityException e)
+				{
+				}
+				catch (NoSuchMethodException e)
+				{
+				}
+				catch (IllegalArgumentException e)
+				{
+				}
+				catch (InstantiationException e)
+				{
+				}
+				catch (IllegalAccessException e)
+				{
+				}
+				catch (InvocationTargetException e)
+				{
+				}
+	
+				// try the default constructor
+				try
+				{
+					cg = clsBackendCG.newInstance ();
+				}
+				catch (InstantiationException e)
+				{
+				}
+				catch (IllegalAccessException e)
+				{
+				}
+	
+				throw new RuntimeException (StringUtil.concat ("Could not instantiate assembly backend '", strBackend, "'."));
 			}
-			catch (SecurityException e)
+			catch (ClassNotFoundException e)
 			{
+				throw new RuntimeException (StringUtil.concat ("The assembly backend '", strBackend, "' could not be found."));
 			}
-			catch (NoSuchMethodException e)
-			{
-			}
-			catch (IllegalArgumentException e)
-			{
-			}
-			catch (InstantiationException e)
-			{
-			}
-			catch (IllegalAccessException e)
-			{
-			}
-			catch (InvocationTargetException e)
-			{
-			}
-
-			// try the default constructor
-			try
-			{
-				return clsBackendCG.newInstance ();
-			}
-			catch (InstantiationException e)
-			{
-			}
-			catch (IllegalAccessException e)
-			{
-			}
-
-			throw new RuntimeException (StringUtil.concat ("Could not instantiate assembly backend '", strBackend, "'."));
 		}
-		catch (ClassNotFoundException e)
-		{
-			throw new RuntimeException (StringUtil.concat ("The assembly backend '", strBackend, "' could not be found."));
-		}
+		
+		// check whether the code generator requires an assembly specification
+		if (cg.requiresAssemblySection () && data.getArchitectureDescription ().getAssemblySpec () == null)
+			return null;
+		
+		return cg;
 	}
 }

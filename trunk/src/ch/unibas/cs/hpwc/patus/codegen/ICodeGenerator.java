@@ -18,8 +18,8 @@ public interface ICodeGenerator
 {
 	/**
 	 * Generates code for a particular type of input.
-	 * @param stmtInput
-	 * @return
+	 * @param trvInput The input structure
+	 * @return A statement list bundle containing the generated output structure
 	 */
 	public abstract StatementListBundle generate (Traversable trvInput, CodeGeneratorRuntimeOptions options);
 }

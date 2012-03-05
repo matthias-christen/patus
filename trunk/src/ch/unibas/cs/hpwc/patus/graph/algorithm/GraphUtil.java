@@ -7,6 +7,11 @@ import ch.unibas.cs.hpwc.patus.graph.IEdge;
 import ch.unibas.cs.hpwc.patus.graph.IGraph;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
 
+/**
+ * A collection of graph-related utility functions.
+ * 
+ * @author Matthias-M. Christen
+ */
 public class GraphUtil
 {
 	///////////////////////////////////////////////////////////////////

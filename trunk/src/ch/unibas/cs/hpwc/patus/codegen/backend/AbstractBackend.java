@@ -16,7 +16,6 @@ import cetus.hir.Expression;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Assembly;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
@@ -44,9 +43,6 @@ public abstract class AbstractBackend implements IBackend
 
 	private AbstractNonKernelFunctionsImpl m_mixinNonKernelFunctions;
 	
-	
-	private IBackendAssemblyCodeGenerator m_cgAssembly;
-
 
 	///////////////////////////////////////////////////////////////////
 	// Implementation
@@ -72,13 +68,7 @@ public abstract class AbstractBackend implements IBackend
 
 		m_mixinNonKernelFunctions = new AbstractNonKernelFunctionsImpl (m_data)
 		{
-		};
-		
-		// create the assembly backend if one was specified
-		Assembly assemblySpec = m_data.getArchitectureDescription ().getAssemblySpec ();
-		m_cgAssembly = BackendFactory.createAssemblyCodeGenerator (
-			assemblySpec == null ? null : assemblySpec.getBackend (),
-			m_data);
+		};		
 	}
 
 	@Override
@@ -87,18 +77,6 @@ public abstract class AbstractBackend implements IBackend
 		m_mixinNonKernelFunctions.setKernelSourceFile (ksf);
 	}
 	
-	@Override
-	public boolean hasAssemblyCodeGenerator ()
-	{
-		return m_cgAssembly != null;
-	}
-	
-	@Override
-	public IBackendAssemblyCodeGenerator getAssemblyCodeGenerator ()
-	{
-		return m_cgAssembly;
-	}
-
 	@Override
 	public IIndexingLevel getIndexingLevelFromParallelismLevel (int nParallelismLevel)
 	{

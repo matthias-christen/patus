@@ -190,6 +190,7 @@
 	</architectureType>
 	
 	<architectureType name="x86_64 AVX FMA4 asm" inherits-from="x86_64 AVX">
+		<codegenerator src-suffix="c" backend="OpenMP" innermost-loop-cg="x86_64" use-function-pointers="true"/>
 		<datatypes>
 			<!-- declare SSE datatypes -->
 			<!-- restrict alignment to 32 bytes -->

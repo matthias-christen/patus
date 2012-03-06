@@ -2,7 +2,6 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
-import ch.unibas.cs.hpwc.patus.codegen.backend.IBackendAssemblyCodeGenerator;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -32,14 +31,15 @@ class AddSub
 		return m_expr;
 	}
 	
+	/*
 	public String getInstruction ()
 	{
 		if (m_op.equals (BinaryOperator.ADD))
-			return IBackendAssemblyCodeGenerator.INSTR_ADD;
+			return arch.getIntrinsic (m_op, null);
 		if (m_op.equals (BinaryOperator.SUBTRACT))
 			return IBackendAssemblyCodeGenerator.INSTR_SUB;
 		return null;
-	}		
+	}*/		
 	
 	@Override
 	public String toString ()

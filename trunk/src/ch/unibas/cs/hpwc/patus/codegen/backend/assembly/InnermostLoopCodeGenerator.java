@@ -33,9 +33,9 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	///////////////////////////////////////////////////////////////////
 	// Constants
 	
-	protected final static String INPUT_LOOPMAX = "loop_max";
+	public final static String INPUT_LOOPMAX = "loop_max";
 	
-	protected final static String OPTION_INLINEASM_UNROLLFACTOR = "iasm_unroll";
+	public final static String OPTION_INLINEASM_UNROLLFACTOR = "iasm_unroll";
 	
 	/**
 	 * The minimum size of a set of stencil nodes of the same grid which have the
@@ -351,9 +351,9 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	}
 	
 	@Override
-	public StatementListBundle generate (Traversable trvInput, CodeGeneratorRuntimeOptions options)
+	public StatementListBundle generate (Traversable sdit, CodeGeneratorRuntimeOptions options)
 	{
-		return newCodeGenerator ((SubdomainIterator) trvInput, options).generate ();
+		return newCodeGenerator ((SubdomainIterator) sdit, options).generate ();
 	}
 	
 	/**

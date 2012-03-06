@@ -49,6 +49,7 @@ import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InnermostLoopCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.codegen.options.StencilLoopUnrollingConfiguration;
 import ch.unibas.cs.hpwc.patus.geometry.Size;
@@ -249,7 +250,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 				// this is an innermost loop (containing a stencil computation)
 				// if a specialized code generator for the innermost loop and the contained stencil expression
 				// was specified, use it				
-				generateInnerMost ();
+				generateInnerMost (slbParent, bHasParentLoop, config);
 			}
 			else
 				recursiveGenerateInnerDefault (slbParent, nDimension, bHasParentLoop, config);
@@ -538,17 +539,37 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		 */
 		private boolean isSpecializedCGUsedForInnerMost ()
 		{
-			return m_bContainsStencilCall && m_data.getCodeGenerators ().getInnermostLoopCodeGenerator () != null && isStencilCalculation ();
-		}
-		
-		private void generateInnerMost ()
-		{
-			
-			throw new RuntimeException ("Not implemented");
+			return m_bContainsStencilCall &&
+				m_data.getCodeGenerators ().getInnermostLoopCodeGenerator () != null &&
+				isStencilCalculation ();
 		}
 		
 		/**
-		 * Returns a statement initializing the loop index <code>idIdx</code> with the start expression <code>exprStart</code>.
+		 * Generates code for the innermost loop containing a stencil call using a specialized
+		 * innermost loop code generator.
+		 * @param slbParent
+		 */
+		private void generateInnerMost (StatementListBundle slbParent, boolean bHasParentLoop, StencilLoopUnrollingConfiguration config)
+		{
+			// set code generator options
+			m_options.setOption (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR, config.getUnrollingFactor (0));
+				
+			// generate the code
+			StatementListBundle slbInnerLoop = m_data.getCodeGenerators ().getInnermostLoopCodeGenerator ().generate (m_sdIterator, m_options);
+	
+			// add the code to the parent loop
+			if (slbInnerLoop != null)
+			{
+				if (bHasParentLoop)
+					StatementListBundleUtil.addToLoopBody (slbParent, slbInnerLoop);
+				else
+					slbParent.addStatements (slbInnerLoop);
+			}
+		}
+		
+		/**
+		 * Returns a statement initializing the loop index <code>idIdx</code> with the start expression
+		 * <code>exprStart</code>.
 		 * @param idIdx The loop index
 		 * @param exprStart The start value or <code>null</code> if no initialization is desired
 		 * @return The statement initializing the loop index

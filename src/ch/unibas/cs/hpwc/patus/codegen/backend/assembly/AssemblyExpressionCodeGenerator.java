@@ -8,6 +8,7 @@ import java.util.Map;
 import cetus.hir.BinaryExpression;
 import cetus.hir.Expression;
 import cetus.hir.FunctionCall;
+import cetus.hir.IDExpression;
 import cetus.hir.Literal;
 import cetus.hir.Specifier;
 import cetus.hir.UnaryExpression;
@@ -37,6 +38,8 @@ public class AssemblyExpressionCodeGenerator
 	private Map<StencilNode, IOperand.IRegisterOperand> m_mapReuseNodesToRegisters;
 	
 	private Map<Double, IOperand.IRegisterOperand> m_mapConstants;
+	
+	private Map<String, IOperand.IRegisterOperand[]> m_mapVariables;
 	
 	private RegisterAllocator m_allocator;
 
@@ -89,6 +92,16 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] traverse (Expression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
+		if (expr instanceof StencilNode)
+			return processStencilNode ((StencilNode) expr, nUnrollFactor, il);
+		if (expr instanceof IDExpression)
+			return processVariable ((IDExpression) expr, nUnrollFactor, il);
+		if (expr instanceof Literal)
+		{
+			// find the register the constant is saved in or load the constant into a register (if too many registers)
+			
+		}
+		
 		if (RegisterAllocator.isAddSubSubtree (expr))
 			return processAddSubSubtree (expr, specDatatype, nUnrollFactor, il);
 		if (expr instanceof BinaryExpression)
@@ -97,14 +110,6 @@ public class AssemblyExpressionCodeGenerator
 			return processFunctionCall ((FunctionCall) expr, specDatatype, nUnrollFactor, il);
 		if (expr instanceof UnaryExpression)
 			return processUnaryExpression ((UnaryExpression) expr, specDatatype, nUnrollFactor, il);
-		
-		if (expr instanceof StencilNode)
-			return processStencilNode ((StencilNode) expr, nUnrollFactor, il);
-		if (expr instanceof Literal)
-		{
-			// find the register the constant is saved in or load the constant into a register (if too many registers)
-			
-		}
 		
 		return null;
 	}
@@ -305,6 +310,40 @@ public class AssemblyExpressionCodeGenerator
 		}
 		
 		return rgOpResults;
+	}
+	
+	private IOperand[] processVariable (IDExpression id, int nUnrollFactor, InstructionList il)
+	{
+		if (m_mapVariables.containsKey (id.getName ()))
+			return m_mapVariables.get (id.getName ());
+		
+		// if id is constant, we need only one register, otherwise we need nUnrollFactor registers
+		boolean bIsConstant =
+			m_data.getStencilCalculation ().getStencilBundle ().isConstantOutputStencilNode (id) ||
+			m_data.getStencilCalculation ().isArgument (id.getName ());
+		
+		// allocate pseudo registers
+		IOperand.IRegisterOperand[] rgRegs = new IOperand.IRegisterOperand[bIsConstant ? 1 : nUnrollFactor];		
+		for (int i = 0; i < rgRegs.length; i++)
+		{
+			rgRegs[i] = new IOperand.PseudoRegister ();
+
+			// if id is a constant, load the value from memory
+			// otherwise assume it's a temporary variable
+			if (bIsConstant)
+			{
+				Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (
+					TypeBaseIntrinsicEnum.MOVE_FPR.value (), m_assemblySection.getDatatype ());
+				if (intrinsic == null)
+					throw new RuntimeException ("No FRP move instruction defined");
+				
+				il.addInstruction (new Instruction (intrinsic.getName (), new IOperand[] { X, rgRegs[i] }));
+			}			
+		}
+		
+		m_mapVariables.put (id.getName (), rgRegs);
+		
+		return rgRegs;
 	}
 	
 	/**

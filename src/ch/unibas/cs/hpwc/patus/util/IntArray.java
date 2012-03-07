@@ -138,6 +138,18 @@ public class IntArray implements Iterable<Integer>, Comparable<IntArray>
 		System.arraycopy (rgValuesOld, 0, m_rgValues, 0, rgValuesOld.length);
 		System.arraycopy (rgValues, 0, m_rgValues, rgValuesOld.length, rgValues.length);
 	}
+	
+	/**
+	 * Determines whether all the array values are 0.
+	 * @return <code>true</code> iff all the array values are 0
+	 */
+	public boolean isZero ()
+	{
+		for (int nVal : m_rgValues)
+			if (nVal != 0)
+				return false;
+		return true;
+	}
 
 	@Override
 	public boolean equals (Object obj)

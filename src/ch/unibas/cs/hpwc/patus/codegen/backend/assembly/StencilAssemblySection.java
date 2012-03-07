@@ -200,11 +200,19 @@ public class StencilAssemblySection extends AssemblySection
 	
 	/**
 	 * 
-	 * @param arrOffset
+	 * @param arrBaseVector The base vector used to access the stencil node
 	 * @param node
 	 */
-	public void addStride (IntArray arrOffset, StencilNode node)
+	public void addStride (IntArray arrBaseVector, StencilNode node)
 	{
+		// don't do anything if the base vector is 0 (no strides needed)
+		if (arrBaseVector == null || arrBaseVector.isZero ())
+			return;
+		
+		// don't do anything if the base vector was added already
+		if (m_mapStrides.containsKey (arrBaseVector))
+			return;
+		
 		// get the (local) memory object corresponding to the node
 		MemoryObject mo = m_data.getData ().getMemoryObjectManager ().getMemoryObject (m_sdid, node, true);
 		
@@ -214,11 +222,11 @@ public class StencilAssemblySection extends AssemblySection
 		Expression exprStride = null;
 		for (int i = 1; i < mo.getDimensionality (); i++)
 		{
-			if (arrOffset.get (i) != 0)
+			if (arrBaseVector.get (i) != 0)
 			{
 				Expression exprStridePart = ExpressionUtil.product (mo.getSize ().getCoords (), 0, i - 1);
-				if (arrOffset.get (i) != 1)
-					exprStridePart = new BinaryExpression (new IntegerLiteral (arrOffset.get (i)), BinaryOperator.MULTIPLY, exprStridePart);
+				if (arrBaseVector.get (i) != 1)
+					exprStridePart = new BinaryExpression (new IntegerLiteral (arrBaseVector.get (i)), BinaryOperator.MULTIPLY, exprStridePart);
 				
 				if (exprStride == null)
 					exprStride = exprStridePart;
@@ -227,7 +235,7 @@ public class StencilAssemblySection extends AssemblySection
 			}
 		}
 		
-		m_mapStrides.put (arrOffset, (IOperand.IRegisterOperand) addInput (exprStride, exprStride));
+		m_mapStrides.put (arrBaseVector, (IOperand.IRegisterOperand) addInput (exprStride, exprStride));
 	}
 
 	/**

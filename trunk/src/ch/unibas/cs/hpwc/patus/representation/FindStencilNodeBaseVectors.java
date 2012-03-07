@@ -131,9 +131,7 @@ public class FindStencilNodeBaseVectors
 		m_mapNodes = new HashMap<IntArray, FindStencilNodeBaseVectors.BaseVectorWithScalingFactor> ();
 		m_mapBaseVectors2StencilNodes = new HashMap<IntArray, List<StencilNode>> ();
 
-		// construct the "zero" array
-		m_arrZero = new IntArray (IntArray.getArray (m_nDimension, 0));
-		
+		m_arrZero = null;		
 		m_nDimension = -1;
 	}
 	
@@ -208,7 +206,10 @@ public class FindStencilNodeBaseVectors
 	private boolean checkDimension (StencilNode node)
 	{
 		if (m_nDimension == -1)
+		{
 			m_nDimension = node.getIndex ().getSpaceIndex ().length;
+			m_arrZero = new IntArray (IntArray.getArray (m_nDimension, 0));
+		}
 		else if (node.getIndex ().getSpaceIndex ().length != m_nDimension)
 		{
 			throw new RuntimeException (StringUtil.concat (

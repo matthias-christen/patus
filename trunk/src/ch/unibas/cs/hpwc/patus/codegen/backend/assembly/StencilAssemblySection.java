@@ -9,17 +9,20 @@ import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.FloatLiteral;
 import cetus.hir.IntegerLiteral;
+import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.IMask;
 import ch.unibas.cs.hpwc.patus.codegen.MemoryObject;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.FindStencilNodeBaseVectors;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
+import ch.unibas.cs.hpwc.patus.representation.StencilCalculation.EArgumentType;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.IntArray;
@@ -34,7 +37,7 @@ public class StencilAssemblySection extends AssemblySection
 	///////////////////////////////////////////////////////////////////
 	// Constants
 	
-	private final static String KEY_CONSTANTS = "constants";
+	public final static String INPUT_CONSTANTS_ARRAYPTR = "constants";
 	
 
 	///////////////////////////////////////////////////////////////////
@@ -58,7 +61,7 @@ public class StencilAssemblySection extends AssemblySection
 	
 	private Map<StencilNode, IOperand.IRegisterOperand> m_mapGrids;
 	private Map<IntArray, IOperand.IRegisterOperand> m_mapStrides;
-	private Map<Double, Integer> m_mapConstants;
+	private Map<Expression, Integer> m_mapConstantsAndParams;
 
 	private FindStencilNodeBaseVectors m_baseVectors;
 	
@@ -77,10 +80,12 @@ public class StencilAssemblySection extends AssemblySection
 		super (data);
 		
 		m_options = options;
+		
+		m_slbGeneratedCode = new StatementListBundle ();
 
 		m_mapGrids = new HashMap<StencilNode, IOperand.IRegisterOperand> ();
 		m_mapStrides = new HashMap<IntArray, IOperand.IRegisterOperand> ();
-		m_mapConstants = new HashMap<Double, Integer> ();
+		m_mapConstantsAndParams = new HashMap<Expression, Integer> ();
 		
 		m_baseVectors = new FindStencilNodeBaseVectors (new int[] { 1, 2, 4, 8 });	// TODO: put this in architecture.xml
 		m_specDatatype = null;
@@ -124,11 +129,17 @@ public class StencilAssemblySection extends AssemblySection
 		// add constants
 		for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
 			findConstants (stencil.getExpression ());
+		
+		// add stencil params
+		for (String strParamName : m_data.getStencilCalculation ().getArguments (EArgumentType.PARAMETER))
+			m_mapConstantsAndParams.put (new NameID (strParamName), m_mapConstantsAndParams.size ());
+		
 		addConstants ();
 	}
 	
 	private void addGrids ()
 	{
+		// TODO: get reference nodes for "current" memory objects!!!
 		StencilNodeSet setAllGrids = m_data.getStencilCalculation ().getInputBaseNodeSet ().union (m_data.getStencilCalculation ().getOutputBaseNodeSet ());
 		
 		if (setAllGrids.size () > 10)
@@ -176,7 +187,7 @@ public class StencilAssemblySection extends AssemblySection
 		{
 			Object obj = it.next ();
 			if (obj instanceof FloatLiteral)
-				m_mapConstants.put (((FloatLiteral) obj).getValue (), m_mapConstants.size ());
+				m_mapConstantsAndParams.put ((FloatLiteral) obj, m_mapConstantsAndParams.size ());
 		}
 	}
 
@@ -194,8 +205,16 @@ public class StencilAssemblySection extends AssemblySection
 			m_data.getData ().getMemoryObjectManager ().getMemoryObjectExpression (
 				m_sdid, node, null, true, false, false, m_slbGeneratedCode, m_options
 			)
-		);		
-		m_mapGrids.put (node, (IOperand.IRegisterOperand) op);		
+		);
+		
+		// add the node to the grid
+		m_mapGrids.put (node, (IOperand.IRegisterOperand) op);
+		
+		// add all other nodes which project to the same node
+		MemoryObject mo = m_data.getData ().getMemoryObjectManager ().getMemoryObject (m_sdid, node, true);
+		for (StencilNode n : m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ())
+			if (n != node && mo.contains (n))
+				m_mapGrids.put (n, (IOperand.IRegisterOperand) op);
 	}
 	
 	/**
@@ -245,20 +264,16 @@ public class StencilAssemblySection extends AssemblySection
 	 */
 	public void addConstants ()
 	{
-		if (m_mapConstants.size () == 0)
+		if (m_mapConstantsAndParams.size () == 0)
 			return;
 		
-		Expression[] rgConstants = new Expression[m_mapConstants.size ()];
-		int i = 0;
-		for (double fValue : m_mapConstants.keySet ())
-		{
-			rgConstants[i] = new FloatLiteral (fValue);
-			i++;
-		}
+		Expression[] rgConstsAndParams = new Expression[m_mapConstantsAndParams.size ()];
+		m_mapConstantsAndParams.keySet ().toArray (rgConstsAndParams);
 		
 		addInput (
-			KEY_CONSTANTS,
-			m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalars (rgConstants, m_specDatatype, m_slbGeneratedCode, m_options)
+			INPUT_CONSTANTS_ARRAYPTR,
+			m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalars (
+				rgConstsAndParams, getDatatype (), m_slbGeneratedCode, m_options)
 		);
 	}
 	
@@ -266,16 +281,34 @@ public class StencilAssemblySection extends AssemblySection
 	 * Determines the number of constants within the entire stencil bundle.
 	 * @return The number of constants used
 	 */
-	public int getConstantsCount ()
+	public int getConstantsAndParamsCount ()
 	{
-		return m_mapConstants.size ();
+		return m_mapConstantsAndParams.size ();
 	}
 	
-	public Iterable<Double> getConstants ()
+	/**
+	 * Returns an iterable over all the constants and parameters saved in the constant/parameter array.
+	 * @return An iterable over constants and parameters saved in the const/param array of the assembly section
+	 */
+	public Iterable<Expression> getConstantsAndParams ()
 	{
-		return m_mapConstants.keySet ();
+		return m_mapConstantsAndParams.keySet ();
 	}
-		
+
+	/**
+	 * Returns the index of the constant or the stencil parameter <code>exprConstantOrParam</code>
+	 * within the constants/parameters map or <code>-1</code> if no such constant/parameter exists
+	 * in the map.
+	 * @param exprConstantOrParam The constant or parameter for which to retrieve the index
+	 * @return The index of <code>exprConstantOrParam</code> within the constants/parameter map
+	 * 	or <code>-1</code> if no such constant/parameter exists
+	 */
+	public int getConstantOrParamIndex (Expression exprConstantOrParam)
+	{
+		Integer nIdx = m_mapConstantsAndParams.get (exprConstantOrParam);
+		return nIdx == null ? -1 : nIdx;
+	}
+
 	/**
 	 * Returns an iterable over the register containing the grid pointers
 	 * @return
@@ -335,12 +368,12 @@ public class StencilAssemblySection extends AssemblySection
 	 * @param specDatatype
 	 * @return
 	 */
-	public IOperand getConstant (double fValue, Specifier specDatatype)
+	public IOperand getConstantOrParam (Expression exprConstantOrParam, Specifier specDatatype)
 	{
-		IOperand regBase = getInput (KEY_CONSTANTS);
+		IOperand regBase = getInput (INPUT_CONSTANTS_ARRAYPTR);
 		if (regBase == null)
 			return null;
-		return new IOperand.Address ((IRegisterOperand) regBase, m_mapConstants.get (fValue) * AssemblySection.getTypeSize (specDatatype));
+		return new IOperand.Address ((IRegisterOperand) regBase, m_mapConstantsAndParams.get (exprConstantOrParam) * AssemblySection.getTypeSize (specDatatype));
 	}
 
 	/**

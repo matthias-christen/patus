@@ -2,6 +2,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -29,6 +30,11 @@ class AddSub
 	public Expression getExpression ()
 	{
 		return m_expr;
+	}
+	
+	public String getBaseIntrinsic ()
+	{
+		return Globals.getIntrinsicBase (m_op).value ();
 	}
 	
 	/*

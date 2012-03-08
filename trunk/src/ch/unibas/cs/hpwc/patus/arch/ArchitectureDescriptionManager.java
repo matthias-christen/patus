@@ -38,6 +38,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Includes.Include;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level.Barrier;
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class ArchitectureDescriptionManager
@@ -272,42 +273,22 @@ public class ArchitectureDescriptionManager
 		@Override
 		public Intrinsic getIntrinsic (String strOperationOrBaseName, Specifier specType)
 		{
-			if ("+".equals (strOperationOrBaseName))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.PLUS.value (), specType);
-			if ("-".equals (strOperationOrBaseName))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MINUS.value (), specType);
-			if ("*".equals (strOperationOrBaseName))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
-			if ("/".equals (strOperationOrBaseName))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
-
-			return getIntrinsicInternal (strOperationOrBaseName, specType);
+			TypeBaseIntrinsicEnum type = Globals.getIntrinsicBase (strOperationOrBaseName);
+			return getIntrinsicInternal (type == null ? strOperationOrBaseName : type.value (), specType);
 		}
 
 		@Override
 		public Intrinsic getIntrinsic (UnaryOperator op, Specifier specType)
 		{
-			if (UnaryOperator.PLUS.equals (op))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.UNARY_PLUS.value (), specType);
-			if (UnaryOperator.MINUS.equals (op))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.UNARY_MINUS.value (), specType);
-
-			// intrinsic not found
-			return null;
+			TypeBaseIntrinsicEnum type = Globals.getIntrinsicBase (op);
+			return type == null ? null : getIntrinsicInternal (type.value (), specType);
 		}
 
 		@Override
 		public Intrinsic getIntrinsic (BinaryOperator op, Specifier specType)
 		{
-			if (BinaryOperator.ADD.equals (op))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.PLUS.value (), specType);
-			if (BinaryOperator.SUBTRACT.equals (op))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MINUS.value (), specType);
-			if (BinaryOperator.MULTIPLY.equals (op))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.MULTIPLY.value (), specType);
-			if (BinaryOperator.DIVIDE.equals (op))
-				return getIntrinsicInternal (TypeBaseIntrinsicEnum.DIVIDE.value (), specType);
-			return null;
+			TypeBaseIntrinsicEnum type = Globals.getIntrinsicBase (op);
+			return type == null ? null : getIntrinsicInternal (type.value (), specType);
 		}
 
 		@Override

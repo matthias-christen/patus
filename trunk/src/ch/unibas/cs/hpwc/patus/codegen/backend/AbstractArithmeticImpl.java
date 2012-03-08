@@ -338,13 +338,11 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 		return internalGenerateBinaryExpression (BinaryOperator.DIVIDE, expr1, expr2, spec, bVectorize);
 	}
 
-
 	@Override
 	public Expression sqrt (Expression expr, Specifier spec, boolean bVectorize)
 	{
 		return internalGenerateFunctionCall ("sqrt", spec, bVectorize, new Expression[] { expr }, null);
 	}
-
 
 	@Override
 	public Expression fma (Expression exprSummand, Expression exprFactor1, Expression exprFactor2, Specifier spec, boolean bVectorize)
@@ -354,7 +352,19 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 			spec,
 			bVectorize,
 			new Expression[] { exprSummand, exprFactor1, exprFactor2 },
-			Globals.PARAMSTRINGS_FMA
+			Globals.getIntrinsicArguments (TypeBaseIntrinsicEnum.FMA)
+		);
+	}
+
+	@Override
+	public Expression fms (Expression exprSummand, Expression exprFactor1, Expression exprFactor2, Specifier spec, boolean bVectorize)
+	{
+		return internalGenerateFunctionCall (
+			Globals.FNX_FMS.getName (),
+			spec,
+			bVectorize,
+			new Expression[] { exprSummand, exprFactor1, exprFactor2 },
+			Globals.getIntrinsicArguments (TypeBaseIntrinsicEnum.FMS)
 		);
 	}
 }

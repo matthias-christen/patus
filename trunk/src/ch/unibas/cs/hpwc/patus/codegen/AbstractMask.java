@@ -94,11 +94,7 @@ public abstract class AbstractMask implements IMask
 		return mapEquivClasses;
 	}
 
-	/**
-	 * Projects the spatial index of <code>index</code> onto the quotient space.
-	 * @param index
-	 * @return
-	 */
+	@Override
 	public int[] getEquivalenceClass (ISpaceIndexable index)
 	{
 		return apply (index.getSpaceIndex ());

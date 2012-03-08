@@ -629,7 +629,7 @@ public class MemoryObjectManager
 							node.getIndex ().isAdvanceableInTime (),
 							boxReference, border, ptOffset,
 							m_bIsMemoryObjectReferenced,
-							m_maskProjectToMemobj,
+							m_maskProjectToMemobj, m_maskProj,
 							m_cacheIndices, m_data);
 
 //						m_listMemoryObjects.add (mo);

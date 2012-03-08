@@ -140,4 +140,17 @@ public class InstructionList implements Iterable<IInstruction>
 	{
 		return m_listInstructions.size ();
 	}
+	
+	@Override
+	public String toString ()
+	{
+		StringBuilder sb = new StringBuilder ();
+		for (IInstruction i : this)
+		{
+			sb.append (i.toString ());
+			sb.append ("\n");
+		}
+		
+		return sb.toString ();
+	}
 }

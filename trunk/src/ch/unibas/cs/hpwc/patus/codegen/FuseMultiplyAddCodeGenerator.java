@@ -62,7 +62,9 @@ public class FuseMultiplyAddCodeGenerator
 
 				// check whether the operation of the top node is an add
 				// (if not, we can't apply a FMA to this node...)
-				if (BinaryOperator.ADD.equals (bexprTop.getOperator ()))
+				boolean bIsAdd = BinaryOperator.ADD.equals (bexprTop.getOperator ());
+				boolean bIsSubtract = BinaryOperator.SUBTRACT.equals (bexprTop.getOperator ());
+				if (bIsAdd || bIsSubtract)
 				{
 					// check whether the FMA is applicable with the left branch being a multiply
 					if (bexprTop.getLHS () instanceof BinaryExpression)
@@ -72,8 +74,11 @@ public class FuseMultiplyAddCodeGenerator
 						{
 							// conditions are met: create the FMA call
 
-							Expression exprFMA = m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
-								bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false);
+							Expression exprFMA = bIsAdd ?
+								m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
+									bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false) :
+								m_data.getCodeGenerators ().getBackendCodeGenerator ().fms (
+									bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false);
 
 							if (bexprTop == exprNew)
 								exprNew = exprFMA;
@@ -92,8 +97,11 @@ public class FuseMultiplyAddCodeGenerator
 						BinaryExpression bexprRight = (BinaryExpression) bexprTop.getRHS ();
 						if (BinaryOperator.MULTIPLY.equals (bexprRight.getOperator ()))
 						{
-							Expression exprFMA = m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
-								bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false);
+							Expression exprFMA = bIsAdd ?
+								m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
+									bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false) :
+								m_data.getCodeGenerators ().getBackendCodeGenerator ().fms (
+									bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false);
 
 							if (bexprTop == exprNew)
 								exprNew = exprFMA;

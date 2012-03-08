@@ -61,21 +61,21 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			IOperand.IRegisterOperand regCounter = getCounterRegister ();
 			int nSIMDVectorLengthInBytes = getSIMDVectorLength () * getBaseTypeSize ();
 			
-			l.addInstruction (new Instruction ("mov", new IOperand[] { as.getInput ("output grid address"), regCounter }));
-			l.addInstruction (new Instruction ("add", new IOperand[] { new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter }));
-			l.addInstruction (new Instruction ("and", new IOperand[] { new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter }));
-			l.addInstruction (new Instruction ("sub", new IOperand[] { new IOperand.Immediate (nSIMDVectorLengthInBytes), regCounter }));
-			l.addInstruction (new Instruction ("neg", new IOperand[] { regCounter }));
-			l.addInstruction (new Instruction ("shr", new IOperand[] { new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter }));
+			l.addInstruction (new Instruction ("mov", as.getInput ("output grid address"), regCounter));
+			l.addInstruction (new Instruction ("add", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
+			l.addInstruction (new Instruction ("and", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
+			l.addInstruction (new Instruction ("sub", new IOperand.Immediate (nSIMDVectorLengthInBytes), regCounter));
+			l.addInstruction (new Instruction ("neg", regCounter));
+			l.addInstruction (new Instruction ("shr", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter));
 			
-			l.addInstruction (new Instruction ("cmp", new IOperand[] { regCounter, as.getInput (INPUT_LOOPMAX) }));
-			l.addInstruction (new Instruction ("jg",  new IOperand[] { new IOperand.LabelOperand (LABEL_PROLOGHDR_LESSTHANMAX) }));
-			l.addInstruction (new Instruction ("mov", new IOperand[] { as.getInput (INPUT_LOOPMAX), regCounter }));
+			l.addInstruction (new Instruction ("cmp", regCounter, as.getInput (INPUT_LOOPMAX)));
+			l.addInstruction (new Instruction ("jg",  new IOperand.LabelOperand (LABEL_PROLOGHDR_LESSTHANMAX)));
+			l.addInstruction (new Instruction ("mov", as.getInput (INPUT_LOOPMAX), regCounter));
 			
 			l.addInstruction (new Label (LABEL_PROLOGHDR_LESSTHANMAX));
-			l.addInstruction (new Instruction ("mov", new IOperand[] { regCounter, m_regSaveCounter }));
-			l.addInstruction (new Instruction ("or",  new IOperand[] { regCounter, regCounter }));
-			l.addInstruction (new Instruction ("jz",  new IOperand[] { new IOperand.LabelOperand (LABEL_MAINHDR) }));
+			l.addInstruction (new Instruction ("mov", regCounter, m_regSaveCounter));
+			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
+			l.addInstruction (new Instruction ("jz",  new IOperand.LabelOperand (LABEL_MAINHDR)));
 			
 			return l;
 		}
@@ -90,9 +90,9 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			
 			IOperand.IRegisterOperand regCounter = getCounterRegister ();
 			
-			l.addInstruction (new Instruction ("shl", new IOperand[] { new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter }));
+			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter));
 			for (IOperand opGridAddrRegister : as.getGrids ())
-				l.addInstruction (new Instruction ("add", new IOperand[] { regCounter, opGridAddrRegister }));
+				l.addInstruction (new Instruction ("add", regCounter, opGridAddrRegister));
 			
 			return l;
 		}
@@ -108,14 +108,14 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			int nLoopUnrollingFactor = getRuntimeOptions ().getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
 			
 			// restore the loop counter
-			l.addInstruction (new Instruction ("mov", new IOperand[] { m_regSaveCounter, regCounter }));
+			l.addInstruction (new Instruction ("mov", m_regSaveCounter, regCounter));
 			l.addInstruction (new Label (LABEL_MAINHDR));
-			l.addInstruction (new Instruction ("sub", new IOperand[] { as.getInput (INPUT_LOOPMAX), regCounter }));
-			l.addInstruction (new Instruction ("neg", new IOperand[] { regCounter }));
-			l.addInstruction (new Instruction ("shr", new IOperand[] { new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), regCounter }));
-			l.addInstruction (new Instruction ("mov", new IOperand[] { regCounter, m_regTmp }));
-			l.addInstruction (new Instruction ("or",  new IOperand[] { regCounter, regCounter }));
-			l.addInstruction (new Instruction ("jz",  new IOperand[] { new IOperand.LabelOperand (LABEL_EPILOGHDR) }));
+			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPMAX), regCounter));
+			l.addInstruction (new Instruction ("neg", regCounter));
+			l.addInstruction (new Instruction ("shr", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), regCounter));
+			l.addInstruction (new Instruction ("mov", regCounter, m_regTmp));
+			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
+			l.addInstruction (new Instruction ("jz",  new IOperand.LabelOperand (LABEL_EPILOGHDR)));
 			l.addInstruction (new Label (LABEL_MAINHDR_STARTCOMPUTATION));		
 			
 			return l;
@@ -133,11 +133,11 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			
 			// increment pointers
 			for (IOperand opGridAddrRegister : as.getGrids ())
-				l.addInstruction (new Instruction ("add", new IOperand[] { new IOperand.Immediate (nSIMDVectorLengthInBytes), opGridAddrRegister }));
+				l.addInstruction (new Instruction ("add", new IOperand.Immediate (nSIMDVectorLengthInBytes), opGridAddrRegister));
 			
 			// loop
-			l.addInstruction (new Instruction ("dec", new IOperand[] { getCounterRegister () }));
-			l.addInstruction (new Instruction ("jnz", new IOperand[] { new IOperand.LabelOperand (LABEL_MAINHDR_STARTCOMPUTATION) }));
+			l.addInstruction (new Instruction ("dec", getCounterRegister ()));
+			l.addInstruction (new Instruction ("jnz", new IOperand.LabelOperand (LABEL_MAINHDR_STARTCOMPUTATION)));
 
 			return l;
 		}
@@ -155,18 +155,18 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			int nLoopUnrollingFactor = getRuntimeOptions ().getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
 			
 			l.addInstruction (new Label (LABEL_EPILOGHDR));
-			l.addInstruction (new Instruction ("mov", new IOperand[] { new IOperand.Immediate (nSIMDVectorLength), regCounter }));
-			l.addInstruction (new Instruction ("sub", new IOperand[] { as.getInput (INPUT_LOOPMAX), regCounter }));
-			l.addInstruction (new Instruction ("shl", new IOperand[] { new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), m_regTmp }));
-			l.addInstruction (new Instruction ("add", new IOperand[] { m_regTmp, regCounter }));
-			l.addInstruction (new Instruction ("add", new IOperand[] { m_regSaveCounter, regCounter }));
-			l.addInstruction (new Instruction ("cmp", new IOperand[] { new IOperand.Immediate (nSIMDVectorLength), regCounter }));
-			l.addInstruction (new Instruction ("je",  new IOperand[] { new IOperand.LabelOperand (LABEL_EPILOGHDR_ENDCOMPUTATION) }));
+			l.addInstruction (new Instruction ("mov", new IOperand.Immediate (nSIMDVectorLength), regCounter));
+			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPMAX), regCounter));
+			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), m_regTmp));
+			l.addInstruction (new Instruction ("add", m_regTmp, regCounter));
+			l.addInstruction (new Instruction ("add", m_regSaveCounter, regCounter));
+			l.addInstruction (new Instruction ("cmp", new IOperand.Immediate (nSIMDVectorLength), regCounter));
+			l.addInstruction (new Instruction ("je",  new IOperand.LabelOperand (LABEL_EPILOGHDR_ENDCOMPUTATION)));
 			
 			// adjust the pointers
-			l.addInstruction (new Instruction ("shl", new IOperand[] { new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter }));
+			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter));
 			for (IOperand opGridAddrRegister : as.getGrids ())
-				l.addInstruction (new Instruction ("sub", new IOperand[] { regCounter, opGridAddrRegister }));		
+				l.addInstruction (new Instruction ("sub", regCounter, opGridAddrRegister));		
 
 			return l;
 		}

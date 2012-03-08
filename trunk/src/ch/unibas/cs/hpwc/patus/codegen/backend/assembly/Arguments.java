@@ -1,14 +1,9 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
+
 public class Arguments
 {
-	///////////////////////////////////////////////////////////////////
-	// Constants
-	
-	public final static String NAME_LHS = "lhs";
-	public final static String NAME_RHS = "rhs";
-
-	
 	///////////////////////////////////////////////////////////////////
 	// Static Methods
 	
@@ -48,7 +43,7 @@ public class Arguments
 	 */
 	public static Argument getLHS (Argument[] rgArgs)
 	{
-		Argument arg = Arguments.getNamedArgument (rgArgs, NAME_LHS);
+		Argument arg = Arguments.getNamedArgument (rgArgs, Globals.ARGNAME_LHS);
 		if (arg == null)
 		{
 			// find the first argument which is not an output (and assume it's the LHS)
@@ -72,7 +67,7 @@ public class Arguments
 	 */
 	public static Argument getRHS (Argument[] rgArgs)
 	{
-		Argument arg = Arguments.getNamedArgument (rgArgs, NAME_RHS);
+		Argument arg = Arguments.getNamedArgument (rgArgs, Globals.ARGNAME_RHS);
 		if (arg == null)
 		{
 			// find the second argument which is not an output (and assume it's the RHS)

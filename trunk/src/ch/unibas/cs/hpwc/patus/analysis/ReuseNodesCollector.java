@@ -95,20 +95,10 @@ public class ReuseNodesCollector
 	/**
 	 * 
 	 * @param nMaxNodes
-	 * @return
-	 */
-	public Iterable<StencilNodeSet> getSetsWithMaxNodesConstraint (int nMaxNodes)
-	{
-		return getSetsWithMaxNodesConstraint (nMaxNodes, 1);
-	}
-
-	/**
-	 * 
-	 * @param nMaxNodes
 	 * @param nUnrollingFactor
 	 * @return
 	 */
-	public Iterable<StencilNodeSet> getSetsWithMaxNodesConstraint (int nMaxNodes, int nUnrollingFactor)
+	public Iterable<StencilNodeSet> getSetsWithMaxNodesConstraint (int nMaxNodes)
 	{
 		List<StencilNodeSet> listResult = new LinkedList<StencilNodeSet> ();
 		
@@ -119,7 +109,11 @@ public class ReuseNodesCollector
 		int nSum = 0;
 		for (StencilNodeSet set : m_listNodeClasses)
 		{
-			int nRange = getRange (set) + nUnrollingFactor - 1;
+			// only allow sets with more than one nodes
+			if (set.size () < 2)
+				continue;
+			
+			int nRange = getRange (set);
 			if (nSum + nRange <= nMaxNodes)
 			{
 				listResult.add (set);
@@ -191,5 +185,36 @@ public class ReuseNodesCollector
 	{
 		StencilNodeSetInfo info = (StencilNodeSetInfo) set.getData ();
 		return info.getMaxCoord () - info.getMinCoord () + 1;
+	}
+
+	/**
+	 * Adds new stencil nodes to the sets with more than one stencil nodes to account for
+	 * unrolling in the dimension <code>nReuseDimension</code>.
+	 * @param nReuseDimension The reuse dimension in which the unrolling will be done
+	 * @param nUnrollFactor The unroll factor
+	 */
+	public void addUnrollNodes (int nReuseDimension, int nUnrollFactor)
+	{
+		for (StencilNodeSet set : m_listNodeClasses)
+		{
+			// skip sets with only one stencil node
+			if (set.size () < 2)
+				continue;
+			
+			// get a node prototype of the set based on which the new nodes used for unrolling will be added
+			StencilNode nodePrototype = set.iterator ().next ();
+			
+			// add new stencil nodes
+			StencilNodeSetInfo info = (StencilNodeSetInfo) set.getData ();
+			for (int i = 1; i < nUnrollFactor; i++)
+			{
+				StencilNode nodeNew = new StencilNode (nodePrototype);
+				nodeNew.getSpaceIndex ()[nReuseDimension] = info.getMaxCoord () + i;
+				set.add (nodeNew);
+			}
+			
+			// update the coordinate info
+			info.addCoord (info.getMaxCoord () + nUnrollFactor - 1);
+		}
 	}
 }

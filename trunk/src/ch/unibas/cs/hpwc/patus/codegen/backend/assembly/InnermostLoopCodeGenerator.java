@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import cetus.hir.Expression;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
@@ -83,7 +84,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		/**
 		 * Maps constant values to registers, in which the constants are stored during the computation
 		 */
-		private Map<Double, IOperand.IRegisterOperand> m_mapConstants;
+		private Map<Expression, IOperand.IRegisterOperand> m_mapConstantsAndParams;
 
 		
 		public CodeGenerator (SubdomainIterator sdit, CodeGeneratorRuntimeOptions options)
@@ -121,7 +122,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				for (StencilNode node : map.keySet ())
 					mapReuse.put (node, map.get (node));
 			}
-			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (m_assemblySection, m_data, mapReuse, m_mapConstants);
+			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams);
 			
 			InstructionList listInstrComputation = new InstructionList ();
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
@@ -214,8 +215,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			int nAvailableRegisters = m_data.getArchitectureDescription ().getRegistersCount (TypeRegisterType.SIMD);
 			
 			// subtract the registers used to store constants
-			if (m_assemblySection.getConstantsCount () <= MAX_REGISTERS_FOR_CONSTANTS)
-				nAvailableRegisters -= m_assemblySection.getConstantsCount ();
+			if (m_assemblySection.getConstantsAndParamsCount () <= MAX_REGISTERS_FOR_CONSTANTS)
+				nAvailableRegisters -= m_assemblySection.getConstantsAndParamsCount ();
 			
 			// subtract the registers used for the calculations
 			RegisterAllocator regcnt = new RegisterAllocator (m_data, m_assemblySection, null);
@@ -235,7 +236,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			
 			// find stencil node sets to reuse within the innermost loop
 			ReuseNodesCollector reuse = new ReuseNodesCollector (m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ().getAllNodes (), 0);
-			return reuse.getSetsWithMaxNodesConstraint (nAvailableRegisters, m_nUnrollFactor);
+			reuse.addUnrollNodes (0, m_nUnrollFactor);
+			return reuse.getSetsWithMaxNodesConstraint (nAvailableRegisters);
 		}
 		
 		/**
@@ -243,11 +245,11 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		 */
 		private void assignConstantRegisters ()
 		{
-			m_mapConstants = new HashMap<Double, IOperand.IRegisterOperand> ();
-			if (m_assemblySection.getConstantsCount () < MAX_REGISTERS_FOR_CONSTANTS)
+			m_mapConstantsAndParams = new HashMap<Expression, IOperand.IRegisterOperand> ();
+			if (m_assemblySection.getConstantsAndParamsCount () < MAX_REGISTERS_FOR_CONSTANTS)
 			{
-				for (double fConstant : m_assemblySection.getConstants ())
-					m_mapConstants.put (fConstant, m_assemblySection.getFreeRegister (TypeRegisterType.SIMD));
+				for (Expression exprConstOrParam : m_assemblySection.getConstantsAndParams ())
+					m_mapConstantsAndParams.put (exprConstOrParam, m_assemblySection.getFreeRegister (TypeRegisterType.SIMD));
 			}
 		}
 		

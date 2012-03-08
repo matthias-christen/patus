@@ -19,6 +19,13 @@ import ch.unibas.cs.hpwc.patus.util.IntArray;
 public interface IMask
 {
 	/**
+	 * Projects the spatial index of <code>index</code> onto the quotient space.
+	 * @param index
+	 * @return
+	 */
+	public abstract int[] getEquivalenceClass (ISpaceIndexable index);
+
+	/**
 	 * Groups the items in <code>itInput</code> into equivalence classes according to the
 	 * mask and returns the equivalence classes as a map from the spatial index to a list
 	 * of items contained in the equivalence class. The spatial index, which is the key

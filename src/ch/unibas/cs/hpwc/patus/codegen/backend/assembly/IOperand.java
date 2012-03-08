@@ -15,8 +15,17 @@ public interface IOperand
 
 	///////////////////////////////////////////////////////////////////
 	// Implementing Classes
+	
+	public abstract static class AbstractOperand implements IOperand
+	{
+		@Override
+		public String toString ()
+		{
+			return getAsString ();
+		}
+	}
 
-	public static class Register implements IRegisterOperand
+	public static class Register extends AbstractOperand implements IRegisterOperand
 	{
 		private TypeRegister m_register;
 		
@@ -51,7 +60,7 @@ public interface IOperand
 		}
 	}
 	
-	public static class InputRef implements IRegisterOperand
+	public static class InputRef extends AbstractOperand implements IRegisterOperand
 	{
 		private int m_nIndex;
 		
@@ -67,7 +76,7 @@ public interface IOperand
 		}
 	}
 	
-	public static class PseudoRegister implements IRegisterOperand
+	public static class PseudoRegister extends AbstractOperand implements IRegisterOperand
 	{
 		private static int m_nPseudoRegisterNumber = 0;
 		private int m_nNumber;
@@ -103,7 +112,7 @@ public interface IOperand
 		}
 	}
 	
-	public static class Immediate implements IOperand
+	public static class Immediate extends AbstractOperand
 	{
 		private long m_nValue;
 		
@@ -119,7 +128,7 @@ public interface IOperand
 		}
 	}
 	
-	public static class Address implements IOperand
+	public static class Address extends AbstractOperand
 	{
 		private long m_nDisplacement;
 		private IRegisterOperand m_regBase;
@@ -177,8 +186,6 @@ public interface IOperand
 					sb.append (m_nScale);
 				}
 			}
-			else if (m_nScale != 1)
-				throw new RuntimeException ("If no index is provided, the scale has to be 1.");
 			
 			sb.append (')');
 			
@@ -186,18 +193,19 @@ public interface IOperand
 		}
 	}
 	
-	public static class LabelOperand implements IOperand
+	public static class LabelOperand extends AbstractOperand
 	{
+		private String m_strLabelIdentifier;
+		
 		public LabelOperand (String strLabelIdentifier)
 		{
-			
+			m_strLabelIdentifier = strLabelIdentifier;
 		}
 		
 		@Override
 		public String getAsString ()
 		{
-			// TODO Auto-generated method stub
-			return null;
+			return m_strLabelIdentifier;
 		}
 	}
 	

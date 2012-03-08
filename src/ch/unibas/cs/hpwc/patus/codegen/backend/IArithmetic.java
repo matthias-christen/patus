@@ -84,14 +84,25 @@ public interface IArithmetic
 
 	/**
 	 * Creates a fused multiply-add (FMA) expression: Returns an expression for
-	 * <code>expr1</code> + <code>expr2</code> * <code>expr3</code>.
+	 * <code>exprFactor1</code> * <code>exprFactor2</code> + <code>exprSummand</code>.
 	 * @param exprSummand The summand
 	 * @param exprFactor1 The first factor
 	 * @param exprFactor2 The second factor
 	 * @param specDatatype The basic datatype of the expression (<code>float</code>, <code>double</code>, ...)
-	 * @return An expression for <code>expr1</code> + <code>expr2</code> * <code>expr3</code>
+	 * @return An expression for <code>exprFactor1</code> * <code>exprFactor2</code> + <code>exprSummand</code>
 	 */
 	public abstract Expression fma (Expression exprSummand, Expression exprFactor1, Expression exprFactor2, Specifier specDatatype, boolean bVectorize);
+
+	/**
+	 * Creates a fused multiply-subtract (FMS) expression: Returns an expression for
+	 * <code>exprFactor1</code> * <code>exprFactor2</code> - <code>exprSummand</code>.
+	 * @param exprSummand The summand
+	 * @param exprFactor1 The first factor
+	 * @param exprFactor2 The second factor
+	 * @param specDatatype The basic datatype of the expression (<code>float</code>, <code>double</code>, ...)
+	 * @return An expression for <code>exprFactor1</code> * <code>exprFactor2</code> - <code>exprSummand</code>
+	 */
+	public abstract Expression fms (Expression exprSummand, Expression exprFactor1, Expression exprFactor2, Specifier specDatatype, boolean bVectorize);
 
 	/**
 	 * Calculates the square root of <code>expr</code>.

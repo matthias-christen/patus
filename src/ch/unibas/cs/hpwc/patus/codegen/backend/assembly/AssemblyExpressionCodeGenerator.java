@@ -17,8 +17,8 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
-import ch.unibas.cs.hpwc.patus.representation.Index;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -37,10 +37,8 @@ public class AssemblyExpressionCodeGenerator
 	
 	private Map<StencilNode, IOperand.IRegisterOperand> m_mapReuseNodesToRegisters;
 	
-	private Map<Double, IOperand.IRegisterOperand> m_mapConstants;
-	
-	private Map<String, IOperand.IRegisterOperand[]> m_mapVariables;
-	
+	private Map<Expression, IOperand.IRegisterOperand> m_mapConstantsAndParams;
+		
 	private RegisterAllocator m_allocator;
 
 	
@@ -49,12 +47,12 @@ public class AssemblyExpressionCodeGenerator
 
 	public AssemblyExpressionCodeGenerator (StencilAssemblySection as, CodeGeneratorSharedObjects data,
 		Map<StencilNode, IOperand.IRegisterOperand> mapReuseNodesToRegisters,
-		Map<Double, IOperand.IRegisterOperand> mapConstants)
+		Map<Expression, IOperand.IRegisterOperand> mapConstantsAndParams)
 	{
 		m_data = data;
 		m_assemblySection = as;
 		m_mapReuseNodesToRegisters = mapReuseNodesToRegisters;
-		m_mapConstants = mapConstants;
+		m_mapConstantsAndParams = mapConstantsAndParams;
 		
 		Map<StencilNode, Boolean> mapReuse = new HashMap<StencilNode, Boolean> ();
 		for (StencilNode node : m_mapReuseNodesToRegisters.keySet ())
@@ -77,7 +75,7 @@ public class AssemblyExpressionCodeGenerator
 		m_allocator.countRegistersNeeded (expr);
 
 		InstructionList il = new InstructionList ();
-		traverse (expr, m_assemblySection.getDatatype (), nUnrollFactor, il);
+		IOperand[] rgResult = traverse (expr, m_assemblySection.getDatatype (), nUnrollFactor, il);
 		
 		return il;
 	}
@@ -94,13 +92,10 @@ public class AssemblyExpressionCodeGenerator
 	{
 		if (expr instanceof StencilNode)
 			return processStencilNode ((StencilNode) expr, nUnrollFactor, il);
-		if (expr instanceof IDExpression)
-			return processVariable ((IDExpression) expr, nUnrollFactor, il);
-		if (expr instanceof Literal)
-		{
-			// find the register the constant is saved in or load the constant into a register (if too many registers)
-			
-		}
+//		if (expr instanceof IDExpression)
+//			return processVariable ((IDExpression) expr, nUnrollFactor, il);
+		if (expr instanceof Literal || expr instanceof IDExpression)
+			return processConstantOrParam (expr, nUnrollFactor, il);
 		
 		if (RegisterAllocator.isAddSubSubtree (expr))
 			return processAddSubSubtree (expr, specDatatype, nUnrollFactor, il);
@@ -115,6 +110,36 @@ public class AssemblyExpressionCodeGenerator
 	}
 	
 	/**
+	 * 
+	 * @param il
+	 * @param nUnrollFactor
+	 * @param strIntrinsicBaseName
+	 * @param rgArguments
+	 * @return
+	 */
+	private IOperand[] addInstruction (InstructionList il, int nUnrollFactor, String strIntrinsicBaseName, IOperand[] rgResult, IOperand[]... rgArguments)
+	{
+		boolean bHasResult = rgResult != null;
+		if (!bHasResult)
+			rgResult = new IOperand[nUnrollFactor];
+		
+		for (int i = 0; i < nUnrollFactor; i++)
+		{
+			if (!bHasResult)
+				rgResult[i] = new IOperand.PseudoRegister ();
+			
+			IOperand[] rgArgs = new IOperand[rgArguments.length + 1];
+			for (int j = 0; j < rgArguments.length; j++)
+				rgArgs[j] = rgArguments[j][i];
+			rgArgs[rgArguments.length] = rgResult[i];
+			
+			il.addInstruction (new Instruction (strIntrinsicBaseName, rgArgs));
+		}
+		
+		return rgResult;
+	}
+
+	/**
 	 * Generates the code for a add-sub subtree.
 	 * @param expr
 	 * @param specDatatype
@@ -127,43 +152,29 @@ public class AssemblyExpressionCodeGenerator
 		List<AddSub> list = new LinkedList<AddSub> ();
 		RegisterAllocator.linearizeAddSubSubtree (expr, list);
 		
-		IOperand.IRegisterOperand regSum = new IOperand.PseudoRegister (); //m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
+		IOperand[] rgResult = null;
 		
-		boolean bIsFirst = true;
+		int i = 0;
 		for (AddSub addsub : list)
 		{
-			IOperand[] rgOpSummand = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
-			
-			if (bIsFirst)
-			{
-				/*
-				m_assemblySection.addInstruction (new Instruction (), specDatatype);
-				issueInstruction (
-					IBackendAssemblyCodeGenerator.INSTR_MOV_FPR,
-					new String[] { strSummand, regSum.getName () },
-					specDatatype,
-					sb
-				);
-				*/
-			}
+			if (i == 0)
+				rgResult = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
 			else
 			{
-				/*
-				issueInstruction (
-					addsub.getInstruction (),
-					new String[] { regSum.getName (), strSummand, regSum.getName () },
-					specDatatype,
-					sb
+				rgResult = addInstruction (il, nUnrollFactor,
+					addsub.getBaseIntrinsic (),
+					i == 1 ? null : rgResult,
+					traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il),
+					rgResult
 				);
-				*/
 			}
 			
-			bIsFirst = false;
+			i++;
 		}
 		
-		return null;//regSum;
+		return rgResult;
 	}
-
+	
 	/**
 	 * 
 	 * @param expr
@@ -174,42 +185,30 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] processBinaryExpression (BinaryExpression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
+		return addInstruction (il, nUnrollFactor,
+			Globals.getIntrinsicBase (expr.getOperator ()).value (),
+			null,
+			traverse (expr.getLHS (), specDatatype, nUnrollFactor, il),
+			traverse (expr.getRHS (), specDatatype, nUnrollFactor, il)
+		);
+		
+		/*
 		IOperand[] rgOpResult = new IOperand[nUnrollFactor];
 
 		IOperand[] rgOpLHS = traverse (expr.getLHS (), specDatatype, nUnrollFactor, il);
 		IOperand[] rgOpRHS = traverse (expr.getRHS (), specDatatype, nUnrollFactor, il);
-
-		// get the intrinsic corresponding to the operator of the binary expression
-		Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (expr.getOperator (), specDatatype);		
-		Argument[] rgArgs = Arguments.parseArguments (intrinsic.getArguments ());
-		
-		// is there an output argument?
-		boolean bHasOutput = Arguments.hasOutput (rgArgs);
-		int nOutputArgNum = -1;
-		if (bHasOutput)
-			nOutputArgNum = Arguments.getOutput (rgArgs).getNumber ();
 		
 		// create the instructions and add them to the list
 		for (int i = 0; i < nUnrollFactor; i++)
 		{
-			IOperand[] rgOperands = new IOperand[rgArgs.length];
-			
-			rgOperands[Arguments.getLHS (rgArgs).getNumber ()] = rgOpLHS[i];
-			rgOperands[Arguments.getRHS (rgArgs).getNumber ()] = rgOpRHS[i];
-			
-			IOperand opResult = isReservedRegister (rgOpRHS[i]) ? new IOperand.PseudoRegister () : rgOpRHS[i];
-			
-			if (bHasOutput && rgArgs.length > 2)
-			{
-				// the instruction requires an output operand distinct from the LHS and RHS operands
-				rgOperands[nOutputArgNum] = opResult;
-			}
-			
-			il.addInstruction (new Instruction (intrinsic.getName (), rgOperands));			
-			rgOpResult[i] = bHasOutput ? rgOperands[nOutputArgNum] : rgOpRHS[i];
+			IOperand opResult = new IOperand.PseudoRegister (); //isReservedRegister (rgOpRHS[i]) ? new IOperand.PseudoRegister () : rgOpRHS[i];
+
+			il.addInstruction (new Instruction (Globals.getIntrinsicBase (expr.getOperator ()), rgOpLHS[i], rgOpRHS[i], opResult));
+			rgOpResult[i] = opResult;//bHasOutput ? rgOperands[nOutputArgNum] : rgOpRHS[i];
 		}
 		
 		return rgOpResult;
+		*/
 	}
 	
 	/**
@@ -226,29 +225,50 @@ public class AssemblyExpressionCodeGenerator
 		Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (exprFuncName.toString (), specDatatype);
 
 		if (exprFuncName.equals (Globals.FNX_FMA) || exprFuncName.equals (Globals.FNX_FMS))
-			return processFusedMultiplyAddSub (i, specDatatype, nUnrollFactor, il);
+			return processFusedMultiplyAddSub (i, fnxCall.getArgument (0), fnxCall.getArgument (1), fnxCall.getArgument (2), specDatatype, nUnrollFactor, il);
 		else
 			throw new RuntimeException (StringUtil.concat ("The function '", exprFuncName.toString (), "' is currently not supported."));
 	}
 	
-	private IOperand[] processFusedMultiplyAddSub (Intrinsic intrinsic, Specifier specDatatype, int nUnrollFactor, InstructionList il)
-	{
-		return null;
-	}
-
 	/**
 	 * 
-	 * @param expr
+	 * @param intrinsic
+	 * @param exprSummand
+	 * @param exprFactor1
+	 * @param exprFactor2
 	 * @param specDatatype
 	 * @param nUnrollFactor
 	 * @param il
 	 * @return
+	 */
+	private IOperand[] processFusedMultiplyAddSub (Intrinsic intrinsic, Expression exprSummand, Expression exprFactor1, Expression exprFactor2,
+		Specifier specDatatype, int nUnrollFactor, InstructionList il)
+	{
+		return addInstruction (il, nUnrollFactor,
+			intrinsic.getBaseName (),
+			null,
+			traverse (exprSummand, specDatatype, nUnrollFactor, il),
+			traverse (exprFactor1, specDatatype, nUnrollFactor, il),
+			traverse (exprFactor2, specDatatype, nUnrollFactor, il)
+		);
+	}
+
+	/**
+	 * Processes an unary expression.
+	 * @param expr The unary expression to process
+	 * @param specDatatype The datatype of the expression
+	 * @param nUnrollFactor The unrolling factor; this will add <code>nUnrollFactor</code> instructions to the instruction list
+	 * @param il The instruction list to which the instructions generated by the unary expression are added
+	 * @return The operands in which the results are stored. Returns <code>nUnrollFactor</code> results.
 	 */
 	private IOperand[] processUnaryExpression (UnaryExpression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
 		IOperand[] rgOps = traverse (expr, specDatatype, nUnrollFactor, il);
 		
 		if (((UnaryExpression) expr).getOperator ().equals (UnaryOperator.MINUS))
+			rgOps = addInstruction (il, nUnrollFactor, TypeBaseIntrinsicEnum.UNARY_MINUS.value (), null, rgOps);
+		
+		/*
 		{
 			Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (expr.getOperator (), specDatatype);
 			if (intrinsic == null)
@@ -256,15 +276,16 @@ public class AssemblyExpressionCodeGenerator
 			
 			for (int i = 0; i < nUnrollFactor; i++)
 				il.addInstruction (new Instruction (intrinsic.getName (), new IOperand[] { rgOps[i] }));
-		}
+		}*/
 
 		return rgOps;
 	}
-	
+
 	/**
 	 * 
 	 * @param node
 	 * @param nUnrollFactor
+	 * @param il
 	 * @return
 	 */
 	private IOperand[] processStencilNode (StencilNode node, int nUnrollFactor, InstructionList il)
@@ -273,11 +294,11 @@ public class AssemblyExpressionCodeGenerator
 		boolean bIsReuse = true;
 
 		// check whether the stencil node is saved in a reuse register
+		StencilNode nodeTest = new StencilNode (node);
 		for (int i = 0; i < nUnrollFactor; i++)
 		{
-			Index idx = new Index (node.getIndex ());
-			idx.getSpaceIndex ()[0] += i;
-			IOperand.IRegisterOperand op = m_mapReuseNodesToRegisters.get (idx);
+			nodeTest.getSpaceIndex ()[0] = node.getSpaceIndex ()[0] + i;
+			IOperand.IRegisterOperand op = m_mapReuseNodesToRegisters.get (nodeTest);
 			if (op == null)
 			{
 				bIsReuse = false;
@@ -314,9 +335,10 @@ public class AssemblyExpressionCodeGenerator
 	
 	private IOperand[] processVariable (IDExpression id, int nUnrollFactor, InstructionList il)
 	{
-		if (m_mapVariables.containsKey (id.getName ()))
-			return m_mapVariables.get (id.getName ());
+		if (m_mapConstantsAndParams.containsKey (id))
+			return new IOperand[] { m_mapConstantsAndParams.get (id) };
 		
+/*		
 		// if id is constant, we need only one register, otherwise we need nUnrollFactor registers
 		boolean bIsConstant =
 			m_data.getStencilCalculation ().getStencilBundle ().isConstantOutputStencilNode (id) ||
@@ -338,12 +360,58 @@ public class AssemblyExpressionCodeGenerator
 					throw new RuntimeException ("No FRP move instruction defined");
 				
 				il.addInstruction (new Instruction (intrinsic.getName (), new IOperand[] { X, rgRegs[i] }));
-			}			
+			}
 		}
 		
 		m_mapVariables.put (id.getName (), rgRegs);
 		
 		return rgRegs;
+*/
+		return null;
+	}
+	
+	private IOperand[] processConstantOrParam (Expression exprConstantOrParam, int nUnrollFactor, InstructionList il)
+	{
+		// find the register the constant is saved in or load the constant into a register (if too many registers)
+		IOperand[] rgResult = new IOperand[nUnrollFactor];
+		
+		IOperand op = m_mapConstantsAndParams.get (exprConstantOrParam);
+		if (op == null)
+		{
+			// the constant or parameter is not contained in the map, i.e., there are no special registers
+			// reserved for them => load into a temporary register from memory
+			
+			int nConstParamIdx = m_assemblySection.getConstantOrParamIndex (exprConstantOrParam);
+			if (nConstParamIdx == -1)
+			{
+				// the constant/parameter was not found in the assembly section constant/param input array
+				if (exprConstantOrParam instanceof IDExpression)
+					return processVariable ((IDExpression) exprConstantOrParam, nUnrollFactor, il);
+				
+				throw new RuntimeException (StringUtil.concat ("Don't know how to process ", exprConstantOrParam.toString ()));
+			}
+			else
+			{
+				// the constant/parameter was found in the assembly section constant/param input array
+				
+				Specifier specType = m_assemblySection.getDatatype ();
+				int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (specType);
+				
+				il.addInstruction (new Instruction (
+					TypeBaseIntrinsicEnum.MOVE_FPR.value (),
+					new IOperand[] {
+						new IOperand.Address (
+							(IOperand.IRegisterOperand) m_assemblySection.getInput (StencilAssemblySection.INPUT_CONSTANTS_ARRAYPTR),
+							nConstParamIdx * AssemblySection.getTypeSize (specType) * nSIMDVectorLength),
+						op = new IOperand.PseudoRegister ()
+					}
+				));
+			}
+		}
+		
+		for (int i = 0; i < nUnrollFactor; i++)
+			rgResult[i] = op;
+		return rgResult;
 	}
 	
 	/**
@@ -356,7 +424,7 @@ public class AssemblyExpressionCodeGenerator
 	{
 		if (m_mapReuseNodesToRegisters.containsValue (opReg))
 			return true;
-		if (m_mapConstants.containsValue (opReg))
+		if (m_mapConstantsAndParams.containsValue (opReg))
 			return true;
 		
 		return false;

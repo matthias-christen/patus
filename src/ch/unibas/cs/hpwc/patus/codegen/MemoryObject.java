@@ -11,9 +11,8 @@
 package ch.unibas.cs.hpwc.patus.codegen;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-
-import org.apache.log4j.Logger;
 
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
@@ -48,7 +47,7 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  */
 public class MemoryObject
 {
-	private final static Logger LOGGER = Logger.getLogger (MemoryObject.class);
+//	private final static Logger LOGGER = Logger.getLogger (MemoryObject.class);
 
 	private final static boolean USE_MODULUS = false;
 
@@ -103,9 +102,14 @@ public class MemoryObject
 	private Border m_border;
 
 	/**
-	 *
+	 * The mask used to project to this memory object (the projection unmask)
 	 */
-	private IMask m_maskProjection;
+	private IMask m_maskProjectionToMemobj;
+	
+	/**
+	 * The mask used to project to memory object classes (the projection mask)
+	 */
+	private IMask m_maskGlobalProjection;
 
 	/**
 	 * The parallelism level on which this memory object resides
@@ -159,7 +163,7 @@ public class MemoryObject
 		boolean bIsTimeAdvanceable,
 		Box boxReference, Border border, Point ptIndexOffset,
 		boolean bIsMemoryObjectReferenced,
-		IMask maskProjection,
+		IMask maskProjectionToMemobj, IMask maskGlobalProjection,
 		IndexExpressionCache cache, CodeGeneratorSharedObjects data)
 	{
 		m_data = data;
@@ -208,7 +212,8 @@ public class MemoryObject
 
 		m_border = border == null ? new Border () : border;
 
-		m_maskProjection = maskProjection;
+		m_maskProjectionToMemobj = maskProjectionToMemobj;
+		m_maskGlobalProjection = maskGlobalProjection;
 		m_cacheIndices = cache;
 
 		VariableDeclarator decl = new VariableDeclarator (new NameID (strName));
@@ -278,7 +283,7 @@ public class MemoryObject
 		box.addBorder (
 //			new BinaryExpression (new BinaryExpression (exprTotalTimesteps.clone (), BinaryOperator.SUBTRACT, exprLocalTimestep.clone ()), BinaryOperator.ADD, new IntegerLiteral (1)),
 			//new BinaryExpression (exprTotalTimesteps.clone (), BinaryOperator.SUBTRACT, exprLocalTimestep.clone ()),
-			m_border, nSIMDVectorLength, m_maskProjection);
+			m_border, nSIMDVectorLength, m_maskProjectionToMemobj);
 
 		// TODO: implement padding
 		// size = ceil((oldsize + padding)/L) * L, L=lcm(alignment restrictions)
@@ -352,7 +357,7 @@ public class MemoryObject
 		if (sdid == null)
 			ptIndex = Point.getZero (getDimensionality ());
 		else
-			ptIndex = m_data.getData ().getGeneratedIdentifiers ().getIndexPoint (sdid).clone ().offset (m_maskProjection.apply (node.getIndex ().getSpaceIndex ()));
+			ptIndex = m_data.getData ().getGeneratedIdentifiers ().getIndexPoint (sdid).clone ().offset (m_maskProjectionToMemobj.apply (node.getIndex ().getSpaceIndex ()));
 
 		// offset the index point
 		if (vecOffsetWithinMemObj != null)
@@ -469,7 +474,22 @@ public class MemoryObject
 	 */
 	public IMask getProjectionMask ()
 	{
-		return m_maskProjection;
+		return m_maskProjectionToMemobj;
+	}
+
+	/**
+	 * Determines whether the node <code>node</code> is contained in this memory object.
+	 * @param node The node for which to determine whether it belongs to this memory object
+	 * @return <code>true</code> iff the node <code>node</code> belongs to this memory object
+	 */
+	public boolean contains (StencilNode node)
+	{
+		if (node.getIndex ().getTimeIndex () != m_nodeReference.getIndex ().getTimeIndex ())
+			return false;
+		if (node.getIndex ().getVectorIndex () != m_nodeReference.getIndex ().getVectorIndex ())
+			return false;
+		
+		return Arrays.equals (m_maskGlobalProjection.getEquivalenceClass (m_nodeReference), m_maskGlobalProjection.getEquivalenceClass (node));
 	}
 
 	/**

@@ -10,10 +10,12 @@ import cetus.hir.BinaryOperator;
 import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.FunctionCall;
+import cetus.hir.IDExpression;
 import cetus.hir.Literal;
 import cetus.hir.NameID;
 import cetus.hir.Traversable;
 import cetus.hir.UnaryExpression;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
@@ -222,7 +224,7 @@ public class RegisterAllocator
 				for (int i = 0; i < ((FunctionCall) trvParent).getNumArguments (); i++)
 					if (expr == ((FunctionCall) trvParent).getArgument (i))
 					{
-						arg = Arguments.getNamedArgument (rgArgs, Globals.PARAMSTRINGS_FMA[i]);
+						arg = Arguments.getNamedArgument (rgArgs, Globals.getIntrinsicArguments (Globals.getIntrinsicBase (((IDExpression) exprFuncName).getName ()))[i]);
 						break;
 					}
 				if (arg == null)

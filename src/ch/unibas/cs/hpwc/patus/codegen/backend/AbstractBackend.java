@@ -178,6 +178,12 @@ public abstract class AbstractBackend implements IBackend
 	}
 
 	@Override
+	public Expression fms (Expression exprSummand, Expression exprFactor1, Expression exprFactor2, Specifier specDatatype, boolean bVectorize)
+	{
+		return m_mixinArithmetic.fms (exprSummand, exprFactor1, exprFactor2, specDatatype, bVectorize);
+	}
+
+	@Override
 	public Expression sqrt (Expression expr, Specifier specDatatype, boolean bVectorize)
 	{
 		return m_mixinArithmetic.sqrt (expr, specDatatype, bVectorize);

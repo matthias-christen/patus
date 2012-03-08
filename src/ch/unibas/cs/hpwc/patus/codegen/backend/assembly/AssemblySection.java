@@ -31,11 +31,11 @@ public class AssemblySection
 	public static class AssemblySectionInput
 	{
 		private Object m_objKey;
-		private IOperand m_operand;
+		private IOperand.IRegisterOperand m_operand;
 		private Expression m_exprValue;
 		
 
-		public AssemblySectionInput (Object objKey, IOperand op, Expression exprValue)
+		public AssemblySectionInput (Object objKey, IOperand.IRegisterOperand op, Expression exprValue)
 		{
 			m_objKey = objKey;
 			m_operand = op;
@@ -47,7 +47,7 @@ public class AssemblySection
 			return m_objKey;
 		}
 
-		public IOperand getOperand ()
+		public IOperand.IRegisterOperand getOperand ()
 		{
 			return m_operand;
 		}
@@ -108,7 +108,7 @@ public class AssemblySection
 	 */
 	public IOperand addInput (Object input, Expression exprValue)
 	{
-		IOperand op = new IOperand.InputRef (m_listInputs.size ());
+		IOperand.InputRef op = new IOperand.InputRef (m_listInputs.size ());
 		m_listInputs.add (new AssemblySectionInput (input, op, exprValue));
 
 		return op;
@@ -119,7 +119,7 @@ public class AssemblySection
 	 * @param input The input for which the retrieve the corresponding operand
 	 * @return The operand corresponding to <code>input</code>
 	 */
-	public IOperand getInput (Object input)
+	public IOperand.IRegisterOperand getInput (Object input)
 	{
 		for (AssemblySectionInput asi : m_listInputs)
 			if (asi.getKey ().equals (input))

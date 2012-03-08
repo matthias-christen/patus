@@ -10,11 +10,16 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.codegen;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import cetus.hir.AnnotationStatement;
+import cetus.hir.BinaryOperator;
 import cetus.hir.CodeAnnotation;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
+import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -53,21 +58,64 @@ public class Globals
 	public static final NameID FNX_FMS = new NameID (TypeBaseIntrinsicEnum.FMS.value ());
 	public static final NameID FNX_MALLOC = new NameID (TypeBaseIntrinsicEnum.MALLOC.value ());
 
-	/**
-	 * Parameters for {@link Globals#FNX_FMA} and {@link Globals#FNX_FMS}
-	 */
-	public static final String[] PARAMSTRINGS_FMA = new String[] { "summand", "factor1", "factor2" };
-
 	public static final Specifier SPECIFIER_INDEX = Specifier.INT;
 	public static final Specifier SPECIFIER_SIZE = Specifier.INT;
 
 	public static final AnnotationStatement ANNOTATION_DISPAYPERFORMANCE_START = new AnnotationStatement (new CodeAnnotation ("#ifdef DISPLAY_PERFORMANCE"));
 	public static final AnnotationStatement ANNOTATION_DISPAYPERFORMANCE_END = new AnnotationStatement (new CodeAnnotation ("#endif"));
+	
+	private static final Map<Object, TypeBaseIntrinsicEnum> MAP_INTRINSICS = new HashMap<Object, TypeBaseIntrinsicEnum> ();
+	private static final Map<TypeBaseIntrinsicEnum, String[]> MAP_INTRINSICPARAMS = new HashMap<TypeBaseIntrinsicEnum, String[]> ();
+	
+	/**
+	 * Generic &quot;left hand side&quot; argument
+	 */
+	public static final String ARGNAME_LHS = "lhs";
+	
+	/**
+	 * Generic &quot;right hand side&quot; argument
+	 */
+	public static final String ARGNAME_RHS = "rhs";
 
 
 	///////////////////////////////////////////////////////////////////
 	// Implementation
+	
+	static
+	{
+		// operator names / operators  --->  TypeBaseIntrinsicEnum
+		MAP_INTRINSICS.put ("+", TypeBaseIntrinsicEnum.PLUS);
+		MAP_INTRINSICS.put ("-", TypeBaseIntrinsicEnum.MINUS);
+		MAP_INTRINSICS.put ("*", TypeBaseIntrinsicEnum.MULTIPLY);
+		MAP_INTRINSICS.put ("/", TypeBaseIntrinsicEnum.DIVIDE);
+		
+		MAP_INTRINSICS.put (BinaryOperator.ADD, TypeBaseIntrinsicEnum.PLUS);
+		MAP_INTRINSICS.put (BinaryOperator.SUBTRACT, TypeBaseIntrinsicEnum.MINUS);
+		MAP_INTRINSICS.put (BinaryOperator.MULTIPLY, TypeBaseIntrinsicEnum.MULTIPLY);
+		MAP_INTRINSICS.put (BinaryOperator.DIVIDE, TypeBaseIntrinsicEnum.DIVIDE);
+		
+		MAP_INTRINSICS.put (UnaryOperator.PLUS, TypeBaseIntrinsicEnum.UNARY_PLUS);
+		MAP_INTRINSICS.put (UnaryOperator.MINUS, TypeBaseIntrinsicEnum.UNARY_MINUS);
+		
+		// base intrinsic arguments 
+		String[] rgDefaultBinary = new String[] { Globals.ARGNAME_LHS, Globals.ARGNAME_RHS };
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.PLUS, rgDefaultBinary);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.MINUS, rgDefaultBinary);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.MULTIPLY, rgDefaultBinary);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.DIVIDE, rgDefaultBinary);
+		
+		String[] rgFMAParam = new String[] { "summand", "factor1", "factor2" };
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.FMA, rgFMAParam);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.FMS, rgFMAParam);
+	}
 
+	/**
+	 * Returns a {@link NameID} for the initialization function.
+	 * @param strStencilName The name of the stencil
+	 * @param bMakeFortranCompatible Flag indicating whether to make the initialization function name
+	 * 	compatible with Fortran
+	 * @return A {@link NameID} for the initialization function
+	 */
 	public static NameID getInitializeFunction (String strStencilName, boolean bMakeFortranCompatible)
 	{
 		String strInitializeFnxName = StringUtil.concat (FNX_INITIALIZE.getName (), "_", strStencilName);
@@ -76,6 +124,11 @@ public class Globals
 		return new NameID (strInitializeFnxName);
 	}
 
+	/**
+	 * Creates a Fortran-compatible name.
+	 * @param strStencilKernelName The original function name
+	 * @return A Fortran-compatible version of the original function name <code>strStencilKernelName</code>
+	 */
 	public static String createFortranName (String strStencilKernelName)
 	{
 		return StringUtil.concat (strStencilKernelName, "_");
@@ -92,5 +145,38 @@ public class Globals
 			if (s.equals (specType))
 				return true;
 		return false;
+	}
+
+	/**
+	 * Returns the {@link TypeBaseIntrinsicEnum} corresponding to <code>strOperationOrBaseName</code>
+	 * or <code>null</code> if no corresponding intrinsic exists.
+	 * @param strOperationOrBaseName The operation as a string or the intrinsic's base name
+	 * @return
+	 */
+	public static TypeBaseIntrinsicEnum getIntrinsicBase (String strOperationOrBaseName)
+	{
+		return MAP_INTRINSICS.get (strOperationOrBaseName);
+	}
+
+	public static TypeBaseIntrinsicEnum getIntrinsicBase (UnaryOperator op)
+	{
+		return MAP_INTRINSICS.get (op);
+	}
+
+	public static TypeBaseIntrinsicEnum getIntrinsicBase (BinaryOperator op)
+	{
+		return MAP_INTRINSICS.get (op);
+	}
+	
+	/**
+	 * Returns the expected list of arguments for the base intrinsic <code>t</code>.
+	 * The list returned by this function is to be converted to the actual argument list
+	 * required by the intrinsic as defined in the architecture description (<code>architecture.xml</code>).
+	 * @param t
+	 * @return
+	 */
+	public static String[] getIntrinsicArguments (TypeBaseIntrinsicEnum t)
+	{
+		return MAP_INTRINSICPARAMS.get (t);
 	}
 }

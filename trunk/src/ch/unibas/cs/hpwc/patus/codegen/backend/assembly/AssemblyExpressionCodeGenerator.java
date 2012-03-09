@@ -1,5 +1,8 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,17 +20,31 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
+ * Creates a list of assembly instructions from an {@link Expression.
  * 
  * @author Matthias-M. Christen
  */
 public class AssemblyExpressionCodeGenerator
 {
+	///////////////////////////////////////////////////////////////////
+	// Constants
+
+	private static final Comparator<int[]> COMPARATOR_REGSCOUNT = new Comparator<int[]> ()
+	{
+		@Override
+		public int compare (int[] rg1, int[] rg2)
+		{
+			// sort by register count, which is stored in the second array entry
+			return rg2[1] - rg1[1];
+		}
+	};
+
+	
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
@@ -67,17 +84,25 @@ public class AssemblyExpressionCodeGenerator
 	 * @param options
 	 * @return
 	 */
-	public InstructionList generate (Expression expr, CodeGeneratorRuntimeOptions options)
-	{		
-		// generate the inline assembly code
+	public void generate (Expression expr, StencilNode nodeOutput, InstructionList il, CodeGeneratorRuntimeOptions options)
+	{
+		// get code generation options
 		int nUnrollFactor = options.getIntValue (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR);
 		
+		// generate the inline assembly code
 		m_allocator.countRegistersNeeded (expr);
-
-		InstructionList il = new InstructionList ();
 		IOperand[] rgResult = traverse (expr, m_assemblySection.getDatatype (), nUnrollFactor, il);
 		
-		return il;
+		// write the result back
+		// TODO: handle temporaries (scalar stencil nodes)
+		if (nodeOutput.isScalar ())
+		{
+			
+		}
+		
+		IOperand[] rgDest = processStencilNode (nodeOutput, nUnrollFactor, il);
+		for (int i = 0; i < nUnrollFactor; i++)
+			il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
 	}
 	
 	/**
@@ -110,12 +135,22 @@ public class AssemblyExpressionCodeGenerator
 	}
 	
 	/**
+	 * Adds the instruction based on <code>strIntrinsicBaseName</code> <code>nUnrollFactor</code>-times
+	 * to the instruction list <code>il</code>.
 	 * 
 	 * @param il
+	 *            The instruction list to which the instructions will be added
 	 * @param nUnrollFactor
+	 *            The unroll factor determining how many times to add the instruction to
+	 *            the instruction list
 	 * @param strIntrinsicBaseName
+	 *            The base name of the intrinsic for which to generate an instruction
+	 * @param rgResult
+	 *            An array into which the result operands will be written, or <code>null</code>,
+	 *            in which case a new result array will be created and returned by the method
 	 * @param rgArguments
-	 * @return
+	 *            The operand arguments to the instruction
+	 * @return An array of operands containing the result for each of the unrollings
 	 */
 	private IOperand[] addInstruction (InstructionList il, int nUnrollFactor, String strIntrinsicBaseName, IOperand[] rgResult, IOperand[]... rgArguments)
 	{
@@ -176,6 +211,38 @@ public class AssemblyExpressionCodeGenerator
 	}
 	
 	/**
+	 * Processes the argument expressions <code>rgExpressions</code> in the order such that
+	 * the expression that requires most registers is processed first and the expression
+	 * with the least register requirements is processed last.
+	 * 
+	 * @param specDatatype
+	 *            The data type of the expression
+	 * @param nUnrollFactor
+	 *            The unrolling factor determining how many results will be generated
+	 * @param il
+	 *            The instruction list to which intermediately generated instructions are added
+	 * @param rgExpressions
+	 *            The array of expressions to process
+	 * @return An array of operands containing the results for each of the expressions <code>rgExpressions</code>
+	 *         (first array index) and for each of the unrolling factors (second array index)
+	 */
+	private IOperand[][] processArguments (Specifier specDatatype, int nUnrollFactor, InstructionList il, Expression... rgExpressions)
+	{
+		// find the register counts for each of the expressions and sort by descending number of registers
+		List<int[]> listRegsCount = new ArrayList<int[]> (rgExpressions.length);
+		for (int i = 0; i < rgExpressions.length; i++)
+			listRegsCount.add (new int[] { i, m_allocator.getNumRegistersUsed (rgExpressions[i]) });
+		Collections.sort (listRegsCount, COMPARATOR_REGSCOUNT);
+
+		// traverse the expressions in rgExpressions in the order of descending register counts
+		IOperand[][] rgResult = new IOperand[rgExpressions.length][nUnrollFactor];
+		for (int[] rgRegsCount : listRegsCount)
+			rgResult[rgRegsCount[0]] = traverse (rgExpressions[rgRegsCount[0]], specDatatype, nUnrollFactor, il);
+		
+		return rgResult;
+	}
+	
+	/**
 	 * 
 	 * @param expr
 	 * @param specDatatype
@@ -185,30 +252,10 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] processBinaryExpression (BinaryExpression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		return addInstruction (il, nUnrollFactor,
-			Globals.getIntrinsicBase (expr.getOperator ()).value (),
-			null,
-			traverse (expr.getLHS (), specDatatype, nUnrollFactor, il),
-			traverse (expr.getRHS (), specDatatype, nUnrollFactor, il)
-		);
-		
-		/*
-		IOperand[] rgOpResult = new IOperand[nUnrollFactor];
+		return addInstruction (il, nUnrollFactor, Globals.getIntrinsicBase (expr.getOperator ()).value (),
+			null, processArguments (specDatatype, nUnrollFactor, il, expr.getLHS (), expr.getRHS ()));
 
-		IOperand[] rgOpLHS = traverse (expr.getLHS (), specDatatype, nUnrollFactor, il);
-		IOperand[] rgOpRHS = traverse (expr.getRHS (), specDatatype, nUnrollFactor, il);
-		
-		// create the instructions and add them to the list
-		for (int i = 0; i < nUnrollFactor; i++)
-		{
-			IOperand opResult = new IOperand.PseudoRegister (); //isReservedRegister (rgOpRHS[i]) ? new IOperand.PseudoRegister () : rgOpRHS[i];
-
-			il.addInstruction (new Instruction (Globals.getIntrinsicBase (expr.getOperator ()), rgOpLHS[i], rgOpRHS[i], opResult));
-			rgOpResult[i] = opResult;//bHasOutput ? rgOperands[nOutputArgNum] : rgOpRHS[i];
-		}
-		
-		return rgOpResult;
-		*/
+		//isReservedRegister (rgOpRHS[i]) ? new IOperand.PseudoRegister () : rgOpRHS[i];
 	}
 	
 	/**
@@ -224,6 +271,7 @@ public class AssemblyExpressionCodeGenerator
 		Expression exprFuncName = fnxCall.getName ();
 		Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (exprFuncName.toString (), specDatatype);
 
+		// only fma and fms supported for now...
 		if (exprFuncName.equals (Globals.FNX_FMA) || exprFuncName.equals (Globals.FNX_FMS))
 			return processFusedMultiplyAddSub (i, fnxCall.getArgument (0), fnxCall.getArgument (1), fnxCall.getArgument (2), specDatatype, nUnrollFactor, il);
 		else
@@ -244,21 +292,21 @@ public class AssemblyExpressionCodeGenerator
 	private IOperand[] processFusedMultiplyAddSub (Intrinsic intrinsic, Expression exprSummand, Expression exprFactor1, Expression exprFactor2,
 		Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		return addInstruction (il, nUnrollFactor,
-			intrinsic.getBaseName (),
-			null,
-			traverse (exprSummand, specDatatype, nUnrollFactor, il),
-			traverse (exprFactor1, specDatatype, nUnrollFactor, il),
-			traverse (exprFactor2, specDatatype, nUnrollFactor, il)
-		);
+		return addInstruction (il, nUnrollFactor, intrinsic.getBaseName (), null,
+			processArguments (specDatatype, nUnrollFactor, il, exprSummand, exprFactor1, exprFactor2));
 	}
 
 	/**
 	 * Processes an unary expression.
-	 * @param expr The unary expression to process
-	 * @param specDatatype The datatype of the expression
-	 * @param nUnrollFactor The unrolling factor; this will add <code>nUnrollFactor</code> instructions to the instruction list
-	 * @param il The instruction list to which the instructions generated by the unary expression are added
+	 * 
+	 * @param expr
+	 *            The unary expression to process
+	 * @param specDatatype
+	 *            The datatype of the expression
+	 * @param nUnrollFactor
+	 *            The unrolling factor; this will add <code>nUnrollFactor</code> instructions to the instruction list
+	 * @param il
+	 *            The instruction list to which the instructions generated by the unary expression are added
 	 * @return The operands in which the results are stored. Returns <code>nUnrollFactor</code> results.
 	 */
 	private IOperand[] processUnaryExpression (UnaryExpression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
@@ -267,16 +315,6 @@ public class AssemblyExpressionCodeGenerator
 		
 		if (((UnaryExpression) expr).getOperator ().equals (UnaryOperator.MINUS))
 			rgOps = addInstruction (il, nUnrollFactor, TypeBaseIntrinsicEnum.UNARY_MINUS.value (), null, rgOps);
-		
-		/*
-		{
-			Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (expr.getOperator (), specDatatype);
-			if (intrinsic == null)
-				throw new RuntimeException (StringUtil.concat ("Unary operator intrinsic not found for operator ", expr.getOperator ().toString ()));
-			
-			for (int i = 0; i < nUnrollFactor; i++)
-				il.addInstruction (new Instruction (intrinsic.getName (), new IOperand[] { rgOps[i] }));
-		}*/
 
 		return rgOps;
 	}

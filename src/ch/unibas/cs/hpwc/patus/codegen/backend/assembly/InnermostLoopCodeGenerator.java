@@ -124,9 +124,9 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			}
 			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams);
 			
-			InstructionList listInstrComputation = new InstructionList ();
+			InstructionList ilComputation = new InstructionList ();
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
-				listInstrComputation.addInstructions (cgExpr.generate (stencil.getExpression (), m_options));
+				cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), ilComputation, m_options);
 			
 			// generate the loop
 			Map<String, String> mapUnalignedMoves = new HashMap<String, String> ();
@@ -134,15 +134,15 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			InstructionList listInstr = new InstructionList ();
 			
 			listInstr.addInstructions (generatePrologHeader ());
-			listInstr.addInstructions (listInstrComputation.replaceInstructions (mapUnalignedMoves));
+			listInstr.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
 			listInstr.addInstructions (generatePrologFooter ());
 			
 			listInstr.addInstructions (generateMainHeader ());
-			listInstr.addInstructions (listInstrComputation);
+			listInstr.addInstructions (ilComputation);
 			listInstr.addInstructions (generateMainFooter ());
 			
 			listInstr.addInstructions (generateEpilogHeader ());
-			listInstr.addInstructions (listInstrComputation.replaceInstructions (mapUnalignedMoves));
+			listInstr.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
 			listInstr.addInstructions (generateEpilogFooter ());
 			
 			// create the inline assembly statement

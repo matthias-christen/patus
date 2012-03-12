@@ -65,7 +65,7 @@ public class Globals
 	public static final AnnotationStatement ANNOTATION_DISPAYPERFORMANCE_END = new AnnotationStatement (new CodeAnnotation ("#endif"));
 	
 	private static final Map<Object, TypeBaseIntrinsicEnum> MAP_INTRINSICS = new HashMap<Object, TypeBaseIntrinsicEnum> ();
-	private static final Map<TypeBaseIntrinsicEnum, String[]> MAP_INTRINSICPARAMS = new HashMap<TypeBaseIntrinsicEnum, String[]> ();
+	private static final Map<String, String[]> MAP_INTRINSICPARAMS = new HashMap<String, String[]> ();
 	
 	/**
 	 * Generic &quot;left hand side&quot; argument
@@ -76,6 +76,8 @@ public class Globals
 	 * Generic &quot;right hand side&quot; argument
 	 */
 	public static final String ARGNAME_RHS = "rhs";
+	
+	public static final String ARGNAME_RESULT = "=result";
 
 
 	///////////////////////////////////////////////////////////////////
@@ -99,21 +101,24 @@ public class Globals
 		
 		// base intrinsic arguments 
 		String[] rgDefaultBinary = new String[] { Globals.ARGNAME_LHS, Globals.ARGNAME_RHS };
-		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.PLUS, rgDefaultBinary);
-		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.MINUS, rgDefaultBinary);
-		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.MULTIPLY, rgDefaultBinary);
-		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.DIVIDE, rgDefaultBinary);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.PLUS.value (), rgDefaultBinary);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.MINUS.value (), rgDefaultBinary);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.MULTIPLY.value (), rgDefaultBinary);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.DIVIDE.value (), rgDefaultBinary);
 		
 		String[] rgFMAParam = new String[] { "summand", "factor1", "factor2" };
-		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.FMA, rgFMAParam);
-		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.FMS, rgFMAParam);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.FMA.value (), rgFMAParam);
+		MAP_INTRINSICPARAMS.put (TypeBaseIntrinsicEnum.FMS.value (), rgFMAParam);
 	}
 
 	/**
 	 * Returns a {@link NameID} for the initialization function.
-	 * @param strStencilName The name of the stencil
-	 * @param bMakeFortranCompatible Flag indicating whether to make the initialization function name
-	 * 	compatible with Fortran
+	 * 
+	 * @param strStencilName
+	 *            The name of the stencil
+	 * @param bMakeFortranCompatible
+	 *            Flag indicating whether to make the initialization function
+	 *            name compatible with Fortran
 	 * @return A {@link NameID} for the initialization function
 	 */
 	public static NameID getInitializeFunction (String strStencilName, boolean bMakeFortranCompatible)
@@ -126,8 +131,11 @@ public class Globals
 
 	/**
 	 * Creates a Fortran-compatible name.
-	 * @param strStencilKernelName The original function name
-	 * @return A Fortran-compatible version of the original function name <code>strStencilKernelName</code>
+	 * 
+	 * @param strStencilKernelName
+	 *            The original function name
+	 * @return A Fortran-compatible version of the original function name
+	 *         <code>strStencilKernelName</code>
 	 */
 	public static String createFortranName (String strStencilKernelName)
 	{
@@ -135,9 +143,13 @@ public class Globals
 	}
 	
 	/**
-	 * Determines whether the specifier <code>specType</code> is a base type specifier.
-	 * @param specType The specifier to examine
-	 * @return <code>true</code> iff the specifier <code>specType</code> is a base data type specifier
+	 * Determines whether the specifier <code>specType</code> is a base type
+	 * specifier.
+	 * 
+	 * @param specType
+	 *            The specifier to examine
+	 * @return <code>true</code> iff the specifier <code>specType</code> is a
+	 *         base data type specifier
 	 */
 	public static boolean isBaseDatatype (Specifier specType)
 	{
@@ -148,10 +160,14 @@ public class Globals
 	}
 
 	/**
-	 * Returns the {@link TypeBaseIntrinsicEnum} corresponding to <code>strOperationOrBaseName</code>
-	 * or <code>null</code> if no corresponding intrinsic exists.
-	 * @param strOperationOrBaseName The operation as a string or the intrinsic's base name
-	 * @return
+	 * Returns the {@link TypeBaseIntrinsicEnum} corresponding to
+	 * <code>strOperationOrBaseName</code> or <code>null</code> if no
+	 * corresponding intrinsic exists.
+	 * 
+	 * @param strOperationOrBaseName
+	 *            The operation as a string or the intrinsic's base name
+	 * @return The {@link TypeBaseIntrinsicEnum} for
+	 *         <code>strOperationOrBaseName</code>
 	 */
 	public static TypeBaseIntrinsicEnum getIntrinsicBase (String strOperationOrBaseName)
 	{
@@ -169,14 +185,78 @@ public class Globals
 	}
 	
 	/**
-	 * Returns the expected list of arguments for the base intrinsic <code>t</code>.
-	 * The list returned by this function is to be converted to the actual argument list
-	 * required by the intrinsic as defined in the architecture description (<code>architecture.xml</code>).
+	 * Returns the expected list of arguments for the base intrinsic
+	 * <code>t</code>. The list returned by this function is to be converted to
+	 * the actual argument list required by the intrinsic as defined in the
+	 * architecture description (<code>architecture.xml</code>).
+	 * 
 	 * @param t
-	 * @return
+	 *            The base intrinsic
+	 * @return The argument list for the intrinsic <code>t</code>
 	 */
 	public static String[] getIntrinsicArguments (TypeBaseIntrinsicEnum t)
 	{
-		return MAP_INTRINSICPARAMS.get (t);
+		return MAP_INTRINSICPARAMS.get (t.value ());
+	}
+	
+	/**
+	 * Returns the expected list of arguments for the base intrinsic with name
+	 * <code>strIntrinsicBaseName</code>. The list returned by this function is to be converted to
+	 * the actual argument list required by the intrinsic as defined in the
+	 * architecture description (<code>architecture.xml</code>).
+	 * 
+	 * @param t
+	 *            The base intrinsic
+	 * @return The argument list for the intrinsic <code>strIntrinsicBaseName</code>
+	 */
+	public static String[] getIntrinsicArguments (String strIntrinsicBaseName)
+	{
+		return MAP_INTRINSICPARAMS.get (strIntrinsicBaseName);
+	}
+	
+	/**
+	 * Determines whether the operation corresponding to the intrinsic with base
+	 * name <code>strIntrinsicBaseName</code> is commutative.
+	 * 
+	 * @param strIntrinsicBaseName
+	 *            The base name of the intrinsic
+	 * @return <code>true</code> iff the operation corresponding to
+	 *         <code>strIntrinsicBaseName</code> is commutative
+	 */
+	public static boolean isIntrinsicCommutative (String strIntrinsicBaseName)
+	{
+		return TypeBaseIntrinsicEnum.PLUS.value ().equals (strIntrinsicBaseName) ||
+			TypeBaseIntrinsicEnum.MULTIPLY.value ().equals (strIntrinsicBaseName);
+	}
+	
+	/**
+	 * Determines whether the arguments with indices <code>nArg1Idx</code> and
+	 * <code>nArg2Idx</code> can be swapped without changing the result of the
+	 * computation.
+	 * 
+	 * @param strIntrinsicBaseName
+	 *            The base name of the intrinsic
+	 * @param nArg1Idx
+	 *            The index of the one argument
+	 * @param nArg2Idx
+	 *            The index of another argument
+	 * @return <code>true</code> iff it is legal to swap the arguments with
+	 *         indices <code>nArg1Idx</code> and <code>nArg2Idx</code>
+	 */
+	public static boolean canSwapIntrinsicArguments (String strIntrinsicBaseName, int nArg1Idx, int nArg2Idx)
+	{
+		if (nArg1Idx == nArg2Idx)
+			return true;
+		
+		if ((nArg1Idx == 0 || nArg1Idx == 1) && (nArg2Idx == 0 || nArg2Idx == 1))
+		{
+			if (Globals.isIntrinsicCommutative (strIntrinsicBaseName))
+				return true;
+		}
+		
+		if (TypeBaseIntrinsicEnum.FMA.equals (strIntrinsicBaseName) || TypeBaseIntrinsicEnum.FMS.equals (strIntrinsicBaseName))
+			return (nArg1Idx == 1 || nArg1Idx == 2) && (nArg2Idx == 1 || nArg2Idx == 2);
+		
+		return false;
 	}
 }

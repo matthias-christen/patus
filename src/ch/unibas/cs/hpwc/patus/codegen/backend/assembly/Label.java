@@ -32,7 +32,7 @@ public class Label implements IInstruction
 	}
 	
 	@Override
-	public void issue (Specifier specDatatype, IArchitectureDescription arch, StringBuilder sbResult)
+	public void issue (StringBuilder sbResult)
 	{
 		sbResult.append (m_nLabelIdx);
 		sbResult.append (":\n\t");

@@ -16,6 +16,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -64,10 +65,10 @@ public class AssemblySection
 
 	protected CodeGeneratorSharedObjects m_data;
 	
-	/**
-	 * The list of instructions in the inline assembly section
-	 */
-	protected List<TypedInstruction> m_listInstructions;
+//	/**
+//	 * The list of instructions in the inline assembly section
+//	 */
+//	protected InstructionList m_ilInstructions;
 	
 	/**
 	 * The set of registers which got clobbered during the inline assembly section
@@ -92,7 +93,7 @@ public class AssemblySection
 	{
 		m_data = data;
 		
-		m_listInstructions = new ArrayList<TypedInstruction> ();
+//		m_ilInstructions = new InstructionList ();
 
 		m_setClobberedRegisters = new HashSet<IOperand.Register> ();
 		m_mapRegisterUsage = new HashMap<IOperand.Register, Boolean> ();
@@ -127,25 +128,45 @@ public class AssemblySection
 		return null;
 	}
 	
+//	/**
+//	 * Adds one instruction to the assembly section.
+//	 * @param instruction The instruction to add
+//	 * @param specDatatype The data type used for the floating point instructions
+//	 */
+//	public void addInstruction (Instruction instruction, Specifier specDatatype)
+//	{
+//		m_ilInstructions.addInstruction (new TypedInstruction (instruction, specDatatype));
+//	}
+//	
+//	/**
+//	 * Adds a list of instructions to the assembly section.
+//	 * @param instructions The instructions to add
+//	 * @param specDatatype The data type used for the floating point instructions
+//	 */
+//	public void addInstructions (InstructionList instructions, Specifier specDatatype)
+//	{
+//		for (IInstruction i : instructions)
+//			m_listInstructions.add (new TypedInstruction (i, specDatatype));
+//	}
+
 	/**
-	 * Adds one instruction to the assembly section.
-	 * @param instruction The instruction to add
-	 * @param specDatatype The data type used for the floating point instructions
+	 * 
+	 * @param ilInstructions
+	 * @param specDatatype
+	 * @return
 	 */
-	public void addInstruction (Instruction instruction, Specifier specDatatype)
+	public InstructionList translate (InstructionList ilInstructions, Specifier specDatatype, IInstructionListOptimizer... rgOptimizers)
 	{
-		m_listInstructions.add (new TypedInstruction (instruction, specDatatype));
-	}
-	
-	/**
-	 * Adds a list of instructions to the assembly section.
-	 * @param instructions The instructions to add
-	 * @param specDatatype The data type used for the floating point instructions
-	 */
-	public void addInstructions (InstructionList instructions, Specifier specDatatype)
-	{
-		for (IInstruction i : instructions)
-			m_listInstructions.add (new TypedInstruction (i, specDatatype));
+		// translate the generic instruction list to the architecture-specific one
+		InstructionList ilTmp = InstructionListTranslator.translate (
+			m_data.getArchitectureDescription (), ilInstructions, specDatatype);
+		
+		// apply peep hole optimizations
+		for (IInstructionListOptimizer optimizer : rgOptimizers)
+			ilTmp = optimizer.optimize (ilTmp);
+			
+		// allocate registers
+		return ilTmp.allocateRegisters (this);
 	}
 
 	/**
@@ -188,14 +209,14 @@ public class AssemblySection
 	 * @param options
 	 * @return
 	 */
-	public Statement generate (CodeGeneratorRuntimeOptions options)
+	public Statement generate (InstructionList ilInstructions, CodeGeneratorRuntimeOptions options)
 	{
 		// create a C statement wrapping the inline assembly
 		
 		// create the string of instructions
 		StringBuilder sbInstructions = new StringBuilder ();
-		for (TypedInstruction instruction : m_listInstructions)
-			instruction.issue (m_data.getArchitectureDescription (), sbInstructions);
+		for (IInstruction instruction : ilInstructions)
+			instruction.issue (sbInstructions);
 		
 		// create the inputs string
 		StringBuilder sbInputs = new StringBuilder ();

@@ -3,9 +3,28 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
+ * <p>This class represents an assembly instruction argument. The list of arguments
+ * are defined in the architecture description.</p>
+ * <p>The argument list syntax is:</p>
+ * <pre>
+ * 	arg1,arg2,...,argN
+ * </pre>
+ * <p>Each of the arguments <code>argI</code> has the following syntax:</p>
+ * <pre>
+ * 	[ "=" ] ( "reg" | "mem" | "reg/mem" ) [ ":" argname ]
+ * </pre>
+ * <p>If the <code>=</code> is present, the argument is an output argument,
+ * i.e., a register to which the result of the operation is written.
+ * <code>reg</code> specifies that the operand has to be a register,
+ * <code>mem</code> specifies that the argument can be a memory address.
+ * <code>reg/mem</code> specifies that the argument can be either a register or a memory address.
+ * Optionally, an argument name can be provided after the colon.
+ * For binary arithmetic operations, the arguments are "lhs" and "rhs" as defined in {@link Globals}.
+ * Other operations take the argument names as returned by {@link Globals#getIntrinsicArguments(String)}.
  * 
  * @author Matthias-M. Christen
  */
@@ -123,7 +142,47 @@ public class Argument
 		return StringUtil.concat ((m_bIsOutput ? "=" : ""), (m_bIsRegister ? "{reg} " : ""), (m_bIsMemory ? "{mem} " : ""), (m_strName == null ? "" : ": " + m_strName), " [", m_nNumber, "]");
 	}
 	
-	
+	@Override
+	public int hashCode ()
+	{
+		final int nPrime = 31;
+		int nResult = 1;
+		nResult = nPrime * nResult + (m_bIsMemory ? 1231 : 1237);
+		nResult = nPrime * nResult + (m_bIsOutput ? 1231 : 1237);
+		nResult = nPrime * nResult + (m_bIsRegister ? 1231 : 1237);
+		nResult = nPrime * nResult + m_nNumber;
+		nResult = nPrime * nResult + ((m_strName == null) ? 0 : m_strName.hashCode ());
+		return nResult;
+	}
+
+	@Override
+	public boolean equals (Object obj)
+	{
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass () != obj.getClass ())
+			return false;
+		Argument other = (Argument) obj;
+		if (m_bIsMemory != other.m_bIsMemory)
+			return false;
+		if (m_bIsOutput != other.m_bIsOutput)
+			return false;
+		if (m_bIsRegister != other.m_bIsRegister)
+			return false;
+		if (m_nNumber != other.m_nNumber)
+			return false;
+		if (m_strName == null)
+		{
+			if (other.m_strName != null)
+				return false;
+		}
+		else if (!m_strName.equals (other.m_strName))
+			return false;
+		return true;
+	}
+
 	public static void main (String[] args)
 	{
 		Argument a = new Argument ("reg/mem:resultXX", 0);

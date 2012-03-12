@@ -124,29 +124,32 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			}
 			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams);
 			
-			InstructionList ilComputation = new InstructionList ();
+			InstructionList ilComputationTemp = new InstructionList ();
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
-				cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), ilComputation, m_options);
-			
+				cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), ilComputationTemp, m_options);
+				
+			// translate the generic instruction list to the architecture-specific one
+			InstructionList ilComputation = m_assemblySection.translate (ilComputationTemp, m_assemblySection.getDatatype ());
+							
 			// generate the loop
 			Map<String, String> mapUnalignedMoves = new HashMap<String, String> ();
 			mapUnalignedMoves.put (TypeBaseIntrinsicEnum.MOVE_FPR.value (), TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ());
-			InstructionList listInstr = new InstructionList ();
+			InstructionList il = new InstructionList ();
 			
-			listInstr.addInstructions (generatePrologHeader ());
-			listInstr.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
-			listInstr.addInstructions (generatePrologFooter ());
+			il.addInstructions (generatePrologHeader ());
+			il.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
+			il.addInstructions (generatePrologFooter ());
 			
-			listInstr.addInstructions (generateMainHeader ());
-			listInstr.addInstructions (ilComputation);
-			listInstr.addInstructions (generateMainFooter ());
+			il.addInstructions (generateMainHeader ());
+			il.addInstructions (ilComputation);
+			il.addInstructions (generateMainFooter ());
 			
-			listInstr.addInstructions (generateEpilogHeader ());
-			listInstr.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
-			listInstr.addInstructions (generateEpilogFooter ());
+			il.addInstructions (generateEpilogHeader ());
+			il.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
+			il.addInstructions (generateEpilogFooter ());
 			
 			// create the inline assembly statement
-			Statement stmt = m_assemblySection.generate (m_options);
+			Statement stmt = m_assemblySection.generate (il, m_options);
 			
 			slb.addStatements (m_assemblySection.getAuxiliaryStatements ());
 			slb.addStatement (stmt);

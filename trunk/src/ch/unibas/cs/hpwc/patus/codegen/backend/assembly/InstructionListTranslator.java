@@ -161,6 +161,67 @@ public class InstructionListTranslator
 	}
 		
 	/**
+	 * arg1   arg2   result   commutative  accepts_arg1  accepts_arg2  accepts_result      instruction(s)                                             Pattern No.
+	 * 
+	 * reg    reg    reg/mem               reg[&mem]     reg[&mem]     y reg&mem           op arg1, arg2, result                                      1
+	 * mem    reg    reg/mem               reg&mem       reg[&mem]     y reg&mem           op arg1, arg2, result                                      1
+	 *               reg/mem  no           reg           reg[&mem]     y reg&mem           mov arg1, tmp; op tmp, arg2, result                        2
+	 *               reg/mem  yes          reg           reg&mem       y reg&mem           op arg2, arg1, result                                      3
+	 *               reg/mem               reg           reg           y reg&mem           mov arg1, tmp; op tmp, arg2, result                        2
+	 * reg    mem    reg/mem               reg[&mem]     reg&mem       y reg&mem           op arg1, arg2, result                                      1
+	 *               reg/mem  no           reg[&mem]     reg           y reg&mem           mov arg2, tmp; op arg1, tmp, result                        4
+	 *               reg/mem  yes          reg&mem       reg           y reg&mem           op arg2, arg1, result                                      3
+	 *               reg/mem               reg           reg           y reg&mem           mov arg2, tmp; op arg1, tmp, result                        4
+	 * mem    mem    reg/mem               reg&mem       reg&mem       y reg&mem           op arg1, arg2, result                                      1
+	 *               reg/mem               reg&mem       reg           y reg&mem           mov arg2, tmp; op arg1, tmp, result                        4
+	 *               reg/mem               reg           reg&mem       y reg&mem           mov arg1, tmp; op tmp, arg2, result                        2
+	 *               reg/mem               reg           reg           y reg&mem           mov arg1, tmp1; mov arg2, tmp2; op tmp1, tmp2, result      5
+	 * 
+	 * reg    reg    mem                   reg[&mem]     reg[&mem]     y reg               op arg1, arg2, tmp; mov tmp, result                        6
+	 * mem    reg    mem                   reg&mem       reg[&mem]     y reg               op arg1, arg2, tmp; mov tmp, result                        6
+	 *               mem      no           reg           reg[&mem]     y reg               mov arg1, tmp1; op tmp1, arg2, tmp2; mov tmp2, result      7
+	 *               mem      yes          reg           reg&mem       y reg               op arg2, arg1, tmp; mov tmp, result                        8
+	 *               mem                   reg           reg           y reg               mov arg1, tmp1; op tmp1, arg2, tmp2; mov tmp2, result      7
+	 * reg    mem    mem                   reg[&mem]     reg&mem       y reg               op arg1, arg2, tmp; mov tmp, result                        6
+	 *               mem      no           reg[&mem]     reg           y reg               mov arg2, tmp1; op arg1, tmp1, tmp2; mov tmp2, result      9
+	 *               mem      yes          reg&mem       reg           y reg               op arg2, arg1, tmp; mov tmp, result                        8
+	 *               mem                   reg           reg           y reg               mov arg2, tmp1; op arg1, tmp1, tmp2; mov tmp2, result      9
+	 * mem    mem    mem                   reg&mem       reg&mem       y reg               op arg1, arg2, tmp; mov tmp, result                        6
+	 *               mem                   reg&mem       reg           y reg               mov arg2, tmp1; op arg1, tmp1, tmp2; mov tmp2, result      9
+	 *               mem                   reg           reg&mem       y reg               mov arg1, tmp1; op tmp1, arg2, tmp2; mov tmp2, result      7
+	 *               mem                   reg           reg           y reg               mov arg1, tmp1; mov arg2, tmp2; op tmp1, tmp2, tmp3; mov tmp3, result    10
+	 * 
+	 * [ case: arg2 == result ]
+	 * reg    reg=Re reg                   reg[/mem]     reg[/mem]     n (res->arg2)       op arg1, arg2  { as above, remove "result" }
+	 * 
+	 * [ case: arg2 != result ]                          arg2 is written to!
+	 * reg    reg!=R reg                   reg[&mem]     reg[&mem]     n (res->arg2)       mov arg2, result; op arg1, result                         11
+	 * mem    reg    reg                   reg&mem       reg[&mem]     n (res->arg2)       mov arg2, result; op arg1, result                         11
+	 *               reg  no               reg           reg[&mem]     n (res->arg2)       mov arg1, tmp; mov arg2, result; op tmp, result           12
+	 *               reg  yes              reg           reg&mem       n (res->arg2)       mov arg1, result; op arg2, result                         13
+	 *               reg                   reg           reg           n (res->arg2)       mov arg1, tmp; mov arg2, result; op tmp, result           12
+	 * reg    mem    reg                   reg[&mem]     reg[&mem]     n (res->arg2)       mov arg2, result; op arg1, result                         11
+	 * mem    mem    reg                   reg&mem       reg&mem       n (res->arg2)       mov arg2, result; op arg1, result                         11
+	 *               reg                   reg&mem       reg           n (res->arg2)       mov arg2, result; op arg1, result                         11
+	 *               reg                   reg           reg&mem       n (res->arg2)       mov arg1, tmp; mov arg2, result; op tmp, result           12
+	 *               reg                   reg           reg           n (res->arg2)       mov arg1, tmp; mov arg2, result; op tmp, result           12
+	 * 
+	 * reg    reg!=R mem                   reg[&mem]     reg[&mem]     n (res->arg2)       mov arg2, tmp; op arg1, tmp; mov tmp, result                    14
+	 * mem    reg    mem                   reg&mem       reg[&mem]     n (res->arg2)       mov arg2, tmp; op arg1, tmp; mov tmp, result                    14
+	 *               mem                   reg           reg[&mem]     n (res->arg2)       mov arg1, tmp1; mov arg2, tmp2; op tmp1, tmp2; mov tmp2, result 15
+	 * reg    mem    mem                   reg[&mem]     reg[&mem]     n (res->arg2)       mov arg2, tmp; op arg1, tmp; mov tmp, result                    14
+	 * mem    mem    mem                   reg&mem       reg[&mem]     n (res->arg2)       mov arg2, tmp; op arg1, tmp; mov tmp, result                    14
+	 *               mem                   reg           reg[&mem]     n (res->arg2)       mov arg1, tmp1; mov arg2, tmp2; op tmp1, tmp2; mov tmp2, result 15
+	 * 
+	 * 
+	 * op a, b, c  =>  mov b, c; op a, c
+	 * 
+	 * op arg1, arg2, result  =>  op' arg1, arg2, result    if src(arg1)=args(op', 1) and src(arg2)=args(op', 2)
+	 *                            op' arg2, arg1, result    if op commutative and src(arg2)=mem, src(arg1)=reg and args(op')="[reg/]mem,reg,=reg"
+	 *                            mov arg1, tmp; op' tmp, arg2, result
+	 *                            mov arg2, tmp; op' arg1, tmp, result
+	 *                            mov arg1, tmp1; mov arg2, tmp2; op' tmp1, tmp2, result
+	 *                            
 	 * 
 	 * @param intrinsic
 	 * @return

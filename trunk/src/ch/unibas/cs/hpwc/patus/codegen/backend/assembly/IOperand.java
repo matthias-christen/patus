@@ -23,6 +23,30 @@ public interface IOperand
 		{
 			return getAsString ();
 		}
+
+		@Override
+		public boolean equals (Object obj)
+		{
+			if (obj == null)
+				return false;
+			if (!obj.getClass ().isInstance (this))
+				return false;
+			
+			String strThis = getAsString ();
+			String strOther = ((IOperand) obj).getAsString ();
+			
+			if (strThis == null)
+				return strOther == null;
+			
+			return strThis.equals (strOther);
+		}
+		
+		@Override
+		public int hashCode ()
+		{
+			String s = getAsString ();
+			return s == null ? 0 : s.hashCode ();
+		}
 	}
 
 	public static class Register extends AbstractOperand implements IRegisterOperand
@@ -43,21 +67,7 @@ public interface IOperand
 		public String getAsString ()
 		{
 			return StringUtil.concat ("%%", m_register.getName ());
-		}
-		
-		@Override
-		public boolean equals (Object obj)
-		{
-			if (!(obj instanceof Register))
-				return false;
-			return ((Register) obj).m_register.getName ().equals (m_register.getName ());
-		}
-		
-		@Override
-		public int hashCode ()
-		{
-			return m_register.getName ().hashCode ();
-		}
+		}		
 	}
 	
 	public static class InputRef extends AbstractOperand implements IRegisterOperand
@@ -79,6 +89,13 @@ public interface IOperand
 	public static class PseudoRegister extends AbstractOperand implements IRegisterOperand
 	{
 		private static int m_nPseudoRegisterNumber = 0;
+		
+		public static void reset ()
+		{
+			m_nPseudoRegisterNumber = 0;
+		}
+		
+		
 		private int m_nNumber;
 		
 		public PseudoRegister ()

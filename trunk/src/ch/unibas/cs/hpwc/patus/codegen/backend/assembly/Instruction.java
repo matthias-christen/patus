@@ -61,7 +61,7 @@ public class Instruction implements IInstruction
 	@Override
 	public String toString ()
 	{
-		StringBuilder sb = new StringBuilder (m_strIntrinsicBaseName);
+		StringBuilder sb = new StringBuilder ();
 		issue (sb);
 		return sb.toString ();
 	}

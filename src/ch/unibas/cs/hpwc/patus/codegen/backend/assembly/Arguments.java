@@ -71,6 +71,10 @@ public class Arguments
 		if (arg == null)
 		{
 			// find the second argument which is not an output (and assume it's the RHS)
+			// or the second argument (even if it is an output) if there are only two arguments
+			if (rgArgs.length <= 2)
+				return rgArgs[rgArgs.length - 1];
+			
 			int nCount = 0;
 			for (Argument a : rgArgs)
 			{

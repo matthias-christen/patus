@@ -10,6 +10,7 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Label;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.StencilAssemblySection;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
+import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.MathUtil;
 
 /**
@@ -52,6 +53,11 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			m_regTmp = getAssemblySection ().getFreeRegister (TypeRegisterType.GPR);
 		}
 		
+		private StencilNode getOutputStencilNode ()
+		{
+			return m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ().getOutputNodes ().iterator ().next ();
+		}
+		
 		@Override
 		public InstructionList generatePrologHeader ()
 		{
@@ -61,7 +67,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			IOperand.IRegisterOperand regCounter = getCounterRegister ();
 			int nSIMDVectorLengthInBytes = getSIMDVectorLength () * getBaseTypeSize ();
 			
-			l.addInstruction (new Instruction ("mov", as.getInput ("output grid address"), regCounter));
+			l.addInstruction (new Instruction ("mov", as.getGrid (getOutputStencilNode (), 0), regCounter));
 			l.addInstruction (new Instruction ("add", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
 			l.addInstruction (new Instruction ("and", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
 			l.addInstruction (new Instruction ("sub", new IOperand.Immediate (nSIMDVectorLengthInBytes), regCounter));
@@ -69,13 +75,13 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			l.addInstruction (new Instruction ("shr", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter));
 			
 			l.addInstruction (new Instruction ("cmp", regCounter, as.getInput (INPUT_LOOPMAX)));
-			l.addInstruction (new Instruction ("jg",  new IOperand.LabelOperand (LABEL_PROLOGHDR_LESSTHANMAX)));
+			l.addInstruction (new Instruction ("jg",  Label.getLabelOperand (LABEL_PROLOGHDR_LESSTHANMAX)));
 			l.addInstruction (new Instruction ("mov", as.getInput (INPUT_LOOPMAX), regCounter));
 			
-			l.addInstruction (new Label (LABEL_PROLOGHDR_LESSTHANMAX));
+			l.addInstruction (Label.getLabel (LABEL_PROLOGHDR_LESSTHANMAX));
 			l.addInstruction (new Instruction ("mov", regCounter, m_regSaveCounter));
 			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
-			l.addInstruction (new Instruction ("jz",  new IOperand.LabelOperand (LABEL_MAINHDR)));
+			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_MAINHDR)));
 			
 			return l;
 		}
@@ -109,14 +115,14 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			
 			// restore the loop counter
 			l.addInstruction (new Instruction ("mov", m_regSaveCounter, regCounter));
-			l.addInstruction (new Label (LABEL_MAINHDR));
+			l.addInstruction (Label.getLabel (LABEL_MAINHDR));
 			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPMAX), regCounter));
 			l.addInstruction (new Instruction ("neg", regCounter));
 			l.addInstruction (new Instruction ("shr", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), regCounter));
 			l.addInstruction (new Instruction ("mov", regCounter, m_regTmp));
 			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
-			l.addInstruction (new Instruction ("jz",  new IOperand.LabelOperand (LABEL_EPILOGHDR)));
-			l.addInstruction (new Label (LABEL_MAINHDR_STARTCOMPUTATION));		
+			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_EPILOGHDR)));
+			l.addInstruction (Label.getLabel (LABEL_MAINHDR_STARTCOMPUTATION));		
 			
 			return l;
 		}
@@ -137,7 +143,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			
 			// loop
 			l.addInstruction (new Instruction ("dec", getCounterRegister ()));
-			l.addInstruction (new Instruction ("jnz", new IOperand.LabelOperand (LABEL_MAINHDR_STARTCOMPUTATION)));
+			l.addInstruction (new Instruction ("jnz", Label.getLabelOperand (LABEL_MAINHDR_STARTCOMPUTATION)));
 
 			return l;
 		}
@@ -154,14 +160,14 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			int nSIMDVectorLength = getSIMDVectorLength ();
 			int nLoopUnrollingFactor = getRuntimeOptions ().getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
 			
-			l.addInstruction (new Label (LABEL_EPILOGHDR));
+			l.addInstruction (Label.getLabel (LABEL_EPILOGHDR));
 			l.addInstruction (new Instruction ("mov", new IOperand.Immediate (nSIMDVectorLength), regCounter));
 			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPMAX), regCounter));
 			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), m_regTmp));
 			l.addInstruction (new Instruction ("add", m_regTmp, regCounter));
 			l.addInstruction (new Instruction ("add", m_regSaveCounter, regCounter));
 			l.addInstruction (new Instruction ("cmp", new IOperand.Immediate (nSIMDVectorLength), regCounter));
-			l.addInstruction (new Instruction ("je",  new IOperand.LabelOperand (LABEL_EPILOGHDR_ENDCOMPUTATION)));
+			l.addInstruction (new Instruction ("je",  Label.getLabelOperand (LABEL_EPILOGHDR_ENDCOMPUTATION)));
 			
 			// adjust the pointers
 			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter));
@@ -177,7 +183,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			InstructionList l = new InstructionList ();
 
 			// end of computation label
-			l.addInstruction (new Label (LABEL_EPILOGHDR_ENDCOMPUTATION));
+			l.addInstruction (Label.getLabel (LABEL_EPILOGHDR_ENDCOMPUTATION));
 			
 			return l;		
 		}		

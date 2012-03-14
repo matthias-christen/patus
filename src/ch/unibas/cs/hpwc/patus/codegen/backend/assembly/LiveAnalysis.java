@@ -23,6 +23,9 @@ public class LiveAnalysis
 
 	private IInstruction[] m_rgInstructions;
 	
+	/**
+	 * A matrix showing which pseudo registers (second index) are live at which instruction (first index)
+	 */
 	private byte[][] m_rgLivePseudoRegisters;
 	
 	private IOperand.PseudoRegister[] m_rgPseudoRegisters;
@@ -76,13 +79,13 @@ public class LiveAnalysis
 		{
 			for (int j = 0; j < m_rgLivePseudoRegisters[i].length; j++)
 			{
-				for (int k = 0; k < m_rgLivePseudoRegisters[i].length; k++)
+				for (int k = j + 1; k < m_rgLivePseudoRegisters[i].length; k++)
 				{
-					if (j == k)
-						continue;
-					
 					if (m_rgLivePseudoRegisters[i][j] == STATE_LIVE && m_rgLivePseudoRegisters[i][k] == STATE_LIVE)
+					{
 						graph.addEdge (new LAGraph.Vertex (m_rgPseudoRegisters[j]), new LAGraph.Vertex (m_rgPseudoRegisters[k]));
+						graph.addEdge (new LAGraph.Vertex (m_rgPseudoRegisters[k]), new LAGraph.Vertex (m_rgPseudoRegisters[j]));
+					}
 				}
 			}
 		}
@@ -97,7 +100,7 @@ public class LiveAnalysis
 	private void createStateMatrix (LAGraph graph)
 	{
 		// create the matrix of pseudo registers
-		int nPseudoRegistersCount = getMaxPseudoRegIndex ();
+		int nPseudoRegistersCount = getMaxPseudoRegIndex () + 1;
 		m_rgLivePseudoRegisters = new byte[m_rgInstructions.length][nPseudoRegistersCount];
 		for (int i = 0; i < m_rgInstructions.length; i++)
 			Arrays.fill (m_rgLivePseudoRegisters[i], STATE_UNASSIGNED);
@@ -125,7 +128,11 @@ public class LiveAnalysis
 						m_rgPseudoRegisters[reg.getNumber ()] = reg;
 						
 						if (isLastRead (reg, i))
-							m_rgLivePseudoRegisters[i][reg.getNumber ()] = STATE_DEAD;
+						{
+							m_rgLivePseudoRegisters[i][reg.getNumber ()] = STATE_LIVE;
+							if (i < m_rgInstructions.length - 1)
+								m_rgLivePseudoRegisters[i + 1][reg.getNumber ()] = STATE_DEAD;
+						}
 					}
 				}
 				
@@ -150,7 +157,7 @@ public class LiveAnalysis
 					else
 					{
 						if (m_rgLivePseudoRegisters[i][j] == STATE_UNASSIGNED)
-							m_rgLivePseudoRegisters[i][j] = m_rgLivePseudoRegisters[i - 1][j];						
+							m_rgLivePseudoRegisters[i][j] = m_rgLivePseudoRegisters[i - 1][j];
 					}
 				}
 			}
@@ -182,5 +189,26 @@ public class LiveAnalysis
 		}
 		
 		return true;
+	}
+	
+	@Override
+	public String toString ()
+	{
+		StringBuilder sb = new StringBuilder ();
+		for (int i = 0; i < m_rgLivePseudoRegisters.length; i++)
+		{
+			sb.append ('I');
+			if (i < 10)
+				sb.append ('0');
+			sb.append (i);
+			sb.append (": ");
+			
+			sb.append (Arrays.toString (m_rgLivePseudoRegisters[i]));
+			sb.append ('\t');
+			sb.append (m_rgInstructions[i].toString ());
+			sb.append ('\n');
+		}
+		
+		return sb.toString ();
 	}
 }

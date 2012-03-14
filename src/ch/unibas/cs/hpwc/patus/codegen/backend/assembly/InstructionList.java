@@ -98,6 +98,9 @@ public class InstructionList implements Iterable<IInstruction>
 							rgOps[i] = reg;
 					}
 				}
+				
+				if (bConstructedNew)
+					instrNew = new Instruction (((Instruction) instrNew).getIntrinsicBaseName (), rgOps);
 			}
 			
 			il.addInstruction (instrNew);

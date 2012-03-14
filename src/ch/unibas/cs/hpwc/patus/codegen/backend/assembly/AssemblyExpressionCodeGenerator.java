@@ -352,17 +352,17 @@ public class AssemblyExpressionCodeGenerator
 			for (int i = 0; i < nUnrollFactor; i++)
 			{
 				IOperand op = m_assemblySection.getGrid (node, i);
-				if (op instanceof IOperand.Address)
-				{
-					// if the operand is an address, check whether memory operands are supported for the argument
-					if (!RegisterAllocator.canBeMemoryOperand (node, m_data, m_assemblySection))
-					{
-						// no: we need to load the data into a register first
-						IOperand opAddr = op;
-						op = new IOperand.PseudoRegister ();
-						il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR.value (), new IOperand[] { opAddr, op }));
-					}
-				}
+//				if (op instanceof IOperand.Address)
+//				{
+//					// if the operand is an address, check whether memory operands are supported for the argument
+//					if (!RegisterAllocator.canBeMemoryOperand (node, m_data, m_assemblySection))
+//					{
+//						// no: we need to load the data into a register first
+//						IOperand opAddr = op;
+//						op = new IOperand.PseudoRegister ();
+//						il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR.value (), new IOperand[] { opAddr, op }));
+//					}
+//				}
 				
 				rgOpResults[i] = op;
 			}
@@ -435,15 +435,19 @@ public class AssemblyExpressionCodeGenerator
 				Specifier specType = m_assemblySection.getDatatype ();
 				int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (specType);
 				
-				il.addInstruction (new Instruction (
-					TypeBaseIntrinsicEnum.MOVE_FPR.value (),
-					new IOperand[] {
-						new IOperand.Address (
-							(IOperand.IRegisterOperand) m_assemblySection.getInput (StencilAssemblySection.INPUT_CONSTANTS_ARRAYPTR),
-							nConstParamIdx * AssemblySection.getTypeSize (specType) * nSIMDVectorLength),
-						op = new IOperand.PseudoRegister ()
-					}
-				));
+//				il.addInstruction (new Instruction (
+//					TypeBaseIntrinsicEnum.MOVE_FPR.value (),
+//					new IOperand[] {
+//						new IOperand.Address (
+//							(IOperand.IRegisterOperand) m_assemblySection.getInput (StencilAssemblySection.INPUT_CONSTANTS_ARRAYPTR),
+//							nConstParamIdx * AssemblySection.getTypeSize (specType) * nSIMDVectorLength),
+//						op = new IOperand.PseudoRegister ()
+//					}
+//				));
+				
+				op = new IOperand.Address (
+					(IOperand.IRegisterOperand) m_assemblySection.getInput (StencilAssemblySection.INPUT_CONSTANTS_ARRAYPTR),
+					nConstParamIdx * AssemblySection.getTypeSize (specType) * nSIMDVectorLength); 
 			}
 		}
 		

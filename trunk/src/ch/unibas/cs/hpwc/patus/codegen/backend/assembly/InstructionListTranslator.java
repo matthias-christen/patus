@@ -155,9 +155,11 @@ public class InstructionListTranslator
 	}
 	
 	/**
+	 * Finds the index of the argument in <code>rgArgs</code> which is the output argument.
 	 * 
 	 * @param rgArgs
-	 * @return
+	 *            The array of arguments to search
+	 * @return The index of the argument in <code>rgArgs</code> which is the output argument
 	 */
 	private int getOutputArgumentIndex (Argument[] rgArgs)
 	{
@@ -191,12 +193,21 @@ public class InstructionListTranslator
 	}
 
 	/**
+	 * Calculates the permutations to convert between source and destination indices
+	 * (where source is the generic instruction, destination is the target architecture specific instruction).
 	 * 
 	 * @param intrinsic
+	 *            The intrinsic
 	 * @param rgSourceOps
+	 *            The array of source operands of the instruction
 	 * @param rgDestArgs
+	 *            The array of destination operands (the intrinsic arguments)
 	 * @param rgPermSourceToDest
+	 *            This array will contain the source &rarr; destination permutation on
+	 *            exit of the method
 	 * @param rgPermDestToSource
+	 *            This array will contain the destination &rarr; source permutation on
+	 *            exit of the method
 	 */
 	private void getArgumentPermutations (Intrinsic intrinsic, IOperand[] rgSourceOps, Argument[] rgDestArgs, int[] rgPermSourceToDest, int[] rgPermDestToSource)
 	{
@@ -312,10 +323,34 @@ public class InstructionListTranslator
 		return rgSourceOps;
 	}
 	
+	/**
+	 * Creates the architecture-specific instructions to implement the generic instruction
+	 * <code>instruction</code> for the intrinsic <code>intrinsic</code>.
+	 * 
+	 * @param instruction
+	 *            The generic instruction
+	 * @param intrinsic
+	 *            The intrinsic corresponding to <code>instruction</code>
+	 * @param rgSourceOps
+	 *            The array of operands of the generic instruction
+	 * @param rgDestArgs
+	 *            The array of intrinsic arguments
+	 * @param rgPermSourceToDest
+	 *            The argument permutation source &rarr; destination (where source is the generic instruction,
+	 *            destination is the target architecture specific instruction)
+	 * @param rgPermDestToSource
+	 *            The argument permutation destination &rarr; source (where source is the generic instruction,
+	 *            destination is the target architecture specific instruction)
+	 * @param nOutputArgDestIndex
+	 *            The index of the output argument in the array of intrinsic arguments, <code>rgDestArgs</code>
+	 * @param bIntrinsicHasSharedResult
+	 *            <code>true</code> iff the intrinsic requires that an argument is a shared in/out
+	 */
 	private void createInstructions (Instruction instruction, Intrinsic intrinsic,
 		IOperand[] rgSourceOps, Argument[] rgDestArgs, int[] rgPermSourceToDest, int[] rgPermDestToSource,
 		int nOutputArgDestIndex, boolean bIntrinsicHasSharedResult)
 	{
+		// maps operands to substitute operands within the actual generated computation instruction
 		Map<IOperand, IOperand> mapSubstitutions = new HashMap<IOperand, IOperand> ();
 		
 		IOperand[] rgDestOps = new IOperand[rgDestArgs.length];
@@ -341,8 +376,11 @@ public class InstructionListTranslator
 					opOut = opTmpResultOperand;
 				}
 
+				// opOut can replace both opShared (the input operand, which in the architecture-specific intrinsic
+				// is also an output argument) and opOut (the operand, to which the result is written)
 				mapSubstitutions.put (opShared, opOut);
 				mapSubstitutions.put (opSourceOutput, opOut);
+				
 				translateInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR.value (), opShared, opOut));
 			}
 		}
@@ -398,6 +436,14 @@ public class InstructionListTranslator
 			translateInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR.value (), opTmpResultOperand, rgSourceOps[rgSourceOps.length - 1]));
 		}
 	}
+	
+	private Argument[] createGenericArguments (int nArgsCount)
+	{
+		Argument[] rgRes = new Argument[nArgsCount];
+		for (int i = 0; i < nArgsCount; i++)
+			rgRes[i] = new Argument ("reg/mem", i);
+		return rgRes;
+	}
 
 	/**
 	 * Translates the generic instruction <code>instruction</code> into an architecture-specific one.
@@ -416,11 +462,20 @@ public class InstructionListTranslator
 			return;
 		}
 		
-		IOperand[] rgSourceOps = instruction.getOperands ();
-		Argument[] rgDestArgs = Arguments.parseArguments (intrinsic.getArguments ());
-		
+		// get the source operands, i.e., the instruction arguments
+		IOperand[] rgSourceOps = instruction.getOperands ();		
 		IOperand opSourceOutput = rgSourceOps[rgSourceOps.length - 1];
 	
+		// get the destination operands, i.e., the arguments of the architecture-specific intrinsic
+		Argument[] rgDestArgs = null;
+		if (intrinsic.getArguments () != null)
+			rgDestArgs = Arguments.parseArguments (intrinsic.getArguments ());
+		else
+		{
+			LOGGER.warn (StringUtil.concat ("No arguments were defined for the intrinsic ", intrinsic.getBaseName (), ". Assuming generic arguments."));
+			rgDestArgs = createGenericArguments (rgSourceOps.length);
+		}
+
 		// check whether the number of arguments of the instruction and the intrinsic to be generated match
 		// the source instruction always has a result operand (the last instruction argument); in the intrinsic 
 		// the result might be merged into one of the operands, so there might be one argument less
@@ -481,8 +536,9 @@ public class InstructionListTranslator
 	}
 
 	/**
+	 * Runs the instruction list translator.
 	 * 
-	 * @return
+	 * @return The translated instruction list
 	 */
 	private InstructionList run ()
 	{
@@ -492,11 +548,19 @@ public class InstructionListTranslator
 	}
 	
 	/**
+	 * Translates the input instruction list <code>ilIn</code>, which contains generic instructions,
+	 * to an instruction list containing architecture-specific instructions. The translation is defined
+	 * by the architecture description <code>arch</code>.
 	 * 
 	 * @param arch
+	 *            The architecture description defining the translation
 	 * @param ilIn
+	 *            The input instruction list to translate, which contains generic instructions
 	 * @param specDatatype
-	 * @return
+	 *            The target data type
+	 * @return A new instruction list, which is the result of the translation of the generic instruction
+	 *         list <code>ilIn</code> to the architecture-specific one, for which the translation units are
+	 *         provided by the architecture description <code>arch</code>
 	 */
 	public static InstructionList translate (IArchitectureDescription arch, InstructionList ilIn, Specifier specDatatype)
 	{

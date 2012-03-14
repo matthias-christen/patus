@@ -100,8 +100,12 @@ public class GraphColoringGreedy<V extends IParametrizedVertex<Integer>, E exten
 			mapColors.put (nCol, Boolean.TRUE);
 		
 		for (V v : GraphUtil.getNeighborsUndirected (m_graph, vertex))
+		{
 			if (mapColors.containsKey (v.getData ()))
 				mapColors.remove (v.getData ());
+			if (mapColors.size () == 0)
+				break;
+		}
 		
 		return mapColors.keySet ();
 	}

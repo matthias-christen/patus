@@ -52,6 +52,6 @@ public class GraphUtil
 				setNeighbors.add (edge.getTailVertex ());
 		}
 		
-		return setNeighbors;		
+		return setNeighbors;
 	}
 }

@@ -210,13 +210,32 @@ public interface IOperand
 		}
 	}
 	
+	public enum EJumpDirection
+	{
+		FORWARD ('f'),
+		BACKWARD ('b');
+		
+		char m_chDir;
+		
+		private EJumpDirection (char chDir)
+		{
+			m_chDir = chDir;
+		}
+		
+		@Override
+		public String toString ()
+		{
+			return String.valueOf (m_chDir);
+		}
+	}
+	
 	public static class LabelOperand extends AbstractOperand
 	{
 		private String m_strLabelIdentifier;
 		
-		public LabelOperand (String strLabelIdentifier)
+		public LabelOperand (int m_nLabelIdx, EJumpDirection dir)
 		{
-			m_strLabelIdentifier = strLabelIdentifier;
+			m_strLabelIdentifier = StringUtil.concat (m_nLabelIdx, dir.toString ());
 		}
 		
 		@Override

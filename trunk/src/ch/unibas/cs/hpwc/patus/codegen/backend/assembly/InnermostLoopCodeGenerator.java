@@ -328,7 +328,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
-	private CodeGeneratorSharedObjects m_data;
+	protected CodeGeneratorSharedObjects m_data;
 	
 	/**
 	 * Flag indicating whether the architecture supports SIMD intrinsics

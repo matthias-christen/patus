@@ -67,7 +67,12 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			IOperand.IRegisterOperand regCounter = getCounterRegister ();
 			int nSIMDVectorLengthInBytes = getSIMDVectorLength () * getBaseTypeSize ();
 			
-			l.addInstruction (new Instruction ("mov", as.getGrid (getOutputStencilNode (), 0), regCounter));
+			IOperand opGridAddress = as.getGrid (getOutputStencilNode(), 0);
+			if (opGridAddress instanceof IOperand.Address)
+				opGridAddress = ((IOperand.Address) opGridAddress).getRegBase ();
+			// TODO: if grids are combined into one input ref, we need to LEA
+			
+			l.addInstruction (new Instruction ("mov", opGridAddress, regCounter));
 			l.addInstruction (new Instruction ("add", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
 			l.addInstruction (new Instruction ("and", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
 			l.addInstruction (new Instruction ("sub", new IOperand.Immediate (nSIMDVectorLengthInBytes), regCounter));

@@ -21,6 +21,9 @@ public class LiveAnalysis
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
+	/**
+	 * The array of instructions to analyze
+	 */
 	private IInstruction[] m_rgInstructions;
 	
 	/**
@@ -28,12 +31,22 @@ public class LiveAnalysis
 	 */
 	private byte[][] m_rgLivePseudoRegisters;
 	
+	/**
+	 * The array of pseudo registers used in the instructions
+	 */
 	private IOperand.PseudoRegister[] m_rgPseudoRegisters;
 	
 	
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
+	/**
+	 * Creates a live analysis analyzer for the instruction list <code>il</code>.
+	 * Call the {@link LiveAnalysis#run()} method to start the analysis.
+	 * 
+	 * @param il
+	 *            The instruction list to analyze
+	 */
 	public LiveAnalysis (InstructionList il)
 	{
 		m_rgInstructions = new IInstruction[il.size ()];
@@ -46,7 +59,12 @@ public class LiveAnalysis
 
 		m_rgLivePseudoRegisters = null;
 	}
-	
+
+	/**
+	 * Finds the maximum pseudo register index.
+	 * 
+	 * @return The maximum pseudo register index
+	 */
 	private int getMaxPseudoRegIndex ()
 	{
 		int nMaxIdx = 0;
@@ -64,17 +82,21 @@ public class LiveAnalysis
 	}
 	
 	/**
+	 * Runs the live analysis.
 	 * 
-	 * @return
+	 * @return The live analysis graph
 	 */
 	public LAGraph run ()
 	{
 		LAGraph graph = new LAGraph ();
 		
-		// construct the matrix
+		// construct the matrix and add the vertices to the LAGraph
 		createStateMatrix (graph);
 		
-		// construct the graph from the matrix
+		// construct the graph from the matrix:
+		// add an edge between two vertices if the two corresponding pseudo registers are live at the same time
+		// (the vertices were added in createStateMatrix)
+		
 		for (int i = 0; i < m_rgLivePseudoRegisters.length; i++)
 		{
 			for (int j = 0; j < m_rgLivePseudoRegisters[i].length; j++)
@@ -94,8 +116,11 @@ public class LiveAnalysis
 	}
 	
 	/**
+	 * Constructs a matrix, <code>m_rgLivePseudoRegisters</code>, which captures which pseudo registers
+	 * (columns of the matrix) are live in which instruction (rows of the matrix).
 	 * 
 	 * @param graph
+	 *            An instance of the live analysis graph, to which vertices are added in this method.
 	 */
 	private void createStateMatrix (LAGraph graph)
 	{
@@ -165,10 +190,15 @@ public class LiveAnalysis
 	}
 	
 	/**
+	 * Determines whether the last read of the pseudo register <code>reg</code> occurs in
+	 * the instruction with index <code>nCurrentIstrIdx</code>.
 	 * 
 	 * @param reg
+	 *            The pseudo register
 	 * @param nCurrentInstrIdx
-	 * @return
+	 *            The index of the instruction
+	 * @return <code>true</code> iff the last read of the register <code>reg</code> occurs
+	 *         in the instruction with index <code>nCurrentInstrIdx</code>
 	 */
 	private boolean isLastRead (IOperand.PseudoRegister reg, int nCurrentInstrIdx)
 	{

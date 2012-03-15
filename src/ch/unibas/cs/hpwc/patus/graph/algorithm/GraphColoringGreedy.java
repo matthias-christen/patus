@@ -68,7 +68,7 @@ public class GraphColoringGreedy<V extends IParametrizedVertex<Integer>, E exten
 	 */
 	private int run ()
 	{
-		for (V vertex : m_graph.getVertices ())
+		for (V vertex : GraphUtil.getVerticesSortedByDegree (m_graph, false))
 		{
 			Collection<Integer> colors = getUnusedColors (vertex);
 			if (colors.size () == 0)

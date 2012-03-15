@@ -156,6 +156,13 @@
 			<xs:element maxOccurs="1" minOccurs="0" name="assembly">
 				<xs:complexType>
 					<xs:sequence>
+						<xs:element name="register-classes" minOccurs="0" maxOccurs="1">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="register-class" minOccurs="0" maxOccurs="unbounded" type="typeRegisterClass"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
 						<xs:element name="registers" minOccurs="0" maxOccurs="1">
 							<xs:complexType>
 								<xs:sequence>
@@ -274,22 +281,8 @@
 			<xs:enumeration value="statement"/>
 		</xs:restriction>
 	</xs:simpleType>
-	<xs:complexType name="typeRegister">
-		<xs:sequence>
-			<xs:element name="subregister" minOccurs="0" maxOccurs="unbounded">
-				<xs:complexType>
-					<xs:attribute name="name" type="xs:string" use="required"/>
-					<xs:attribute name="bitrange" type="typeRangeType" use="required">
-						<xs:annotation>
-							<xs:documentation>
-								The range of bits of the main register this subregister contains.
-							</xs:documentation>
-						</xs:annotation>
-					</xs:attribute>
-				</xs:complexType>
-			</xs:element>
-		</xs:sequence>
-		<xs:attribute name="name" type="xs:string" use="required"/>
+	<xs:complexType name="typeRegisterClass">
+		<xs:attribute name="name" type="xs:ID" use="required"/>
 		<xs:attribute name="type" type="typeRegisterType" use="required"/>
 		<xs:attribute name="width" type="xs:integer" use="required">
 			<xs:annotation>
@@ -299,6 +292,35 @@
 				</xs:documentation>
 			</xs:annotation>
 		</xs:attribute>
+		<xs:attribute name="datatype" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>
+					The data type associated with this register, e.g., "int64_t" for 64-bit registers on x86_64.
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="bitrange" type="typeRangeType" use="required">
+			<xs:annotation>
+				<xs:documentation>
+					The range of bits of the main register this subregister contains.
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="subregister-of" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>
+					Indicates that registers in this register class are subregisters of registers of another class.
+					The value of the attribute should be the id of some other register class.
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="typeRegister">
+		<xs:sequence>
+			<xs:element name="subregister" minOccurs="0" maxOccurs="unbounded" type="typeRegister"/>
+		</xs:sequence>
+		<xs:attribute name="name" type="xs:string" use="required"/>
+		<xs:attribute name="class" type="xs:IDREF" use="required"/>
 	</xs:complexType>
 	<xs:simpleType name="typeRegisterType">
 		<xs:restriction base="xs:string">

@@ -138,6 +138,11 @@ public interface IOperand
 			m_nValue = nValue;
 		}
 		
+		public long getValue ()
+		{
+			return m_nValue;
+		}
+
 		@Override
 		public String getAsString ()
 		{
@@ -180,6 +185,26 @@ public interface IOperand
 			m_nDisplacement = nDisplacement;
 		}
 		
+		public long getDisplacement ()
+		{
+			return m_nDisplacement;
+		}
+
+		public IRegisterOperand getRegBase ()
+		{
+			return m_regBase;
+		}
+
+		public IRegisterOperand getRegIndex ()
+		{
+			return m_regIndex;
+		}
+
+		public int getScale ()
+		{
+			return m_nScale;
+		}
+
 		/**
 		 * Format: [ displ ] "(" base [ "," index [ "," scale ]] ")"
 		 */

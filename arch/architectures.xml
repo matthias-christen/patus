@@ -190,7 +190,7 @@
 	</architectureType>
 	
 	<architectureType name="x86_64 AVX FMA4 asm" inherits-from="x86_64 AVX">
-		<codegenerator src-suffix="c" backend="OpenMP" innermost-loop-cg="x86_64" use-function-pointers="true"/>
+		<codegenerator src-suffix="c" backend="OpenMP_AVX" innermost-loop-cg="x86_64" use-function-pointers="true"/>
 		<datatypes>
 			<!-- declare SSE datatypes -->
 			<!-- restrict alignment to 32 bytes -->
@@ -249,103 +249,109 @@
 			<intrinsic baseName="move-fpr-unaligned" name="vmovups" datatype="__m256"/>
 		</intrinsics>
 		<assembly>
+			<register-classes>
+				<register-class name="gpr64" type="gpr" width="64" datatype="int64_t"/>
+				<register-class name="gpr32" type="gpr" width="32" bitrange="0..31" datatype="int32_t" subregister-of="gpr64"/>
+				<register-class name="ymm" type="simd" width="256" datatype="__m256"/>
+				<register-class name="xmm" type="simd" width="128" bitrange="0..127" datatype="__m128" subregister-of="ymm"/>
+			</register-classes>
 			<registers>
-				<register name="rax" type="gpr" width="64">
-					<subregister name="eax" bitrange="0..31"/>
+				<register name="rax" class="gpr64">
+					<subregister name="eax" class="gpr32"/>
 				</register>
-				<register name="rbx" type="gpr" width="64">
-					<subregister name="ebx" bitrange="0..31"/>
+				<register name="rbx" class="gpr64">
+					<subregister name="ebx" class="gpr32"/>
 				</register>
-				<register name="rcx" type="gpr" width="64">
-					<subregister name="ecx" bitrange="0..31"/>
+				<register name="rcx" class="gpr64">
+					<subregister name="ecx" class="gpr32"/>
 				</register>
-				<register name="rdx" type="gpr" width="64">
-					<subregister name="edx" bitrange="0..31"/>
+				<register name="rdx" class="gpr64">
+					<subregister name="edx" class="gpr32"/>
 				</register>
-				<register name="r8" type="gpr" width="64">
-					<subregister name="r8d" bitrange="0..31"/>
+				<register name="r8" class="gpr64">
+					<subregister name="r8d" class="gpr32"/>
 				</register>				
-				<register name="r9" type="gpr" width="64">
-					<subregister name="r9d" bitrange="0..31"/>
+				<register name="r9" class="gpr64">
+					<subregister name="r9d" class="gpr32"/>
 				</register>				
-				<register name="r10" type="gpr" width="64">
-					<subregister name="r10d" bitrange="0..31"/>
+				<register name="r10" class="gpr64">
+					<subregister name="r10d" class="gpr32"/>
 				</register>				
-				<register name="r11" type="gpr" width="64">
-					<subregister name="r11d" bitrange="0..31"/>
+				<register name="r11" class="gpr64">
+					<subregister name="r11d" class="gpr32"/>
 				</register>				
-				<register name="r12" type="gpr" width="64">
-					<subregister name="r12d" bitrange="0..31"/>
+				<register name="r12" class="gpr64">
+					<subregister name="r12d" class="gpr32"/>
 				</register>				
-				<register name="r13" type="gpr" width="64">
-					<subregister name="r13d" bitrange="0..31"/>
+				<register name="r13" class="gpr64">
+					<subregister name="r13d" class="gpr32"/>
 				</register>				
-				<register name="r14" type="gpr" width="64">
-					<subregister name="r14d" bitrange="0..31"/>
+				<register name="r14" class="gpr64">
+					<subregister name="r14d" class="gpr32"/>
 				</register>				
-				<register name="r15" type="gpr" width="64">
-					<subregister name="r15d" bitrange="0..31"/>
+				<register name="r15" class="gpr64">
+					<subregister name="r15d" class="gpr32"/>
 				</register>				
-				<register name="rsi" type="gpr" width="64">
-					<subregister name="esi" bitrange="0..31"/>
+				<register name="rsi" class="gpr64">
+					<subregister name="esi" class="gpr32"/>
 				</register>
-				<register name="rdi" type="gpr" width="64">
-					<subregister name="edi" bitrange="0..31"/>
+				<register name="rdi" class="gpr64">
+					<subregister name="edi" class="gpr32"/>
 				</register>
-				<register name="rbp" type="gpr" width="64">
-					<subregister name="ebp" bitrange="0..31"/>
+				<register name="rbp" class="gpr64">
+					<subregister name="ebp" class="gpr32"/>
 				</register>
-				<register name="rsp" type="gpr" width="64">
-					<subregister name="esp" bitrange="0..31"/>
+				<register name="rsp" class="gpr64">
+					<subregister name="esp" class="gpr32"/>
 				</register>
 				
-				<register name="ymm0" type="simd" width="256">
-					<subregister name="xmm0" bitrange="0..127"/>
+				<register name="ymm0" class="ymm">
+					<subregister name="xmm0" class="xmm"/>
 				</register>
-				<register name="ymm1" type="simd" width="256">
-					<subregister name="xmm1" bitrange="0..127"/>
+				<register name="ymm1" class="ymm">
+					<subregister name="xmm1" class="xmm"/>
 				</register>
-				<register name="ymm2" type="simd" width="256">
-					<subregister name="xmm2" bitrange="0..127"/>
+				<register name="ymm2" class="ymm">
+					<subregister name="xmm2" class="xmm"/>
 				</register>
-				<register name="ymm3" type="simd" width="256">
-					<subregister name="xmm3" bitrange="0..127"/>
+				<register name="ymm3" class="ymm">
+					<subregister name="xmm3" class="xmm"/>
 				</register>
-				<register name="ymm4" type="simd" width="256">
-					<subregister name="xmm4" bitrange="0..127"/>
+				<register name="ymm4" class="ymm">
+					<subregister name="xmm4" class="xmm"/>
 				</register>
-				<register name="ymm5" type="simd" width="256">
-					<subregister name="xmm5" bitrange="0..127"/>
+				<register name="ymm5" class="ymm">
+					<subregister name="xmm5" class="xmm"/>
 				</register>
-				<register name="ymm6" type="simd" width="256">
-					<subregister name="xmm6" bitrange="0..127"/>
+				<register name="ymm6" class="ymm">
+					<subregister name="xmm6" class="xmm"/>
 				</register>
-				<register name="ymm7" type="simd" width="256">
-					<subregister name="xmm7" bitrange="0..127"/>
+				<register name="ymm7" class="ymm">
+					<subregister name="xmm7" class="xmm"/>
 				</register>
-				<register name="ymm8" type="simd" width="256">
-					<subregister name="xmm8" bitrange="0..127"/>
+				<register name="ymm8" class="ymm">
+					<subregister name="xmm8" class="xmm"/>
 				</register>
-				<register name="ymm9" type="simd" width="256">
-					<subregister name="xmm9" bitrange="0..127"/>
+				<register name="ymm9" class="ymm">
+					<subregister name="xmm9" class="xmm"/>
 				</register>
-				<register name="ymm10" type="simd" width="256">
-					<subregister name="xmm10" bitrange="0..127"/>
+				<register name="ymm10" class="ymm">
+					<subregister name="xmm10" class="xmm"/>
 				</register>
-				<register name="ymm11" type="simd" width="256">
-					<subregister name="xmm11" bitrange="0..127"/>
+				<register name="ymm11" class="ymm">
+					<subregister name="xmm11" class="xmm"/>
 				</register>
-				<register name="ymm12" type="simd" width="256">
-					<subregister name="xmm12" bitrange="0..127"/>
+				<register name="ymm12" class="ymm">
+					<subregister name="xmm12" class="xmm"/>
 				</register>
-				<register name="ymm13" type="simd" width="256">
-					<subregister name="xmm13" bitrange="0..127"/>
+				<register name="ymm13" class="ymm">
+					<subregister name="xmm13" class="xmm"/>
 				</register>
-				<register name="ymm14" type="simd" width="256">
-					<subregister name="xmm14" bitrange="0..127"/>
+				<register name="ymm14" class="ymm">
+					<subregister name="xmm14" class="xmm"/>
 				</register>
-				<register name="ymm15" type="simd" width="256">
-					<subregister name="xmm15" bitrange="0..127"/>
+				<register name="ymm15" class="ymm">
+					<subregister name="xmm15" class="xmm"/>
 				</register>
 			</registers>
 		</assembly>

@@ -1,6 +1,8 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import cetus.hir.BinaryExpression;
@@ -12,6 +14,8 @@ import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Traversable;
+import cetus.hir.UnaryExpression;
+import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
@@ -59,6 +63,8 @@ public class StencilAssemblySection extends AssemblySection
 	private StatementListBundle m_slbGeneratedCode;
 	
 	private Map<StencilNode, IOperand.IRegisterOperand> m_mapGrids;
+	private List<IOperand.IRegisterOperand> m_listGridInputs;
+	
 	private Map<IntArray, IOperand.IRegisterOperand> m_mapStrides;
 	private Map<Expression, Integer> m_mapConstantsAndParams;
 
@@ -83,12 +89,14 @@ public class StencilAssemblySection extends AssemblySection
 		m_slbGeneratedCode = new StatementListBundle ();
 
 		m_mapGrids = new HashMap<StencilNode, IOperand.IRegisterOperand> ();
+		m_listGridInputs = new ArrayList<IOperand.IRegisterOperand> ();
 		m_mapStrides = new HashMap<IntArray, IOperand.IRegisterOperand> ();
 		m_mapConstantsAndParams = new HashMap<Expression, Integer> ();
 		
 		m_baseVectors = new FindStencilNodeBaseVectors (new int[] { 1, 2, 4, 8 });	// TODO: put this in architecture.xml
 		m_specDatatype = null;
 		
+		m_data.getData ().getMemoryObjectManager ().clear ();
 		createInputs ();
 	}
 	
@@ -201,10 +209,14 @@ public class StencilAssemblySection extends AssemblySection
 		
 		IOperand op = addInput (
 			node,
-			m_data.getData ().getMemoryObjectManager ().getMemoryObjectExpression (
-				m_sdid, node, null, true, false, false, m_slbGeneratedCode, m_options
+			new UnaryExpression (
+				UnaryOperator.ADDRESS_OF,
+				m_data.getData ().getMemoryObjectManager ().getMemoryObjectExpression (
+					m_sdid, node, null, true, true, false, m_slbGeneratedCode, m_options
+				)
 			)
 		);
+		m_listGridInputs.add ((IOperand.IRegisterOperand) op);
 		
 		// add the node to the grid
 		m_mapGrids.put (node, (IOperand.IRegisterOperand) op);
@@ -314,7 +326,7 @@ public class StencilAssemblySection extends AssemblySection
 	 */
 	public Iterable<IOperand.IRegisterOperand> getGrids ()
 	{
-		return m_mapGrids.values ();
+		return m_listGridInputs;
 	}
 	
 	/**

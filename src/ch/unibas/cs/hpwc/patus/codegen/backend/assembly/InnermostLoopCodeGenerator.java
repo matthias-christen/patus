@@ -13,6 +13,7 @@ import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.analysis.ReuseNodesCollector;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
@@ -133,7 +134,10 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 							
 			// generate the loop
 			Map<String, String> mapUnalignedMoves = new HashMap<String, String> ();
-			mapUnalignedMoves.put (TypeBaseIntrinsicEnum.MOVE_FPR.value (), TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ());
+			Intrinsic intrMoveFpr = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), m_assemblySection.getDatatype ());
+			Intrinsic intrMoveFprUnaligned = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), m_assemblySection.getDatatype ());
+			mapUnalignedMoves.put (intrMoveFpr.getName (), intrMoveFprUnaligned.getName ());
+			
 			InstructionList il = new InstructionList ();
 			
 			il.addInstructions (generatePrologHeader ());

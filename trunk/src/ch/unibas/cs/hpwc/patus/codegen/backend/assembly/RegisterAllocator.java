@@ -61,7 +61,7 @@ public class RegisterAllocator
 	
 	/**
 	 * Computes the number of registers needed to compute the expression <code>expr</code>
-	 * using the Sethi-Ullman algorithm.
+	 * using the Sethi-Ullman algorithm as an initial estimate.
 	 * @param expr
 	 * @return
 	 */

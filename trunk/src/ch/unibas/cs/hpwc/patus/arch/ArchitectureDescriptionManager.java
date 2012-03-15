@@ -13,6 +13,8 @@ package ch.unibas.cs.hpwc.patus.arch;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -328,11 +330,34 @@ public class ArchitectureDescriptionManager
 		{
 			int nRegsCount = 0;
 			for (TypeRegister reg : m_type.getAssembly ().getRegisters ().getRegister ())
-				if (reg.getType ().equals (type))
+				if (((TypeRegisterClass) reg.getClazz ()).getType ().equals (type))
 					nRegsCount++;
 			return nRegsCount;
 		}
+		
+		@Override
+		public Iterable<TypeRegisterClass> getRegisterClasses (TypeRegisterType type)
+		{
+			List<TypeRegisterClass> list = new ArrayList<TypeRegisterClass> ();
+			if (m_type.getAssembly () != null && m_type.getAssembly ().getRegisterClasses () != null && m_type.getAssembly ().getRegisterClasses ().getRegisterClass () != null)
+			{
+				for (TypeRegisterClass cls : m_type.getAssembly ().getRegisterClasses ().getRegisterClass ())
+					if (cls.getType ().equals (type))
+						list.add (cls);
+			}
+			
+			Collections.sort (list, new Comparator<TypeRegisterClass> ()
+			{
+				@Override
+				public int compare (TypeRegisterClass c1, TypeRegisterClass c2)
+				{
+					return c2.getWidth ().intValue () - c1.getWidth ().intValue ();
+				}
+			});
 
+			return list;
+		}
+		
 		@Override
 		public List<String> getIncludeFiles ()
 		{

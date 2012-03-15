@@ -1,21 +1,26 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.SomeExpression;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
+import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.Register;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -26,15 +31,15 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  */
 public class AssemblySection
 {
-	///////////////////////////////////////////////////////////////////
+	// /////////////////////////////////////////////////////////////////
 	// Inner Types
-	
+
 	public static class AssemblySectionInput
 	{
 		private Object m_objKey;
 		private IOperand.IRegisterOperand m_operand;
 		private Expression m_exprValue;
-		
+
 
 		public AssemblySectionInput (Object objKey, IOperand.IRegisterOperand op, Expression exprValue)
 		{
@@ -59,52 +64,58 @@ public class AssemblySection
 		}
 	}
 
-	
-	///////////////////////////////////////////////////////////////////
+
+	// /////////////////////////////////////////////////////////////////
 	// Member Variables
 
 	protected CodeGeneratorSharedObjects m_data;
-	
-//	/**
-//	 * The list of instructions in the inline assembly section
-//	 */
-//	protected InstructionList m_ilInstructions;
-	
+
 	/**
 	 * The set of registers which got clobbered during the inline assembly section
 	 */
 	protected Set<IOperand.Register> m_setClobberedRegisters;
-	
+
 	/**
 	 * Data structure identifying which registers are currently in use
 	 */
 	protected Map<IOperand.Register, Boolean> m_mapRegisterUsage;
-	
+
 	/**
 	 * The list of inputs to the assembly section
 	 */
 	protected List<AssemblySectionInput> m_listInputs;
-	
-	
-	///////////////////////////////////////////////////////////////////
+
+
+	// /////////////////////////////////////////////////////////////////
 	// Implementation
 
 	public AssemblySection (CodeGeneratorSharedObjects data)
 	{
 		m_data = data;
-		
-//		m_ilInstructions = new InstructionList ();
 
-		m_setClobberedRegisters = new HashSet<IOperand.Register> ();
+		m_setClobberedRegisters = new TreeSet<IOperand.Register> (new Comparator<IOperand.Register> ()
+		{
+			@Override
+			public int compare (Register r1, Register r2)
+			{
+				return r1.getBaseName ().compareTo (r2.getBaseName ());
+			}
+		});
+
 		m_mapRegisterUsage = new HashMap<IOperand.Register, Boolean> ();
-		
+
 		m_listInputs = new ArrayList<AssemblySectionInput> ();
+
+		Label.reset ();
 	}
-	
+
 	/**
 	 * Adds an input to the assembly section.
-	 * @param input The input key with which the corresponding generated operand can be retrieved
-	 * @param exprValue The expression to assign to the operand (register) on entry into the assembly section
+	 * 
+	 * @param input
+	 *            The input key with which the corresponding generated operand can be retrieved
+	 * @param exprValue
+	 *            The expression to assign to the operand (register) on entry into the assembly section
 	 * @return The operand generated for the input
 	 */
 	public IOperand addInput (Object input, Expression exprValue)
@@ -114,10 +125,12 @@ public class AssemblySection
 
 		return op;
 	}
-	
+
 	/**
 	 * Retrieves the operand corresponding to the assembly section input <code>input</code>.
-	 * @param input The input for which the retrieve the corresponding operand
+	 * 
+	 * @param input
+	 *            The input for which the retrieve the corresponding operand
 	 * @return The operand corresponding to <code>input</code>
 	 */
 	public IOperand.IRegisterOperand getInput (Object input)
@@ -127,27 +140,6 @@ public class AssemblySection
 				return asi.getOperand ();
 		return null;
 	}
-	
-//	/**
-//	 * Adds one instruction to the assembly section.
-//	 * @param instruction The instruction to add
-//	 * @param specDatatype The data type used for the floating point instructions
-//	 */
-//	public void addInstruction (Instruction instruction, Specifier specDatatype)
-//	{
-//		m_ilInstructions.addInstruction (new TypedInstruction (instruction, specDatatype));
-//	}
-//	
-//	/**
-//	 * Adds a list of instructions to the assembly section.
-//	 * @param instructions The instructions to add
-//	 * @param specDatatype The data type used for the floating point instructions
-//	 */
-//	public void addInstructions (InstructionList instructions, Specifier specDatatype)
-//	{
-//		for (IInstruction i : instructions)
-//			m_listInstructions.add (new TypedInstruction (i, specDatatype));
-//	}
 
 	/**
 	 * 
@@ -160,27 +152,29 @@ public class AssemblySection
 		// translate the generic instruction list to the architecture-specific one
 		InstructionList ilTmp = InstructionListTranslator.translate (
 			m_data.getArchitectureDescription (), ilInstructions, specDatatype);
-		
+
 		// apply peep hole optimizations
 		for (IInstructionListOptimizer optimizer : rgOptimizers)
 			ilTmp = optimizer.optimize (ilTmp);
-			
+
 		// allocate registers
 		return ilTmp.allocateRegisters (this);
 	}
 
 	/**
 	 * Returns the next free register of type <code>regtype</code>.
-	 * @param regtype The desired type of the register
+	 * 
+	 * @param regtype
+	 *            The desired type of the register
 	 * @return The next free register
 	 */
 	public IRegisterOperand getFreeRegister (TypeRegisterType regtype)
 	{
 		for (TypeRegister reg : m_data.getArchitectureDescription ().getAssemblySpec ().getRegisters ().getRegister ())
 		{
-			if (!reg.getType ().equals (regtype))
+			if (!((TypeRegisterClass) reg.getClazz ()).getType ().equals (regtype))
 				continue;
-			
+
 			IOperand.Register register = new IOperand.Register (reg);
 			Boolean bIsRegUsed = m_mapRegisterUsage.get (register);
 			if (bIsRegUsed == null || bIsRegUsed == false)
@@ -190,20 +184,22 @@ public class AssemblySection
 				return register;
 			}
 		}
-		
+
 		// no free registers
 		return null;
 	}
-	
+
 	/**
 	 * Removes the register <code>register</code> from the list of currently used registers.
-	 * @param register The register to remove from the list of currently used registers
+	 * 
+	 * @param register
+	 *            The register to remove from the list of currently used registers
 	 */
 	public void killRegister (IOperand.Register register)
 	{
 		m_mapRegisterUsage.put (register, false);
 	}
-	
+		
 	/**
 	 * 
 	 * @param options
@@ -216,15 +212,36 @@ public class AssemblySection
 		// create the string of instructions
 		StringBuilder sbInstructions = new StringBuilder ();
 		for (IInstruction instruction : ilInstructions)
+		{
+			sbInstructions.append ('"');
 			instruction.issue (sbInstructions);
+			sbInstructions.append ("\"\n");
+		}
 		
 		// create the inputs string
 		StringBuilder sbInputs = new StringBuilder ();
+		
+		// get the GPR register class
+		// TODO: check whether in all cases the widest register should be used
+		Iterator<TypeRegisterClass> it = m_data.getArchitectureDescription ().getRegisterClasses (TypeRegisterType.GPR).iterator ();
+		TypeRegisterClass cls = null;
+		if (it.hasNext ())
+			cls = it.next ();
+		
 		for (AssemblySectionInput asi : m_listInputs)
 		{
 			if (sbInputs.length () > 0)
 				sbInputs.append (", ");
-			sbInputs.append ("r(");
+			sbInputs.append ("\"r\"(");
+			
+			// cast to data type of the register
+			if (cls != null)
+			{
+				sbInputs.append ('(');
+				sbInputs.append (cls.getDatatype ());
+				sbInputs.append (')');
+			}
+			
 			sbInputs.append (asi.getValue ().toString ());
 			sbInputs.append (")");
 		}
@@ -235,7 +252,22 @@ public class AssemblySection
 		{
 			if (sbClobberedRegisters.length () > 0)
 				sbClobberedRegisters.append (", ");
-			sbClobberedRegisters.append (reg.getBaseName ());
+			
+			sbClobberedRegisters.append ('"');
+			
+			// HACK
+			String strRegName = reg.getBaseName ();
+			if (strRegName.startsWith ("ymm"))
+			{
+				// GNU: error: unknown register name ‘ymmX’ in ‘asm’
+				// replace "ymmX" by "xmmX"
+				sbClobberedRegisters.append ('x');
+				sbClobberedRegisters.append (strRegName.substring (1));
+			}
+			else
+				sbClobberedRegisters.append (strRegName);
+			
+			sbClobberedRegisters.append ('"');
 		}
 		
 		// build the IR object
@@ -245,14 +277,16 @@ public class AssemblySection
 				sbInstructions.toString (),
 				":\n",
 				": ", sbInputs.toString (), "\n",
-				":", sbClobberedRegisters.toString (), "\n",
+				": ", sbClobberedRegisters.toString (), "\n",
 				")"
-			), null)
-		);
+			),
+			new ArrayList<Traversable> (0)
+		));
 	}
-	
+
 	/**
 	 * Returns the size of a floating point data type.
+	 * 
 	 * @param specDatatype
 	 * @return
 	 */

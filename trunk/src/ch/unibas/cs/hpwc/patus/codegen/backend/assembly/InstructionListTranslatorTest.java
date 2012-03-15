@@ -20,6 +20,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -180,6 +181,13 @@ public class InstructionListTranslatorTest
 		}
 
 		@Override
+		public Iterable<TypeRegisterClass> getRegisterClasses (TypeRegisterType nType)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+		
+		@Override
 		public List<String> getIncludeFiles ()
 		{
 			// TODO Auto-generated method stub
@@ -211,6 +219,17 @@ public class InstructionListTranslatorTest
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 	
+	private final static TypeRegisterClass REGCLASS_SIMD = new TypeRegisterClass ();
+	
+	static
+	{
+		REGCLASS_SIMD.setType (TypeRegisterType.SIMD);
+		REGCLASS_SIMD.setBitrange ("0..127");
+		REGCLASS_SIMD.setName ("xmm");
+		REGCLASS_SIMD.setSubregisterOf ("");
+		REGCLASS_SIMD.setWidth (new BigInteger ("128"));
+	}
+	
 	private IArchitectureDescription m_arch1, m_arch2, m_arch3, m_arch4, m_arch5, m_arch6, m_arch7;
 	private InstructionList m_il;
 
@@ -222,8 +241,7 @@ public class InstructionListTranslatorTest
 	{
 		TypeRegister reg = new TypeRegister ();
 		reg.setName (strRegName);
-		reg.setType (TypeRegisterType.SIMD);
-		reg.setWidth (new BigInteger ("128"));
+		reg.setClazz (REGCLASS_SIMD);
 		return new IOperand.Register (reg);
 	}
 	
@@ -267,7 +285,7 @@ public class InstructionListTranslatorTest
 		m_il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MINUS, createMemAccess ("rax"), createRegister ("ymm1"), createRegister ("ymm2")));
 		m_il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MINUS, createRegister ("ymm0"), createMemAccess ("rax"), createRegister ("ymm2")));
 		
-		m_il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.FMA, createRegister ("ymm0"), createMemAccess ("rax"), createRegister ("ymm2")));
+		//m_il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.FMA, createRegister ("ymm0"), createMemAccess ("rax"), createRegister ("ymm2")));
 
 		System.out.println (m_il.toString ());
 		System.out.println ("===>\n");

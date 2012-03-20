@@ -560,6 +560,12 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 			// add the code to the parent loop
 			if (slbInnerLoop != null)
 			{
+				SubdomainIdentifier sdidIterator = m_sdIterator.getIterator ();
+				slbInnerLoop.addStatementAtTop (new ExpressionStatement (new AssignmentExpression (
+					m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (sdidIterator, 0).clone (),
+					AssignmentOperator.NORMAL,
+					getLowerLoopBound (0))));
+
 				if (bHasParentLoop)
 					StatementListBundleUtil.addToLoopBody (slbParent, slbInnerLoop);
 				else

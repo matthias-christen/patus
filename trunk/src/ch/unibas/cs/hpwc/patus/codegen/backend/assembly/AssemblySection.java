@@ -199,25 +199,13 @@ public class AssemblySection
 	{
 		m_mapRegisterUsage.put (register, false);
 	}
-		
+	
 	/**
-	 * 
-	 * @param options
-	 * @return
+	 * Returns the list of inputs as a string.
+	 * @return The list of inputs as a string
 	 */
-	public Statement generate (InstructionList ilInstructions, CodeGeneratorRuntimeOptions options)
+	private String getInputsAsString ()
 	{
-		// create a C statement wrapping the inline assembly
-		
-		// create the string of instructions
-		StringBuilder sbInstructions = new StringBuilder ();
-		for (IInstruction instruction : ilInstructions)
-		{
-			sbInstructions.append ('"');
-			instruction.issue (sbInstructions);
-			sbInstructions.append ("\"\n");
-		}
-		
 		// create the inputs string
 		StringBuilder sbInputs = new StringBuilder ();
 		
@@ -246,6 +234,15 @@ public class AssemblySection
 			sbInputs.append (")");
 		}
 
+		return sbInputs.toString ();
+	}
+	
+	/**
+	 * Returns the list of clobbered registers as a string.
+	 * @return The list of clobbered registers as a string
+	 */
+	private String getClobberedRegistersAsString ()
+	{
 		// create the clobbered registers string
 		StringBuilder sbClobberedRegisters = new StringBuilder ();
 		for (IOperand.Register reg : m_setClobberedRegisters)
@@ -269,6 +266,27 @@ public class AssemblySection
 			
 			sbClobberedRegisters.append ('"');
 		}
+
+		return sbClobberedRegisters.toString ();
+	}
+		
+	/**
+	 * 
+	 * @param options
+	 * @return
+	 */
+	public Statement generate (InstructionList ilInstructions, CodeGeneratorRuntimeOptions options)
+	{
+		// create a C statement wrapping the inline assembly
+		
+		// create the string of instructions
+		StringBuilder sbInstructions = new StringBuilder ();
+		for (IInstruction instruction : ilInstructions)
+		{
+			sbInstructions.append ('"');
+			instruction.issue (sbInstructions);
+			sbInstructions.append ("\"\n");
+		}
 		
 		// build the IR object
 		return new ExpressionStatement (new SomeExpression (
@@ -276,8 +294,8 @@ public class AssemblySection
 				"__asm__ __volatile__ (\n",
 				sbInstructions.toString (),
 				":\n",
-				": ", sbInputs.toString (), "\n",
-				": ", sbClobberedRegisters.toString (), "\n",
+				": ", getInputsAsString (), "\n",
+				": ", getClobberedRegistersAsString (), "\n",
 				")"
 			),
 			new ArrayList<Traversable> (0)

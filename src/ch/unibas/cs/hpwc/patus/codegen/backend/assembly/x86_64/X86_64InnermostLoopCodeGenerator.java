@@ -146,6 +146,9 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			for (IOperand opGridAddrRegister : as.getGrids ())
 				l.addInstruction (new Instruction ("add", new IOperand.Immediate (nSIMDVectorLengthInBytes), opGridAddrRegister));
 			
+			// rotate reuse registers
+			rotateReuseRegisters (l);
+			
 			// loop
 			l.addInstruction (new Instruction ("dec", getCounterRegister ()));
 			l.addInstruction (new Instruction ("jnz", Label.getLabelOperand (LABEL_MAINHDR_STARTCOMPUTATION)));

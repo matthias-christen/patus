@@ -29,6 +29,7 @@ import ch.unibas.cs.hpwc.patus.representation.StencilCalculation.EArgumentType;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.IntArray;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  * Assembly section specialization for stencil computations.
@@ -84,6 +85,7 @@ public class StencilAssemblySection extends AssemblySection
 	{
 		super (data);
 		
+		m_sdid = sdid;
 		m_options = options;
 		
 		m_slbGeneratedCode = new StatementListBundle ();
@@ -319,6 +321,19 @@ public class StencilAssemblySection extends AssemblySection
 		Integer nIdx = m_mapConstantsAndParams.get (exprConstantOrParam);
 		return nIdx == null ? -1 : nIdx;
 	}
+	
+	public IOperand getConstantOrParamAddress (Expression exprConstantOrParam)
+	{
+		int nConstParamIdx = getConstantOrParamIndex (exprConstantOrParam);
+		if (nConstParamIdx == -1)
+			throw new RuntimeException (StringUtil.concat ("No index for the constant of parameter ", exprConstantOrParam.toString ()));
+		
+		int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (getDatatype ());
+		
+		return new IOperand.Address (
+			(IOperand.IRegisterOperand) getInput (StencilAssemblySection.INPUT_CONSTANTS_ARRAYPTR),
+			nConstParamIdx * AssemblySection.getTypeSize (getDatatype ()) * nSIMDVectorLength);
+	}
 
 	/**
 	 * Returns an iterable over the register containing the grid pointers
@@ -327,6 +342,31 @@ public class StencilAssemblySection extends AssemblySection
 	public Iterable<IOperand.IRegisterOperand> getGrids ()
 	{
 		return m_listGridInputs;
+	}
+	
+	private boolean isNodeCompatible (StencilNode node, StencilNode nodeRef)
+	{
+		if (nodeRef.getSpaceIndex ().length != node.getSpaceIndex ().length)
+			return false;
+		
+		// compare all the coordinates except in the first dimension (i==0)
+		for (int i = 1; i < nodeRef.getSpaceIndex ().length; i++)
+			if (node.getSpaceIndex ()[i] != nodeRef.getSpaceIndex ()[i])
+				return false;
+		
+		return true;
+	}
+	
+	private StencilNode findReferenceNode (StencilNode node)
+	{
+		if (m_mapGrids.isEmpty ())
+			return null;
+		
+		for (StencilNode nodeRef : m_mapGrids.keySet ())
+			if (isNodeCompatible (node, nodeRef))
+				return nodeRef;
+		
+		return null;
 	}
 	
 	/**
@@ -340,6 +380,18 @@ public class StencilAssemblySection extends AssemblySection
 	{
 		// TODO: if too many grids need to use LEA...
 		IOperand.IRegisterOperand opBase = m_mapGrids.get (node);
+		if (opBase == null)
+		{
+			// no base node found in the map for "node"
+			// find a reference node
+			StencilNode nodeRef = findReferenceNode (node);
+			if (nodeRef == null)
+				return null;
+			
+			nElementsShift += node.getSpaceIndex ()[0] - nodeRef.getSpaceIndex ()[0];
+			node = nodeRef;
+			opBase = m_mapGrids.get (node);
+		}
 		
 		// no index register is needed if the offset is only in the unit stride direction (dimension 0)
 		boolean bHasOffsetInNonUnitStride = false || (nElementsShift > 0);

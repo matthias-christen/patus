@@ -12,6 +12,7 @@ package ch.unibas.cs.hpwc.patus.arch;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -147,7 +148,7 @@ public class ArchitectureDescriptionManager
 		public boolean hasExplicitLocalDataCopies (int nParallelismLevel)
 		{
 			Level level = getParallelismLevel (nParallelismLevel);
-			return level == null ? false : level.isHasExplicitLocalDataCopy ();
+			return level == null ? false : level.isHasExplicitLocalDatacopy ();
 		}
 
 		@Override
@@ -502,6 +503,8 @@ public class ArchitectureDescriptionManager
 					fieldDest.set (objDest, new Integer ((Integer) fieldSrc.get (objSrc)));
 				else if (fieldSrc.getType ().equals (int.class))
 					fieldDest.set (objDest, ((Integer) fieldSrc.get (objSrc)).intValue ());
+				else if (fieldSrc.getType ().equals (BigInteger.class))
+					fieldDest.set (objDest, new BigInteger (((BigInteger) fieldSrc.get (objSrc)).toByteArray ()));
 				else if (fieldSrc.getType ().equals (Boolean.class))
 					fieldDest.set (objDest, new Boolean ((Boolean) fieldSrc.get (objSrc)));
 				else if (fieldSrc.getType ().equals (boolean.class))

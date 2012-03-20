@@ -77,7 +77,7 @@
 										</xs:documentation>
 									</xs:annotation>
 								</xs:attribute>
-								<xs:attribute default="false" name="hasExplicitLocalDataCopy" type="xs:boolean" use="optional">
+								<xs:attribute default="false" name="has-explicit-local-datacopy" type="xs:boolean" use="optional">
 									<xs:annotation>
 										<xs:documentation>
 											Specifies whether this parallelism level has its own copy of
@@ -85,7 +85,7 @@
 										</xs:documentation>
 									</xs:annotation>
 								</xs:attribute>
-								<xs:attribute default="false" name="requiresSynchronization" type="xs:boolean" use="optional">
+								<xs:attribute default="false" name="requires-synchronization" type="xs:boolean" use="optional">
 									<xs:annotation>
 										<xs:documentation>
 											Specifies whether explicit data synchronization is needed before the
@@ -93,7 +93,7 @@
 										</xs:documentation>
 									</xs:annotation>
 								</xs:attribute>
-								<xs:attribute default="false" name="asyncIO" type="xs:boolean" use="optional">
+								<xs:attribute default="false" name="async-IO" type="xs:boolean" use="optional">
 									<xs:annotation>
 										<xs:documentation>
 											Specifies whether the I/O operations execute asynchronously,
@@ -118,7 +118,7 @@
 						<xs:element maxOccurs="unbounded" minOccurs="0" name="datatype">
 							<xs:complexType>
 								<xs:attribute name="name" type="xs:string" use="required"/>
-								<xs:attribute default="1" name="simdVectorLength" type="xs:int" use="optional"/>
+								<xs:attribute default="1" name="simd-vector-length" type="xs:int" use="optional"/>
 								<xs:attribute name="basetype" type="typeBaseDatatype" use="required"/>
 								<xs:attribute name="width" type="xs:int" use="required"/>
 								<xs:attribute name="alignment" type="xs:int" use="optional"/>
@@ -145,7 +145,7 @@
 						<xs:element maxOccurs="unbounded" minOccurs="0" name="intrinsic">
 							<xs:complexType>
 								<xs:attribute name="name" type="xs:string" use="required"/>
-								<xs:attribute name="baseName" type="typeBaseIntrinsicName" use="required"/>
+								<xs:attribute name="base-name" type="typeBaseIntrinsicName" use="required"/>
 								<xs:attribute name="datatype" type="xs:string" use="required"/>
 								<xs:attribute name="arguments" type="xs:string" use="optional"/>
 							</xs:complexType>
@@ -171,7 +171,6 @@
 							</xs:complexType>
 						</xs:element>
 					</xs:sequence>
-					<xs:attribute name="backend" type="xs:string" use="required"/>
 				</xs:complexType>
 			</xs:element>
 			<xs:element maxOccurs="1" minOccurs="0" name="includes">
@@ -299,7 +298,7 @@
 				</xs:documentation>
 			</xs:annotation>
 		</xs:attribute>
-		<xs:attribute name="bitrange" type="typeRangeType" use="required">
+		<xs:attribute name="bitrange" type="typeRangeType" use="optional">
 			<xs:annotation>
 				<xs:documentation>
 					The range of bits of the main register this subregister contains.

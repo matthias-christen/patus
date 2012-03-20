@@ -419,36 +419,36 @@ public class AssemblyExpressionCodeGenerator
 			// the constant or parameter is not contained in the map, i.e., there are no special registers
 			// reserved for them => load into a temporary register from memory
 			
-			int nConstParamIdx = m_assemblySection.getConstantOrParamIndex (exprConstantOrParam);
-			if (nConstParamIdx == -1)
-			{
-				// the constant/parameter was not found in the assembly section constant/param input array
-				if (exprConstantOrParam instanceof IDExpression)
-					return processVariable ((IDExpression) exprConstantOrParam, nUnrollFactor, il);
-				
-				throw new RuntimeException (StringUtil.concat ("Don't know how to process ", exprConstantOrParam.toString ()));
-			}
-			else
-			{
-				// the constant/parameter was found in the assembly section constant/param input array
-				
-				Specifier specType = m_assemblySection.getDatatype ();
-				int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (specType);
-				
-//				il.addInstruction (new Instruction (
-//					TypeBaseIntrinsicEnum.MOVE_FPR.value (),
-//					new IOperand[] {
-//						new IOperand.Address (
-//							(IOperand.IRegisterOperand) m_assemblySection.getInput (StencilAssemblySection.INPUT_CONSTANTS_ARRAYPTR),
-//							nConstParamIdx * AssemblySection.getTypeSize (specType) * nSIMDVectorLength),
-//						op = new IOperand.PseudoRegister ()
-//					}
-//				));
-				
-				op = new IOperand.Address (
-					(IOperand.IRegisterOperand) m_assemblySection.getInput (StencilAssemblySection.INPUT_CONSTANTS_ARRAYPTR),
-					nConstParamIdx * AssemblySection.getTypeSize (specType) * nSIMDVectorLength); 
-			}
+			op = m_assemblySection.getConstantOrParamAddress (exprConstantOrParam);
+			
+//			int nConstParamIdx = m_assemblySection.getConstantOrParamIndex (exprConstantOrParam);
+//			if (nConstParamIdx == -1)
+//			{
+//				// the constant/parameter was not found in the assembly section constant/param input array
+//				if (exprConstantOrParam instanceof IDExpression)
+//					return processVariable ((IDExpression) exprConstantOrParam, nUnrollFactor, il);
+//				
+//				throw new RuntimeException (StringUtil.concat ("Don't know how to process ", exprConstantOrParam.toString ()));
+//			}
+//			else
+//			{
+//				// the constant/parameter was found in the assembly section constant/param input array
+//				
+//				Specifier specType = m_assemblySection.getDatatype ();
+//				int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (specType);
+//				
+////				il.addInstruction (new Instruction (
+////					TypeBaseIntrinsicEnum.MOVE_FPR.value (),
+////					new IOperand[] {
+////						new IOperand.Address (
+////							(IOperand.IRegisterOperand) m_assemblySection.getInput (StencilAssemblySection.INPUT_CONSTANTS_ARRAYPTR),
+////							nConstParamIdx * AssemblySection.getTypeSize (specType) * nSIMDVectorLength),
+////						op = new IOperand.PseudoRegister ()
+////					}
+////				));
+//				
+//				op = m_assemblySection.getConstantOrParamAddress ();
+//			}
 		}
 		
 		for (int i = 0; i < nUnrollFactor; i++)

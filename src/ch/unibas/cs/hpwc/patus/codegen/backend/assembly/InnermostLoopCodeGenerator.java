@@ -80,6 +80,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		private IOperand.IRegisterOperand m_regCounter;
 		
 		private Map<String, Map<StencilNode, IOperand.IRegisterOperand>> m_mapReuseNodesToRegisters;
+		private Map<IOperand.IRegisterOperand, StencilNode> m_mapRegistersToReuseNodes;
 		private List<List<IOperand.IRegisterOperand>> m_listReuseRegisterSets;
 		
 		/**
@@ -109,9 +110,14 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		 */
 		public StatementListBundle generate ()
 		{
+			InstructionList il = new InstructionList ();
+			
+			Specifier specType = m_assemblySection.getDatatype ();
+
 			// assign registers to the stencil nodes, which are to be reused in unit stride direction
-			assignReuseRegisters ();
-			assignConstantRegisters ();
+			assignConstantRegisters (il);
+			assignReuseRegisters (il);
+			il = m_assemblySection.translate (il, specType);
 			
 			StatementListBundle slb = new StatementListBundle ();
 			
@@ -130,27 +136,25 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), ilComputationTemp, m_options);
 				
 			// translate the generic instruction list to the architecture-specific one
-			InstructionList ilComputation = m_assemblySection.translate (ilComputationTemp, m_assemblySection.getDatatype ());
+			InstructionList ilComputation = m_assemblySection.translate (ilComputationTemp, specType);
 							
 			// generate the loop
 			Map<String, String> mapUnalignedMoves = new HashMap<String, String> ();
-			Intrinsic intrMoveFpr = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), m_assemblySection.getDatatype ());
-			Intrinsic intrMoveFprUnaligned = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), m_assemblySection.getDatatype ());
+			Intrinsic intrMoveFpr = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), specType);
+			Intrinsic intrMoveFprUnaligned = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), specType);
 			mapUnalignedMoves.put (intrMoveFpr.getName (), intrMoveFprUnaligned.getName ());
-			
-			InstructionList il = new InstructionList ();
-			
-			il.addInstructions (generatePrologHeader ());
+						
+			il.addInstructions (m_assemblySection.translate (generatePrologHeader (), specType));
 			il.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
-			il.addInstructions (generatePrologFooter ());
+			il.addInstructions (m_assemblySection.translate (generatePrologFooter (), specType));
 			
-			il.addInstructions (generateMainHeader ());
+			il.addInstructions (m_assemblySection.translate (generateMainHeader (), specType));
 			il.addInstructions (ilComputation);
-			il.addInstructions (generateMainFooter ());
+			il.addInstructions (m_assemblySection.translate (generateMainFooter (), specType));
 			
-			il.addInstructions (generateEpilogHeader ());
+			il.addInstructions (m_assemblySection.translate (generateEpilogHeader (), specType));
 			il.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
-			il.addInstructions (generateEpilogFooter ());
+			il.addInstructions (m_assemblySection.translate (generateEpilogFooter (), specType));
 			
 			// create the inline assembly statement
 			Statement stmt = m_assemblySection.generate (il, m_options);
@@ -162,12 +166,18 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		}
 		
 		/**
-		 * Assign registers to the stencil nodes, which are to be reused in unit stride
+		 * Assign registers to the stencil nodes, which are to be reused in unit
+		 * stride
 		 * direction within the innermost loop.
+		 * 
+		 * @param il
+		 *            The instruction list to which the load instructions will
+		 *            be added
 		 */
-		private void assignReuseRegisters ()
+		private void assignReuseRegisters (InstructionList il)
 		{
 			m_mapReuseNodesToRegisters = new HashMap<String, Map<StencilNode, IOperand.IRegisterOperand>> ();
+			m_mapRegistersToReuseNodes = new HashMap<IOperand.IRegisterOperand, StencilNode> ();
 			m_listReuseRegisterSets = new LinkedList<List<IOperand.IRegisterOperand>> ();
 			
 			for (StencilNodeSet set : findReuseStencilNodeSets ())
@@ -195,25 +205,39 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 					// add missing intermediates
 					if (nPrevCoord != Integer.MIN_VALUE)
 					{
-						for (int i = nPrevCoord; i < node.getSpaceIndex ()[0]; i++)
-							listSet.add (m_assemblySection.getFreeRegister (TypeRegisterType.SIMD));
+						for (int i = nPrevCoord + 1; i < node.getSpaceIndex ()[0]; i++)
+						{
+							IOperand.IRegisterOperand opReg = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
+							listSet.add (opReg);
+							
+							// load the value into the register
+							il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, m_assemblySection.getGrid (node, i - node.getSpaceIndex ()[0]), opReg));
+						}
 					}
 					
 					Map<StencilNode, IOperand.IRegisterOperand> map = m_mapReuseNodesToRegisters.get (node.getName ());
 					if (map == null)
 						m_mapReuseNodesToRegisters.put (node.getName (), map = new HashMap<StencilNode, IOperand.IRegisterOperand> ());
 					
-					// request a new register for the
+					// request a new register for the actual node
 					IOperand.IRegisterOperand opReg = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
 					listSet.add (opReg);
 					map.put (node, opReg);
+					m_mapRegistersToReuseNodes.put (opReg, node);
+
+					// load the value into the register
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, m_assemblySection.getGrid (node, 0), opReg));
+					
+					nPrevCoord = node.getSpaceIndex ()[0];
 				}
 			}
 		}
 		
 		/**
-		 * Finds sets of stencil nodes which can be reused cyclically during iterating over the
+		 * Finds sets of stencil nodes which can be reused cyclically during
+		 * iterating over the
 		 * unit stride dimension.
+		 * 
 		 * @return An iterable over reuse stencil node sets
 		 */
 		private Iterable<StencilNodeSet> findReuseStencilNodeSets ()
@@ -248,15 +272,41 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		}
 		
 		/**
+		 * 
+		 * @param il
+		 */
+		protected void rotateReuseRegisters (InstructionList il)
+		{
+			for (List<IOperand.IRegisterOperand> listSet : m_listReuseRegisterSets)
+			{
+				// swap registers
+				IOperand.IRegisterOperand opPrev = null;
+				for (IOperand.IRegisterOperand op : listSet)
+				{
+					if (opPrev != null)
+						il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, op, opPrev));
+					opPrev = op;
+				}
+				
+				// load a new value into the register that corresponds to the largest coordinate
+				il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, m_assemblySection.getGrid (m_mapRegistersToReuseNodes.get (opPrev), 0), opPrev));
+			}
+		}
+		
+		/**
 		 * Assigns constants to SIMD registers.
 		 */
-		private void assignConstantRegisters ()
+		private void assignConstantRegisters (InstructionList il)
 		{
 			m_mapConstantsAndParams = new HashMap<Expression, IOperand.IRegisterOperand> ();
 			if (m_assemblySection.getConstantsAndParamsCount () < MAX_REGISTERS_FOR_CONSTANTS)
 			{
 				for (Expression exprConstOrParam : m_assemblySection.getConstantsAndParams ())
-					m_mapConstantsAndParams.put (exprConstOrParam, m_assemblySection.getFreeRegister (TypeRegisterType.SIMD));
+				{
+					IOperand.IRegisterOperand op = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
+					m_mapConstantsAndParams.put (exprConstOrParam, op);
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, m_assemblySection.getConstantOrParamAddress (exprConstOrParam), op));
+				}
 			}
 		}
 		
@@ -276,7 +326,9 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		}
 		
 		/**
-		 * Returns the size (in Bytes) of the data type of the stencil computation. 
+		 * Returns the size (in Bytes) of the data type of the stencil
+		 * computation.
+		 * 
 		 * @return The size (in Bytes) of the computation data type
 		 */
 		public int getBaseTypeSize ()
@@ -290,9 +342,12 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		}
 
 		/**
-		 * Returns the instruction list implementing the header of the prolog loop.
-		 * The prolog loop header precedes the prolog computation, which deals with non-aligned
+		 * Returns the instruction list implementing the header of the prolog
+		 * loop.
+		 * The prolog loop header precedes the prolog computation, which deals
+		 * with non-aligned
 		 * first grid points.
+		 * 
 		 * @return The prolog loop header instruction list
 		 */
 		abstract public InstructionList generatePrologHeader ();
@@ -374,8 +429,11 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	protected abstract InnermostLoopCodeGenerator.CodeGenerator newCodeGenerator (SubdomainIterator sdit, CodeGeneratorRuntimeOptions options);
 
 	/**
-	 * Determines whether the architecture supports unaligned moves of SIMD vectors.
-	 * @return <code>true</code> iff unaligned moves of SIMD vectors are supported
+	 * Determines whether the architecture supports unaligned moves of SIMD
+	 * vectors.
+	 * 
+	 * @return <code>true</code> iff unaligned moves of SIMD vectors are
+	 *         supported
 	 */
 	public boolean isUnalignedMoveSupported ()
 	{
@@ -384,6 +442,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 
 	/**
 	 * Determines whether the architecture supports SIMD.
+	 * 
 	 * @return <code>true</code> iff the architecture supports SIMD
 	 */
 	public boolean isSIMDSupported ()

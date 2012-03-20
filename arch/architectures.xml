@@ -4,7 +4,7 @@
 	<architectureType name="Intel x86_64">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
-			<level number="1" hasExplicitLocalDataCopy="false" asyncIO="false">
+			<level number="1" has-explicit-local-datacopy="false" async-IO="false">
 				<barrier type="pragma" implementation="omp barrier"/>
 			</level>
 		</parallelism>
@@ -27,69 +27,69 @@
 	<architectureType name="Intel x86_64 SSE">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
-			<level number="1" hasExplicitLocalDataCopy="false" asyncIO="true">
+			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
 				<barrier type="pragma" implementation="omp barrier"/>
 			</level>
 		</parallelism>
 		<datatypes>
 			<!-- declare SSE datatypes -->
 			<!-- restrict alignment to 16 bytes -->
-			<datatype basetype="float" name="__m128" simdVectorLength="4" width="128" alignment="16"/>
-			<datatype basetype="double" name="__m128d" simdVectorLength="2" width="128" alignment="16"/>
+			<datatype basetype="float" name="__m128" simd-vector-length="4" width="128" alignment="16"/>
+			<datatype basetype="double" name="__m128d" simd-vector-length="2" width="128" alignment="16"/>
 		</datatypes>
 		<declspecs>
 			<declspec type="restrictedpointer" specifiers="__restrict__"/>
 		</declspecs>
 		<intrinsics>
 			<!-- intrinsics for double precision arithmetic operations -->
-			<intrinsic baseName="unary_minus" name="neg_pd" datatype="__m128d"/>
-			<intrinsic baseName="plus" name="_mm_add_pd" datatype="__m128d"/>
-			<intrinsic baseName="minus" name="_mm_sub_pd" datatype="__m128d"/>
-			<intrinsic baseName="multiply" name="_mm_mul_pd" datatype="__m128d"/>
-			<intrinsic baseName="divide" name="_mm_div_pd" datatype="__m128d"/>
-			<intrinsic baseName="sqrt" name="_mm_sqrt_pd" datatype="__m128d"/>
-			<intrinsic baseName="min" name="_mm_min_pd" datatype="__m128d"/>
-			<intrinsic baseName="max" name="_mm_max_pd" datatype="__m128d"/>
+			<intrinsic base-name="unary_minus" name="neg_pd" datatype="__m128d"/>
+			<intrinsic base-name="plus" name="_mm_add_pd" datatype="__m128d"/>
+			<intrinsic base-name="minus" name="_mm_sub_pd" datatype="__m128d"/>
+			<intrinsic base-name="multiply" name="_mm_mul_pd" datatype="__m128d"/>
+			<intrinsic base-name="divide" name="_mm_div_pd" datatype="__m128d"/>
+			<intrinsic base-name="sqrt" name="_mm_sqrt_pd" datatype="__m128d"/>
+			<intrinsic base-name="min" name="_mm_min_pd" datatype="__m128d"/>
+			<intrinsic base-name="max" name="_mm_max_pd" datatype="__m128d"/>
 			<!-- ssemathlib.h -->
-			<intrinsic baseName="ceil" name="ceil_pd" datatype="__m128d"/>
-			<intrinsic baseName="floor" name="floor_pd" datatype="__m128d"/>
-			<intrinsic baseName="abs" name="abs_pd" datatype="__m128d"/>
-			<intrinsic baseName="exp" name="exp_pd" datatype="__m128d"/>
-			<intrinsic baseName="log" name="log_pd" datatype="__m128d"/>
-			<intrinsic baseName="log10" name="log10_pd" datatype="__m128d"/>
-			<intrinsic baseName="pow" name="pow_pd" datatype="__m128d"/>
-			<intrinsic baseName="sin" name="sin_pd" datatype="__m128d"/>
-			<intrinsic baseName="cos" name="cos_pd" datatype="__m128d"/>
-			<intrinsic baseName="tan" name="tan_pd" datatype="__m128d"/>
-			<intrinsic baseName="asin" name="asin_pd" datatype="__m128d"/>
-			<intrinsic baseName="acos" name="acos_pd" datatype="__m128d"/>
-			<intrinsic baseName="atan" name="atan_pd" datatype="__m128d"/>
-			<intrinsic baseName="atan2" name="atan2_pd" datatype="__m128d"/>
+			<intrinsic base-name="ceil" name="ceil_pd" datatype="__m128d"/>
+			<intrinsic base-name="floor" name="floor_pd" datatype="__m128d"/>
+			<intrinsic base-name="abs" name="abs_pd" datatype="__m128d"/>
+			<intrinsic base-name="exp" name="exp_pd" datatype="__m128d"/>
+			<intrinsic base-name="log" name="log_pd" datatype="__m128d"/>
+			<intrinsic base-name="log10" name="log10_pd" datatype="__m128d"/>
+			<intrinsic base-name="pow" name="pow_pd" datatype="__m128d"/>
+			<intrinsic base-name="sin" name="sin_pd" datatype="__m128d"/>
+			<intrinsic base-name="cos" name="cos_pd" datatype="__m128d"/>
+			<intrinsic base-name="tan" name="tan_pd" datatype="__m128d"/>
+			<intrinsic base-name="asin" name="asin_pd" datatype="__m128d"/>
+			<intrinsic base-name="acos" name="acos_pd" datatype="__m128d"/>
+			<intrinsic base-name="atan" name="atan_pd" datatype="__m128d"/>
+			<intrinsic base-name="atan2" name="atan2_pd" datatype="__m128d"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
-			<intrinsic baseName="unary_minus" name="neg_ps" datatype="__m128"/>
-			<intrinsic baseName="plus" name="_mm_add_ps" datatype="__m128"/>
-			<intrinsic baseName="minus" name="_mm_sub_ps" datatype="__m128"/>
-			<intrinsic baseName="multiply" name="_mm_mul_ps" datatype="__m128"/>
-			<intrinsic baseName="divide" name="_mm_div_ps" datatype="__m128"/>
-			<intrinsic baseName="sqrt" name="_mm_sqrt_ps" datatype="__m128"/>
-			<intrinsic baseName="min" name="_mm_min_ps" datatype="__m128"/>
-			<intrinsic baseName="max" name="_mm_max_ps" datatype="__m128"/>
+			<intrinsic base-name="unary_minus" name="neg_ps" datatype="__m128"/>
+			<intrinsic base-name="plus" name="_mm_add_ps" datatype="__m128"/>
+			<intrinsic base-name="minus" name="_mm_sub_ps" datatype="__m128"/>
+			<intrinsic base-name="multiply" name="_mm_mul_ps" datatype="__m128"/>
+			<intrinsic base-name="divide" name="_mm_div_ps" datatype="__m128"/>
+			<intrinsic base-name="sqrt" name="_mm_sqrt_ps" datatype="__m128"/>
+			<intrinsic base-name="min" name="_mm_min_ps" datatype="__m128"/>
+			<intrinsic base-name="max" name="_mm_max_ps" datatype="__m128"/>
 			<!-- ssemathlib.h -->
-			<intrinsic baseName="ceil" name="ceil_ps" datatype="__m128"/>
-			<intrinsic baseName="floor" name="floor_ps" datatype="__m128"/>
-			<intrinsic baseName="abs" name="abs_ps" datatype="__m128"/>
-			<intrinsic baseName="exp" name="exp_ps" datatype="__m128"/>
-			<intrinsic baseName="log" name="log_ps" datatype="__m128"/>
-			<intrinsic baseName="log10" name="log10_ps" datatype="__m128"/>
-			<intrinsic baseName="pow" name="pow_ps" datatype="__m128"/>
-			<intrinsic baseName="sin" name="sin_ps" datatype="__m128"/>
-			<intrinsic baseName="cos" name="cos_ps" datatype="__m128"/>
-			<intrinsic baseName="tan" name="tan_ps" datatype="__m128"/>
-			<intrinsic baseName="asin" name="asin_ps" datatype="__m128"/>
-			<intrinsic baseName="acos" name="acos_ps" datatype="__m128"/>
-			<intrinsic baseName="atan" name="atan_ps" datatype="__m128"/>
-			<intrinsic baseName="atan2" name="atan2_ps" datatype="__m128"/>
+			<intrinsic base-name="ceil" name="ceil_ps" datatype="__m128"/>
+			<intrinsic base-name="floor" name="floor_ps" datatype="__m128"/>
+			<intrinsic base-name="abs" name="abs_ps" datatype="__m128"/>
+			<intrinsic base-name="exp" name="exp_ps" datatype="__m128"/>
+			<intrinsic base-name="log" name="log_ps" datatype="__m128"/>
+			<intrinsic base-name="log10" name="log10_ps" datatype="__m128"/>
+			<intrinsic base-name="pow" name="pow_ps" datatype="__m128"/>
+			<intrinsic base-name="sin" name="sin_ps" datatype="__m128"/>
+			<intrinsic base-name="cos" name="cos_ps" datatype="__m128"/>
+			<intrinsic base-name="tan" name="tan_ps" datatype="__m128"/>
+			<intrinsic base-name="asin" name="asin_ps" datatype="__m128"/>
+			<intrinsic base-name="acos" name="acos_ps" datatype="__m128"/>
+			<intrinsic base-name="atan" name="atan_ps" datatype="__m128"/>
+			<intrinsic base-name="atan2" name="atan2_ps" datatype="__m128"/>
 			
 			<!-- non-arithmetic intrinsics -->
 		</intrinsics>
@@ -111,39 +111,39 @@
 	<architectureType name="x86_64 AVX">
 		<codegenerator src-suffix="c" backend="OpenMP_AVX" use-function-pointers="true"/>
 		<parallelism>
-			<level number="1" hasExplicitLocalDataCopy="false" asyncIO="true">
+			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
 				<barrier type="pragma" implementation="omp barrier"/>
 			</level>
 		</parallelism>
 		<datatypes>
 			<!-- declare AVX-256 datatypes -->
 			<!-- restrict alignment to 32 bytes -->
-			<datatype basetype="float" name="__m256" simdVectorLength="8" width="256" alignment="32"/>
-			<datatype basetype="double" name="__m256d" simdVectorLength="4" width="256" alignment="32"/>
+			<datatype basetype="float" name="__m256" simd-vector-length="8" width="256" alignment="32"/>
+			<datatype basetype="double" name="__m256d" simd-vector-length="4" width="256" alignment="32"/>
 		</datatypes>
 		<declspecs>
 			<declspec type="restrictedpointer" specifiers="__restrict__"/>
 		</declspecs>
 		<intrinsics>
 			<!-- intrinsics for double precision arithmetic operations -->
-			<intrinsic baseName="unary_minus" name="neg_pd" datatype="__m256d"/>
-			<intrinsic baseName="plus" name="_mm256_add_pd" datatype="__m256d"/>
-			<intrinsic baseName="minus" name="_mm256_sub_pd" datatype="__m256d"/>
-			<intrinsic baseName="multiply" name="_mm256_mul_pd" datatype="__m256d"/>
-			<intrinsic baseName="divide" name="_mm256_div_pd" datatype="__m256d"/>
-			<intrinsic baseName="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
-			<intrinsic baseName="min" name="_mm256_min_pd" datatype="__m256d"/>
-			<intrinsic baseName="max" name="_mm256_max_pd" datatype="__m256d"/>
+			<intrinsic base-name="unary_minus" name="neg_pd" datatype="__m256d"/>
+			<intrinsic base-name="plus" name="_mm256_add_pd" datatype="__m256d"/>
+			<intrinsic base-name="minus" name="_mm256_sub_pd" datatype="__m256d"/>
+			<intrinsic base-name="multiply" name="_mm256_mul_pd" datatype="__m256d"/>
+			<intrinsic base-name="divide" name="_mm256_div_pd" datatype="__m256d"/>
+			<intrinsic base-name="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
+			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
+			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
-			<intrinsic baseName="unary_minus" name="neg_ps" datatype="__m256"/>
-			<intrinsic baseName="plus" name="_mm256_add_ps" datatype="__m256"/>
-			<intrinsic baseName="minus" name="_mm256_sub_ps" datatype="__m256"/>
-			<intrinsic baseName="multiply" name="_mm256_mul_ps" datatype="__m256"/>
-			<intrinsic baseName="divide" name="_mm256_div_ps" datatype="__m256"/>
-			<intrinsic baseName="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
-			<intrinsic baseName="min" name="_mm256_min_ps" datatype="__m256"/>
-			<intrinsic baseName="max" name="_mm256_max_ps" datatype="__m256"/>
+			<intrinsic base-name="unary_minus" name="neg_ps" datatype="__m256"/>
+			<intrinsic base-name="plus" name="_mm256_add_ps" datatype="__m256"/>
+			<intrinsic base-name="minus" name="_mm256_sub_ps" datatype="__m256"/>
+			<intrinsic base-name="multiply" name="_mm256_mul_ps" datatype="__m256"/>
+			<intrinsic base-name="divide" name="_mm256_div_ps" datatype="__m256"/>
+			<intrinsic base-name="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
+			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
+			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>
 			
 			<!-- non-arithmetic intrinsics -->
 		</intrinsics>
@@ -153,7 +153,7 @@
 			<include file="x86intrin.h"/>
 			<include file="avxmathlib.h"/>
 		</includes>
-		<build compiler-command="make" harness-template-dir="CPU_OpenMP"/>
+		<build compiler-command="make" harness-template-dir="CPU_OpenMP_AVX"/>
 	</architectureType>
 
 	<!-- Architecture with AVX+FMA4, OpenMP parallelization -->
@@ -161,31 +161,31 @@
 		<datatypes>
 			<!-- declare AVX-256 datatypes -->
 			<!-- restrict alignment to 32 bytes -->
-			<datatype basetype="float" name="__m256" simdVectorLength="8" width="256" alignment="32"/>
-			<datatype basetype="double" name="__m256d" simdVectorLength="4" width="256" alignment="32"/>
+			<datatype basetype="float" name="__m256" simd-vector-length="8" width="256" alignment="32"/>
+			<datatype basetype="double" name="__m256d" simd-vector-length="4" width="256" alignment="32"/>
 		</datatypes>
 		<intrinsics>
 			<!-- intrinsics for double precision arithmetic operations -->
-			<intrinsic baseName="unary_minus" name="neg_pd" datatype="__m256d"/>
-			<intrinsic baseName="plus" name="_mm256_add_pd" datatype="__m256d"/>
-			<intrinsic baseName="minus" name="_mm256_sub_pd" datatype="__m256d"/>
-			<intrinsic baseName="multiply" name="_mm256_mul_pd" datatype="__m256d"/>
-			<intrinsic baseName="divide" name="_mm256_div_pd" datatype="__m256d"/>
-			<intrinsic baseName="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
-			<intrinsic baseName="min" name="_mm256_min_pd" datatype="__m256d"/>
-			<intrinsic baseName="max" name="_mm256_max_pd" datatype="__m256d"/>
-			<intrinsic baseName="fma" name="_mm256_macc_pd" datatype="__m256d" arguments="factor1,factor2,summand"/>
+			<intrinsic base-name="unary_minus" name="neg_pd" datatype="__m256d"/>
+			<intrinsic base-name="plus" name="_mm256_add_pd" datatype="__m256d"/>
+			<intrinsic base-name="minus" name="_mm256_sub_pd" datatype="__m256d"/>
+			<intrinsic base-name="multiply" name="_mm256_mul_pd" datatype="__m256d"/>
+			<intrinsic base-name="divide" name="_mm256_div_pd" datatype="__m256d"/>
+			<intrinsic base-name="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
+			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
+			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>
+			<intrinsic base-name="fma" name="_mm256_macc_pd" datatype="__m256d" arguments="factor1,factor2,summand"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
-			<intrinsic baseName="unary_minus" name="neg_ps" datatype="__m256"/>
-			<intrinsic baseName="plus" name="_mm256_add_ps" datatype="__m256"/>
-			<intrinsic baseName="minus" name="_mm256_sub_ps" datatype="__m256"/>
-			<intrinsic baseName="multiply" name="_mm256_mul_ps" datatype="__m256"/>
-			<intrinsic baseName="divide" name="_mm256_div_ps" datatype="__m256"/>
-			<intrinsic baseName="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
-			<intrinsic baseName="min" name="_mm256_min_ps" datatype="__m256"/>
-			<intrinsic baseName="max" name="_mm256_max_ps" datatype="__m256"/>
-			<intrinsic baseName="fma" name="_mm256_macc_ps" datatype="__m256" arguments="factor1,factor2,summand"/>
+			<intrinsic base-name="unary_minus" name="neg_ps" datatype="__m256"/>
+			<intrinsic base-name="plus" name="_mm256_add_ps" datatype="__m256"/>
+			<intrinsic base-name="minus" name="_mm256_sub_ps" datatype="__m256"/>
+			<intrinsic base-name="multiply" name="_mm256_mul_ps" datatype="__m256"/>
+			<intrinsic base-name="divide" name="_mm256_div_ps" datatype="__m256"/>
+			<intrinsic base-name="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
+			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
+			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>
+			<intrinsic base-name="fma" name="_mm256_macc_ps" datatype="__m256" arguments="factor1,factor2,summand"/>
 		</intrinsics>
 	</architectureType>
 	
@@ -194,59 +194,59 @@
 		<datatypes>
 			<!-- declare SSE datatypes -->
 			<!-- restrict alignment to 32 bytes -->
-			<datatype basetype="float" name="__m256" simdVectorLength="8" width="256" alignment="32"/>
-			<datatype basetype="double" name="__m256d" simdVectorLength="4" width="256" alignment="32"/>
+			<datatype basetype="float" name="__m256" simd-vector-length="8" width="256" alignment="32"/>
+			<datatype basetype="double" name="__m256d" simd-vector-length="4" width="256" alignment="32"/>
 		</datatypes>
 		<intrinsics>
 			<!-- intrinsics for double precision arithmetic operations -->
 			
 			<!-- scalar operations -->
-			<intrinsic baseName="plus" name="vaddsd" datatype="double" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="minus" name="vsubsd" datatype="double" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="multiply" name="vmulsd" datatype="double" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="divide" name="vdivsd" datatype="double" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="fma" name="vfmaddsd" datatype="double" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
-			<intrinsic baseName="fms" name="vfmsubsd" datatype="double" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
-			<intrinsic baseName="move-fpr" name="vmovsd" datatype="double"/>
+			<intrinsic base-name="plus" name="vaddsd" datatype="double" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubsd" datatype="double" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="multiply" name="vmulsd" datatype="double" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivsd" datatype="double" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="fma" name="vfmaddsd" datatype="double" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="fms" name="vfmsubsd" datatype="double" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="move-fpr" name="vmovsd" datatype="double"/>
 
 			<!-- vector operations -->
-			<intrinsic baseName="unary_minus" name="neg_pd" datatype="__m256d"/>
-			<intrinsic baseName="plus" name="vaddpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="minus" name="vsubpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="multiply" name="vmulpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="divide" name="vdivpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
-			<!--<intrinsic baseName="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
-			<intrinsic baseName="min" name="_mm256_min_pd" datatype="__m256d"/>
-			<intrinsic baseName="max" name="_mm256_max_pd" datatype="__m256d"/>-->
-			<intrinsic baseName="fma" name="vfmaddpd" datatype="__m256d" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
-			<intrinsic baseName="fms" name="vfmsubpd" datatype="__m256d" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
-			<intrinsic baseName="move-fpr" name="vmovapd" datatype="__m256d"/>
-			<intrinsic baseName="move-fpr-unaligned" name="vmovupd" datatype="__m256d"/>
+			<intrinsic base-name="unary_minus" name="neg_pd" datatype="__m256d"/>
+			<intrinsic base-name="plus" name="vaddpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="multiply" name="vmulpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
+			<!--<intrinsic base-name="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
+			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
+			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>-->
+			<intrinsic base-name="fma" name="vfmaddpd" datatype="__m256d" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="fms" name="vfmsubpd" datatype="__m256d" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="move-fpr" name="vmovapd" datatype="__m256d"/>
+			<intrinsic base-name="move-fpr-unaligned" name="vmovupd" datatype="__m256d"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
 			
 			<!-- scalar operations -->
-			<intrinsic baseName="plus" name="vaddss" datatype="float" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="minus" name="vsubss" datatype="float" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="multiply" name="vmulss" datatype="float" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="divide" name="vdivss" datatype="float" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="fma" name="vfmaddss" datatype="float" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
-			<intrinsic baseName="fms" name="vfmsubss" datatype="float" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
-			<intrinsic baseName="move-fpr" name="vmovss" datatype="float"/>
+			<intrinsic base-name="plus" name="vaddss" datatype="float" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubss" datatype="float" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="multiply" name="vmulss" datatype="float" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivss" datatype="float" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="fma" name="vfmaddss" datatype="float" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="fms" name="vfmsubss" datatype="float" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="move-fpr" name="vmovss" datatype="float"/>
 			
 			<!-- vector operations -->
-			<intrinsic baseName="unary_minus" name="neg_ps" datatype="__m256"/>
-			<intrinsic baseName="plus" name="vaddps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="minus" name="vsubps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="multiply" name="vmulps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
-			<intrinsic baseName="divide" name="vdivps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
-			<!--<intrinsic baseName="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
-			<intrinsic baseName="min" name="_mm256_min_ps" datatype="__m256"/>
-			<intrinsic baseName="max" name="_mm256_max_ps" datatype="__m256"/>-->
-			<intrinsic baseName="fma" name="vfmaddps" datatype="__m256" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
-			<intrinsic baseName="fms" name="vfmsubps" datatype="__m256" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
-			<intrinsic baseName="move-fpr" name="vmovaps" datatype="__m256"/>
-			<intrinsic baseName="move-fpr-unaligned" name="vmovups" datatype="__m256"/>
+			<intrinsic base-name="unary_minus" name="neg_ps" datatype="__m256"/>
+			<intrinsic base-name="plus" name="vaddps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="multiply" name="vmulps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
+			<!--<intrinsic base-name="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
+			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
+			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>-->
+			<intrinsic base-name="fma" name="vfmaddps" datatype="__m256" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="fms" name="vfmsubps" datatype="__m256" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="move-fpr" name="vmovaps" datatype="__m256"/>
+			<intrinsic base-name="move-fpr-unaligned" name="vmovups" datatype="__m256"/>
 		</intrinsics>
 		<assembly>
 			<register-classes>
@@ -365,8 +365,8 @@
 			<level hasExplicitLocalDataCopy="true" asyncIO="false"/>
 			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>-->
 
-			<level number="1" name="ThreadBlock" hasExplicitLocalDataCopy="false" asyncIO="false"/>
-			<level number="2" name="Thread" hasExplicitLocalDataCopy="false" asyncIO="false">
+			<level number="1" name="ThreadBlock" has-explicit-local-datacopy="false" async-IO="false"/>
+			<level number="2" name="Thread" has-explicit-local-datacopy="false" async-IO="false">
 				<barrier type="functioncall" implementation="__syncthreads"/>
 			</level>
 		</parallelism>

@@ -157,7 +157,7 @@ public class CodeGenerator
 		@SuppressWarnings("unchecked")
 		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, String strFunctionName, List<Declaration> listParams, CompoundStatement cmpstmtBody, boolean bIncludeStencilCommentAnnotation)
 		{
-			List<Specifier> listSpecs = new ArrayList<Specifier> (listAdditionalDeclSpecs == null ? 1 : listAdditionalDeclSpecs.size () + 1);
+			List<Specifier> listSpecs = new ArrayList<> (listAdditionalDeclSpecs == null ? 1 : listAdditionalDeclSpecs.size () + 1);
 			if (listAdditionalDeclSpecs != null)
 				listSpecs.addAll (listAdditionalDeclSpecs);
 			listSpecs.add (Specifier.VOID);
@@ -213,8 +213,8 @@ public class CodeGenerator
 		m_data = data;
 		m_cgThreadCode = new ThreadCodeGenerator (m_data);
 
-		m_mapStencilOperationInputArgumentIdentifiers = new HashMap<String, Identifier> ();
-		m_mapStencilOperationOutputArgumentIdentifiers = new HashMap<String, Identifier> ();
+		m_mapStencilOperationInputArgumentIdentifiers = new HashMap<> ();
+		m_mapStencilOperationOutputArgumentIdentifiers = new HashMap<> ();
 
 		m_nCodeVariantsCount = 0;
 	}
@@ -367,7 +367,7 @@ public class CodeGenerator
 			{
 				// get only the memory objects (= classes of stencil nodes) that have the vector index nVecIdx
 				StencilNodeSet setVecIdx = setAll.restrict (null, nVecIdx);
-				List<Expression> listPointers = new ArrayList<Expression> (setVecIdx.size ());
+				List<Expression> listPointers = new ArrayList<> (setVecIdx.size ());
 				StencilNode nodeRepresentant = null;
 
 				// add the stencil nodes in the per-vector index set to the list of pointers
@@ -399,7 +399,7 @@ public class CodeGenerator
 		setBaseMemoryObjectInitializers ();
 
 		// add the additional declarations to the code
-		List<Statement> listDeclarationsAndAssignments = new ArrayList<Statement> (m_data.getData ().getNumberOfDeclarationsToAdd ());
+		List<Statement> listDeclarationsAndAssignments = new ArrayList<> (m_data.getData ().getNumberOfDeclarationsToAdd ());
 		for (Declaration decl : m_data.getData ().getDeclarationsToAdd ())
 			listDeclarationsAndAssignments.add (new DeclarationStatement (decl));
 
@@ -410,15 +410,18 @@ public class CodeGenerator
 
 		}*/
 
-		// add the initialization code
-		listDeclarationsAndAssignments.add (new AnnotationStatement (new CommentAnnotation ("Initializations")));
-		
+		// add the initialization code		
+		boolean bIsFirst = true;
 		for (Statement stmt : m_data.getData ().getInitializationStatements (
 			new ParameterAssignment (
 				CodeGeneratorData.PARAM_COMPUTATION_TYPE,
 				options.getIntValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL)
 			)))
 		{
+			if (bIsFirst)
+				listDeclarationsAndAssignments.add (new AnnotationStatement (new CommentAnnotation ("Initializations")));
+			bIsFirst = false;
+
 			listDeclarationsAndAssignments.add (stmt);
 		}
 		
@@ -463,7 +466,7 @@ public class CodeGenerator
 		else
 		{
 			// there is at least one code
-			List<String> listStencilFunctions = new ArrayList<String> (nCodesCount);
+			List<String> listStencilFunctions = new ArrayList<> (nCodesCount);
 
 			for (ParameterAssignment pa : proc.getBodyCodes ())
 			{
@@ -508,11 +511,11 @@ public class CodeGenerator
 				// add a function that selects the right unrolling configuration based on a command line parameter
 				NameID nidCodeVariants = new NameID (StringUtil.concat ("g_rgCodeVariants", m_nCodeVariantsCount++));
 				if (m_data.getArchitectureDescription ().useFunctionPointers ())
-					proc.getTranslationUnit ().addDeclaration (createCodeVariantFnxPtrArray (nidCodeVariants, listStencilFunctions, proc.getParams ()));
+					proc.getTranslationUnit ().addDeclaration (CodeGenerator.createCodeVariantFnxPtrArray (nidCodeVariants, listStencilFunctions, proc.getParams ()));
 
 				// build the function parameter list: same as for the stencil functions, but with additional parameters for the code selection
-				List<Identifier> listSelectors = new ArrayList<Identifier> ();
-				List<Integer> listSelectorsCount = new ArrayList<Integer> ();
+				List<Identifier> listSelectors = new ArrayList<> ();
+				List<Integer> listSelectorsCount = new ArrayList<> ();
 				for (Parameter param : proc.getBodyCodes ().getParameters ())
 				{
 					VariableDeclarator decl = new VariableDeclarator (new NameID (param.getName ()));
@@ -711,14 +714,14 @@ public class CodeGenerator
 	 * @param listParams The list of parameters for the stencil function
 	 * @return
 	 */
-	protected VariableDeclaration createCodeVariantFnxPtrArray (NameID nidCodeVariants, List<String> listFunctionNames, List<Declaration> listParams)
+	protected static VariableDeclaration createCodeVariantFnxPtrArray (NameID nidCodeVariants, List<String> listFunctionNames, List<Declaration> listParams)
 	{
 		// we want something like this:
 		//    void (*rgFunctions[]) (float, char) = { a, b, c };
 		// where a, b, c are functions with the defined signatures
 
 		// create the list of types for the declaration of the function pointer array
-		List<VariableDeclaration> listTypeList = new ArrayList<VariableDeclaration> (listParams.size ());
+		List<VariableDeclaration> listTypeList = new ArrayList<> (listParams.size ());
 		for (Declaration declParam : listParams)
 		{
 			List<Specifier> listSpecifiers = ((VariableDeclaration) declParam).getSpecifiers ();
@@ -740,7 +743,7 @@ public class CodeGenerator
 			listTypeList);
 
 		// build a list of function identifiers
-		List<NameID> listFunctionIdentifiers = new ArrayList<NameID> (listFunctionNames.size ());
+		List<NameID> listFunctionIdentifiers = new ArrayList<> (listFunctionNames.size ());
 		for (String strFunctionName : listFunctionNames)
 			listFunctionIdentifiers.add (new NameID (strFunctionName));
 
@@ -767,7 +770,7 @@ public class CodeGenerator
 		CompoundStatement cmpstmtBody = new CompoundStatement ();
 
 		// create a list with the function parameters as identifiers
-		List<Expression> listFnxParams = new ArrayList<Expression> (listParams.size ());
+		List<Expression> listFnxParams = new ArrayList<> (listParams.size ());
 		for (Declaration declaration : listParams)
 		{
 			VariableDeclaration vardecl = (VariableDeclaration) declaration;

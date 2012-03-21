@@ -57,8 +57,8 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	public StencilBundle ()
 	{
 		m_stencilFused = null;
-		m_listStencils = new LinkedList<Stencil> ();
-		m_setConstantOutputNodes = new HashSet<String> ();
+		m_listStencils = new LinkedList<> ();
+		m_setConstantOutputNodes = new HashSet<> ();
 	}
 
 	/**
@@ -71,9 +71,9 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 
 		try
 		{
-			m_stencilFused = createStencilFromTemplate (bundle.getFusedStencil (), true);
+			m_stencilFused = StencilBundle.createStencilFromTemplate (bundle.getFusedStencil (), true);
 			for (Stencil stencil : bundle)
-				addStencilToList (createStencilFromTemplate (stencil, true));
+				addStencilToList (StencilBundle.createStencilFromTemplate (stencil, true));
 		}
 		catch (SecurityException e)
 		{
@@ -88,6 +88,7 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	/**
 	 * Returns the fused stencil containing all the nodes of the stencils
 	 * that have been added to the bundle.
+	 * 
 	 * @return The fused stencil
 	 */
 	public Stencil getFusedStencil ()
@@ -97,6 +98,7 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 
 	/**
 	 * Returns an iterable over all the stencils contained in this bundle.
+	 * 
 	 * @return An iterable over the stencils in this bundle
 	 */
 	public Iterable<Stencil> getStencils ()
@@ -114,8 +116,10 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 
 	/**
 	 * Adds a stencil to the bundle.
-	 * @param stencil The stencil to add to the bundle
-	 * @throws
+	 * 
+	 * @param stencil
+	 *            The stencil to add to the bundle
+	 * @throws NoSuchMethodException
 	 * @throws SecurityException
 	 */
 	public void addStencil (Stencil stencil) throws NoSuchMethodException, SecurityException
@@ -124,7 +128,7 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 		addStencilToList (stencil);
 
 		// add the stencil nodes to the fused stencil
-		addStencilToFused (stencil, true);
+		addStencilToFused (stencil);
 	}
 	
 	private void addStencilToList (Stencil stencil)
@@ -141,9 +145,11 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 
 	/**
 	 * Adds the stencil <code>stencil</code> to the fused stencil.
-	 * @param stencil The stencil to add
+	 * 
+	 * @param stencil
+	 *            The stencil to add
 	 */
-	private void addStencilToFused (Stencil stencil, boolean bAddToList) throws NoSuchMethodException, SecurityException
+	private void addStencilToFused (Stencil stencil) throws NoSuchMethodException, SecurityException
 	{
 		// Determine whether we need to shift the stencils in space: Shifting is necessary
 		// if the output indices of the fused stencil and the stencil to add are not
@@ -178,13 +184,14 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	 * Rebuilds the structure of the fused stencil.
 	 * <p>Use this method after properties of the stencils within this bundle are
 	 * changes manually (i.e. other than using the methods provided by the
-	 * {@link StencilBundle} class).</p>
+	 * {@link StencilBundle} class).
+	 * </p>
 	 */
 	public void rebuild () throws NoSuchMethodException, SecurityException
 	{
 		m_stencilFused.clear ();
 		for (Stencil stencil : m_listStencils)
-			addStencilToFused (stencil, false);
+			addStencilToFused (stencil);
 	}
 
 	/**
@@ -204,30 +211,35 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 
 	/**
 	 * Ensures that the fused stencil object has been created
+	 * 
 	 * @param stencilTemplate
-	 * @throws
+	 * @throws NoSuchMethodException
 	 * @throws SecurityException
 	 */
 	private void ensureFusedStencilCreated (Stencil stencilTemplate) throws NoSuchMethodException, SecurityException
 	{
 		if (m_stencilFused == null)
-			m_stencilFused = createStencilFromTemplate (stencilTemplate, false);
+			m_stencilFused = StencilBundle.createStencilFromTemplate (stencilTemplate, false);
 
 	}
 
 	/**
-	 * Creates a new stencil of the same class as <code>stencilTemplate</code> and
-	 * copies the data (the stencil nodes) from <code>stencilTemplate</code> into the
-	 * newly created instance if <code>bCopyNodes</code> is set to <code>true</code>.
-	 * @param stencilTemplate The template used to create a new stencil instance
-	 * @param bCopyNodes Flag determining whether to copy the stencil nodes of
-	 * 	<code>stencilTemplate</code> into the newly created instance
+	 * Creates a new stencil of the same class as <code>stencilTemplate</code>
+	 * and copies the data (the stencil nodes) from <code>stencilTemplate</code>
+	 * into the newly created instance if <code>bCopyNodes</code> is set to
+	 * <code>true</code>.
+	 * 
+	 * @param stencilTemplate
+	 *            The template used to create a new stencil instance
+	 * @param bCopyNodes
+	 *            Flag determining whether to copy the stencil nodes of
+	 *            <code>stencilTemplate</code> into the newly created instance
 	 * @return A new instance of a stencil based on <code>stencilTemplate</code>
 	 * @throws NoSuchMethodException
 	 * @throws SecurityException
 	 */
 	@SuppressWarnings("unchecked")
-	private Stencil createStencilFromTemplate (Stencil stencilTemplate, boolean bCopyNodes) throws NoSuchMethodException, SecurityException
+	private static Stencil createStencilFromTemplate (Stencil stencilTemplate, boolean bCopyNodes) throws NoSuchMethodException, SecurityException
 	{
 		Class<Stencil> clsStencil = (Class<Stencil>) stencilTemplate.getClass ();
 		Constructor<Stencil> mthConstructor = bCopyNodes ? clsStencil.getConstructor (clsStencil) : clsStencil.getConstructor ();

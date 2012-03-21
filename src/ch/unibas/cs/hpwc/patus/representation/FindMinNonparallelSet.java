@@ -66,8 +66,8 @@ public class FindMinNonparallelSet
 	
 	public static Map<StencilNode, IntArray> find (Collection<StencilNode> nodes)
 	{
-		Map<StencilNode, IntArray> map = new HashMap<StencilNode, IntArray> ();
-		Map<StencilNode, IntArray> mapTmp = new HashMap<StencilNode, IntArray> ();
+		Map<StencilNode, IntArray> map = new HashMap<> ();
+		Map<StencilNode, IntArray> mapTmp = new HashMap<> ();
 
 		for (StencilNode node : nodes)
 		{
@@ -97,7 +97,7 @@ public class FindMinNonparallelSet
 	
 	public static void main (String[] args)
 	{
-		Collection<StencilNode> nodes = new ArrayList<StencilNode> ();
+		Collection<StencilNode> nodes = new ArrayList<> ();
 		nodes.add (new StencilNode ("n0", Specifier.FLOAT, new Index (0, new int[] { 0, 0, 0 }, 0)));
 		nodes.add (new StencilNode ("n1", Specifier.FLOAT, new Index (0, new int[] { 3, 0, 0 }, 0)));
 		nodes.add (new StencilNode ("n2", Specifier.FLOAT, new Index (0, new int[] { -2, 0, 0 }, 0)));

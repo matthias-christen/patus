@@ -59,8 +59,11 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Constructs a new index.
-	 * @param nTimeIndex The index in time
-	 * @param nSpaceIndex The index in a 1D space
+	 * 
+	 * @param nTimeIndex
+	 *            The index in time
+	 * @param nSpaceIndex
+	 *            The index in a 1D space
 	 */
 	public Index (int nTimeIndex, int nSpaceIndex)
 	{
@@ -69,10 +72,15 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Constructs a new index.
-	 * @param nTimeIndex The index in time
-	 * @param nSpaceIndex The index in a 1D space
-	 * @param bIsAdvanceableInTime Determines whether the index is advanceable in time.
-	 * 	i.e. whether the index belongs to the solution or is a coefficient
+	 * 
+	 * @param nTimeIndex
+	 *            The index in time
+	 * @param nSpaceIndex
+	 *            The index in a 1D space
+	 * @param bIsAdvanceableInTime
+	 *            Determines whether the index is advanceable in time.
+	 *            i.e. whether the index belongs to the solution or is a
+	 *            coefficient
 	 */
 	public Index (int nTimeIndex, int nSpaceIndex, boolean bIsAdvanceableInTime)
 	{
@@ -81,8 +89,11 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Constructs a new index.
-	 * @param nTimeIndex The index in time
-	 * @param rgSpaceIndex The index in a (rgSpaceIndex.length)-dimensional space
+	 * 
+	 * @param nTimeIndex
+	 *            The index in time
+	 * @param rgSpaceIndex
+	 *            The index in a (rgSpaceIndex.length)-dimensional space
 	 */
 	public Index (int nTimeIndex, int[] rgSpaceIndex)
 	{
@@ -91,10 +102,15 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Constructs a new index.
-	 * @param nTimeIndex The index in time
-	 * @param rgSpaceIndex The index in a (rgSpaceIndex.length)-dimensional space
-	 * @param bIsAdvanceableInTime Determines whether the index is advanceable in time.
-	 * 	i.e. whether the index belongs to the solution or is a coefficient
+	 * 
+	 * @param nTimeIndex
+	 *            The index in time
+	 * @param rgSpaceIndex
+	 *            The index in a (rgSpaceIndex.length)-dimensional space
+	 * @param bIsAdvanceableInTime
+	 *            Determines whether the index is advanceable in time.
+	 *            i.e. whether the index belongs to the solution or is a
+	 *            coefficient
 	 */
 	public Index (int nTimeIndex, int[] rgSpaceIndex, boolean bIsAdvanceableInTime)
 	{
@@ -103,9 +119,13 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Constructs a new index.
-	 * @param nTimeIndex The index in time
-	 * @param rgSpaceIndex The 1D index in space
-	 * @param nVectorIndex The vector index
+	 * 
+	 * @param nTimeIndex
+	 *            The index in time
+	 * @param rgSpaceIndex
+	 *            The 1D index in space
+	 * @param nVectorIndex
+	 *            The vector index
 	 */
 	public Index (int nTimeIndex, int nSpaceIndex, int nVectorIndex)
 	{
@@ -114,11 +134,17 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Constructs a new index.
-	 * @param nTimeIndex The index in time
-	 * @param rgSpaceIndex The 1D index in space
-	 * @param nVectorIndex The vector index
-	 * @param bIsAdvanceableInTime Determines whether the index is advanceable in time.
-	 * 	i.e. whether the index belongs to the solution or is a coefficient
+	 * 
+	 * @param nTimeIndex
+	 *            The index in time
+	 * @param rgSpaceIndex
+	 *            The 1D index in space
+	 * @param nVectorIndex
+	 *            The vector index
+	 * @param bIsAdvanceableInTime
+	 *            Determines whether the index is advanceable in time.
+	 *            i.e. whether the index belongs to the solution or is a
+	 *            coefficient
 	 */
 	public Index (int nTimeIndex, int nSpaceIndex, int nVectorIndex, boolean bIsAdvanceableInTime)
 	{
@@ -127,9 +153,13 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Constructs a new index.
-	 * @param nTimeIndex The index in time
-	 * @param rgSpaceIndex The index in space
-	 * @param nVectorIndex The vector index
+	 * 
+	 * @param nTimeIndex
+	 *            The index in time
+	 * @param rgSpaceIndex
+	 *            The index in space
+	 * @param nVectorIndex
+	 *            The vector index
 	 */
 	public Index (int nTimeIndex, int[] rgSpaceIndex, int nVectorIndex)
 	{
@@ -138,11 +168,17 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Constructs a new index.
-	 * @param nTimeIndex The index in time
-	 * @param rgSpaceIndex The index in space
-	 * @param nVectorIndex The vector index
-	 * @param bIsAdvanceableInTime Determines whether the index is advanceable in time.
-	 * 	i.e. whether the index belongs to the solution or is a coefficient
+	 * 
+	 * @param nTimeIndex
+	 *            The index in time
+	 * @param rgSpaceIndex
+	 *            The index in space
+	 * @param nVectorIndex
+	 *            The vector index
+	 * @param bIsAdvanceableInTime
+	 *            Determines whether the index is advanceable in time.
+	 *            i.e. whether the index belongs to the solution or is a
+	 *            coefficient
 	 */
 	public Index (int nTimeIndex, int[] rgSpaceIndex, int nVectorIndex, boolean bIsAdvanceableInTime)
 	{
@@ -166,7 +202,9 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Copy constructor.
-	 * @param index The index to copy
+	 * 
+	 * @param index
+	 *            The index to copy
 	 */
 	public Index (Index index)
 	{
@@ -175,6 +213,7 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Returns the temporal component of the index.
+	 * 
 	 * @return The index describing the location of the plane in time
 	 */
 	public int getTimeIndex ()
@@ -184,7 +223,9 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Sets the index's time index.
-	 * @param nTimeIndex The new time index
+	 * 
+	 * @param nTimeIndex
+	 *            The new time index
 	 */
 	public void setTimeIndex (int nTimeIndex)
 	{
@@ -193,6 +234,7 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Returns the spatial component of the index.
+	 * 
 	 * @return The part describing the location of the plane in space
 	 */
 	@Override
@@ -203,7 +245,9 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Sets the index's space index.
-	 * @param rgSpaceIndex The new spatial index
+	 * 
+	 * @param rgSpaceIndex
+	 *            The new spatial index
 	 */
 	public void setSpaceIndex (int[] rgSpaceIndex)
 	{
@@ -220,7 +264,9 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Sets the index's space index.
-	 * @param listSpaceIndex The new spatial index
+	 * 
+	 * @param listSpaceIndex
+	 *            The new spatial index
 	 */
 	public void setSpaceIndex (List<Integer> listSpaceIndex)
 	{
@@ -242,6 +288,7 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Returns the vector component of the index.
+	 * 
 	 * @return The vector part of the index
 	 */
 	public int getVectorIndex ()
@@ -251,7 +298,9 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Sets the index's vector index.
-	 * @param nVectorIndex The new vector index
+	 * 
+	 * @param nVectorIndex
+	 *            The new vector index
 	 */
 	public void setVectorIndex (int nVectorIndex)
 	{
@@ -271,9 +320,11 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 	/**
 	 * Offsets the index by the relative indices in <code>idxTemplate</code>.
 	 * <b>Note</b> that this function alters the index.
-	 * @param idxTemplate The offset template
-	 * @return A new index that is offset by <code>idxTemplate</code> compared to the
-	 * 	original index
+	 * 
+	 * @param idxTemplate
+	 *            The offset template
+	 * @return A new index that is offset by <code>idxTemplate</code> compared
+	 *         to the original index
 	 */
 	public void offset (Index idxTemplate)
 	{
@@ -285,7 +336,9 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Offsets the index by <code>nTimeOffset</code> in time.
-	 * @param nTimeOffset The temporal offset
+	 * 
+	 * @param nTimeOffset
+	 *            The temporal offset
 	 */
 	public void offsetInTime (int nTimeOffset)
 	{
@@ -296,7 +349,9 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 
 	/**
 	 * Offsets the index by <code>rgSpaceOffset</code> in space.
-	 * @param rgSpaceOffset The spatial offset
+	 * 
+	 * @param rgSpaceOffset
+	 *            The spatial offset
 	 */
 	public void offsetInSpace (int[] rgSpaceOffset)
 	{
@@ -319,8 +374,11 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 	/**
 	 * Offsets the index by <code>nSpaceOffset</code> steps in direction
 	 * <code>nDirection</code> (this is the number of the axis) in space.
-	 * @param nDirection The direction (the number of the axis) of the offset
-	 * @param nSpaceOffset The space offset
+	 * 
+	 * @param nDirection
+	 *            The direction (the number of the axis) of the offset
+	 * @param nSpaceOffset
+	 *            The space offset
 	 */
 	public void offsetInSpace (int nDirection, int nSpaceOffset)
 	{

@@ -53,7 +53,7 @@ public class MaximaConfiguration implements IConfigurable, IMaximaConfiguration
 
 		if ((strResult == null || "".equals (strResult)) && !m_bCalledConfigUI)
 		{
-			if (!tryToSetDefaults ())
+			if (!MaximaConfiguration.tryToSetDefaults ())
 			{
 				Configuration.getInstance ().showDialog ();
 				strResult = PROP_MAXIMA_TIMEOUT.getValue ();
@@ -83,7 +83,7 @@ public class MaximaConfiguration implements IConfigurable, IMaximaConfiguration
 
 		if ((strResult == null || "".equals (strResult)) && !m_bCalledConfigUI)
 		{
-			if (!tryToSetDefaults ())
+			if (!MaximaConfiguration.tryToSetDefaults ())
 			{
 				try
 				{
@@ -108,7 +108,7 @@ public class MaximaConfiguration implements IConfigurable, IMaximaConfiguration
 	 * Try to set the defaults by calling "which maxima" on *nix environments.
 	 * @return
 	 */
-	private boolean tryToSetDefaults ()
+	private static boolean tryToSetDefaults ()
 	{
 		if (System.getProperty ("os.name").indexOf ("Windows") > -1)
 			return false;
@@ -157,7 +157,7 @@ public class MaximaConfiguration implements IConfigurable, IMaximaConfiguration
 	@Override
 	public Iterable<ConfigurationProperty> getConfigurationProperties ()
 	{
-		List<ConfigurationProperty> listProperties = new ArrayList<ConfigurationProperty> ();
+		List<ConfigurationProperty> listProperties = new ArrayList<> ();
 		listProperties.add (PROP_MAXIMA_EXECPATH);
 		listProperties.add (PROP_MAXIMA_TIMEOUT);
 

@@ -109,7 +109,7 @@ public class Compare
 		else
 			m_matcher.reset (strLine);
 
-		List<Double> list = new ArrayList<Double> ();
+		List<Double> list = new ArrayList<> ();
 		while (m_matcher.find ())
 			list.add (Double.parseDouble (m_matcher.group ()));
 

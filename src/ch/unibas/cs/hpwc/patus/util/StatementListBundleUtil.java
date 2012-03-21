@@ -82,7 +82,7 @@ public class StatementListBundleUtil
 				continue;
 
 			// find the last loop
-			List<Loop> listLoops = new LinkedList<Loop> ();
+			List<Loop> listLoops = new LinkedList<> ();
 			for (Statement stmt : sl)
 				if (stmt instanceof Loop && sl.hasTag (stmt, strTag))
 					listLoops.add ((Loop) stmt);
@@ -158,7 +158,7 @@ public class StatementListBundleUtil
 				continue;
 
 			// find the last loop
-			List<Loop> listLoops = new LinkedList<Loop> ();
+			List<Loop> listLoops = new LinkedList<> ();
 			for (Statement stmt : sl)
 				if (stmt instanceof Loop && sl.hasTag (stmt, strTag))
 					listLoops.add ((Loop) stmt);

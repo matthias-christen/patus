@@ -67,7 +67,7 @@ public class BenchmarkHarness
 	public BenchmarkHarness (CodeGeneratorSharedObjects data)
 	{
 		m_data = data;
-		m_listRuntimeFiles = new LinkedList<String> ();
+		m_listRuntimeFiles = new LinkedList<> ();
 	}
 
 	/**
@@ -105,7 +105,7 @@ public class BenchmarkHarness
 	 * @param f The file to check
 	 * @return <code>true</code> if the file <code>f</code> is a C/C++ source file
 	 */
-	private boolean isCSourceFile (File f)
+	private static boolean isCSourceFile (File f)
 	{
 		String strExtension = FileUtil.getExtension (f).toLowerCase ();
 		return "c".equals (strExtension) || "cpp".equals (strExtension) || "cu".equals (strExtension);
@@ -116,7 +116,7 @@ public class BenchmarkHarness
 	 * @param f The file to check
 	 * @return <code>true</code> if the file <code>f</code> is a Makefile
 	 */
-	private boolean isMakefile (File f)
+	private static boolean isMakefile (File f)
 	{
 		return "makefile".equals (f.getName ().toLowerCase ());
 	}
@@ -126,7 +126,7 @@ public class BenchmarkHarness
 	 * @param f The file to check
 	 * @return <code>true</code> if the file <code>f</code> is a Ant build file
 	 */
-	private boolean isAntBuildFile (File f)
+	private static boolean isAntBuildFile (File f)
 	{
 		return "build.xml".equals (f.getName ());
 	}
@@ -136,7 +136,7 @@ public class BenchmarkHarness
 	 * @param f The file to check
 	 * @return <code>true</code> if the file <code>f</code> is a header file
 	 */
-	private boolean isHeaderFile (File f)
+	private static boolean isHeaderFile (File f)
 	{
 		String strExtension = FileUtil.getExtension (f);
 		return "h".equals (strExtension);
@@ -148,7 +148,7 @@ public class BenchmarkHarness
 	 */
 	private Iterable<String> getRuntimeSourceFiles ()
 	{
-		List<String> list = new ArrayList<String> (m_listRuntimeFiles.size ());
+		List<String> list = new ArrayList<> (m_listRuntimeFiles.size ());
 		for (String strRuntimeFile : m_listRuntimeFiles)
 		{
 			int nIdx = strRuntimeFile.lastIndexOf (".c");
@@ -165,7 +165,7 @@ public class BenchmarkHarness
 	 */
 	private Iterable<String> getRuntimeObjectFiles ()
 	{
-		List<String> list = new ArrayList<String> (m_listRuntimeFiles.size ());
+		List<String> list = new ArrayList<> (m_listRuntimeFiles.size ());
 		for (String strRuntimeFile : m_listRuntimeFiles)
 		{
 			int nIdx = strRuntimeFile.lastIndexOf (".c");
@@ -201,7 +201,7 @@ public class BenchmarkHarness
 		{
 			for (File f : rgFiles)
 			{
-				boolean bIsCSourceFile = isCSourceFile (f);
+				boolean bIsCSourceFile = BenchmarkHarness.isCSourceFile (f);
 				if (bIsCSourceFile || isHeaderFile (f))
 				{
 					try
@@ -265,7 +265,7 @@ public class BenchmarkHarness
 		// make sure that the path exists
 		fileOutput.getParentFile ().mkdirs ();
 
-		if (isCSourceFile (fileInput))
+		if (BenchmarkHarness.isCSourceFile (fileInput))
 			preprocessSourceFile (fileInput, fileOutput);
 		else if (isMakefile (fileInput))
 			processMakefile (fileInput, fileOutput);

@@ -56,7 +56,7 @@ public class RegisterAllocator
 		m_assemblySection = as;
 		m_mapReuseStencilNodes = mapReuseStencilNodes;
 
-		m_mapRegisterUsage = new HashMap<Expression, Integer> ();
+		m_mapRegisterUsage = new HashMap<> ();
 	}
 	
 	/**
@@ -163,8 +163,12 @@ public class RegisterAllocator
 	}
 	
 	/**
-	 * Returns the number of registers used to compute the expression <code>expr</code>.
-	 * @param expr The expression for which to retrieve the number of registers used for its computation
+	 * Returns the number of registers used to compute the expression
+	 * <code>expr</code>.
+	 * 
+	 * @param expr
+	 *            The expression for which to retrieve the number of registers
+	 *            used for its computation
 	 * @return The number of registers used to compute <code>expr</code>
 	 */
 	public int getNumRegistersUsed (Expression expr)
@@ -240,9 +244,13 @@ public class RegisterAllocator
 	}
 
 	/**
-	 * Detects whether only additions and subtractions are done in the expression <code>expr</code>.
-	 * @param expr The expression to check
-	 * @return <code>true</code> iff only additions and subtractions are performed in <code>expr</code>
+	 * Detects whether only additions and subtractions are done in the
+	 * expression <code>expr</code>.
+	 * 
+	 * @param expr
+	 *            The expression to check
+	 * @return <code>true</code> iff only additions and subtractions are
+	 *         performed in <code>expr</code>
 	 */
 	public static boolean isAddSubSubtree (Expression expr)
 	{
@@ -264,12 +272,19 @@ public class RegisterAllocator
 	}
 	
 	/**
-	 * Assuming that <code>expr</code> is a binary expression tree with only additions and
-	 * subtractions, this method creates a flat list of (operator, expression) pairs
-	 * equivalent to <code>expr</code>. 
-	 * @param expr The expression to linearize
-	 * @param list An empty list that will contain the linearized version on output
-	 * @param op Set to {@link BinaryOperator#ADD} when calling the method
+	 * Assuming that <code>expr</code> is a binary expression tree with only
+	 * additions and
+	 * subtractions, this method creates a flat list of (operator, expression)
+	 * pairs
+	 * equivalent to <code>expr</code>.
+	 * 
+	 * @param expr
+	 *            The expression to linearize
+	 * @param list
+	 *            An empty list that will contain the linearized version on
+	 *            output
+	 * @param op
+	 *            Set to {@link BinaryOperator#ADD} when calling the method
 	 */
 	public static void linearizeAddSubSubtree (Expression expr, List<AddSub> list)
 	{
@@ -277,12 +292,19 @@ public class RegisterAllocator
 	}
 
 	/**
-	 * Assuming that <code>expr</code> is a binary expression tree with only additions and
-	 * subtractions, this method creates a flat list of (operator, expression) pairs
-	 * equivalent to <code>expr</code>. 
-	 * @param expr The expression to linearize
-	 * @param list An empty list that will contain the linearized version on output
-	 * @param op Set to {@link BinaryOperator#ADD} when calling the method
+	 * Assuming that <code>expr</code> is a binary expression tree with only
+	 * additions and
+	 * subtractions, this method creates a flat list of (operator, expression)
+	 * pairs
+	 * equivalent to <code>expr</code>.
+	 * 
+	 * @param expr
+	 *            The expression to linearize
+	 * @param list
+	 *            An empty list that will contain the linearized version on
+	 *            output
+	 * @param op
+	 *            Set to {@link BinaryOperator#ADD} when calling the method
 	 */
 	private static void linearizeAddSubSubtree (Expression expr, List<AddSub> list, BinaryOperator op)
 	{
@@ -301,15 +323,18 @@ public class RegisterAllocator
 	}
 	
 	/**
-	 * Runs the register allocation algorithm on the live analysis graph <code>graph</code> and
-	 * returns a map specifying how to map the {@link PseudoRegister}s used in the generated
-	 * {@link InstructionList} to actual register names. 
-	 * @param graph The live analysis graph
+	 * Runs the register allocation algorithm on the live analysis graph
+	 * <code>graph</code> and
+	 * returns a map specifying how to map the {@link PseudoRegister}s used in
+	 * the generated {@link InstructionList} to actual register names.
+	 * 
+	 * @param graph
+	 *            The live analysis graph
 	 * @return A map mapping {@link PseudoRegister} to register names
 	 */
 	public static Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapPseudoRegistersToRegisters (LAGraph graph, AssemblySection as)
 	{
-		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapRegisters = new HashMap<IOperand.PseudoRegister, IOperand.IRegisterOperand> ();
+		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapRegisters = new HashMap<> ();
 		
 		// color the graph
 		int nColorsCount = GraphColoringGreedy.run (graph);
@@ -329,7 +354,7 @@ public class RegisterAllocator
 	
 	public static void main (String[] args)
 	{
-		List<AddSub> list = new LinkedList<AddSub> ();
+		List<AddSub> list = new LinkedList<> ();
 		RegisterAllocator.linearizeAddSubSubtree (
 			new BinaryExpression (
 				new BinaryExpression (

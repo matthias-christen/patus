@@ -79,7 +79,7 @@ public abstract class AbstractMask implements IMask
 	@Override
 	public Map<IntArray, List<ISpaceIndexable>> getEquivalenceClasses (Iterable<? extends ISpaceIndexable> itInput)
 	{
-		Map<IntArray, List<ISpaceIndexable>> mapEquivClasses = new HashMap<IntArray, List<ISpaceIndexable>> ();
+		Map<IntArray, List<ISpaceIndexable>> mapEquivClasses = new HashMap<> ();
 		for (ISpaceIndexable index : itInput)
 		{
 			int[] rgEquivClass = getEquivalenceClass (index);
@@ -87,7 +87,7 @@ public abstract class AbstractMask implements IMask
 
 			List<ISpaceIndexable> listItems = mapEquivClasses.get (arrEquivClass);
 			if (listItems == null)
-				mapEquivClasses.put (arrEquivClass, listItems = new ArrayList<ISpaceIndexable> ());
+				mapEquivClasses.put (arrEquivClass, listItems = new ArrayList<> ());
 			listItems.add (index);
 		}
 

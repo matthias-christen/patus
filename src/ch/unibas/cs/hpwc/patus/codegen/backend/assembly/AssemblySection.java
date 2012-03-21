@@ -93,7 +93,7 @@ public class AssemblySection
 	{
 		m_data = data;
 
-		m_setClobberedRegisters = new TreeSet<IOperand.Register> (new Comparator<IOperand.Register> ()
+		m_setClobberedRegisters = new TreeSet<> (new Comparator<IOperand.Register> ()
 		{
 			@Override
 			public int compare (Register r1, Register r2)
@@ -102,9 +102,9 @@ public class AssemblySection
 			}
 		});
 
-		m_mapRegisterUsage = new HashMap<IOperand.Register, Boolean> ();
+		m_mapRegisterUsage = new HashMap<> ();
 
-		m_listInputs = new ArrayList<AssemblySectionInput> ();
+		m_listInputs = new ArrayList<> ();
 
 		Label.reset ();
 	}
@@ -288,6 +288,13 @@ public class AssemblySection
 			sbInstructions.append ("\"\n");
 		}
 		
+		// build the list of child expressions (the inputs)
+		// (if no children are provided to SomeExpression, the constarrs will be remove when checking whether
+		// variables are referenced)
+		List<Traversable> listChildren = new ArrayList<> (m_listInputs.size ());
+		for (AssemblySectionInput asi : m_listInputs)
+			listChildren.add (asi.getValue ().clone ());
+		
 		// build the IR object
 		return new ExpressionStatement (new SomeExpression (
 			StringUtil.concat (
@@ -298,7 +305,7 @@ public class AssemblySection
 				": ", getClobberedRegistersAsString (), "\n",
 				")"
 			),
-			new ArrayList<Traversable> (0)
+			listChildren
 		));
 	}
 

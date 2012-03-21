@@ -384,8 +384,8 @@ public class IndexExpressionCache
 	{
 		m_data = data;
 
-		m_mapCaches = new HashMap<Boolean, Map<Size, Map<IndexInfo, IndexValue>>> ();
-		m_mapIdentifiers = new HashMap<Boolean, Map<String, IndexValue>> ();
+		m_mapCaches = new HashMap<> ();
+		m_mapIdentifiers = new HashMap<> ();
 		m_nCachedIndicesCount = 0;
 	}
 
@@ -420,11 +420,11 @@ public class IndexExpressionCache
 		boolean bNoVectorize = options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, false);
 		Map<Size, Map<IndexInfo, IndexValue>> mapOptions = m_mapCaches.get (bNoVectorize);
 		if (mapOptions == null)
-			m_mapCaches.put (bNoVectorize, mapOptions = new HashMap<Size, Map<IndexInfo,IndexValue>> ());
+			m_mapCaches.put (bNoVectorize, mapOptions = new HashMap<> ());
 		Size sizeMemoryObject = mo.getSize ();
 		Map<IndexInfo, IndexValue> mapIndexInfo = mapOptions.get (sizeMemoryObject);
 		if (mapIndexInfo == null)
-			mapOptions.put (sizeMemoryObject, mapIndexInfo = new HashMap<IndexExpressionCache.IndexInfo, IndexValue> ());
+			mapOptions.put (sizeMemoryObject, mapIndexInfo = new HashMap<> ());
 
 		// check whether index exists, if not, compute it
 		IndexValue ivIndex = mapIndexInfo.get (ii);
@@ -443,7 +443,7 @@ public class IndexExpressionCache
 	{
 		Map<String, IndexValue> map = m_mapIdentifiers.get (bNoVectorize);
 		if (map == null)
-			m_mapIdentifiers.put (bNoVectorize, map = new HashMap<String, IndexExpressionCache.IndexValue> ());
+			m_mapIdentifiers.put (bNoVectorize, map = new HashMap<> ());
 		return map.get (strExpression);
 	}
 
@@ -451,7 +451,7 @@ public class IndexExpressionCache
 	{
 		Map<String, IndexValue> map = m_mapIdentifiers.get (bNoVectorize);
 		if (map == null)
-			m_mapIdentifiers.put (bNoVectorize, map = new HashMap<String, IndexExpressionCache.IndexValue> ());
+			m_mapIdentifiers.put (bNoVectorize, map = new HashMap<> ());
 		map.put (strExpression, iv);
 	}
 

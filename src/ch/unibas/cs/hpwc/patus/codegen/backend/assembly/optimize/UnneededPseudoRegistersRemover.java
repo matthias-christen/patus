@@ -33,7 +33,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 	
 	public UnneededPseudoRegistersRemover ()
 	{
-		m_mapSubstitute = new HashMap<IOperand.PseudoRegister, IOperand.PseudoRegister> ();
+		m_mapSubstitute = new HashMap<> ();
 	}
 	
 	/**
@@ -71,7 +71,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 	 * @return <code>true</code> iff at least one of the input arguments in the
 	 *         array <code>rgOps</code> is a {@link PseudoRegister}
 	 */
-	private boolean hasInputPseudoRegisters (IOperand[] rgOps)
+	private static boolean hasInputPseudoRegisters (IOperand[] rgOps)
 	{
 		// omit the last (=result) operand
 		for (int i = 0; i < rgOps.length - 1; i++)
@@ -93,7 +93,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 				Instruction instr = (Instruction) instruction;
 				IOperand[] rgOps = instr.getOperands ();
 				
-				boolean bHasPseudoRegisters = hasInputPseudoRegisters (rgOps);
+				boolean bHasPseudoRegisters = UnneededPseudoRegistersRemover.hasInputPseudoRegisters (rgOps);
 				boolean bIsResultPseudoRegister = rgOps[rgOps.length - 1] instanceof IOperand.PseudoRegister;
 				
 				// substitute any pseudo register with pseudo registers previously marked as substitutees

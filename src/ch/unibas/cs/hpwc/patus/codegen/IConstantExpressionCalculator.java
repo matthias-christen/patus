@@ -26,5 +26,5 @@ public interface IConstantExpressionCalculator
 	 * @param specDatatype
 	 * @return
 	 */
-	public abstract Traversable calculateConstantExpression (Expression expr, Specifier specDatatype, boolean bVectorize);
+	public abstract Traversable calculateConstantExpression (Expression exprExpression, Specifier specDatatype, boolean bVectorize);
 }

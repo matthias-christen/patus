@@ -48,7 +48,7 @@ public class UnrollGeneratedIdentifiers
 	public UnrollGeneratedIdentifiers (CodeGeneratorSharedObjects objects)
 	{
 		m_objects = objects;
-		m_mapIdentifiers = new HashMap<Boolean, Map<String, Map<IntArray,IDExpression>>> ();
+		m_mapIdentifiers = new HashMap<> ();
 	}
 
 
@@ -62,12 +62,12 @@ public class UnrollGeneratedIdentifiers
 
 		Map<String, Map<IntArray, IDExpression>> mapIdentifiers = m_mapIdentifiers.get (bCreateVectorizedIdentifier);
 		if (mapIdentifiers == null)
-			m_mapIdentifiers.put (bCreateVectorizedIdentifier, mapIdentifiers = new HashMap<String, Map<IntArray,IDExpression>> ());
+			m_mapIdentifiers.put (bCreateVectorizedIdentifier, mapIdentifiers = new HashMap<> ());
 
 		Map<IntArray, IDExpression> map = mapIdentifiers.get (id.getName ());
 		if (map == null)
 		{
-			mapIdentifiers.put (id.getName (), map = new HashMap<IntArray, IDExpression> ());
+			mapIdentifiers.put (id.getName (), map = new HashMap<> ());
 
 			if (!bCreateVectorizedIdentifier)
 			{

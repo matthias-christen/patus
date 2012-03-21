@@ -534,7 +534,7 @@ public class IndexSetUtil
 	 */
 	public static Set<Index> copy (Iterable<Index> set)
 	{
-		Set<Index> setCopy = new TreeSet<Index> ();
+		Set<Index> setCopy = new TreeSet<> ();
 		for (Index idx : set)
 			setCopy.add (new Index (idx));
 		return setCopy;
@@ -549,7 +549,7 @@ public class IndexSetUtil
 	 */
 	public static Set<Index> getElemsOfANotContainedInB (Set<Index> setA, Set<Index> setB)
 	{
-		Set<Index> setDifference = new TreeSet<Index> ();
+		Set<Index> setDifference = new TreeSet<> ();
 		for (Index idx : setA)
 			if (!setB.contains (idx))
 				setDifference.add (idx);
@@ -564,7 +564,7 @@ public class IndexSetUtil
 	 */
 	public static Set<Index> union (Set<Index> setA, Set<Index> setB)
 	{
-		Set<Index> setUnion = new TreeSet<Index> ();
+		Set<Index> setUnion = new TreeSet<> ();
 
 		for (Index idx : setA)
 			setUnion.add (idx);
@@ -582,7 +582,7 @@ public class IndexSetUtil
 	 */
 	public static Set<Index> intersection (Set<Index> setA, Set<Index> setB)
 	{
-		Set<Index> setIntersection = new TreeSet<Index> ();
+		Set<Index> setIntersection = new TreeSet<> ();
 
 		for (Index idx : setA)
 			if (setB.contains (idx))
@@ -631,7 +631,7 @@ public class IndexSetUtil
 	public static String getSpaceIndicesString (Set<Index> set)
 	{
 		// sort the indices
-		List<int[]> listIndices = new LinkedList<int[]> ();
+		List<int[]> listIndices = new LinkedList<> ();
 		for (Index idx : set)
 			listIndices.add (idx.getSpaceIndex ());
 		Collections.sort (listIndices, IndexSetUtil.SPACE_INDEX_COMPARATOR);
@@ -761,7 +761,7 @@ public class IndexSetUtil
 
 		// create the set with all the indices that have to be present
 		// and add the indices of the set to the test set
-		Set<SpaceIndex> setFullSpaceIndices = new TreeSet<SpaceIndex> ();
+		Set<SpaceIndex> setFullSpaceIndices = new TreeSet<> ();
 		for (Index idx : set)
 			setFullSpaceIndices.add (new SpaceIndex (idx.getSpaceIndex (), nSpaceIndexDimension));
 

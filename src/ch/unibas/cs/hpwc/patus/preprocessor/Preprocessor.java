@@ -59,13 +59,13 @@ public class Preprocessor
 	public Preprocessor (File file, CommandLineOptions options)
 	{
 		m_fileInput = file;
-		m_fileOutput = new File (getOutputFilename (file));
+		m_fileOutput = new File (Preprocessor.getOutputFilename (file));
 		m_options = options;
 
 		m_strategy = null;
 	}
 
-	protected String getOutputFilename (File f)
+	protected static String getOutputFilename (File f)
 	{
 		return StringUtil.concat (FileUtil.getFilenameWithoutExtension (f), "_pp.", FileUtil.getExtension (f));
 	}

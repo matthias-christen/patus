@@ -25,7 +25,7 @@ public class InstructionList implements Iterable<IInstruction>
 
 	public InstructionList ()
 	{
-		m_listInstructions = new ArrayList<IInstruction> ();
+		m_listInstructions = new ArrayList<> ();
 	}
 
 	public void addInstruction (IInstruction instruction)
@@ -110,11 +110,14 @@ public class InstructionList implements Iterable<IInstruction>
 	}
 	
 	/**
-	 * Replaces the instructions in the key set of the map <code>mapInstructionReplacements</code>
-	 * by the corresponding map values.
-	 * @param mapInstructionReplacements The map defining the mapping between old and new instruction names
-	 * @return A new instruction list with instructions replaced as defined in the map
-	 * 	<code>mapInstructionReplacements</code>
+	 * Replaces the instructions in the key set of the map
+	 * <code>mapInstructionReplacements</code> by the corresponding map values.
+	 * 
+	 * @param mapInstructionReplacements
+	 *            The map defining the mapping between old and new instruction
+	 *            names
+	 * @return A new instruction list with instructions replaced as defined in
+	 *         the map <code>mapInstructionReplacements</code>
 	 */
 	public InstructionList replaceInstructions (Map<String, String> mapInstructionReplacements)
 	{
@@ -137,6 +140,7 @@ public class InstructionList implements Iterable<IInstruction>
 
 	/**
 	 * Returns number of instructions in this instruction list.
+	 * 
 	 * @return The number of instructions in the instruction list
 	 */
 	public int size ()

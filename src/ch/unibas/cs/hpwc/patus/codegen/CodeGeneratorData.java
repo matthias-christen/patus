@@ -127,14 +127,14 @@ public class CodeGeneratorData
 	public CodeGeneratorData (CodeGeneratorSharedObjects objects)
 	{
 		// create the list of internal autotuning parameters
-		m_listInternalAutotuningParameters = new ArrayList<String> ();
+		m_listInternalAutotuningParameters = new ArrayList<> ();
 		m_listInternalAutotuningParameters.add (IInternalAutotuningParameters.LOOP_UNROLLING);
 		m_listInternalAutotuningParameters.add (IInternalAutotuningParameters.PADDING);
 
-		m_setDeclarationsToAdd = new TreeMap<Declaration, Object> (m_comparatorDeclarations);
-		m_setGlobalDeclarationsToAdd = new TreeSet<Declaration> (m_comparatorDeclarations);		
+		m_setDeclarationsToAdd = new TreeMap<> (m_comparatorDeclarations);
+		m_setGlobalDeclarationsToAdd = new TreeSet<> (m_comparatorDeclarations);		
 		m_slbInitializationStatements = new StatementListBundle (new UniqueStatementList ());
-		m_stackDeclarations = new Stack<Map<Declaration, Object>> ();
+		m_stackDeclarations = new Stack<> ();
 
 		m_generatedGlobalIdentifiers = new GlobalGeneratedIdentifiers (objects);
 		m_generatedIdentifiers = new SubdomainGeneratedIdentifiers (objects);
@@ -293,7 +293,7 @@ public class CodeGeneratorData
 	 */
 	public void capture ()
 	{
-		Map<Declaration, Object> setDecls = new TreeMap<Declaration, Object> (m_comparatorDeclarations);
+		Map<Declaration, Object> setDecls = new TreeMap<> (m_comparatorDeclarations);
 		for (Declaration decl : m_setDeclarationsToAdd.keySet ())
 			setDecls.put (decl.clone (), CodeGeneratorData.OBJ_DUMMY);
 		m_stackDeclarations.push (setDecls);

@@ -71,8 +71,8 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 
 	public StatementListBundle (StatementList sl)
 	{
-		m_listParameters = new ArrayList<Parameter> ();
-		m_mapStatementLists = new HashMap<ParameterAssignment, StatementList> ();
+		m_listParameters = new ArrayList<> ();
+		m_mapStatementLists = new HashMap<> ();
 
 		m_listParameters.add (StatementListBundle.DEFAULT_PARAM);
 		m_mapStatementLists.put (StatementListBundle.DEFAULT_ASSIGNMENT, sl);
@@ -375,7 +375,7 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	 */
 	private Iterable<StatementList> getStatementLists (Parameter param, int nParamValue)
 	{
-		List<StatementList> list = new LinkedList<StatementList> ();
+		List<StatementList> list = new LinkedList<> ();
 
 		// try find the param assignments that have param set to nParamValue
 		boolean bParamExists = false;
@@ -397,7 +397,7 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 				// new parameter
 				// discard all deprecated branches, mark all existing branches as deprecated
 
-				List<ParameterAssignment> listDeprecated = new LinkedList<ParameterAssignment> ();
+				List<ParameterAssignment> listDeprecated = new LinkedList<> ();
 				for (ParameterAssignment pa : m_mapStatementLists.keySet ())
 					if (pa.isDeprecated ())
 						listDeprecated.add (pa);
@@ -413,7 +413,7 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 			}
 
 			// create a new copy of the branches from the branches marked as deprecated with the new parameter/value added
-			Map<ParameterAssignment, StatementList> mapTmp = new HashMap<ParameterAssignment, StatementList> ();
+			Map<ParameterAssignment, StatementList> mapTmp = new HashMap<> ();
 			for (ParameterAssignment paOld : m_mapStatementLists.keySet ())
 			{
 				if (paOld.isDeprecated ())
@@ -491,7 +491,7 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 				// there is no parameter corresponding to paramOther in this statement list bundle
 				// add the parameter with all the values defined in paramOther
 
-				Map<ParameterAssignment, StatementList> mapTmp = new HashMap<ParameterAssignment, StatementList> ();
+				Map<ParameterAssignment, StatementList> mapTmp = new HashMap<> ();
 				for (ParameterAssignment paThis : m_mapStatementLists.keySet ())
 				{
 					StatementList slThis = m_mapStatementLists.get (paThis);
@@ -520,12 +520,12 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 
 			StatementList sl = m_mapStatementLists.get (pa);
 			String strCode = sl == null ? "<null>" : sl.toString ();
-			if (false)//if (strCode.length () > 100)
-			{
-				sb.append (strCode.substring (0, 100));
-				sb.append ("...");
-			}
-			else
+//			if (false)//if (strCode.length () > 100)
+//			{
+//				sb.append (strCode.substring (0, 100));
+//				sb.append ("...");
+//			}
+//			else
 				sb.append (strCode);
 			sb.append ("\n\n\n");
 		}

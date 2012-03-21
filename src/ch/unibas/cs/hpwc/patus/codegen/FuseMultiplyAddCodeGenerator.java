@@ -40,10 +40,12 @@ public class FuseMultiplyAddCodeGenerator
 	}
 
 	/**
-	 * Creates a new expression in which additions and multiplies are replaced by a call to
-	 * a &qout;fused multiply-add&quot; whenever possible.
-	 * @param expression The expression in which to substitute multiply and add operations
-	 * 	by a fused multiply-add
+	 * Creates a new expression in which additions and multiplies are replaced
+	 * by a call to a &qout;fused multiply-add&quot; whenever possible.
+	 * 
+	 * @param expression
+	 *            The expression in which to substitute multiply and add
+	 *            operations by a fused multiply-add
 	 * @return A new expression containing fused multiply-adds
 	 */
 	public Expression applyFMAs (Expression expression, Specifier specDatatype)

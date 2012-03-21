@@ -89,18 +89,11 @@ public class OpenMPCodeGenerator extends AbstractBackend
 
 
 	///////////////////////////////////////////////////////////////////
-	// Member Variables
-
-	private CodeGeneratorSharedObjects m_data;
-
-
-	///////////////////////////////////////////////////////////////////
 	// Implementation
 
 	public OpenMPCodeGenerator (CodeGeneratorSharedObjects data)
 	{
 		super (data);
-		m_data = data;
 	}
 
 
@@ -233,7 +226,7 @@ public class OpenMPCodeGenerator extends AbstractBackend
 	}
 
 	@Override
-	public Expression minus (Expression expr, Specifier specDatatype, boolean bVectorize)
+	public Expression unary_minus (Expression expr, Specifier specDatatype, boolean bVectorize)
 	{
 		/*
 		if (bVectorize)
@@ -245,7 +238,7 @@ public class OpenMPCodeGenerator extends AbstractBackend
 		}*/
 
 		// return default implementation
-		return super.minus (expr, specDatatype, bVectorize);
+		return super.unary_minus (expr, specDatatype, bVectorize);
 	}
 	
 	protected String getVecLoadFunctionName (Specifier specDatatype)
@@ -263,6 +256,14 @@ public class OpenMPCodeGenerator extends AbstractBackend
 	{
 		return true;
 	}
+	
+	protected Initializer createExpressionInitializer (Expression expr, int nSIMDVectorLength)
+	{
+		List<Expression> listValues = new ArrayList<Expression> (nSIMDVectorLength);
+		for (int i = 0; i < nSIMDVectorLength; i++)
+			listValues.add (expr.clone ());
+		return new Initializer (listValues);		
+	}
 
 	@Override
 	public Traversable splat (Expression expr, Specifier specDatatype)
@@ -272,25 +273,22 @@ public class OpenMPCodeGenerator extends AbstractBackend
 			return expr;
 
 		if (expr instanceof Literal)
-		{
-			List<Expression> listValues = new ArrayList<Expression> (nSIMDVectorLength);
-			for (int i = 0; i < nSIMDVectorLength; i++)
-				listValues.add (expr.clone ());
-			return new Initializer (listValues);
-		}
+			return createExpressionInitializer (expr, nSIMDVectorLength);
 		else if (expr instanceof IDExpression)
 		{
+			// initialize stencil parameter constants as we would initialize literals
+			if (m_data.getStencilCalculation ().isArgument (((IDExpression) expr).getName ()))
+				return createExpressionInitializer (expr, nSIMDVectorLength);
+			
 			// _mm_load1_p{s|d} (*p)
 
 			String strFunction = getVecLoadFunctionName (specDatatype);
 			if (strFunction == null)
 				throw new RuntimeException ("Unknown data type");
 
-			Expression exprArg = null;
+			Expression exprArg = expr.clone ();
 			if (hasVecLoadFunctionPointerArg ())
-				exprArg = new UnaryExpression (UnaryOperator.ADDRESS_OF, expr.clone ());
-			else
-				exprArg = expr.clone ();
+				exprArg = new UnaryExpression (UnaryOperator.ADDRESS_OF, exprArg);
 			
 			return new FunctionCall (new NameID (strFunction), CodeGeneratorUtil.expressions (exprArg));
 		}
@@ -300,7 +298,7 @@ public class OpenMPCodeGenerator extends AbstractBackend
 			throw new RuntimeException ("Not implemented");
 		}
 	}
-
+	
 
 	///////////////////////////////////////////////////////////////////
 	// IIndexing Implementation

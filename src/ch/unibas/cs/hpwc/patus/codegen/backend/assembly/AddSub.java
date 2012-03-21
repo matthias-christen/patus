@@ -37,16 +37,6 @@ class AddSub
 		return Globals.getIntrinsicBase (m_op).value ();
 	}
 	
-	/*
-	public String getInstruction ()
-	{
-		if (m_op.equals (BinaryOperator.ADD))
-			return arch.getIntrinsic (m_op, null);
-		if (m_op.equals (BinaryOperator.SUBTRACT))
-			return IBackendAssemblyCodeGenerator.INSTR_SUB;
-		return null;
-	}*/		
-	
 	@Override
 	public String toString ()
 	{

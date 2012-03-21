@@ -27,7 +27,7 @@ public class HybridOptimizer implements IOptimizer
 
 	private static List<int[]> getIntArrayList (List<ParamSet> listParamSet)
 	{
-		List<int[]> list = new ArrayList<int[]> (listParamSet.size ());
+		List<int[]> list = new ArrayList<> (listParamSet.size ());
 		for (ParamSet set : listParamSet)
 			list.add (set.getParams ());
 		return list;
@@ -78,10 +78,10 @@ public class HybridOptimizer implements IOptimizer
 			m_listParamSets = listParamSets;
 			m_listConstraints = listConstraints;
 
-			m_listParamMain = new ArrayList<int[]> (listParamSets.size ());
-			m_listParamExhaustive = new ArrayList<int[]> (listParamSets.size ());
+			m_listParamMain = new ArrayList<> (listParamSets.size ());
+			m_listParamExhaustive = new ArrayList<> (listParamSets.size ());
 
-			m_listExecutionResults = new LinkedList<HybridOptimizer.ExecutionResult> ();
+			m_listExecutionResults = new LinkedList<> ();
 
 			for (ParamSet set : listParamSets)
 			{
@@ -161,7 +161,7 @@ public class HybridOptimizer implements IOptimizer
 		public Histogram<Double, int[]> createHistogram ()
 		{
 			// create the histogram map
-			Histogram<Double, int[]> histogram = new Histogram<Double, int[]> ();
+			Histogram<Double, int[]> histogram = new Histogram<> ();
 			histogram.setAcceptableRange (0.0, 1.0e50);
 
 			// fill the histogram map

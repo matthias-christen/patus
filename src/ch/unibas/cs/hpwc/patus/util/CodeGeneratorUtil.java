@@ -184,7 +184,7 @@ public class CodeGeneratorUtil
 	 */
 	public static Declaration createArrayDeclaration (IDExpression idArrayName, Expression... rgDimensions)
 	{
-		List<Expression> listArrayDims = new ArrayList<Expression> (Math.max (1, rgDimensions.length));
+		List<Expression> listArrayDims = new ArrayList<> (Math.max (1, rgDimensions.length));
 		if (rgDimensions.length == 0)
 			listArrayDims.add (null);
 		else
@@ -205,7 +205,7 @@ public class CodeGeneratorUtil
 	public static Declaration createForwardDeclaration (Specifier specReturn, IDExpression idFunctionName, Expression... rgParams)
 	{
 		// create a list of specifiers
-		List<Specifier> listSpecifiersReturn = new ArrayList<Specifier> (1);
+		List<Specifier> listSpecifiersReturn = new ArrayList<> (1);
 		listSpecifiersReturn.add (specReturn);
 
 		// return the declaration
@@ -223,7 +223,7 @@ public class CodeGeneratorUtil
 	public static Declaration createForwardDeclaration (List<Specifier> listSpecifiersReturn, IDExpression idFunctionName, Expression... rgParams)
 	{
 		// create a list of parameters
-		List<Expression> listParams = new ArrayList<Expression> (rgParams.length);
+		List<Expression> listParams = new ArrayList<> (rgParams.length);
 		for (Expression expr : rgParams)
 			listParams.add (expr);
 
@@ -238,7 +238,7 @@ public class CodeGeneratorUtil
 	 */
 	public static List<Specifier> specifiers (Specifier... rgSpecifiers)
 	{
-		List<Specifier> list = new ArrayList<Specifier> (rgSpecifiers.length);
+		List<Specifier> list = new ArrayList<> (rgSpecifiers.length);
 		for (Specifier specifier : rgSpecifiers)
 			if (specifier != null)
 				list.add (specifier);
@@ -252,7 +252,7 @@ public class CodeGeneratorUtil
 	 */
 	public static List<Expression> expressions (Expression... rgExpressions)
 	{
-		List<Expression> list = new ArrayList<Expression> (rgExpressions.length);
+		List<Expression> list = new ArrayList<> (rgExpressions.length);
 		for (Expression expr : rgExpressions)
 			if (expr != null)
 				list.add (expr);
@@ -262,7 +262,7 @@ public class CodeGeneratorUtil
 	@SuppressWarnings("unchecked")
 	public static <T extends Expression> Set<T> set (Expression... rgExpression)
 	{
-		Set<T> set = new HashSet<T> ();
+		Set<T> set = new HashSet<> ();
 		for (Expression expr : rgExpression)
 		{
 			if (expr != null)
@@ -420,7 +420,7 @@ public class CodeGeneratorUtil
 		if (obj instanceof List<?>)
 		{
 			List<?> listOrig = (List<?>) obj;
-			List<Object> listCopy = new ArrayList<Object> (listOrig.size ());
+			List<Object> listCopy = new ArrayList<> (listOrig.size ());
 			for (Object o : listOrig)
 				listCopy.add (CodeGeneratorUtil.clone (o));
 			return listCopy;

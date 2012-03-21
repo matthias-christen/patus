@@ -231,7 +231,7 @@ public class MemoryObject
 		// declare the memory object if it isn't coming from a base grid
 		if (bIsMemoryObjectReferenced)
 		{
-			List<Specifier> listSpecifiers = new ArrayList<Specifier> ();
+			List<Specifier> listSpecifiers = new ArrayList<> ();
 
 			// if not time-advanceable, create a constant pointer to a constant
 			if (!bIsTimeAdvanceable  && !m_data.getData ().isCreatingInitialization ())

@@ -96,6 +96,7 @@ public class CodeGenerators
 
 	/**
 	 * Returns the code generator that generates backend-specific code.
+	 * 
 	 * @return the code generator that generates backend-specific code
 	 */
 	public IBackend getBackendCodeGenerator ()
@@ -106,6 +107,7 @@ public class CodeGenerators
 	/**
 	 * Returns the loop code generator, which is responsible for expanding loops
 	 * {@link RangeIterator}s and {@link SubdomainIterator}s.
+	 * 
 	 * @return The code generator responsible for expanding loops
 	 */
 	public LoopCodeGenerator getLoopCodeGenerator ()
@@ -114,7 +116,9 @@ public class CodeGenerators
 	}
 
 	/**
-	 * Returns the code generator that calculates indices and maps between different index dimensionalities.
+	 * Returns the code generator that calculates indices and maps between
+	 * different index dimensionalities.
+	 * 
 	 * @return The index calculator
 	 */
 	public IndexCalculatorCodeGenerator getIndexCalculator ()
@@ -123,8 +127,10 @@ public class CodeGenerators
 	}
 
 	/**
-	 * Returns the inline assembly code generator module if there is one for the selected architecture
+	 * Returns the inline assembly code generator module if there is one for the
+	 * selected architecture
 	 * or <code>null</code> if there is none.
+	 * 
 	 * @return The inline assembly code generator
 	 */
 	public IInnermostLoopCodeGenerator getInnermostLoopCodeGenerator ()
@@ -133,7 +139,9 @@ public class CodeGenerators
 	}
 
 	/**
-	 * Returns the code generator that generates the code for stencil expressions.
+	 * Returns the code generator that generates the code for stencil
+	 * expressions.
+	 * 
 	 * @return The code generator for stencil expressions
 	 */
 	public StencilCalculationCodeGenerator getStencilCalculationCodeGenerator ()
@@ -178,7 +186,9 @@ public class CodeGenerators
 	}
 
 	/**
-	 * Returns the code generator that creates Fused Multiply Add (FMA) expressions.
+	 * Returns the code generator that creates Fused Multiply Add (FMA)
+	 * expressions.
+	 * 
 	 * @return The code generator that creates FMA expressions
 	 */
 	public FuseMultiplyAddCodeGenerator getFMACodeGenerator ()
@@ -188,6 +198,7 @@ public class CodeGenerators
 
 	/**
 	 * Returns a strategy analyzer object.
+	 * 
 	 * @return A strategy analyzer
 	 */
 	public StrategyAnalyzer getStrategyAnalyzer ()

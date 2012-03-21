@@ -92,6 +92,7 @@ public class Argument
 	
 	/**
 	 * Determines whether the operand can be loaded from a memory location.
+	 * 
 	 * @return <code>true</code> iff the operand can be loaded from memory
 	 */
 	public boolean isMemory ()
@@ -101,6 +102,7 @@ public class Argument
 	
 	/**
 	 * Determines whether the operand can be a register.
+	 * 
 	 * @return <code>true</code> iff the operand can be a register
 	 */
 	public boolean isRegister ()
@@ -109,8 +111,10 @@ public class Argument
 	}
 	
 	/**
-	 * Determines whether the argument is an output (a register or memory location
+	 * Determines whether the argument is an output (a register or memory
+	 * location
 	 * to which the result is written).
+	 * 
 	 * @return <code>true</code> iff the argument is an output
 	 */
 	public boolean isOutput ()
@@ -119,7 +123,9 @@ public class Argument
 	}
 	
 	/**
-	 * Returns the name of the argument or <code>null</code> if no name was given.
+	 * Returns the name of the argument or <code>null</code> if no name was
+	 * given.
+	 * 
 	 * @return The argument's name (if any)
 	 */
 	public String getName ()
@@ -129,6 +135,7 @@ public class Argument
 	
 	/**
 	 * Returns the argument's ordinal.
+	 * 
 	 * @return The argument's ordinal number
 	 */
 	public int getNumber ()

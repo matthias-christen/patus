@@ -174,7 +174,7 @@ public class RunExecutable extends AbstractRunExecutable
 	{
 		super (listParamSets, listConstraints);
 
-		m_listExecutables = new LinkedList<RunExecutable.Executable> ();
+		m_listExecutables = new LinkedList<> ();
 		parseCommandLine (strExecutableFilename);
 		if (m_listExecutables.size () == 0)
 			throw new RuntimeException ("No executable specified");
@@ -186,7 +186,7 @@ public class RunExecutable extends AbstractRunExecutable
 	{
 		boolean bHasWeight = false;
 
-		List<String> listArgs = new LinkedList<String> ();
+		List<String> listArgs = new LinkedList<> ();
 		StringBuilder sb = new StringBuilder ();
 		boolean bInQuotes = false;
 

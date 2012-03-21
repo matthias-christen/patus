@@ -62,8 +62,8 @@ public class PermutatorGenetic
 				throw new RuntimeException ("The number of selectors must correspond to the number of elements per operand");
 
 			// build the selector map
-			m_listIDs = new ArrayList<Integer> ();
-			m_mapSelectors = new HashMap<Integer, List<Selector>> ();
+			m_listIDs = new ArrayList<> ();
+			m_mapSelectors = new HashMap<> ();
 			int nSelectorSetSize = -1;
 			int nIndex = 0;
 			for (Selector s : rgSelectors)
@@ -78,7 +78,7 @@ public class PermutatorGenetic
 				if (list == null)
 				{
 					m_listIDs.add (s.getID ());
-					m_mapSelectors.put (s.getID (), list = new ArrayList<Selector> ());
+					m_mapSelectors.put (s.getID (), list = new ArrayList<> ());
 				}
 				list.add (s);
 
@@ -114,7 +114,7 @@ public class PermutatorGenetic
 				nIdx++;
 			}
 			
-			List<Operand> listParent = new ArrayList<Operand> (2);
+			List<Operand> listParent = new ArrayList<> (2);
 			listParent.add ((Operand) firstMate.getApplicationData ());
 			if (m_nOperandsCount >= 2)
 				listParent.add ((Operand) secondMate.getApplicationData ());
@@ -132,7 +132,7 @@ public class PermutatorGenetic
 		public List<Expression> getFunctionArguments (Operand op)
 		{
 			List<Operand> listParentOps = op.getParentOperands ();
-			List<Expression> listArgs = new ArrayList<Expression> (listParentOps.size () + 1);
+			List<Expression> listArgs = new ArrayList<> (listParentOps.size () + 1);
 			
 			for (Operand o : listParentOps)
 				listArgs.add (o.getExpression ());

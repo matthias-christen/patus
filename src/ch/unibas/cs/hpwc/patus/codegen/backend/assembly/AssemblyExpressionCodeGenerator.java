@@ -71,7 +71,7 @@ public class AssemblyExpressionCodeGenerator
 		m_mapReuseNodesToRegisters = mapReuseNodesToRegisters;
 		m_mapConstantsAndParams = mapConstantsAndParams;
 		
-		Map<StencilNode, Boolean> mapReuse = new HashMap<StencilNode, Boolean> ();
+		Map<StencilNode, Boolean> mapReuse = new HashMap<> ();
 		for (StencilNode node : m_mapReuseNodesToRegisters.keySet ())
 			mapReuse.put (node, true);
 		
@@ -152,26 +152,27 @@ public class AssemblyExpressionCodeGenerator
 	 *            The operand arguments to the instruction
 	 * @return An array of operands containing the result for each of the unrollings
 	 */
-	private IOperand[] addInstruction (InstructionList il, int nUnrollFactor, String strIntrinsicBaseName, IOperand[] rgResult, IOperand[]... rgArguments)
+	private static IOperand[] addInstruction (InstructionList il, int nUnrollFactor, String strIntrinsicBaseName, IOperand[] rgResult, IOperand[]... rgArguments)
 	{
-		boolean bHasResult = rgResult != null;
-		if (!bHasResult)
-			rgResult = new IOperand[nUnrollFactor];
+		IOperand[] rgResultLocal = rgResult;
+		if (rgResultLocal == null)
+			rgResultLocal = new IOperand[nUnrollFactor];
 		
+		boolean bHasResult = rgResult != null;
 		for (int i = 0; i < nUnrollFactor; i++)
 		{
 			if (!bHasResult)
-				rgResult[i] = new IOperand.PseudoRegister ();
+				rgResultLocal[i] = new IOperand.PseudoRegister ();
 			
 			IOperand[] rgArgs = new IOperand[rgArguments.length + 1];
 			for (int j = 0; j < rgArguments.length; j++)
 				rgArgs[j] = rgArguments[j][i];
-			rgArgs[rgArguments.length] = rgResult[i];
+			rgArgs[rgArguments.length] = rgResultLocal[i];
 			
 			il.addInstruction (new Instruction (strIntrinsicBaseName, rgArgs));
 		}
 		
-		return rgResult;
+		return rgResultLocal;
 	}
 
 	/**
@@ -184,7 +185,7 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] processAddSubSubtree (Expression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		List<AddSub> list = new LinkedList<AddSub> ();
+		List<AddSub> list = new LinkedList<> ();
 		RegisterAllocator.linearizeAddSubSubtree (expr, list);
 		
 		IOperand[] rgResult = null;
@@ -196,7 +197,7 @@ public class AssemblyExpressionCodeGenerator
 				rgResult = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
 			else
 			{
-				rgResult = addInstruction (il, nUnrollFactor,
+				rgResult = AssemblyExpressionCodeGenerator.addInstruction (il, nUnrollFactor,
 					addsub.getBaseIntrinsic (),
 					i == 1 ? null : rgResult,
 					traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il),
@@ -229,7 +230,7 @@ public class AssemblyExpressionCodeGenerator
 	private IOperand[][] processArguments (Specifier specDatatype, int nUnrollFactor, InstructionList il, Expression... rgExpressions)
 	{
 		// find the register counts for each of the expressions and sort by descending number of registers
-		List<int[]> listRegsCount = new ArrayList<int[]> (rgExpressions.length);
+		List<int[]> listRegsCount = new ArrayList<> (rgExpressions.length);
 		for (int i = 0; i < rgExpressions.length; i++)
 			listRegsCount.add (new int[] { i, m_allocator.getNumRegistersUsed (rgExpressions[i]) });
 		Collections.sort (listRegsCount, COMPARATOR_REGSCOUNT);
@@ -252,7 +253,8 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] processBinaryExpression (BinaryExpression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		return addInstruction (il, nUnrollFactor, Globals.getIntrinsicBase (expr.getOperator ()).value (),
+		return AssemblyExpressionCodeGenerator.addInstruction (
+			il, nUnrollFactor, Globals.getIntrinsicBase (expr.getOperator ()).value (),
 			null, processArguments (specDatatype, nUnrollFactor, il, expr.getLHS (), expr.getRHS ()));
 
 		//isReservedRegister (rgOpRHS[i]) ? new IOperand.PseudoRegister () : rgOpRHS[i];
@@ -292,8 +294,10 @@ public class AssemblyExpressionCodeGenerator
 	private IOperand[] processFusedMultiplyAddSub (Intrinsic intrinsic, Expression exprSummand, Expression exprFactor1, Expression exprFactor2,
 		Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		return addInstruction (il, nUnrollFactor, intrinsic.getBaseName (), null,
-			processArguments (specDatatype, nUnrollFactor, il, exprSummand, exprFactor1, exprFactor2));
+		return AssemblyExpressionCodeGenerator.addInstruction (
+			il, nUnrollFactor, intrinsic.getBaseName (), null,
+			processArguments (specDatatype, nUnrollFactor, il, exprSummand, exprFactor1, exprFactor2)
+		);
 	}
 
 	/**
@@ -313,8 +317,8 @@ public class AssemblyExpressionCodeGenerator
 	{
 		IOperand[] rgOps = traverse (expr, specDatatype, nUnrollFactor, il);
 		
-		if (((UnaryExpression) expr).getOperator ().equals (UnaryOperator.MINUS))
-			rgOps = addInstruction (il, nUnrollFactor, TypeBaseIntrinsicEnum.UNARY_MINUS.value (), null, rgOps);
+		if (expr.getOperator ().equals (UnaryOperator.MINUS))
+			rgOps = AssemblyExpressionCodeGenerator.addInstruction (il, nUnrollFactor, TypeBaseIntrinsicEnum.UNARY_MINUS.value (), null, rgOps);
 
 		return rgOps;
 	}
@@ -350,22 +354,7 @@ public class AssemblyExpressionCodeGenerator
 		if (!bIsReuse)
 		{
 			for (int i = 0; i < nUnrollFactor; i++)
-			{
-				IOperand op = m_assemblySection.getGrid (node, i);
-//				if (op instanceof IOperand.Address)
-//				{
-//					// if the operand is an address, check whether memory operands are supported for the argument
-//					if (!RegisterAllocator.canBeMemoryOperand (node, m_data, m_assemblySection))
-//					{
-//						// no: we need to load the data into a register first
-//						IOperand opAddr = op;
-//						op = new IOperand.PseudoRegister ();
-//						il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR.value (), new IOperand[] { opAddr, op }));
-//					}
-//				}
-				
-				rgOpResults[i] = op;
-			}
+				rgOpResults[i] = m_assemblySection.getGrid (node, i);
 		}
 		
 		return rgOpResults;
@@ -457,9 +446,12 @@ public class AssemblyExpressionCodeGenerator
 	}
 	
 	/**
-	 * Determines whether <code>opReg</code> is a register reserved for stencil node
+	 * Determines whether <code>opReg</code> is a register reserved for stencil
+	 * node
 	 * reuse or for constants.
-	 * @param opReg The register operand to test
+	 * 
+	 * @param opReg
+	 *            The register operand to test
 	 * @return <code>true</code> iff <code>opReg</code> is a reserved register
 	 */
 	private boolean isReservedRegister (IOperand opReg)

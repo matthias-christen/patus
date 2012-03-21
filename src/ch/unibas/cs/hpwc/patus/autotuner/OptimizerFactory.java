@@ -72,7 +72,7 @@ public class OptimizerFactory extends AbstractConfigurable
 
 	public final static String[] getOptimizerKeys ()
 	{
-		return THIS.getRegisteredOptimizerKeys ();
+		return OptimizerFactory.getRegisteredOptimizerKeys ();
 	}
 
 
@@ -129,7 +129,7 @@ public class OptimizerFactory extends AbstractConfigurable
 		return null;
 	}
 
-	private String[] getRegisteredOptimizerKeys ()
+	private static String[] getRegisteredOptimizerKeys ()
 	{
 		List<?> listOptimizers = PROP_OPTIMIZER.getValues ();
 		String[] rgOptimizers = new String[listOptimizers.size ()];

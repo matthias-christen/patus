@@ -30,7 +30,7 @@ public class Label implements IInstruction
 	public static void reset ()
 	{
 		m_nCurrentLabelIdx = 1;
-		m_mapLabels = new HashMap<String, Label> ();
+		m_mapLabels = new HashMap<> ();
 	}
 
 	/**

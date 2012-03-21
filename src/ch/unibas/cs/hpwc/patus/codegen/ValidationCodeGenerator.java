@@ -217,7 +217,7 @@ public class ValidationCodeGenerator
 		}
 		sb.append ("] (index %d). Expected: %f, was: %f\\n");
 
-		List<Expression> listPrintArgs = new ArrayList<Expression> (4 + nDim);
+		List<Expression> listPrintArgs = new ArrayList<> (4 + nDim);
 		listPrintArgs.add (new StringLiteral (sb.toString ()));
 		for (int i = 0; i < nDim; i++)
 			listPrintArgs.add (m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (m_sdidIterator, i).clone ());

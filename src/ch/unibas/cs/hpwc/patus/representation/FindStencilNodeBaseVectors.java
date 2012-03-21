@@ -29,6 +29,9 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  */
 public class FindStencilNodeBaseVectors
 {
+	///////////////////////////////////////////////////////////////////
+	// Inner Types
+
 	public static class BaseVectorWithScalingFactor
 	{
 		int m_rgBaseVector[];
@@ -86,6 +89,9 @@ public class FindStencilNodeBaseVectors
 	}
 	
 	
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
 	/**
 	 * The collection of stencil nodes for which to find common
 	 * base vectors and scaling factors
@@ -122,14 +128,17 @@ public class FindStencilNodeBaseVectors
 	private IntArray m_arrZero;
 	
 	
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
 	public FindStencilNodeBaseVectors (int[] rgAdmissibleScalingFactors)
 	{
-		m_collNodes = new ArrayList<StencilNode> ();
+		m_collNodes = new ArrayList<> ();
 		m_rgAdmissibleScalingFactors = rgAdmissibleScalingFactors;
 
-		m_setBaseVector = new HashSet<IntArray> ();
-		m_mapNodes = new HashMap<IntArray, FindStencilNodeBaseVectors.BaseVectorWithScalingFactor> ();
-		m_mapBaseVectors2StencilNodes = new HashMap<IntArray, List<StencilNode>> ();
+		m_setBaseVector = new HashSet<> ();
+		m_mapNodes = new HashMap<> ();
+		m_mapBaseVectors2StencilNodes = new HashMap<> ();
 
 		m_arrZero = null;		
 		m_nDimension = -1;
@@ -168,8 +177,11 @@ public class FindStencilNodeBaseVectors
 	
 	/**
 	 * Returns the base vector for the stencil node <code>node</code>.
-	 * @param node The node for which to find the base vector
-	 * @return The base vector corresponding to the stencil node <code>node</code>
+	 * 
+	 * @param node
+	 *            The node for which to find the base vector
+	 * @return The base vector corresponding to the stencil node
+	 *         <code>node</code>
 	 */
 	public int[] getBaseVector (StencilNode node)
 	{
@@ -179,8 +191,11 @@ public class FindStencilNodeBaseVectors
 	
 	/**
 	 * Returns the scaling factor for the stencil node <code>node</code>.
-	 * @param node The node for which to find the scaling factor
-	 * @return The scaling factor corresponding to the stencil node <code>node</code>
+	 * 
+	 * @param node
+	 *            The node for which to find the scaling factor
+	 * @return The scaling factor corresponding to the stencil node
+	 *         <code>node</code>
 	 */
 	public int getScalingFactor (StencilNode node)
 	{
@@ -190,6 +205,7 @@ public class FindStencilNodeBaseVectors
 	
 	/**
 	 * Returns an iterable over all the base vectors.
+	 * 
 	 * @return An iterable over the base vectors
 	 */
 	public Iterable<IntArray> getBaseVectors ()
@@ -198,10 +214,14 @@ public class FindStencilNodeBaseVectors
 	}
 	
 	/**
-	 * Checks whether the dimensions of the nodes' spatial indices are consistent.
-	 * @param node The node to check against the nodes that have been already added
-	 * @return <code>true</code> iff the dimensions of the spatial indices of the added
-	 * 	stencil nodes is consistent
+	 * Checks whether the dimensions of the nodes' spatial indices are
+	 * consistent.
+	 * 
+	 * @param node
+	 *            The node to check against the nodes that have been already
+	 *            added
+	 * @return <code>true</code> iff the dimensions of the spatial indices of
+	 *         the added stencil nodes is consistent
 	 */
 	private boolean checkDimension (StencilNode node)
 	{
@@ -224,12 +244,17 @@ public class FindStencilNodeBaseVectors
 	}
 	
 	/**
-	 * Determines whether <code>rgVector</code> has <code>nZerosCount</code> leading zeros.
-	 * @param rgVector The index to check
-	 * @param nZerosCount The number of leading zeros
-	 * @return <code>true</code> iff there are exactly <code>nZerosCount</code> leading zeros
+	 * Determines whether <code>rgVector</code> has <code>nZerosCount</code>
+	 * leading zeros.
+	 * 
+	 * @param rgVector
+	 *            The index to check
+	 * @param nZerosCount
+	 *            The number of leading zeros
+	 * @return <code>true</code> iff there are exactly <code>nZerosCount</code>
+	 *         leading zeros
 	 */
-	private boolean hasZeros (int[] rgVector, int nZerosCount)
+	private static boolean hasZeros (int[] rgVector, int nZerosCount)
 	{
 		if (nZerosCount > rgVector.length)
 			return false;
@@ -244,13 +269,18 @@ public class FindStencilNodeBaseVectors
 	}
 	
 	/**
-	 * Checks whether the coordinate <code>nNodeCoord</code> can be represented by a base vector
+	 * Checks whether the coordinate <code>nNodeCoord</code> can be represented
+	 * by a base vector
 	 * with coordinate <code>nCoord</code>.
-	 * @param nOldBaseCoord A coordinate of the base vector
-	 * @param nNodeCoord A coordinate of the spatial index of a stencil node to check
-	 * @return the admissible scaling factor if the coordinate <code>nNodeCoord</code> of the spatial index
-	 * 	of the stencil node can be represented by the base vector with coordinate <code>nCoord</code>, or
-	 * 	0 if it can't.
+	 * 
+	 * @param nOldBaseCoord
+	 *            A coordinate of the base vector
+	 * @param nNodeCoord
+	 *            A coordinate of the spatial index of a stencil node to check
+	 * @return the admissible scaling factor if the coordinate
+	 *         <code>nNodeCoord</code> of the spatial index
+	 *         of the stencil node can be represented by the base vector with
+	 *         coordinate <code>nCoord</code>, or 0 if it can't.
 	 */
 	private int getAdmissibleBaseCoord (int nOldBaseCoord, int nNodeCoord)
 	{
@@ -299,8 +329,11 @@ public class FindStencilNodeBaseVectors
 	}
 	
 	/**
-	 * Processes a single node: finds a base vector and a scaling factor for <code>node</code>.
-	 * @param node The node for which to find a base vector-scaling factor pair
+	 * Processes a single node: finds a base vector and a scaling factor for
+	 * <code>node</code>.
+	 * 
+	 * @param node
+	 *            The node for which to find a base vector-scaling factor pair
 	 */
 	private void processNode (StencilNode node)
 	{
@@ -323,12 +356,12 @@ public class FindStencilNodeBaseVectors
 				int nNewBaseCoordBest = 1;
 				for (IntArray arr : listAdmissibleVectors)
 				{
-					int nOldBaseCoord = getFirstNonZero (arr.get ());
-					int nNodeCoord = getFirstNonZero (node.getSpaceIndex ());
+					int nOldBaseCoord = FindStencilNodeBaseVectors.getFirstNonZero (arr.get ());
+					int nNodeCoord = FindStencilNodeBaseVectors.getFirstNonZero (node.getSpaceIndex ());
 					
 					int nNewBaseCoord = getAdmissibleBaseCoord (nOldBaseCoord, nNodeCoord);
 					
-					int nIdxNonZero = getFirstNonZeroIndex (node.getSpaceIndex ());
+					int nIdxNonZero = FindStencilNodeBaseVectors.getFirstNonZeroIndex (node.getSpaceIndex ());
 					
 					int nNonAdmissibleCount = 0;
 					List<StencilNode> listDependentVectors = m_mapBaseVectors2StencilNodes.get (arr);
@@ -357,7 +390,9 @@ public class FindStencilNodeBaseVectors
 	
 	/**
 	 * Adds a new base vector based on the stencil node <code>node</code>.
-	 * @param node The stencil node from which to create a new base vector
+	 * 
+	 * @param node
+	 *            The stencil node from which to create a new base vector
 	 */
 	private void addNewBaseVector (StencilNode node)
 	{
@@ -432,10 +467,12 @@ public class FindStencilNodeBaseVectors
 	
 	/**
 	 * Returns the first non-zero value in the array <code>rgVector</code>.
-	 * @param rgVector The array to search
+	 * 
+	 * @param rgVector
+	 *            The array to search
 	 * @return The first non-zero value of <code>rgVector</code>
 	 */
-	private int getFirstNonZero (int[] rgVector)
+	private static int getFirstNonZero (int[] rgVector)
 	{
 		for (int i : rgVector)
 			if (i != 0)
@@ -444,11 +481,14 @@ public class FindStencilNodeBaseVectors
 	}
 	
 	/**
-	 * Returns the index of the coordinate at which the first non-zero element of <code>rgVector</code> is found.
-	 * @param rgVector The array to search
+	 * Returns the index of the coordinate at which the first non-zero element
+	 * of <code>rgVector</code> is found.
+	 * 
+	 * @param rgVector
+	 *            The array to search
 	 * @return The index of the first non-zero element of <code>rgVector</code>
 	 */
-	private int getFirstNonZeroIndex (int[] rgVector)
+	private static int getFirstNonZeroIndex (int[] rgVector)
 	{
 		for (int i = 0; i < rgVector.length; i++)
 			if (rgVector[i] != 0)
@@ -465,7 +505,7 @@ public class FindStencilNodeBaseVectors
 	{
 		List<StencilNode> list = m_mapBaseVectors2StencilNodes.get (arrKey);
 		if (list == null)
-			m_mapBaseVectors2StencilNodes.put (arrKey, list = new ArrayList<StencilNode> ());
+			m_mapBaseVectors2StencilNodes.put (arrKey, list = new ArrayList<> ());
 		list.add (node);
 	}
 	
@@ -501,11 +541,11 @@ public class FindStencilNodeBaseVectors
 		int nFirstNonzeroCoordIdx = nCoordIdx;
 		
 		// if not all entries are zero start looking for a matching vector
-		List<IntArray> listAdmissibleVectors = new ArrayList<IntArray> ();
+		List<IntArray> listAdmissibleVectors = new ArrayList<> ();
 		for (IntArray arr : m_setBaseVector)
 		{
 			nCoordIdx = nFirstNonzeroCoordIdx;
-			if (!hasZeros (arr.get (), nFirstNonzeroCoordIdx))
+			if (!FindStencilNodeBaseVectors.hasZeros (arr.get (), nFirstNonzeroCoordIdx))
 				continue;
 
 			// test whether the first non-zero coordinate is admissible (i.e., satisfies (*))
@@ -535,7 +575,7 @@ public class FindStencilNodeBaseVectors
 	
 	public static void main (String[] args)
 	{
-		Collection<StencilNode> nodes = new ArrayList<StencilNode> ();
+		Collection<StencilNode> nodes = new ArrayList<> ();
 		nodes.add (new StencilNode ("n0", Specifier.FLOAT, new Index (0, new int[] { 2, 4, 6 }, 0)));
 		nodes.add (new StencilNode ("n1", Specifier.FLOAT, new Index (0, new int[] { 1, 2, 3 }, 0)));
 		nodes.add (new StencilNode ("n2", Specifier.FLOAT, new Index (0, new int[] { -1, -2, -3 }, 0)));

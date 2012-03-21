@@ -253,8 +253,10 @@ public class StencilCalculation
 
 	/**
 	 * Creates the stencil calculation object.
-	 * @param strName The name of the stencil calculation which will be used as kernel
-	 * 	name in the generated code
+	 * 
+	 * @param strName
+	 *            The name of the stencil calculation which will be used as
+	 *            kernel name in the generated code
 	 */
 	public StencilCalculation (String strName)
 	{
@@ -267,19 +269,20 @@ public class StencilCalculation
 		// Create the maps for grids and parameters
 		// Note that the grid is initialized from the StencilNodes and created lazily
 		// when the data is first required
-		m_listArguments = new ArrayList<String> ();
-		m_mapArguments = new HashMap<String, ArgumentType> ();
-		m_mapReferenceNodes = new HashMap<String, StencilNode> ();
+		m_listArguments = new ArrayList<> ();
+		m_mapArguments = new HashMap<> ();
+		m_mapReferenceNodes = new HashMap<> ();
 
-		m_listSizeParameters = new LinkedList<NameID> ();
+		m_listSizeParameters = new LinkedList<> ();
 
 		// initialize defaults
 		m_optGridSize = EGridSizeOptions.AUTOMATIC;
 	}
 
 	/**
-	 * Returns the name of the stencil calculation, i.e. the name of the kernel in the
-	 * generated code.
+	 * Returns the name of the stencil calculation, i.e. the name of the kernel
+	 * in the generated code.
+	 * 
 	 * @return The name of the stencil calculation
 	 */
 	public String getName ()
@@ -348,7 +351,9 @@ public class StencilCalculation
 
 	/**
 	 * Sets the (symbolic) grid box on which the stencil is executed.
-	 * @param boxGrid The grid box
+	 * 
+	 * @param boxGrid
+	 *            The grid box
 	 */
 	public void setDomainSize (Box boxGrid)
 	{
@@ -357,6 +362,7 @@ public class StencilCalculation
 
 	/**
 	 * Returns the (symbolic) size of the grid on which the stencil is executed.
+	 * 
 	 * @return The grid size
 	 */
 	public Box getDomainSize ()
@@ -398,9 +404,12 @@ public class StencilCalculation
 
 	/**
 	 * Adds a stencil operation argument.
-	 * @param strArgumentName The name of the argument
-	 * @param type Specifies the type of the parameter if the argument is a parameter
-	 * 	or <code>null</code> if the type is a grid
+	 * 
+	 * @param strArgumentName
+	 *            The name of the argument
+	 * @param type
+	 *            Specifies the type of the parameter if the argument is a
+	 *            parameter or <code>null</code> if the type is a grid
 	 */
 	public void addStencilOperationArgument (String strArgumentName, Box boxDimension, ArgumentType type)
 	{
@@ -428,6 +437,7 @@ public class StencilCalculation
 
 	/**
 	 * Returns an iterable over all the stencil operation arguments.
+	 * 
 	 * @return An iterable over the stencil arguments
 	 */
 	public Iterable<String> getArguments ()
@@ -437,12 +447,14 @@ public class StencilCalculation
 
 	/**
 	 * Returns all the arguments of type <code>type</code>.
-	 * @param type The type of the arguments that are sought
+	 * 
+	 * @param type
+	 *            The type of the arguments that are sought
 	 * @return An iterable over all the arguments that match <code>type</code>
 	 */
 	public Iterable<String> getArguments (EArgumentType type)
 	{
-		List<String> listArgs = new ArrayList<String> ();
+		List<String> listArgs = new ArrayList<> ();
 		for (String strArg : m_listArguments)
 			if (m_mapArguments.get (strArg).getType ().equals (type))
 				listArgs.add (strArg);
@@ -451,9 +463,12 @@ public class StencilCalculation
 
 	/**
 	 * Returns the argument type for a given argument name.
-	 * @param strArgumentName The argument name
-	 * @return The argument for the name <code>strArgumentName</code> or <code>null</code> if
-	 * 	no argument with name <code>strArgumentName</code> exists
+	 * 
+	 * @param strArgumentName
+	 *            The argument name
+	 * @return The argument for the name <code>strArgumentName</code> or
+	 *         <code>null</code> if no argument with name
+	 *         <code>strArgumentName</code> exists
 	 */
 	public ArgumentType getArgumentType (String strArgumentName)
 	{
@@ -475,7 +490,9 @@ public class StencilCalculation
 
 	/**
 	 * Returns a reference node for a given argument name.
-	 * @param strArgumentName The argument name
+	 * 
+	 * @param strArgumentName
+	 *            The argument name
 	 * @return A reference stencil node corresponding to the argument
 	 */
 	public StencilNode getReferenceStencilNode (String strArgumentName)

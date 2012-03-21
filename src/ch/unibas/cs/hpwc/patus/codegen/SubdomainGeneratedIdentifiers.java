@@ -65,9 +65,9 @@ public class SubdomainGeneratedIdentifiers
 			m_idNumBlocks = null;
 			m_idTimeIndexIdentifier = null;
 
-			m_mapMemoryObjectIndices = new HashMap<Integer, Identifier> ();
-			m_mapMemoryObjectStartIndices = new HashMap<Integer, Identifier> ();
-			m_mapMemoryObjectCounts = new HashMap<Integer, Identifier> ();
+			m_mapMemoryObjectIndices = new HashMap<> ();
+			m_mapMemoryObjectStartIndices = new HashMap<> ();
+			m_mapMemoryObjectCounts = new HashMap<> ();
 		}
 
 		/**
@@ -94,7 +94,7 @@ public class SubdomainGeneratedIdentifiers
 		 */
 		private Identifier createIdentifier (String strNameSuffix, int nDimensions, boolean bGlobal)
 		{
-			List<Specifier> listArraySpecifiers = new ArrayList<Specifier> (nDimensions);
+			List<Specifier> listArraySpecifiers = new ArrayList<> (nDimensions);
 			for (int i = 0; i < nDimensions; i++)
 				listArraySpecifiers.add (ArraySpecifier.UNBOUNDED);
 
@@ -330,7 +330,7 @@ public class SubdomainGeneratedIdentifiers
 	public SubdomainGeneratedIdentifiers (CodeGeneratorSharedObjects data)
 	{
 		m_data = data;
-		m_mapIdentifiers = new HashMap<SubdomainIdentifier, SubdomainGeneratedIdentifiers.Identifiers> ();
+		m_mapIdentifiers = new HashMap<> ();
 	}
 
 	private Identifiers getIdentifiers (SubdomainIdentifier sdid)

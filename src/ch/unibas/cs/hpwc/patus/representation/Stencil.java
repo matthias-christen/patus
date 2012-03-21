@@ -47,7 +47,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	/**
 	 * An empty list of nodes
 	 */
-	private final static List<StencilNode> EMPTY_NODE_LIST = new ArrayList<StencilNode> ();
+	private final static List<StencilNode> EMPTY_NODE_LIST = new ArrayList<> ();
 
 
 	///////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	{
 		m_edStencilCalculation = null;
 		m_setAllInputNodes = new StencilNodeSet ();
-		m_listInputNodeSets = new ArrayList<StencilNodeSet> ();
+		m_listInputNodeSets = new ArrayList<> ();
 		m_setOutputNodes = new StencilNodeSet ();
 
 		m_nDimensionality = 0;
@@ -170,7 +170,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	@Override
 	public Set<Index> getIndexSet ()
 	{
-		Set<Index> set = new TreeSet<Index> ();
+		Set<Index> set = new TreeSet<> ();
 		for (StencilNode node : m_setAllInputNodes)
 			set.add (node.getIndex ());
 		return set;
@@ -195,6 +195,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 
 	/**
 	 * Determines whether the stencil is the empty stencil.
+	 * 
 	 * @return <code>true</code> iff the stencil is empty
 	 */
 	public boolean isEmpty ()
@@ -203,8 +204,11 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	}
 	
 	/**
-	 * Determines whether the stencil is constant, i.e., does not depend on any grid points, but
-	 * is an expression depending only on operation parameters and number literals.
+	 * Determines whether the stencil is constant, i.e., does not depend on any
+	 * grid points, but
+	 * is an expression depending only on operation parameters and number
+	 * literals.
+	 * 
 	 * @return <code>true</code> iff the stencil is constant
 	 */
 	public boolean isConstant ()
@@ -215,7 +219,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	@Override
 	public Iterable<Index> getOutputIndices ()
 	{
-		Set<Index> set = new TreeSet<Index> ();
+		Set<Index> set = new TreeSet<> ();
 		for (StencilNode node : m_setOutputNodes)
 			set.add (node.getIndex ());
 		return set;
@@ -258,7 +262,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	@Override
 	public Set<Index> getAllIndices ()
 	{
-		Set<Index> set = new TreeSet<Index> ();
+		Set<Index> set = new TreeSet<> ();
 		for (StencilNode node : m_setAllInputNodes)
 			set.add (node.getIndex ());
 		for (StencilNode node : m_setOutputNodes)
@@ -338,6 +342,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 
 	/**
 	 * Returns the number of FLOPs in this stencil operation.
+	 * 
 	 * @return The number of FLOPs in the stencil operation
 	 */
 	public int getFlopsCount ()
@@ -463,7 +468,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	@Override
 	public boolean isTimeblockingApplicable ()
 	{
-		Set<Integer> setOutputIndices = new HashSet<Integer> ();
+		Set<Integer> setOutputIndices = new HashSet<> ();
 		for (StencilNode node : m_setOutputNodes)
 			setOutputIndices.add (node.getIndex ().getVectorIndex ());
 
@@ -515,7 +520,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 			if (obj instanceof StencilNode)
 			{
 				StencilNode node = (StencilNode) obj;
-				List<Expression> listIndices = new ArrayList<Expression> ();
+				List<Expression> listIndices = new ArrayList<> ();
 				for (int i : node.getSpaceIndex ())
 					listIndices.add (new IntegerLiteral (i));
 				listIndices.add (new IntegerLiteral (node.getIndex ().getTimeIndex ()));

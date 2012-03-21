@@ -487,7 +487,7 @@ public class ThreadCodeGenerator
 
 		// determine the location where the index calculation is inserted
 		// (the number-of-blocks calculation doesn't depend on the loop index (v_idx), but the index bounds (v_x_min, v_x_max, ...) do
-		CompoundStatement cmpstmtIndexCalculation = getIndexCalculationLocation (loop, cmpstmtLoopBody);
+		CompoundStatement cmpstmtIndexCalculation = ThreadCodeGenerator.getIndexCalculationLocation (loop, cmpstmtLoopBody);
 
 		Expression exprNumBlocks = loop.getNumberOfBlocks ();
 		try
@@ -792,7 +792,7 @@ public class ThreadCodeGenerator
 	 * @param nStartDim The start dimension
 	 * @return The total number of blocks in dimensions <code>nStartDim</code>, <code>nStartDim+1</code>, ..., dimensionality
 	 */
-	private Expression calculateNumberOfBlocksInMissingDims (SubdomainIterator loop, int nStartDim)
+	private static Expression calculateNumberOfBlocksInMissingDims (SubdomainIterator loop, int nStartDim)
 	{
 		Expression exprTotalNumBlocks = null;
 		
@@ -818,7 +818,7 @@ public class ThreadCodeGenerator
 	 * @param nEndDim
 	 * @return
 	 */
-	private Expression calculateDomainSize (SubdomainIterator loop, int nStartDim, int nEndDim)
+	private static Expression calculateDomainSize (SubdomainIterator loop, int nStartDim, int nEndDim)
 	{
 		Expression exprSize = loop.getTotalDomainSubdomain ().getSize ().getCoord (nStartDim).clone ();
 		for (int i = nStartDim + 1; i <= nEndDim; i++)
@@ -847,7 +847,7 @@ public class ThreadCodeGenerator
 		// parallelism levels
 		int nParallelismLevelStart = loop.getParallelismLevel ();
 		int nParallelismLevelEnd = nParallelismLevelStart;
-		if (m_data.getCodeGenerators ().getStrategyAnalyzer ().isInnerMostParallelLoop (loop))
+		if (StrategyAnalyzer.isInnerMostParallelLoop (loop))
 			nParallelismLevelEnd = m_data.getCodeGenerators ().getBackendCodeGenerator ().getIndexingLevelsCount ();
 		
 		// create an array which will contain all the loop indices used in nested iterators or the stencil calculation.
@@ -902,7 +902,7 @@ public class ThreadCodeGenerator
 		if (m_data.getStencilCalculation ().getDimensionality () > nMaxIndexDimension)
 		{
 			// calculate the end expression
-			Expression exprEnd = calculateNumberOfBlocksInMissingDims (loop, nMaxIndexDimension - 1);
+			Expression exprEnd = ThreadCodeGenerator.calculateNumberOfBlocksInMissingDims (loop, nMaxIndexDimension - 1);
 				
 			// create the loops for dimension i
 			stmtBody = generateLoopsForDim (
@@ -1165,7 +1165,7 @@ public class ThreadCodeGenerator
 	 *         added in the initialization statement of the kernel function (
 	 *         {@link CodeGeneratorData#addInitializationStatement(Statement)}).
 	 */
-	private CompoundStatement getIndexCalculationLocation (SubdomainIterator loop, CompoundStatement cmpstmtDefaultLocation)
+	private static CompoundStatement getIndexCalculationLocation (SubdomainIterator loop, CompoundStatement cmpstmtDefaultLocation)
 	{
 		// find the subdomain iterator iterating over the domain of the subdomain iterator loop
 		// and place the index calculations (i.e., the bounds for loop) within that subdomain

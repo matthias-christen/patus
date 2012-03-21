@@ -90,12 +90,16 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 	}
 
 	/**
-	 * Invokes the method named <code>strMethod</code> (which must return an {@link Expression})
+	 * Invokes the method named <code>strMethod</code> (which must return an
+	 * {@link Expression})
 	 * with the arguments <code>rgObjArgs</code> on <code>this</code> object.
-	 * @param strMethod The method to invoke
-	 * @param rgObjArgs The arguments
-	 * @return The resulting expression from the method invocation, or <code>null</code>
-	 * 	if something went wrong
+	 * 
+	 * @param strMethod
+	 *            The method to invoke
+	 * @param rgObjArgs
+	 *            The arguments
+	 * @return The resulting expression from the method invocation, or
+	 *         <code>null</code> if something went wrong
 	 */
 	private Expression invoke (String strMethod, Object... rgObjArgs)
 	{
@@ -234,7 +238,7 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 			Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (fc, specDatatype);
 			if (intrinsic != null)
 			{
-				List<Expression> listArgs = new ArrayList<Expression> (fc.getArguments ().size ());
+				List<Expression> listArgs = new ArrayList<> (fc.getArguments ().size ());
 				for (Expression exprArg : (List<Expression>) fc.getArguments ())
 					listArgs.add (createExpression (exprArg.clone (), specDatatype, bVectorize));
 
@@ -245,7 +249,7 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 		return exprResult == null ? fc : exprResult;
 	}
 
-	private int findIndex (String[] rgHaystack, String strNeedle)
+	private static int findIndex (String[] rgHaystack, String strNeedle)
 	{
 		for (int i = 0; i < rgHaystack.length; i++)
 			if (rgHaystack[i].equals (strNeedle))
@@ -258,10 +262,10 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 		Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (new FunctionCall (new NameID (strFunctionName)), specDatatype);
 
 		// create the list of arguments; permute according to the definition of the intrinsic's "argument" attribute
-		List<Expression> listArgs = new ArrayList<Expression> (rgArguments.length);
+		List<Expression> listArgs = new ArrayList<> (rgArguments.length);
 
 		boolean bArgsFilled = false;
-		if (intrinsic.getArguments () != null && !"".equals (intrinsic.getArguments ()))
+		if (intrinsic != null && intrinsic.getArguments () != null && !"".equals (intrinsic.getArguments ()))
 		{
 			if (rgArgNames == null)
 			{
@@ -274,7 +278,7 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 				for (String strExpectedArg : intrinsic.getArguments ().split (","))
 				{
 					// find the index
-					int nIdx = findIndex (rgArgNames, strExpectedArg);
+					int nIdx = AbstractArithmeticImpl.findIndex (rgArgNames, strExpectedArg);
 					if (nIdx < 0)
 					{
 						LOGGER.error (StringUtil.concat ("The expected argument '", strExpectedArg,
@@ -298,14 +302,14 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 	}
 
 	@Override
-	public Expression plus (Expression expr, Specifier spec, boolean bVectorize)
+	public Expression unary_plus (Expression expr, Specifier spec, boolean bVectorize)
 	{
 		// unary plus does nothing...
 		return expr;
 	}
 
 	@Override
-	public Expression minus (Expression expr, Specifier spec, boolean bVectorize)
+	public Expression unary_minus (Expression expr, Specifier spec, boolean bVectorize)
 	{
 		// return null to tell that the method is not implement specifically, and the default implementation
 		// (using the XML hardware configuration) is to be used
@@ -315,13 +319,13 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 
 
 	@Override
-	public Expression add (Expression expr1, Expression expr2, Specifier spec, boolean bVectorize)
+	public Expression plus (Expression expr1, Expression expr2, Specifier spec, boolean bVectorize)
 	{
 		return internalGenerateBinaryExpression (BinaryOperator.ADD, expr1, expr2, spec, bVectorize);
 	}
 
 	@Override
-	public Expression subtract (Expression expr1, Expression expr2, Specifier spec, boolean bVectorize)
+	public Expression minus (Expression expr1, Expression expr2, Specifier spec, boolean bVectorize)
 	{
 		return internalGenerateBinaryExpression (BinaryOperator.SUBTRACT, expr1, expr2, spec, bVectorize);
 	}

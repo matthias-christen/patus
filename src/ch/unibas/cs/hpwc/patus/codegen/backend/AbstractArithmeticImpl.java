@@ -32,6 +32,8 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Argument;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Arguments;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -249,20 +251,21 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 		return exprResult == null ? fc : exprResult;
 	}
 
-	private static int findIndex (String[] rgHaystack, String strNeedle)
-	{
-		for (int i = 0; i < rgHaystack.length; i++)
-			if (rgHaystack[i].equals (strNeedle))
-				return i;
-		return -1;
-	}
+//	private static int findIndex (String[] rgHaystack, String strNeedle)
+//	{
+//		for (int i = 0; i < rgHaystack.length; i++)
+//			if (rgHaystack[i].equals (strNeedle))
+//				return i;
+//		return -1;
+//	}
 
 	private Expression internalGenerateFunctionCall (String strFunctionName, Specifier specDatatype, boolean bVectorize, Expression[] rgArguments, String[] rgArgNames)
 	{
 		Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (new FunctionCall (new NameID (strFunctionName)), specDatatype);
 
 		// create the list of arguments; permute according to the definition of the intrinsic's "argument" attribute
-		List<Expression> listArgs = new ArrayList<> (rgArguments.length);
+		//List<Expression> listArgs = new ArrayList<> (rgArguments.length);
+		Expression[] rgIntrinsicArgExprs = new Expression[rgArguments.length];
 
 		boolean bArgsFilled = false;
 		if (intrinsic != null && intrinsic.getArguments () != null && !"".equals (intrinsic.getArguments ()))
@@ -274,31 +277,48 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 			}
 			else
 			{
-				// match the arguments
-				for (String strExpectedArg : intrinsic.getArguments ().split (","))
+				Argument[] rgIntrinsicArgs = Arguments.parseArguments (intrinsic.getArguments ());
+				for (int i = 0; i < rgArguments.length; i++)
 				{
-					// find the index
-					int nIdx = AbstractArithmeticImpl.findIndex (rgArgNames, strExpectedArg);
-					if (nIdx < 0)
+					Argument arg = Arguments.getNamedArgument (rgIntrinsicArgs, rgArgNames[i]);
+					if (arg == null)
 					{
-						LOGGER.error (StringUtil.concat ("The expected argument '", strExpectedArg,
+						LOGGER.error (StringUtil.concat ("The argument provided '", rgArgNames[i],
 							"' defined in the architecture description doesn't match any of the function arguments. Admissible function arguments are: ",
 							Arrays.toString (rgArgNames)));
 					}
 					else
-						listArgs.add (createExpression (rgArguments[nIdx], specDatatype, bVectorize));
+						rgIntrinsicArgExprs[arg.getNumber ()] = createExpression (rgArguments[i], specDatatype, bVectorize);
 				}
+				
+//				// match the arguments
+//				for (String strExpectedArg : intrinsic.getArguments ().split (","))
+//				{
+//					// find the index
+//					int nIdx = AbstractArithmeticImpl.findIndex (rgArgNames, strExpectedArg);
+//					if (nIdx < 0)
+//					{
+//						LOGGER.error (StringUtil.concat ("The expected argument '", strExpectedArg,
+//							"' defined in the architecture description doesn't match any of the function arguments. Admissible function arguments are: ",
+//							Arrays.toString (rgArgNames)));
+//					}
+//					else
+//						listArgs.add (createExpression (rgArguments[nIdx], specDatatype, bVectorize));
+//				}
+
 				bArgsFilled = true;
 			}
 		}
 
 		if (!bArgsFilled)
 		{
-			for (Expression exprArg : rgArguments)
-				listArgs.add (createExpression (exprArg, specDatatype, bVectorize));
+			for (int i = 0; i < rgArguments.length; i++)
+				rgIntrinsicArgExprs[i] = createExpression (rgArguments[i], specDatatype, bVectorize);
+//			for (Expression exprArg : rgArguments)
+//				listArgs.add (createExpression (exprArg, specDatatype, bVectorize));
 		}
 
-		return new FunctionCall (intrinsic != null ? new NameID (intrinsic.getName ()) : new NameID (strFunctionName), listArgs);
+		return new FunctionCall (intrinsic != null ? new NameID (intrinsic.getName ()) : new NameID (strFunctionName), Arrays.asList (rgIntrinsicArgExprs));
 	}
 
 	@Override

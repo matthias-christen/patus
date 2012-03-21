@@ -176,7 +176,6 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 	 */
 	protected StatementListBundle generateExpression (Expression expr, CodeGeneratorRuntimeOptions options)
 	{
-
 		if (StrategyAnalyzer.isStencilCall (expr))
 			return m_data.getCodeGenerators ().getStencilCalculationCodeGenerator ().generate (expr, options);
 

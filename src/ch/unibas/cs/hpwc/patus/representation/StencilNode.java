@@ -111,7 +111,16 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 	public boolean equals (Object obj)
 	{
 		if (obj instanceof StencilNode)
-			return m_index.equals (((StencilNode) obj).getIndex ());
+		{
+			if (m_index.getSpaceIndex ().length == 0)
+			{
+				if (((StencilNode) obj).getIndex ().getSpaceIndex ().length != 0)
+					return false;
+				return getName ().equals (((StencilNode) obj).getName ());
+			}
+			else
+				return m_index.equals (((StencilNode) obj).getIndex ());
+		}
 		if (obj instanceof Index)
 			return m_index.equals (obj);
 
@@ -121,6 +130,8 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 	@Override
 	public int hashCode ()
 	{
+		if (m_index.getSpaceIndex ().length == 0)
+			return getName ().hashCode ();
 		return m_index.hashCode ();
 	}
 

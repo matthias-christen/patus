@@ -106,11 +106,20 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 		return m_listStencils;
 	}
 
+	/**
+	 * Count the number of Flops performed by one stencil bundle calculation.
+	 * The method doesn't count Flops in constant stencils.
+	 * 
+	 * @return The number of Flops performed by one stencil evaluation
+	 */
 	public int getFlopsCount ()
 	{
 		int nFlopsCount = 0;
+		
 		for (Stencil stencil : m_listStencils)
-			nFlopsCount += stencil.getFlopsCount ();
+			if (!stencil.isConstant ())
+				nFlopsCount += stencil.getFlopsCount ();
+		
 		return nFlopsCount;
 	}
 
@@ -392,12 +401,6 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 		return m_stencilFused == null ? false : m_stencilFused.isTimeblockingApplicable ();
 	}
 
-//	@Override
-//	public GhostZoneSize getPlaneGhostZoneSize (int nTimeIndex, int nInputVectorComponentIndex)
-//	{
-//		return m_stencilFused == null ? new GhostZoneSize (0) : m_stencilFused.getPlaneGhostZoneSize (nTimeIndex, nInputVectorComponentIndex);
-//	}
-	
 	public boolean isConstantOutputStencilNode (IDExpression node)
 	{
 		return isConstantOutputStencilNode (node.getName ());

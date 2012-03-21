@@ -241,6 +241,7 @@ public class OpenMPCodeGenerator extends AbstractBackend
 		return super.unary_minus (expr, specDatatype, bVectorize);
 	}
 	
+	@SuppressWarnings("static-method")
 	protected String getVecLoadFunctionName (Specifier specDatatype)
 	{
 		String strFunction = null;
@@ -252,14 +253,16 @@ public class OpenMPCodeGenerator extends AbstractBackend
 		return strFunction;
 	}
 	
+	@SuppressWarnings("static-method")
 	protected boolean hasVecLoadFunctionPointerArg ()
 	{
 		return true;
 	}
 	
+	@SuppressWarnings("static-method")
 	protected Initializer createExpressionInitializer (Expression expr, int nSIMDVectorLength)
 	{
-		List<Expression> listValues = new ArrayList<Expression> (nSIMDVectorLength);
+		List<Expression> listValues = new ArrayList<> (nSIMDVectorLength);
 		for (int i = 0; i < nSIMDVectorLength; i++)
 			listValues.add (expr.clone ());
 		return new Initializer (listValues);		

@@ -16,6 +16,8 @@ import cetus.hir.BreadthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.Specifier;
 import cetus.hir.Traversable;
+import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 
 /**
  * This class replaces subexpressions that can be computed by a fused
@@ -38,7 +40,7 @@ public class FuseMultiplyAddCodeGenerator
 	{
 		m_data = data;
 	}
-
+	
 	/**
 	 * Creates a new expression in which additions and multiplies are replaced
 	 * by a call to a &qout;fused multiply-add&quot; whenever possible.
@@ -50,6 +52,12 @@ public class FuseMultiplyAddCodeGenerator
 	 */
 	public Expression applyFMAs (Expression expression, Specifier specDatatype)
 	{
+		IArchitectureDescription arch = m_data.getArchitectureDescription ();
+		boolean bHasFMA = arch.getIntrinsic (TypeBaseIntrinsicEnum.FMA.value (), specDatatype) != null;
+		boolean bHasFMS = arch.getIntrinsic (TypeBaseIntrinsicEnum.FMS.value (), specDatatype) != null;
+		if (!bHasFMA && !bHasFMS)
+			return expression;
+		
 		boolean bFMAFound = false;
 		Expression exprNew = expression.clone ();
 
@@ -77,10 +85,16 @@ public class FuseMultiplyAddCodeGenerator
 							// conditions are met: create the FMA call
 
 							Expression exprFMA = bIsAdd ?
-								m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
-									bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false) :
-								m_data.getCodeGenerators ().getBackendCodeGenerator ().fms (
-									bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false);
+								(bHasFMA ?
+									m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
+										bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false) :
+									bexprTop
+								) :
+								(bHasFMS ?
+									m_data.getCodeGenerators ().getBackendCodeGenerator ().fms (
+										bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false) :
+									bexprTop
+								);
 
 							if (bexprTop == exprNew)
 								exprNew = exprFMA;
@@ -100,10 +114,16 @@ public class FuseMultiplyAddCodeGenerator
 						if (BinaryOperator.MULTIPLY.equals (bexprRight.getOperator ()))
 						{
 							Expression exprFMA = bIsAdd ?
-								m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
-									bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false) :
-								m_data.getCodeGenerators ().getBackendCodeGenerator ().fms (
-									bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false);
+								(bHasFMA ?
+									m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
+										bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false) :
+									bexprTop
+								) :
+								(bHasFMS ?
+									m_data.getCodeGenerators ().getBackendCodeGenerator ().fms (
+										bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false) :
+									bexprTop
+								);
 
 							if (bexprTop == exprNew)
 								exprNew = exprFMA;

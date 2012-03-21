@@ -136,16 +136,7 @@ public class StencilAssemblySection extends AssemblySection
 	protected void createInputs ()
 	{
 		addGrids ();
-		addStrides ();
-		
-		// add constants
-		for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
-			findConstants (stencil.getExpression ());
-		
-		// add stencil params
-		for (String strParamName : m_data.getStencilCalculation ().getArguments (EArgumentType.PARAMETER))
-			m_mapConstantsAndParams.put (new NameID (strParamName), m_mapConstantsAndParams.size ());
-		
+		addStrides ();		
 		addConstants ();
 	}
 	
@@ -286,13 +277,41 @@ public class StencilAssemblySection extends AssemblySection
 	 */
 	public void addConstants ()
 	{
+		Map<StencilNode, Stencil> mapStencils = new HashMap<> ();
+
+		// add constants and constant stencils
+		for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
+		{
+			if (!stencil.isConstant ())
+				findConstants (stencil.getExpression ());
+			else
+			{
+				for (StencilNode nodeOut : stencil.getOutputNodes ())
+				{
+					m_mapConstantsAndParams.put (nodeOut, m_mapConstantsAndParams.size ());
+					mapStencils.put (nodeOut, stencil);
+				}
+			}
+		}
+		
+		// add stencil parameters
+		for (String strParamName : m_data.getStencilCalculation ().getArguments (EArgumentType.PARAMETER))
+			m_mapConstantsAndParams.put (new NameID (strParamName), m_mapConstantsAndParams.size ());
+		
+		// nothing to do if no constants have been found
 		if (m_mapConstantsAndParams.size () == 0)
 			return;
 		
 		Expression[] rgConstsAndParams = new Expression[m_mapConstantsAndParams.size ()];
 		
 		for (Expression expr : m_mapConstantsAndParams.keySet ())
-			rgConstsAndParams[m_mapConstantsAndParams.get (expr)] = expr;
+		{
+			int nIdx = m_mapConstantsAndParams.get (expr);
+			if (expr instanceof StencilNode)
+				rgConstsAndParams[nIdx] = mapStencils.get (expr).getExpression ();
+			else					
+				rgConstsAndParams[nIdx] = expr;
+		}
 		
 		addInput (
 			INPUT_CONSTANTS_ARRAYPTR,

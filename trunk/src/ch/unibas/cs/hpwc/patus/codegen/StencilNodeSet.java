@@ -57,6 +57,9 @@ public class StencilNodeSet implements Iterable<StencilNode>
 				//throw new RuntimeException ("Only nodes of same spatial dimension can be compared");
 				return n1.getSpaceIndex ().length - n2.getSpaceIndex ().length;
 			}
+			
+			if (n1.getSpaceIndex ().length == 0)
+				return 0;
 
 			int nIdx = 0;
 			while (n1.getSpaceIndex ()[nIdx] == n2.getSpaceIndex ()[nIdx])

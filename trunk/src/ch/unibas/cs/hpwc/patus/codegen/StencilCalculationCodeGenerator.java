@@ -131,7 +131,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 
 			m_hw = m_data.getArchitectureDescription ();
 			m_nLcmSIMDVectorLengths = getLcmSIMDVectorLengths ();
-			m_sdidStencilArg = (SubdomainIdentifier) StrategyAnalyzer.getStencilArgument (m_expr);
+			m_sdidStencilArg = m_expr == null ? null : (SubdomainIdentifier) StrategyAnalyzer.getStencilArgument (m_expr);
 
 			m_mapShuffledNodes = new HashMap<> ();
 			
@@ -161,11 +161,8 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			
 			boolean bIsCreatingValidation = m_options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE);
 			
-			ParameterAssignment paComputationType = new ParameterAssignment (
-				CodeGeneratorData.PARAM_COMPUTATION_TYPE,
-				m_options.getIntValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL)
-			);
-
+			ParameterAssignment paComputationType = createStencilCalculationParamAssignment (m_options);
+			
 			// generate the code for the stencil calculations
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
 			{
@@ -182,10 +179,9 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				}
 				else
 					nEndOffset = (bSuppressVectorization ? 1 : (m_nLcmSIMDVectorLengths / nSIMDVectorLength));
-
+				
 				for (ParameterAssignment pa : m_slbGenerated)
 				{
-					
 					if (!bIsCreatingValidation && stencil.isConstant ())
 					{
 						// if the stencil is constant, add the computation to the head of the
@@ -222,7 +218,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			}
 		}
 		
-		protected abstract void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated);
+		public abstract void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated);
 
 		/**
 		 * Determines the datatype of the expression <code>expr</code>.
@@ -568,7 +564,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		 * @param slGenerated
 		 */
 		@Override
-		protected void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated)
+		public void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated)
 		{
 			Expression exprStencil = stencil.getExpression ();
 			if (exprStencil != null)
@@ -585,10 +581,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				boolean bFirst = true;
 
 				if (!bSuppressVectorization)
-				{
-					if (m_hw.getIntrinsic (Globals.FNX_FMA.getName (), specDatatype) != null)
-						exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype);
-				}
+					exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype);
 
 				// add the stencil computation to the generated code
 				for (StencilNode nodeOutput : stencil.getOutputNodes ())
@@ -679,7 +672,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		}
 
 		@Override
-		protected void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated)
+		public void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated)
 		{
 			if (stencil.getExpression () == null)
 				return;
@@ -755,6 +748,14 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 	{
 		m_data = data;
 	}
+	
+	private ParameterAssignment createStencilCalculationParamAssignment (CodeGeneratorRuntimeOptions options)
+	{
+		return new ParameterAssignment (
+			CodeGeneratorData.PARAM_COMPUTATION_TYPE,
+			options.getIntValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL)
+		);
+	}
 
 	/**
 	 * Generates the code for the stencil calculation.
@@ -788,6 +789,22 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		}
 
 		return slb;
+	}
+	
+	public void generateSingleConstantStencilCalculation (Stencil stencil, Specifier specDatatype, StatementListBundle slbGenerated, CodeGeneratorRuntimeOptions options)
+	{
+		if (!stencil.isConstant ())
+			throw new RuntimeException ("This method works only for constant stencils");
+		
+		StencilCodeGenerator cg = new StencilCodeGenerator (null, slbGenerated, options);
+		
+		int[] rgDefaultOffset = new int[stencil.getDimensionality ()];
+		Arrays.fill (rgDefaultOffset, 0);
+		
+		cg.generateSingleCalculation (
+			stencil, specDatatype, rgDefaultOffset,
+			m_data.getData ().getInitializationStatements (createStencilCalculationParamAssignment (options))
+		);
 	}
 	
 	/**

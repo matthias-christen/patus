@@ -129,11 +129,15 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				for (StencilNode node : map.keySet ())
 					mapReuse.put (node, map.get (node));
 			}
+			
 			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams);
 			
 			InstructionList ilComputationTemp = new InstructionList ();
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
-				cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), ilComputationTemp, m_options);
+			{
+				if (!stencil.isConstant ())
+					cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), ilComputationTemp, m_options);
+			}
 				
 			// translate the generic instruction list to the architecture-specific one
 			InstructionList ilComputation = m_assemblySection.translate (ilComputationTemp, specType);

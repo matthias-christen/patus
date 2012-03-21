@@ -89,15 +89,18 @@ public class AssemblyExpressionCodeGenerator
 		// get code generation options
 		int nUnrollFactor = options.getIntValue (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR);
 		
+		// apply fused multiply adds/subs if corresponding intrinsics are defined
+		Expression exprFMAed = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (expr, m_assemblySection.getDatatype ());
+		
 		// generate the inline assembly code
-		m_allocator.countRegistersNeeded (expr);
-		IOperand[] rgResult = traverse (expr, m_assemblySection.getDatatype (), nUnrollFactor, il);
+		m_allocator.countRegistersNeeded (exprFMAed);
+		IOperand[] rgResult = traverse (exprFMAed, m_assemblySection.getDatatype (), nUnrollFactor, il);
 		
 		// write the result back
 		// TODO: handle temporaries (scalar stencil nodes)
 		if (nodeOutput.isScalar ())
 		{
-			
+
 		}
 		
 		IOperand[] rgDest = processStencilNode (nodeOutput, nUnrollFactor, il);
@@ -106,19 +109,24 @@ public class AssemblyExpressionCodeGenerator
 	}
 	
 	/**
+	 * Recursively traverse the expression <code>expr</code>.
 	 * 
 	 * @param expr
+	 *            The expression to traverse
 	 * @param specDatatype
+	 *            The datatype of the expression
 	 * @param nUnrollFactor
+	 *            The unrolling factor
 	 * @param il
-	 * @return
+	 *            The instruction list, to which instructions are added during
+	 *            traversing the expression
+	 * @return The array of operands which hold the result of the computation of
+	 *         <code>expr</code>
 	 */
 	private IOperand[] traverse (Expression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
 		if (expr instanceof StencilNode)
 			return processStencilNode ((StencilNode) expr, nUnrollFactor, il);
-//		if (expr instanceof IDExpression)
-//			return processVariable ((IDExpression) expr, nUnrollFactor, il);
 		if (expr instanceof Literal || expr instanceof IDExpression)
 			return processConstantOrParam (expr, nUnrollFactor, il);
 		

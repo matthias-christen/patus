@@ -5,6 +5,7 @@ stencil wave
     
     operation (float grid u, float param dt_dx_sq)
     {
+    	/*
         u[x, y, z; t+1] = 2 * u[x, y, z; t] - u[x, y, z; t-1] +
             dt_dx_sq * (
                 -15/2 * u[x, y, z; t] +
@@ -18,6 +19,23 @@ stencil wave
                     u[x, y+2, z; t] + u[x, y-2, z; t] +
                     u[x, y, z+2; t] + u[x, y, z-2; t]
                 )
+            );
+    	*/
+
+		float c1 = 2 - 15/2 * dt_dx_sq;
+		float c2 = 4/3 * dt_dx_sq;
+		float c3 = -1/12 * dt_dx_sq;
+		
+        u[x, y, z; t+1] = c1 * u[x, y, z; t] - u[x, y, z; t-1] +
+            c2 * (
+                u[x+1, y, z; t] + u[x-1, y, z; t] +
+                u[x, y+1, z; t] + u[x, y-1, z; t] +
+                u[x, y, z+1; t] + u[x, y, z-1; t]
+            ) +
+            c3 * (
+                u[x+2, y, z; t] + u[x-2, y, z; t] +
+                u[x, y+2, z; t] + u[x, y-2, z; t] +
+                u[x, y, z+2; t] + u[x, y, z-2; t]
             );
     }
 }

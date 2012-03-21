@@ -275,7 +275,9 @@ public interface IOperand
 	// Method Definitions
 
 	/**
-	 * Returns a string representation of the operand for the generation of the assembly code.
+	 * Returns a string representation of the operand for the generation of the
+	 * assembly code.
+	 * 
 	 * @return The assembly string representation
 	 */
 	public abstract String getAsString ();

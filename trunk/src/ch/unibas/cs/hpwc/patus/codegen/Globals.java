@@ -64,8 +64,8 @@ public class Globals
 	public static final AnnotationStatement ANNOTATION_DISPAYPERFORMANCE_START = new AnnotationStatement (new CodeAnnotation ("#ifdef DISPLAY_PERFORMANCE"));
 	public static final AnnotationStatement ANNOTATION_DISPAYPERFORMANCE_END = new AnnotationStatement (new CodeAnnotation ("#endif"));
 	
-	private static final Map<Object, TypeBaseIntrinsicEnum> MAP_INTRINSICS = new HashMap<Object, TypeBaseIntrinsicEnum> ();
-	private static final Map<String, String[]> MAP_INTRINSICPARAMS = new HashMap<String, String[]> ();
+	private static final Map<Object, TypeBaseIntrinsicEnum> MAP_INTRINSICS = new HashMap<> ();
+	private static final Map<String, String[]> MAP_INTRINSICPARAMS = new HashMap<> ();
 	
 	/**
 	 * Generic &quot;left hand side&quot; argument

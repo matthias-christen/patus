@@ -41,8 +41,8 @@ public class Symbolic
 	///////////////////////////////////////////////////////////////////
 	// Constants
 
-	public static final List<Expression> ALL_VARIABLES_POSITIVE = new ArrayList<Expression> ();
-	public static final List<Expression> ALL_VARIABLES_INTEGER = new ArrayList<Expression> ();
+	public static final List<Expression> ALL_VARIABLES_POSITIVE = new ArrayList<> ();
+	public static final List<Expression> ALL_VARIABLES_INTEGER = new ArrayList<> ();
 
 
 	// Static initialization
@@ -93,8 +93,8 @@ public class Symbolic
 		INEQUALITY
 	}
 
-	private static Map<Expression, Expression> m_mapCache1 = new HashMap<Expression, Expression> ();
-	private static Map<String, ExpressionData> m_mapCache2 = new HashMap<String, ExpressionData> ();
+	private static Map<Expression, Expression> m_mapCache1 = new HashMap<> ();
+	private static Map<String, ExpressionData> m_mapCache2 = new HashMap<> ();
 
 
 	///////////////////////////////////////////////////////////////////
@@ -513,6 +513,7 @@ public class Symbolic
 
 	private static Expression replaceOperators (Expression expr, boolean bModified)
 	{
+		boolean bModifiedLocal = bModified;
 		Expression exprNew = expr.clone ();
 
 		// replace % operator
@@ -524,7 +525,7 @@ public class Symbolic
 				BinaryExpression bexpr = (BinaryExpression) obj;
 				if (bexpr.getOperator () == BinaryOperator.MODULUS)
 				{
-					bModified = true;
+					bModifiedLocal = true;
 
 					Expression exprLHS = bexpr.getLHS ();
 					Expression exprRHS = bexpr.getRHS ();
@@ -542,7 +543,7 @@ public class Symbolic
 				if (cast.getSpecifiers ().size () == 1 && cast.getSpecifiers ().get (0).equals (Specifier.INT))
 				{
 					// cast to int: replace by "floor" or the cast expression
-					bModified = true;
+					bModifiedLocal = true;
 
 					Expression exprCast = (Expression) cast.getChildren ().get (0);
 					exprCast.setParent (null);
@@ -554,7 +555,7 @@ public class Symbolic
 			}
 		}
 
-		return bModified ? exprNew : expr;
+		return bModifiedLocal ? exprNew : expr;
 	}
 
 	/**

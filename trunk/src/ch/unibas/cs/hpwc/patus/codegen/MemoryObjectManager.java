@@ -88,7 +88,7 @@ public class MemoryObjectManager
 		public SpatialMemoryObjects (ProjectionMask mask)
 		{
 			m_maskProj = mask;
-			m_listMemoryObjects = new LinkedList<MemoryObject> ();
+			m_listMemoryObjects = new LinkedList<> ();
 		}
 
 		public void addMemoryObject (MemoryObject mo)
@@ -919,10 +919,10 @@ public class MemoryObjectManager
 	{
 		m_data = data;
 		m_cacheIndices = new IndexExpressionCache (m_data);
-		m_mapCanUsePointerSwapping = new HashMap<SubdomainIterator, Boolean> ();
+		m_mapCanUsePointerSwapping = new HashMap<> ();
 		m_nSwapCount = 0;
 
-		m_mapMemoryObjects = new HashMap<SubdomainIdentifier, MemoryObjects> ();
+		m_mapMemoryObjects = new HashMap<> ();
 
 		// generate the stencil node sets
 		Stencil stencil = m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ();
@@ -936,7 +936,7 @@ public class MemoryObjectManager
 		// (computeBorders will only compute the borders for individual vector indices,
 		// the border "multiplication" due to local time stepping will be calculated
 		// on the fly)
-		m_mapBorders = new HashMap<Integer, Border> ();
+		m_mapBorders = new HashMap<> ();
 		m_borderMaximum = null;
 	}
 
@@ -1052,10 +1052,13 @@ public class MemoryObjectManager
 
 	/**
 	 * Builds the name for a particular memory object array.
-	 * @param sdid The strategy grid identifier
-	 * @param node The stencil node
+	 * 
+	 * @param sdid
+	 *            The strategy grid identifier
+	 * @param node
+	 *            The stencil node
 	 * @return The memory object identifier name for the memory object array for
-	 * 	a grid identifier and stencil node
+	 *         a grid identifier and stencil node
 	 */
 	public static String createMemoryObjectName (SubdomainIdentifier sdid, StencilNode node, ProjectionMask mask, boolean bIncludeTimeInformation)
 	{
@@ -1088,9 +1091,13 @@ public class MemoryObjectManager
 	}
 
 	/**
-	 * Determines whether the iterator belonging to <code>sgid</code> is on a parallelism level
+	 * Determines whether the iterator belonging to <code>sgid</code> is on a
+	 * parallelism level
 	 * that has its own local data copies.
-	 * @param sdid The subdomain identifier for which to determine whether local data copies are desired
+	 * 
+	 * @param sdid
+	 *            The subdomain identifier for which to determine whether local
+	 *            data copies are desired
 	 * @return <code>true</code> iff <code>sgid</code> has local data copies
 	 */
 	protected boolean hasLocalDataCopies (SubdomainIdentifier sdid)
@@ -1100,13 +1107,18 @@ public class MemoryObjectManager
 	}
 
 	/**
-	 * Finds a subdomain iterator with memory objects (above in the hierarchy or identical to
-	 * <code>it</code>) and returns the list of memory objects.
-	 * @param sdid The subdomain iterator above or in which to look for memory objects
-	 * @param bOnlyFindMemoryObjectsWithLocalDataCopies Finds only memory objects that are
-	 * 	attached to a subdomain iterator on a parallelism level that has its own local data copies
-	 * @return The list of memory objects belonging to <code>it</code> or a subdomain iterator
-	 * 	above <code>it</code>
+	 * Finds a subdomain iterator with memory objects (above in the hierarchy or
+	 * identical to <code>it</code>) and returns the list of memory objects.
+	 * 
+	 * @param sdid
+	 *            The subdomain iterator above or in which to look for memory
+	 *            objects
+	 * @param bOnlyFindMemoryObjectsWithLocalDataCopies
+	 *            Finds only memory objects that are
+	 *            attached to a subdomain iterator on a parallelism level that
+	 *            has its own local data copies
+	 * @return The list of memory objects belonging to <code>it</code> or a
+	 *         subdomain iterator above <code>it</code>
 	 */
 	protected MemoryObjects findMemoryObjects (SubdomainIdentifier sdid, boolean bOnlyFindMemoryObjectsWithLocalDataCopies)
 	{
@@ -1181,7 +1193,8 @@ public class MemoryObjectManager
 
 	/**
 	 * Adds the base memory objects to the memory object manager.
-	 * Base memory objects are the memory portions that are passed to the kernel.
+	 * Base memory objects are the memory portions that are passed to the
+	 * kernel.
 	 */
 	protected void addBaseMemoryObjects ()
 	{
@@ -1205,9 +1218,11 @@ public class MemoryObjectManager
 	}
 
 	/**
-	 * Creates the memory objects and creates the allocation code if it has been specified
-	 * that the memory objects hold a local data copy.
-	 * @param it The subdomain iterator for which to create the memory objects
+	 * Creates the memory objects and creates the allocation code if it has been
+	 * specified that the memory objects hold a local data copy.
+	 * 
+	 * @param it
+	 *            The subdomain iterator for which to create the memory objects
 	 */
 	public void allocateMemoryObjects (SubdomainIterator it, StatementListBundle slbGenerated, CodeGeneratorRuntimeOptions options)
 	{
@@ -1361,18 +1376,28 @@ public class MemoryObjectManager
 
 	/**
 	 * Constructs an expression to access a memory object array.
-	 * @param sdid The subdomain identifier for which to generate the memory object expression
-	 * @param node The stencil node that is accessed
-	 * @param vecOffsetWithinMemObj An offset from the index point defined by
-	 * 	<code>sdid</code> or <code>null</code> if no offset is to be added. The offset point must
-	 * 	lie within the same memory object.
+	 * 
+	 * @param sdid
+	 *            The subdomain identifier for which to generate the memory
+	 *            object expression
+	 * @param node
+	 *            The stencil node that is accessed
+	 * @param vecOffsetWithinMemObj
+	 *            An offset from the index point defined by <code>sdid</code> or
+	 *            <code>null</code> if no offset is to be added. The offset
+	 *            point must lie within the same memory object.
 	 * @param bIsDataAccess
-	 * @param bIndex Tells the method to index the memory object to access a single grid point if set to <code>true</code>,
-	 * 	if set to <code>false</code> a pointer to the memory object is returned
-	 * @param bAccessParentMemoryObject Specify whether the parent memory object should be accessed instead of the
-	 * 	memory object associated with <code>sdid</code>.
-	 * @param slGenerated The list of statements to which index calculations will be added. Can be <code>null</code> if <code>bIndex</code>
-	 * 	is set to <code>false</code>
+	 * @param bIndex
+	 *            Tells the method to index the memory object to access a single
+	 *            grid point if set to <code>true</code>, if set to <code>false</code>
+	 *            a pointer to the memory object is returned
+	 * @param bAccessParentMemoryObject
+	 *            Specify whether the parent memory object should be accessed
+	 *            instead of the memory object associated with <code>sdid</code>.
+	 * @param slGenerated
+	 *            The list of statements to which index calculations will be
+	 *            added. Can be <code>null</code> if <code>bIndex</code> is set
+	 *            to <code>false</code>
 	 * @param options
 	 * @return
 	 */
@@ -1517,7 +1542,7 @@ public class MemoryObjectManager
 		boolean bIsStencilCalculation = options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 		if (!bUseNativeSIMD && bUseSIMD && !bNoVectorize && bIsStencilCalculation)
 		{
-			List<Specifier> listSpecs = new ArrayList<Specifier> ();
+			List<Specifier> listSpecs = new ArrayList<> ();
 			listSpecs.addAll (m_data.getArchitectureDescription ().getType (node.getSpecifier ()));
 			listSpecs.add (PointerSpecifier.UNQUALIFIED);
 
@@ -1568,15 +1593,17 @@ public class MemoryObjectManager
 	}
 
 	/**
-	 * Determine whether pointer swapping can be used for the current configuration.<br/>
+	 * Determine whether pointer swapping can be used for the current
+	 * configuration.<br/>
 	 * Pointer swapping can be used if
 	 * <ul>
 	 * 	<li>There is no timeblocking</li>
 	 * 	<li></li>
 	 * </ul>
-	 * If no pointer swapping can be used, the grid arrays are indexed as u[temporal][spaceinfo][idx],
-	 * where temporal is an expression similar to (t+k)%m, where t is the local timestep.
-	 *
+	 * If no pointer swapping can be used, the grid arrays are indexed as
+	 * u[temporal][spaceinfo][idx], where temporal is an expression similar
+	 * to (t+k)%m, where t is the local timestep.
+	 * 
 	 * @return <code>true</code> iff pointer swapping can be used
 	 */
 	public boolean canUsePointerSwapping (SubdomainIterator it)
@@ -1602,10 +1629,13 @@ public class MemoryObjectManager
 	}
 
 	/**
-	 * Generates the code swapping the memory object pointers used within the temporal loop
-	 * <code>loopTemporal</code>.
-	 * @param loopTemporal The temporal loop that swaps the memory object pointers
-	 * @param slb The statement list bundle to which the code is added
+	 * Generates the code swapping the memory object pointers used within the
+	 * temporal loop <code>loopTemporal</code>.
+	 * 
+	 * @param loopTemporal
+	 *            The temporal loop that swaps the memory object pointers
+	 * @param slb
+	 *            The statement list bundle to which the code is added
 	 */
 	public void swapMemoryObjectPointers (RangeIterator loopTemporal, StatementListBundle slb, CodeGeneratorRuntimeOptions options)
 	{
@@ -1659,7 +1689,7 @@ public class MemoryObjectManager
 		///
 
 		// find inner most subdomain iterator before the next temporal loop
-		Set<SubdomainIdentifier> setSubdomainIdentifiers = new HashSet<SubdomainIdentifier> ();
+		Set<SubdomainIdentifier> setSubdomainIdentifiers = new HashSet<> ();
 		for (SubdomainIterator it : analyzer.getRelativeInnerMostSubdomainIterators (loopTemporal))
 		{
 			if (canUsePointerSwapping (it))
@@ -1683,7 +1713,7 @@ public class MemoryObjectManager
 						if (nMemObjsCount > 1)
 						{
 							// get the memory objects in the right order (sort by time index)
-							ArrayList<StencilNode> listNodes = new ArrayList<StencilNode> (nMemObjsCount);
+							ArrayList<StencilNode> listNodes = new ArrayList<> (nMemObjsCount);
 							for (StencilNode node : mos.getMemoryObjectStencilNodes ())
 								if (node.getIndex ().getVectorIndex () == nVectorIndex && node.getIndex ().isAdvanceableInTime ())	// ??? (added 4/4/2011)
 									listNodes.add (node);
@@ -1739,7 +1769,7 @@ public class MemoryObjectManager
 		VariableDeclarator decl = new VariableDeclarator (new NameID (StringUtil.concat ("tmp_swap_", m_nSwapCount++)));
 
 		Specifier specType = listNodes.get (0).getSpecifier ();
-		List<Specifier> listSpecifiers = new ArrayList<Specifier> ();
+		List<Specifier> listSpecifiers = new ArrayList<> ();
 		if (m_data.getOptions ().useNativeSIMDDatatypes () && m_data.getArchitectureDescription ().useSIMD ())
 			listSpecifiers.addAll (m_data.getArchitectureDescription ().getType (specType));
 		else

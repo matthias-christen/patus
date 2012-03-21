@@ -35,7 +35,7 @@ public class ParameterAssignment implements Iterable<Parameter>
 
 	public ParameterAssignment ()
 	{
-		m_mapParameters = new HashMap<Parameter, Integer> ();
+		m_mapParameters = new HashMap<> ();
 		m_bIsDeprecated = false;
 	}
 

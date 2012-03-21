@@ -146,8 +146,8 @@ public class CodeGenerationOptions
 		m_rgUnrollingFactors = new int[] { 1, 2 };
 		m_bUseNativeSIMDDatatypes = false;
 		m_bBalanceBinaryExpressions = true;
-		m_setDebugOptions = new HashSet<CodeGenerationOptions.EDebugOption> ();
-		m_listTargets = new ArrayList<CodeGenerationOptions.ETarget> (1);
+		m_setDebugOptions = new HashSet<> ();
+		m_listTargets = new ArrayList<> (1);
 		m_listTargets.add (ETarget.BENCHMARK_HARNESS);
 		m_strKernelFilename = DEFAULT_KERNEL_FILENAME;
 		m_bCreateInitialization = true;

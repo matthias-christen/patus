@@ -66,14 +66,14 @@ public class ArchitectureDescriptionManager
 			m_file = file;
 			m_type = type;
 
-			m_mapDataTypes = new HashMap<String, Datatype> ();
+			m_mapDataTypes = new HashMap<> ();
 
-			m_mapDeclspecs = new HashMap<TypeDeclspec, Declspec> ();
+			m_mapDeclspecs = new HashMap<> ();
 			if (m_type.getDeclspecs () != null)
 				for (Declspec d : m_type.getDeclspecs ().getDeclspec ())
 					m_mapDeclspecs.put (d.getType (), d);
 
-			m_mapDataTypesFromBase = new HashMap<String, Datatype> ();
+			m_mapDataTypesFromBase = new HashMap<> ();
 			if (m_type.getDatatypes () != null)
 				for (Datatype datatype : m_type.getDatatypes ().getDatatype ())
 				{
@@ -84,13 +84,13 @@ public class ArchitectureDescriptionManager
 					m_mapDataTypesFromBase.put (datatype.getBasetype ().value (), datatype);
 				}
 
-			m_mapIntrinsics = new HashMap<String, List<Intrinsic>> ();
+			m_mapIntrinsics = new HashMap<> ();
 			if (m_type.getIntrinsics () != null)
 				for (Intrinsic intrinsic : m_type.getIntrinsics ().getIntrinsic ())
 				{
 					List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (intrinsic.getBaseName ());
 					if (listIntrinsics == null)
-						m_mapIntrinsics.put (intrinsic.getBaseName (), listIntrinsics = new ArrayList<Intrinsic> ());
+						m_mapIntrinsics.put (intrinsic.getBaseName (), listIntrinsics = new ArrayList<> ());
 					listIntrinsics.add (intrinsic);
 				}
 		}
@@ -179,7 +179,7 @@ public class ArchitectureDescriptionManager
 		public List<Specifier> getType (Specifier specType)
 		{
 			Datatype type = m_mapDataTypesFromBase.get (specType.toString ());
-			List<Specifier> listSpecifiers = new ArrayList<Specifier> ();
+			List<Specifier> listSpecifiers = new ArrayList<> ();
 
 			// add all the types separated by whitespaces to the list as user specifiers
 			if (type != null)
@@ -230,7 +230,7 @@ public class ArchitectureDescriptionManager
 		@Override
 		public List<Specifier> getDeclspecs (TypeDeclspec type)
 		{
-			List<Specifier> list = new ArrayList<Specifier> ();
+			List<Specifier> list = new ArrayList<> ();
 			Declspec declspec = m_mapDeclspecs.get (type);
 			if (declspec != null)
 			{
@@ -339,7 +339,7 @@ public class ArchitectureDescriptionManager
 		@Override
 		public Iterable<TypeRegisterClass> getRegisterClasses (TypeRegisterType type)
 		{
-			List<TypeRegisterClass> list = new ArrayList<TypeRegisterClass> ();
+			List<TypeRegisterClass> list = new ArrayList<> ();
 			if (m_type.getAssembly () != null && m_type.getAssembly ().getRegisterClasses () != null && m_type.getAssembly ().getRegisterClasses ().getRegisterClass () != null)
 			{
 				for (TypeRegisterClass cls : m_type.getAssembly ().getRegisterClasses ().getRegisterClass ())
@@ -362,7 +362,7 @@ public class ArchitectureDescriptionManager
 		@Override
 		public List<String> getIncludeFiles ()
 		{
-			List<String> listIncludes = new ArrayList<String> ();
+			List<String> listIncludes = new ArrayList<> ();
 			for (Include include : m_type.getIncludes ().getInclude ())
 				listIncludes.add (include.getFile ());
 			return listIncludes;
@@ -415,7 +415,7 @@ public class ArchitectureDescriptionManager
 			resolveInheritsFrom (types);
 
 			// construct hardware description objects
-			m_mapDescriptions = new HashMap<String, ArchitectureDescriptionManager.HardwareDescription> ();
+			m_mapDescriptions = new HashMap<> ();
 			for (TypeArchitectureType type : types.getArchitectureType ())
 				m_mapDescriptions.put (type.getName (), new HardwareDescription (fileHardwareDescriptions, type));
 		}
@@ -440,8 +440,8 @@ public class ArchitectureDescriptionManager
 	private void resolveInheritsFrom (ArchitectureTypes types)
 	{
 		// resolve "inherits-from" attributes
-		Map<String, TypeArchitectureType> mapResolved = new HashMap<String, TypeArchitectureType> ();
-		Map<String, TypeArchitectureType> mapToResolve = new HashMap<String, TypeArchitectureType> ();
+		Map<String, TypeArchitectureType> mapResolved = new HashMap<> ();
+		Map<String, TypeArchitectureType> mapToResolve = new HashMap<> ();
 
 		// add types without "inherits-from" attributes to the map of resolved types
 		for (TypeArchitectureType type : types.getArchitectureType ())
@@ -456,7 +456,7 @@ public class ArchitectureDescriptionManager
 		while (!mapToResolve.isEmpty ())
 		{
 			// find a type that is resolvable
-			TypeArchitectureType type = findResolvableType (mapResolved, mapToResolve);
+			TypeArchitectureType type = ArchitectureDescriptionManager.findResolvableType (mapResolved, mapToResolve);
 			if (type == null)
 				throw new RuntimeException (StringUtil.concat ("The architecture type definition \"", mapToResolve.keySet ().iterator ().next (), "\" is not resolvable."));
 
@@ -466,7 +466,7 @@ public class ArchitectureDescriptionManager
 		}
 	}
 
-	private TypeArchitectureType findResolvableType (Map<String, TypeArchitectureType> mapResolved, Map<String, TypeArchitectureType> mapToResolve)
+	private static TypeArchitectureType findResolvableType (Map<String, TypeArchitectureType> mapResolved, Map<String, TypeArchitectureType> mapToResolve)
 	{
 		for (TypeArchitectureType type : mapToResolve.values ())
 		{
@@ -513,7 +513,7 @@ public class ArchitectureDescriptionManager
 					fieldDest.set (objDest, fieldSrc.get (objSrc));
 				else if (fieldSrc.getType ().equals (List.class))
 				{
-					List<Object> list = new ArrayList<Object> ();
+					List<Object> list = new ArrayList<> ();
 					for (Object objSrcEntry : (List<?>) fieldSrc.get (objSrc))
 					{
 						if (objSrcEntry == null)

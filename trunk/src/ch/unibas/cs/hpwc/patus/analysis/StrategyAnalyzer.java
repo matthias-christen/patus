@@ -23,7 +23,6 @@ import cetus.hir.AnnotationStatement;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
-import cetus.hir.BreadthFirstIterator;
 import cetus.hir.CompoundStatement;
 import cetus.hir.DeclarationStatement;
 import cetus.hir.DepthFirstIterator;
@@ -72,7 +71,7 @@ public class StrategyAnalyzer
 			m_sdIterator = sdit;
 			m_nodeParent = nodeParent;
 
-			m_listChildren = new LinkedList<GridHierarchyNode> ();
+			m_listChildren = new LinkedList<> ();
 
 			// add this node as a child to the parent node
 			if (nodeParent != null)
@@ -191,7 +190,9 @@ public class StrategyAnalyzer
 
 	/**
 	 * Creates the strategy analyzer object.
-	 * @param strategy The strategy to analyze
+	 * 
+	 * @param strategy
+	 *            The strategy to analyze
 	 */
 	public StrategyAnalyzer (CodeGeneratorSharedObjects data)
 	{
@@ -206,31 +207,36 @@ public class StrategyAnalyzer
 		m_loopOuterMost = null;
 		m_sgitOuterMost = null;
 
-		m_mapMaximumTotalTimesteps = new HashMap<Loop, Expression> ();
-		m_mapRelativeInnerMostSubdomainIterators = new HashMap<Traversable, List<SubdomainIterator>> ();
+		m_mapMaximumTotalTimesteps = new HashMap<> ();
+		m_mapRelativeInnerMostSubdomainIterators = new HashMap<> ();
 
 		// analyze the hierarchical structure of the grids
-		m_mapSubdomainIdentifiers = new HashMap<SubdomainIdentifier, StrategyAnalyzer.GridHierarchyNode> ();
-		m_mapParallelismLevelDomainSizes = new HashMap<Integer, Size> ();
-		m_mapParallelismLevelIteratorSizes = new HashMap<Integer, Size> ();
+		m_mapSubdomainIdentifiers = new HashMap<> ();
+		m_mapParallelismLevelDomainSizes = new HashMap<> ();
+		m_mapParallelismLevelIteratorSizes = new HashMap<> ();
 		m_mapParallelismLevelDomainSizes.put (0, new Size (m_data.getStencilCalculation ().getDomainSize ().getSize ()));
 		
 		buildGridHierarchy (m_strategy.getBody (), null);
 
 		// analyze the temporal structure
-		m_setTimeIndices = new HashSet<IDExpression> ();
-		m_mapTimeBlockingFactors = new HashMap<RangeIterator, Expression> ();
+		m_setTimeIndices = new HashSet<> ();
+		m_mapTimeBlockingFactors = new HashMap<> ();
 		m_itMainTemporalIterator = null;
 		findTemporalIterators ();
 	}
 
 	/**
 	 * Builds the subdomain tree structure.
-	 * @param trvParent The parent object in the strategy AST
-	 * @param nodeParent The parent subdomain node
+	 * 
+	 * @param trvParent
+	 *            The parent object in the strategy AST
+	 * @param nodeParent
+	 *            The parent subdomain node
 	 */
 	protected void buildGridHierarchy (Traversable trvParent, GridHierarchyNode nodeParent)
 	{
+		GridHierarchyNode nodeParentLocal = nodeParent;
+		
 		for (Traversable trvChild : trvParent.getChildren ())
 		{
 			if (trvChild instanceof SubdomainIterator)
@@ -238,11 +244,11 @@ public class StrategyAnalyzer
 				SubdomainIterator it = (SubdomainIterator) trvChild;
 
 				// if the parent node is null, create the root node of the hierarchy
-				if (nodeParent == null)
+				if (nodeParentLocal == null)
 				{
-					nodeParent = new GridHierarchyNode (it.getDomainIdentifier (), null, null);
+					nodeParentLocal = new GridHierarchyNode (it.getDomainIdentifier (), null, null);
 					if (m_nodeGridHierarchyRoot == null)
-						m_nodeGridHierarchyRoot = nodeParent;
+						m_nodeGridHierarchyRoot = nodeParentLocal;
 					else
 					{
 						// the root has already been created
@@ -265,7 +271,7 @@ public class StrategyAnalyzer
 							throw new RuntimeException (StringUtil.concat ("Subdomain size mismatch on parallelism level", it.getParallelismLevel ()));
 					}
 					else
-						m_mapParallelismLevelDomainSizes.put (it.getParallelismLevel (), it.getDomainSubdomain ().getSize ());
+						m_mapParallelismLevelDomainSizes.put (it.getParallelismLevel (), sizeSubdomain = it.getDomainSubdomain ().getSize ());
 
 					Size sizeIterator = m_mapParallelismLevelIteratorSizes.get (it.getParallelismLevel ());
 					if (sizeIterator != null)
@@ -282,17 +288,19 @@ public class StrategyAnalyzer
 					m_mapParallelismLevelIteratorSizes.put (0, it.getIteratorSubdomain ().getSize ());					
 
 				// create the iterator node and recursively build the structure
-				buildGridHierarchy (trvChild, new GridHierarchyNode (it.getIterator (), it, nodeParent));
+				buildGridHierarchy (trvChild, new GridHierarchyNode (it.getIterator (), it, nodeParentLocal));
 			}
 			else
-				buildGridHierarchy (trvChild, nodeParent);
+				buildGridHierarchy (trvChild, nodeParentLocal);
 		}
 	}
 
 	/**
-	 * Returns the subdomain that is the root subdomain of the strategy, i.e. the &quot;outer most&quot;
-	 * subdomain that is iterated over in the strategy. This is also the base from which the arguments to
-	 * the stencil kernel are constructed.
+	 * Returns the subdomain that is the root subdomain of the strategy, i.e.
+	 * the &quot;outer most&quot; subdomain that is iterated over in the
+	 * strategy. This is also the base from which the arguments to the stencil
+	 * kernel are constructed.
+	 * 
 	 * @return The root subdomain
 	 */
 	public SubdomainIdentifier getRootGrid ()
@@ -301,8 +309,12 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Returns the parent subdomain, given a {@link SubdomainIdentifier} <code>sdid</code>.
-	 * @param sdid The subdomain identifier for which the parent subdomain is sought
+	 * Returns the parent subdomain, given a {@link SubdomainIdentifier}
+	 * <code>sdid</code>.
+	 * 
+	 * @param sdid
+	 *            The subdomain identifier for which the parent subdomain is
+	 *            sought
 	 * @return The parent grid of <code>sgid</code>
 	 */
 	public SubdomainIdentifier getParentGrid (SubdomainIdentifier sdid)
@@ -325,12 +337,14 @@ public class StrategyAnalyzer
 
 	/**
 	 * Returns a list of all the child subdomains of <code>sdidParent</code>.
-	 * @param sdidParent The subdomain identifier whose children are sought
+	 * 
+	 * @param sdidParent
+	 *            The subdomain identifier whose children are sought
 	 * @return A list of all the children of <code>sdidParent</code>
 	 */
 	public List<SubdomainIdentifier> getChildGrids (SubdomainIdentifier sdidParent)
 	{
-		List<SubdomainIdentifier> listChildren = new LinkedList<SubdomainIdentifier> ();
+		List<SubdomainIdentifier> listChildren = new LinkedList<> ();
 		for (GridHierarchyNode nodeChild : m_mapSubdomainIdentifiers.get (sdidParent))
 			listChildren.add (nodeChild.getIdentifier ());
 		return listChildren;
@@ -371,7 +385,7 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Finds temporal iterators and associates them with their time blocking factor
+	 * Finds temporal iterators and associates them with their time blocking factor.
 	 */
 	protected void findTemporalIterators ()
 	{
@@ -412,9 +426,10 @@ public class StrategyAnalyzer
 
 	/**
 	 * Determines whether the strategy implements temporal blocking.
-	 * @return <code>true</code> iff the strategy implements some form
-	 * 	of time blocking, i.e. whether within a block data is overwritten
-	 * 	before proceeding to the next block
+	 * 
+	 * @return <code>true</code> iff the strategy implements some form of time
+	 *         blocking, i.e. whether within a block data is overwritten before
+	 *         proceeding to the next block
 	 */
 	public boolean isTimeblocked ()
 	{
@@ -452,6 +467,7 @@ public class StrategyAnalyzer
 
 	/**
 	 * Finds the loop index variable of the loop over the time dimension.
+	 * 
 	 * @return The time loop index variable identifier
 	 */
 	public IDExpression getTimeIndexVariable ()
@@ -499,7 +515,9 @@ public class StrategyAnalyzer
 
 	/**
 	 * Returns the maximum number of parallel units for a given loop level
-	 * @param nLevel The loop level
+	 * 
+	 * @param nLevel
+	 *            The loop level
 	 * @return The number of parallel units for level <code>nLevel</code>
 	 */
 	public Expression getParallelUnitsForLevel (int nLevel)
@@ -514,6 +532,7 @@ public class StrategyAnalyzer
 
 	/**
 	 * Returns the maximum depth of the loop nest.
+	 * 
 	 * @return The loop nest depth
 	 */
 	public int getMaximumLoopNestDepth ()
@@ -523,21 +542,21 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Analyzes the strategy
+	 * Analyzes the strategy.
 	 */
 	protected void analyze ()
 	{
 		if (m_mapLoopLevels != null)
 			return;
 
-		m_mapLoopLevels = new HashMap<Loop, Integer> ();
-		m_listParallelUnitNumbersPerLevel = new ArrayList<List<Expression>> ();
+		m_mapLoopLevels = new HashMap<> ();
+		m_listParallelUnitNumbersPerLevel = new ArrayList<> ();
 
 		// get the number of parallel units
 		m_exprParallelUnitsCount = Symbolic.simplify (getParallelUnits (m_strategy.getBody (), m_nMaxLoopNestDepth), Symbolic.ALL_VARIABLES_INTEGER);
 
 		// find the maximum number of units for each level
-		m_listNumParallelUnitsPerLevel = new ArrayList<Expression> ();
+		m_listNumParallelUnitsPerLevel = new ArrayList<> ();
 		for (List<Expression> listNumbersPerLevel : m_listParallelUnitNumbersPerLevel)
 			m_listNumParallelUnitsPerLevel.add (ExpressionUtil.max (listNumbersPerLevel));
 	}
@@ -555,7 +574,7 @@ public class StrategyAnalyzer
 		//
 		// i is the level, j the number of the loop in that level
 
-		List<Expression> listChildParallelUnitsCount = new LinkedList<Expression> ();
+		List<Expression> listChildParallelUnitsCount = new LinkedList<> ();
 
 		for (Traversable t : trvParent.getChildren ())
 		{
@@ -616,8 +635,11 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Determines whether the statement <code>stmt</code> is a declaration of a strategy argument.
-	 * @param stmt The statement to check
+	 * Determines whether the statement <code>stmt</code> is a declaration of a
+	 * strategy argument.
+	 * 
+	 * @param stmt
+	 *            The statement to check
 	 * @return <code>true</code> if <code>stmt</code> declares a strategy argument
 	 */
 	public boolean isStrategyArgumentDeclaration (Statement stmt)
@@ -636,16 +658,24 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * <p>Determines whether data must be loaded within the subdomain iterator <code>it</code>.</p>
-	 * <p>Data is loaded if:
-	 * 	<ul>
-	 * 		<li>the iterator is the last iterator in its parallelism level</li>
-	 * 		<li><code>it</code> is the iterator above the point iterator containing a stencil call</li>
-	 * 		<li>the iterator is no point iterator and contains a stencil call</li>
-	 * 	</ul>
+	 * <p>
+	 * Determines whether data must be loaded within the subdomain iterator
+	 * <code>it</code>.
 	 * </p>
-	 * @param it The iterator to test
-	 * @return <code>true</code> iff data is loaded in the iterator <code>it</code>
+	 * <p>
+	 * Data is loaded if:
+	 * <ul>
+	 * 	<li>the iterator is the last iterator in its parallelism level</li>
+	 * 	<li><code>it</code> is the iterator above the point iterator containing a
+	 * 		stencil call</li>
+	 * 	<li>the iterator is no point iterator and contains a stencil call</li>
+	 * </ul>
+	 * </p>
+	 * 
+	 * @param it
+	 *            The iterator to test
+	 * @return <code>true</code> iff data is loaded in the iterator
+	 *         <code>it</code>
 	 */
 	public boolean isDataLoadedInIterator (SubdomainIterator it, IArchitectureDescription desc)
 	{
@@ -678,11 +708,14 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Determines recursively whether the traversable <code>trvParent</code> is an
+	 * Determines recursively whether the traversable <code>trvParent</code> is
+	 * an
 	 * immediate parent of a point iterator.
-	 * @param trvParent The traversable to check
-	 * @return <code>true</code> if an iterator is found immediately below <code>trvParent</code>
-	 * 	that is a point iterator
+	 * 
+	 * @param trvParent
+	 *            The traversable to check
+	 * @return <code>true</code> if an iterator is found immediately below
+	 *         <code>trvParent</code> that is a point iterator
 	 */
 	private boolean isIteratorImmediatelyAbovePointIteratorWithStencilCall (Traversable trvParent)
 	{
@@ -717,8 +750,11 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Returns <code>true</code> iff <code>trv</code> is a stencil call (an expression statement that is a call to the formal stencil function).
-	 * @param trv The traversable to test
+	 * Returns <code>true</code> iff <code>trv</code> is a stencil call (an
+	 * expression statement that is a call to the formal stencil function).
+	 * 
+	 * @param trv
+	 *            The traversable to test
 	 * @return <code>true</code> iff <code>trv</code> is a stencil call
 	 */
 	public static boolean isStencilCall (Traversable trv)
@@ -727,12 +763,15 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Determines whether the {@link SubdomainIterator} it contains a stencil call as an immediate child.
-	 * @param it The subdomain iterator to test
-	 * @return <code>true</code> iff the subdomain iterator <code>it</code> contains a stencil
-	 * 	call immediately below it
+	 * Determines whether the {@link SubdomainIterator} it contains a stencil
+	 * call as an immediate child.
+	 * 
+	 * @param it
+	 *            The subdomain iterator to test
+	 * @return <code>true</code> iff the subdomain iterator <code>it</code>
+	 *         contains a stencil call immediately below it
 	 */
-//	public static boolean directlyContainsStencilCall (SubdomainIterator it)
+	//	public static boolean directlyContainsStencilCall (SubdomainIterator it)
 //	{
 //		for (Traversable trv : it.getChildren ())
 //		{
@@ -827,8 +866,11 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Determines whether the loop <code>loop</code> contains a loop nested within <code>loop</code>.
-	 * @param loop The loop to test
+	 * Determines whether the loop <code>loop</code> contains a loop nested
+	 * within <code>loop</code>.
+	 * 
+	 * @param loop
+	 *            The loop to test
 	 * @return <code>true</code> iff <code>loop</code> contains another loop
 	 */
 	public static boolean hasNestedLoops (Loop loop)
@@ -847,11 +889,16 @@ public class StrategyAnalyzer
 	// Static Functions
 
 	/**
-	 * Determines whether the expression <code>expr</code> is a call to the stencil function.
-	 * Asserts that the expression <code>expr</code> is an assignment expression with a function call
+	 * Determines whether the expression <code>expr</code> is a call to the
+	 * stencil function.
+	 * Asserts that the expression <code>expr</code> is an assignment expression
+	 * with a function call
 	 * to {@link Globals#FNX_STENCIL} as right hand side.
-	 * @param expr The expression to check
-	 * @return <code>true</code> iff the expression <code>expr</code> is a call to the stencil function
+	 * 
+	 * @param expr
+	 *            The expression to check
+	 * @return <code>true</code> iff the expression <code>expr</code> is a call
+	 *         to the stencil function
 	 */
 	public static boolean isStencilCall (Expression expr)
 	{
@@ -1075,7 +1122,7 @@ public class StrategyAnalyzer
 		return true;
 	}
 	
-	public boolean isInnerMostParallelLoop (Loop loop)
+	public static boolean isInnerMostParallelLoop (Loop loop)
 	{
 		for (DepthFirstIterator it = new DepthFirstIterator (loop); it.hasNext (); )
 		{
@@ -1123,7 +1170,7 @@ public class StrategyAnalyzer
 
 	private List<SubdomainIterator> getRelativeInnerMostSubdomainIteratorsRecursive (Traversable trv, Traversable trvOrig)
 	{
-		List<SubdomainIterator> list = new ArrayList<SubdomainIterator> ();
+		List<SubdomainIterator> list = new ArrayList<> ();
 
 		for (Traversable trvChild : trv.getChildren ())
 		{
@@ -1168,17 +1215,23 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Finds the local timestep for the statement (typically a stencil call) <code>trvStatement</code>
-	 * below the subdomain iterator <code>sgit</code>.
-	 * If no temporal iterator is found between <code>sgit</code> and <code>trvStatement</code>,
+	 * Finds the local timestep for the statement (typically a stencil call)
+	 * <code>trvStatement</code> below the subdomain iterator <code>sgit</code>.
+	 * If no temporal iterator is found between <code>sgit</code> and
+	 * <code>trvStatement</code>,
 	 * the local timestep defaults to <code>0</code>.
+	 * 
 	 * @param sgit
 	 * @param trvStatement
-	 * @param exprTemporalExpression The temporal expression that is used as basis to calculate the local timestep:
-	 * 	If a range iterator is found, the local timestep is computed as <code>exprTemporalExpression - loopStartValue</code>.
-	 * 	If <code>exprTemporalExpression</code> is <code>null</code>, the loop's index identifier is used instead as
-	 * 	temporal expression.
-	 * @return
+	 * @param exprTemporalExpression
+	 *            The temporal expression that is used as basis to calculate the
+	 *            local timestep:
+	 *            If a range iterator is found, the local timestep is computed
+	 *            as <code>exprTemporalExpression - loopStartValue</code>.
+	 *            If <code>exprTemporalExpression</code> is <code>null</code>,
+	 *            the loop's index identifier is used instead as
+	 *            temporal expression.
+	 * @return the local timestep for the statement <code>trvStatement</code>
 	 */
 	public Expression getLocalTimestep (SubdomainIterator sgit, Traversable trvStatement, Expression exprTemporalExpression)
 	{
@@ -1225,10 +1278,14 @@ public class StrategyAnalyzer
 	}
 
 	/**
-	 * Returns the size of the subdomain on parallelism level <code>nParallelismLevel</code>
-	 * or <code>null</code> if there is no such parallelism level.
-	 * @param nParallelismLevel The parallelism level for which to retrive the subdomain size
-	 * @return The subdomain size on parallelism level <code>nParallelismLevel</code>
+	 * Returns the size of the subdomain on parallelism level
+	 * <code>nParallelismLevel</code> or <code>null</code> if there is no such
+	 * parallelism level.
+	 * 
+	 * @param nParallelismLevel
+	 *            The parallelism level for which to retrive the subdomain size
+	 * @return The subdomain size on parallelism level
+	 *         <code>nParallelismLevel</code>
 	 */
 	public Size getDomainSizeForParallelismLevel (int nParallelismLevel)
 	{

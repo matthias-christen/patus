@@ -66,7 +66,7 @@ public class Histogram<TypeValue extends Number, TypeSample>
 
 	public Histogram ()
 	{
-		m_mapValues = new HashMap<TypeSample, TypeValue> ();
+		m_mapValues = new HashMap<> ();
 		m_mapHistogram = null;
 		m_listRanges = null;
 
@@ -138,25 +138,25 @@ public class Histogram<TypeValue extends Number, TypeSample>
 	private Range<TypeValue> createRange (double fMin, double fMax, TypeValue tvTemplate)
 	{
 		if (tvTemplate instanceof AtomicInteger)
-			return (Range<TypeValue>) new Range<AtomicInteger> (new AtomicInteger ((int) fMin), new AtomicInteger ((int) fMax));
+			return (Range<TypeValue>) new Range<> (new AtomicInteger ((int) fMin), new AtomicInteger ((int) fMax));
 		if (tvTemplate instanceof AtomicLong)
-			return (Range<TypeValue>) new Range<AtomicLong> (new AtomicLong ((long) fMin), new AtomicLong ((long) fMax));
+			return (Range<TypeValue>) new Range<> (new AtomicLong ((long) fMin), new AtomicLong ((long) fMax));
 		if (tvTemplate instanceof BigDecimal)
-			return (Range<TypeValue>) new Range<BigDecimal> (new BigDecimal (fMin, MathContext.DECIMAL64), new BigDecimal (fMax, MathContext.DECIMAL64));
+			return (Range<TypeValue>) new Range<> (new BigDecimal (fMin, MathContext.DECIMAL64), new BigDecimal (fMax, MathContext.DECIMAL64));
 		if (tvTemplate instanceof BigInteger)
-			return (Range<TypeValue>) new Range<BigInteger> (new BigInteger (String.valueOf (fMin)), new BigInteger (String.valueOf (fMax)));
+			return (Range<TypeValue>) new Range<> (new BigInteger (String.valueOf (fMin)), new BigInteger (String.valueOf (fMax)));
 		if (tvTemplate instanceof Byte)
-			return (Range<TypeValue>) new Range<Byte> ((byte) fMin, (byte) fMax);
+			return (Range<TypeValue>) new Range<> ((byte) fMin, (byte) fMax);
 		if (tvTemplate instanceof Double)
-			return (Range<TypeValue>) new Range<Double> (fMin, fMax);
+			return (Range<TypeValue>) new Range<> (fMin, fMax);
 		if (tvTemplate instanceof Float)
-			return (Range<TypeValue>) new Range<Float> ((float) fMin, (float) fMax);
+			return (Range<TypeValue>) new Range<> ((float) fMin, (float) fMax);
 		if (tvTemplate instanceof Integer)
-			return (Range<TypeValue>) new Range<Integer> ((int) fMin, (int) fMax);
+			return (Range<TypeValue>) new Range<> ((int) fMin, (int) fMax);
 		if (tvTemplate instanceof Long)
-			return (Range<TypeValue>) new Range<Long> ((long) fMin, (long) fMax);
+			return (Range<TypeValue>) new Range<> ((long) fMin, (long) fMax);
 		if (tvTemplate instanceof Short)
-			return (Range<TypeValue>) new Range<Short> ((short) fMin, (short) fMax);
+			return (Range<TypeValue>) new Range<> ((short) fMin, (short) fMax);
 
 		return null;
 	}
@@ -167,8 +167,8 @@ public class Histogram<TypeValue extends Number, TypeSample>
 	public void create ()
 	{
 		// create new histogram data
-		m_mapHistogram = new TreeMap<Range<TypeValue>, List<TypeSample>> ();
-		m_listRanges = new ArrayList<Range<TypeValue>> (10);
+		m_mapHistogram = new TreeMap<> ();
+		m_listRanges = new ArrayList<> (10);
 
 		// find the minimum and maximum values of the "objective function"
 		TypeValue valTemplate = null;
@@ -212,6 +212,7 @@ public class Histogram<TypeValue extends Number, TypeSample>
 		System.out.println (toString ());
 	}
 
+	@SuppressWarnings("static-method")
 	private void printBar (Range<TypeValue> range, double fPercentage, StringBuilder sb)
 	{
 		sb.append ('[');

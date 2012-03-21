@@ -133,7 +133,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 			m_nLcmSIMDVectorLengths = getLcmSIMDVectorLengths ();
 			m_sdidStencilArg = (SubdomainIdentifier) StrategyAnalyzer.getStencilArgument (m_expr);
 
-			m_mapShuffledNodes = new HashMap<IntArray, Identifier> ();
+			m_mapShuffledNodes = new HashMap<> ();
 			
 			m_rgDefaultOffset = new int[m_data.getStencilCalculation ().getDimensionality ()];
 			Arrays.fill (m_rgDefaultOffset, 0);
@@ -230,7 +230,9 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		 * occurring in the expression). By default, i.e., if no stencil
 		 * nodes are contained in the expression, {@link Specifier#FLOAT} is
 		 * returned.
-		 * @param expr The expression to check for the datatype
+		 * 
+		 * @param expr
+		 *            The expression to check for the datatype
 		 * @return The datatype of the expression <code>expr</code>
 		 */
 		protected Specifier getDatatype (Expression expr)
@@ -247,11 +249,17 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		}
 
 		/**
-		 * Replaces stencil node in the stencil expression <code>expr</code> by the instantiated, indexed memory objects.
-		 * @param expr The input stencil expression (referencing stencil nodes)
-		 * @param specDatatype The datatype used to calculate the expression
+		 * Replaces stencil node in the stencil expression <code>expr</code> by
+		 * the instantiated, indexed memory objects.
+		 * 
+		 * @param expr
+		 *            The input stencil expression (referencing stencil nodes)
+		 * @param specDatatype
+		 *            The datatype used to calculate the expression
 		 * @param rgOffsetIndex
-		 * @param slGenerated The generated code to which the index calculations are appended
+		 * @param slGenerated
+		 *            The generated code to which the index calculations are
+		 *            appended
 		 * @return
 		 */
 		protected Expression replaceStencilNodes (Expression expr, Specifier specDatatype, int[] rgOffsetIndex, IStatementList slGenerated)
@@ -324,10 +332,15 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		}
 
 		/**
-		 * Determines whether SIMD shuffling is needed for the stencil node <code>nodeInput</code>.
-		 * @param nodeInput The stencil node
-		 * @param specDatatype The stencil expression data type
-		 * @return <code>true</code> if shuffling is needed to address the node <code>nodeInput</code>
+		 * Determines whether SIMD shuffling is needed for the stencil node
+		 * <code>nodeInput</code>.
+		 * 
+		 * @param nodeInput
+		 *            The stencil node
+		 * @param specDatatype
+		 *            The stencil expression data type
+		 * @return <code>true</code> if shuffling is needed to address the node
+		 *         <code>nodeInput</code>
 		 */
 		protected boolean needsShuffling (StencilNode nodeInput, Specifier specDatatype)
 		{
@@ -340,8 +353,12 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		}
 
 		/**
-		 * Returns the SIMD-aware expression for the stencil node <code>nodeInput</code>.
-		 * @param nodeInput The input stencil node for which to retrieve the SIMD expression
+		 * Returns the SIMD-aware expression for the stencil node
+		 * <code>nodeInput</code>.
+		 * 
+		 * @param nodeInput
+		 *            The input stencil node for which to retrieve the SIMD
+		 *            expression
 		 * @param specDatatype
 		 * @return
 		 */
@@ -457,12 +474,21 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		}
 
 		/**
-		 * Creates a shuffle expression for the offset <code>nOffset</code> and stores it in an intermediate variable.
-		 * @param node The base node from which the shuffle expression is calculated
-		 * @param rgOffset The stencil node offset (offsets the stencil node <code>node</code> in space; the stencil node
-		 * 	is treated as a SIMD vector)
-		 * @param nShuffleOffset The offset within the SIMD vector with respect to the base node <code>node</code>.
-		 * 	Must be in the range 1 to (SIMD vector length - 1). (Note that a shuffle offset of 0 means no shuffling.)
+		 * Creates a shuffle expression for the offset <code>nOffset</code> and
+		 * stores it in an intermediate variable.
+		 * 
+		 * @param node
+		 *            The base node from which the shuffle expression is
+		 *            calculated
+		 * @param rgOffset
+		 *            The stencil node offset (offsets the stencil node
+		 *            <code>node</code> in space; the stencil node
+		 *            is treated as a SIMD vector)
+		 * @param nShuffleOffset
+		 *            The offset within the SIMD vector with respect to the base
+		 *            node <code>node</code>.
+		 *            Must be in the range 1 to (SIMD vector length - 1). (Note
+		 *            that a shuffle offset of 0 means no shuffling.)
 		 * @param specDatatype
 		 * @param nSIMDVectorLength
 		 * @return
@@ -599,10 +625,15 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		}
 
 		/**
-		 * Insert a <code>printf</code> statement for debugging purposes printing the index into the grid array at
+		 * Insert a <code>printf</code> statement for debugging purposes
+		 * printing the index into the grid array at
 		 * which the result is written.
-		 * @param exprLHS The LHS stencil expression
-		 * @param slGenerated The statement list to which the generated <code>printf</code> statement is added
+		 * 
+		 * @param exprLHS
+		 *            The LHS stencil expression
+		 * @param slGenerated
+		 *            The statement list to which the generated
+		 *            <code>printf</code> statement is added
 		 */
 		private void createDebugPrint (Expression exprLHS, Specifier specDatatype, StatementList slGenerated, boolean bNoVectorize)
 		{
@@ -658,7 +689,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				!m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, false);
 
 			// collect the stencil nodes that need to be initialized
-			List<StencilNode> listNodesToInitialize = new LinkedList<StencilNode> ();
+			List<StencilNode> listNodesToInitialize = new LinkedList<> ();
 			for (StencilNode nodeInput : stencil)
 				if (!bVectorize || (bVectorize && !needsShuffling (nodeInput, specDatatype)))
 					listNodesToInitialize.add (nodeInput);
@@ -762,6 +793,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 	/**
 	 * Returns the least common multiple (LCM) of the SIMD vector lengths of
 	 * all the stencil computations in the bundle.
+	 * 
 	 * @return The LCM of the stencil node SIMD vector lengths
 	 */
 	public int getLcmSIMDVectorLengths ()

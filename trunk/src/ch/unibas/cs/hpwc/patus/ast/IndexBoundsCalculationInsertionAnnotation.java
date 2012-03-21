@@ -33,8 +33,7 @@ public class IndexBoundsCalculationInsertionAnnotation extends Annotation
 	/**
 	 * The map containing all the instantiations of this class, grouped by subdomain iterators
 	 */
-	private static Map<String, List<IndexBoundsCalculationInsertionAnnotation>> m_mapAnnotations =
-		new HashMap<String, List<IndexBoundsCalculationInsertionAnnotation>> ();
+	private static Map<String, List<IndexBoundsCalculationInsertionAnnotation>> m_mapAnnotations = new HashMap<> ();
 
 	/**
 	 * The iterator of the parent loop
@@ -56,7 +55,7 @@ public class IndexBoundsCalculationInsertionAnnotation extends Annotation
 		// add the new instance to the map
 		List<IndexBoundsCalculationInsertionAnnotation> listAnnotations = m_mapAnnotations.get (loop.getIterator ().getName ());
 		if (listAnnotations == null)
-			m_mapAnnotations.put (loop.getIterator ().getName (), listAnnotations = new ArrayList<IndexBoundsCalculationInsertionAnnotation> ());
+			m_mapAnnotations.put (loop.getIterator ().getName (), listAnnotations = new ArrayList<> ());
 		listAnnotations.add (this);
 	}
 

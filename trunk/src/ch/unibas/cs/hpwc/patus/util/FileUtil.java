@@ -22,8 +22,6 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import ch.unibas.cs.hpwc.patus.CodeGeneratorMain;
-
 public class FileUtil
 {
 	///////////////////////////////////////////////////////////////////
@@ -57,7 +55,7 @@ public class FileUtil
 		 */
 		private static List<String> getPathList (File f)
 		{
-			List<String> l = new ArrayList<String> ();
+			List<String> l = new ArrayList<> ();
 			File r = null;
 
 			try

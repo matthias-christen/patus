@@ -18,7 +18,7 @@ public class UniqueStatementList extends StatementList
 
 	public UniqueStatementList ()
 	{
-		m_setStatements = new HashSet<String> ();
+		m_setStatements = new HashSet<> ();
 	}
 	
 	private boolean existsStatement (Statement stmt)

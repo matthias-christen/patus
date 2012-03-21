@@ -41,7 +41,7 @@ public class StencilLoopUnrollingConfiguration
 	{
 		int[] rgDefault = new int[nDimensionality];
 		Arrays.fill (rgDefault, 0);
-		List<int[]> list = new ArrayList<int[]> (1);
+		List<int[]> list = new ArrayList<> (1);
 		list.add (rgDefault);
 		return list;
 	}
@@ -59,7 +59,7 @@ public class StencilLoopUnrollingConfiguration
 
 	public StencilLoopUnrollingConfiguration ()
 	{
-		m_mapPerDimensionUnrollings = new TreeMap<Integer, Integer> ();
+		m_mapPerDimensionUnrollings = new TreeMap<> ();
 		m_nMaxDimension = -1;
 	}
 
@@ -110,14 +110,18 @@ public class StencilLoopUnrollingConfiguration
 	/**
 	 * Returns an iterable over the entire configuration space, e.g. if the
 	 * loop unrolling configuration is set to
+	 * 
 	 * <pre>
 	 * 	dim 1 -> 2
 	 * 	dim 2 -> 3,
 	 * </pre>
+	 * 
 	 * the iterable enumerates the space
+	 * 
 	 * <pre>
 	 * 	{ 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 0, 2 }, { 1, 2 }
 	 * </pre>
+	 * 
 	 * @return
 	 */
 	public Iterable<int[]> getConfigurationSpace (int nDimensionality)
@@ -185,6 +189,7 @@ public class StencilLoopUnrollingConfiguration
 	 * Returns an integer representation of the unrolling configuration
 	 * (that can be used for the code branching system in which parameter values
 	 * are integers).
+	 * 
 	 * @return An integer representation of the unrolling configuration
 	 */
 	public int toInteger ()

@@ -45,7 +45,7 @@ public class Parameter implements Cloneable, Iterable<Integer>
 		if (m_strName == null)
 			throw new NullPointerException ("Parameter names must not be null.");
 
-		m_listValues = new ArrayList<Integer> ();
+		m_listValues = new ArrayList<> ();
 	}
 
 	public void addValue (int nValue)

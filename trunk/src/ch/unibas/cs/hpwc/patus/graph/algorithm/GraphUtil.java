@@ -52,14 +52,19 @@ public class GraphUtil
 	// Implementation
 	
 	/**
-	 * Finds the neighboring vertices of the vertex <code>vertex</code> in the directed graph <code>graph</code>.
-	 * @param graph The directed graph to search for neighbors of <code>vertex</code>
-	 * @param vertex The vertex whose neighbors to find
+	 * Finds the neighboring vertices of the vertex <code>vertex</code> in the
+	 * directed graph <code>graph</code>.
+	 * 
+	 * @param graph
+	 *            The directed graph to search for neighbors of
+	 *            <code>vertex</code>
+	 * @param vertex
+	 *            The vertex whose neighbors to find
 	 * @return An iterable over neighbors of <code>vertex</code>
 	 */
 	public static <V extends IVertex, E extends IEdge<V>> Iterable<V> getNeighborsDirected (IGraph<V, E> graph, V vertex)
 	{
-		Set<V> setNeighbors = new HashSet<V> ();
+		Set<V> setNeighbors = new HashSet<> ();
 		for (E edge : graph.getEdges ())
 		{
 			if (edge.getTailVertex ().equals (vertex))
@@ -70,14 +75,19 @@ public class GraphUtil
 	}
 
 	/**
-	 * Finds the neighboring vertices of the vertex <code>vertex</code> in the undirected graph <code>graph</code>.
-	 * @param graph The undirected graph to search for neighbors of <code>vertex</code>
-	 * @param vertex The vertex whose neighbors to find
+	 * Finds the neighboring vertices of the vertex <code>vertex</code> in the
+	 * undirected graph <code>graph</code>.
+	 * 
+	 * @param graph
+	 *            The undirected graph to search for neighbors of
+	 *            <code>vertex</code>
+	 * @param vertex
+	 *            The vertex whose neighbors to find
 	 * @return An iterable over neighbors of <code>vertex</code>
 	 */
 	public static <V extends IVertex, E extends IEdge<V>> Iterable<V> getNeighborsUndirected (IGraph<V, E> graph, V vertex)
 	{
-		Set<V> setNeighbors = new HashSet<V> ();
+		Set<V> setNeighbors = new HashSet<> ();
 		for (E edge : graph.getEdges ())
 		{
 			if (edge.getTailVertex ().equals (vertex))
@@ -115,13 +125,13 @@ public class GraphUtil
 	 */
 	public static <V extends IVertex, E extends IEdge<V>> Iterable<V> getVerticesSortedByDegree (IGraph<V, E> graph, boolean bSortAscending)
 	{
-		List<VertexWithDegree<V>> listVertices = new ArrayList<VertexWithDegree<V>> (graph.getVerticesCount ());
+		List<VertexWithDegree<V>> listVertices = new ArrayList<> (graph.getVerticesCount ());
 		
 		for (V vertex : graph.getVertices ())
-			listVertices.add (new VertexWithDegree<V> (vertex, GraphUtil.getDegree (graph, vertex), bSortAscending));
+			listVertices.add (new VertexWithDegree<> (vertex, GraphUtil.getDegree (graph, vertex), bSortAscending));
 		Collections.sort (listVertices);
 		
-		List<V> list = new ArrayList<V> (graph.getVerticesCount ());
+		List<V> list = new ArrayList<> (graph.getVerticesCount ());
 		for (VertexWithDegree<V> vertex : listVertices)
 			list.add (vertex.getVertex ());
 		

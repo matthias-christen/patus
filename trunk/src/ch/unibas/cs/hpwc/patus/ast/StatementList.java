@@ -52,16 +52,16 @@ public class StatementList implements IStatementList, Iterable<Statement>, Clone
 	{
 		m_cmpstmt = cmpstmt;
 		m_listStatements = null;
-		m_listDeclarations = new LinkedList<Declaration> ();
-		m_mapTags = new HashMap<Statement, String> ();
+		m_listDeclarations = new LinkedList<> ();
+		m_mapTags = new HashMap<> ();
 	}
 
 	public StatementList (List<Statement> listStatements)
 	{
 		m_cmpstmt = null;
 		m_listStatements = listStatements;
-		m_listDeclarations = new LinkedList<Declaration> ();
-		m_mapTags = new HashMap<Statement, String> ();
+		m_listDeclarations = new LinkedList<> ();
+		m_mapTags = new HashMap<> ();
 	}
 
 	public StatementList (Statement stmt)
@@ -88,12 +88,12 @@ public class StatementList implements IStatementList, Iterable<Statement>, Clone
 			m_listStatements = null;
 		else
 		{
-			m_listStatements = new LinkedList<Statement> ();
+			m_listStatements = new LinkedList<> ();
 			for (Statement stmt : list.m_listStatements)
 				m_listStatements.add (stmt.clone ());
 		}
 
-		m_listDeclarations = new LinkedList<Declaration> ();
+		m_listDeclarations = new LinkedList<> ();
 		for (Declaration decl : list.m_listDeclarations)
 			m_listDeclarations.add (decl.clone ());
 	}
@@ -105,7 +105,7 @@ public class StatementList implements IStatementList, Iterable<Statement>, Clone
 	{
 		if (m_cmpstmt != null)
 		{
-			List<Traversable> listChildren = new ArrayList<Traversable> (m_cmpstmt.getChildren ().size ());
+			List<Traversable> listChildren = new ArrayList<> (m_cmpstmt.getChildren ().size ());
 			listChildren.addAll (m_cmpstmt.getChildren ());
 			for (Traversable trv : listChildren)
 			{
@@ -214,7 +214,7 @@ public class StatementList implements IStatementList, Iterable<Statement>, Clone
 			CodeGeneratorUtil.addStatementsAtTop (m_cmpstmt, rgStatements);
 		if (m_listStatements != null)
 		{
-			List<Statement> listStatements = new ArrayList<Statement> (rgStatements.length);
+			List<Statement> listStatements = new ArrayList<> (rgStatements.length);
 			for (Statement stmt : rgStatements)
 				listStatements.add (stmt);
 			m_listStatements.addAll (0, listStatements);
@@ -315,7 +315,7 @@ public class StatementList implements IStatementList, Iterable<Statement>, Clone
 
 	public List<Statement> getStatementsAsList ()
 	{
-		List<Statement> listStatements = new ArrayList<Statement> (m_listStatements == null ? (m_cmpstmt == null ? 0 : m_cmpstmt.getChildren ().size ()) : m_listStatements.size ());
+		List<Statement> listStatements = new ArrayList<> (m_listStatements == null ? (m_cmpstmt == null ? 0 : m_cmpstmt.getChildren ().size ()) : m_listStatements.size ());
 		if (m_listStatements != null)
 			listStatements.addAll (m_listStatements);
 		else if (m_cmpstmt != null)
@@ -349,7 +349,7 @@ public class StatementList implements IStatementList, Iterable<Statement>, Clone
 	{
 		if (m_cmpstmt != null)
 		{
-			List<Statement> listStatements = new ArrayList<Statement> (m_cmpstmt.getChildren ().size ());
+			List<Statement> listStatements = new ArrayList<> (m_cmpstmt.getChildren ().size ());
 			for (Traversable trv : m_cmpstmt.getChildren ())
 				if (trv instanceof Statement)
 					listStatements.add ((Statement) trv);

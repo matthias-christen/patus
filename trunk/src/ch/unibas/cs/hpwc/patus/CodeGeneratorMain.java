@@ -116,7 +116,7 @@ public class CodeGeneratorMain
 	 */
 	private List<KernelSourceFile> createOutputsList ()
 	{
-		List<KernelSourceFile> listOutputs = new ArrayList<KernelSourceFile> ();
+		List<KernelSourceFile> listOutputs = new ArrayList<> ();
 
 		// create a benchmarking version?
 		if (m_options.getTargets ().contains (ETarget.BENCHMARK_HARNESS))
@@ -202,6 +202,7 @@ public class CodeGeneratorMain
 	/**
 	 * Initializes the Patus driver.
 	 */
+	@SuppressWarnings("static-method")
 	private void initialize ()
 	{
 		// start Maxima
@@ -211,15 +212,18 @@ public class CodeGeneratorMain
 	/**
 	 * Terminates the Patus driver.
 	 */
+	@SuppressWarnings("static-method")
 	private void terminate ()
 	{
 		// end Maxima
 		Maxima.getInstance ().close ();
 	}
 
- 	/**
+	/**
 	 * The main entry point of Patus.
-	 * @param args Command line arguments
+	 * 
+	 * @param args
+	 *            Command line arguments
 	 */
 	public static void main (String[] args) throws Exception
 	{

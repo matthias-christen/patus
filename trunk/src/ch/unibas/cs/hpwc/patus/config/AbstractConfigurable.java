@@ -28,7 +28,7 @@ public abstract class AbstractConfigurable implements IConfigurable
 	
 	public AbstractConfigurable ()
 	{
-		m_listProperties = new LinkedList<ConfigurationProperty> ();
+		m_listProperties = new LinkedList<> ();
 		m_bIsRegistered = false;;
 	}
 	

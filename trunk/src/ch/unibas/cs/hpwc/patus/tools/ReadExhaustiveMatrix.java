@@ -62,12 +62,12 @@ public class ReadExhaustiveMatrix
 		int nParamLineNum = 0;
 		boolean bIsFirstLine = true;
 
-		List<Integer> listX = new ArrayList<Integer> ();
-		List<Integer> listY = new ArrayList<Integer> ();
+		List<Integer> listX = new ArrayList<> ();
+		List<Integer> listY = new ArrayList<> ();
 
 		while ((strLine = in.readLine ()) != null)
 		{
-			if (mParam == null)
+			if (mParam == null || mPerformance == null)
 			{
 				mParam = PATTERN_PARAM.matcher (strLine);
 				mPerformance = PATTERN_PERFORMANCE.matcher (strLine);

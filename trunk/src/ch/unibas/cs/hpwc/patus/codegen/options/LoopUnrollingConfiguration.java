@@ -79,7 +79,7 @@ public class LoopUnrollingConfiguration implements Cloneable
 
 	public LoopUnrollingConfiguration ()
 	{
-		m_listUnrollings = new ArrayList<LoopUnrolling> ();
+		m_listUnrollings = new ArrayList<> ();
 	}
 
 	public void addLoopToUnroll (Loop loop, int nUnrollingFactor)

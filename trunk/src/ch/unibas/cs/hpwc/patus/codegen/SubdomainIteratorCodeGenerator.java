@@ -184,7 +184,11 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		 */
 		private StatementListBundle generateInner (int nStartDim, StatementListBundle slbGeneratedParent)
 		{
-			Set<StencilLoopUnrollingConfiguration> setUnrollingConfigs = new HashSet<StencilLoopUnrollingConfiguration> ();
+			///
+			//m_data.getCodeGenerators ().getConstantGeneratedIdentifiers ().clearIdentifier (SIMDScalarGeneratedIdentifiers.SPLATNAME_ARRAY);
+			///
+
+			Set<StencilLoopUnrollingConfiguration> setUnrollingConfigs = new HashSet<> ();
 			if (m_bIsEligibleForStencilLoopUnrolling)
 			{
 				// create the unrolling configurations
@@ -358,8 +362,11 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		}
 
 		/**
-		 * Creates the lower loop bound for the <code>for</code> loop in dimension <code>nDim</code>.
-		 * @param nDim The dimension
+		 * Creates the lower loop bound for the <code>for</code> loop in
+		 * dimension <code>nDim</code>.
+		 * 
+		 * @param nDim
+		 *            The dimension
 		 * @return The lower loop bound
 		 */
 		private Expression getLowerLoopBound (int nDim)
@@ -375,8 +382,11 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		}
 
 		/**
-		 * Creates the upper loop bound for the <code>for</code> loop in dimension <code>nDim</code>.
-		 * @param nDim The dimension
+		 * Creates the upper loop bound for the <code>for</code> loop in
+		 * dimension <code>nDim</code>.
+		 * 
+		 * @param nDim
+		 *            The dimension
 		 * @return The upper loop bound
 		 */
 		private Expression getUpperLoopBound (int nDim)
@@ -416,19 +426,29 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		}
 
 		/**
-		 * Creates a single {@link ForLoop} corresponding to dimension <code>nDim</code> of the
-		 * {@link SubdomainIterator} and adds it to the <code>cmpstmtOuter</code> statement.
-		 *
-		 * @param nDim The dimension for which to create the {@link ForLoop}
-		 * @param slGenerated The {@link StatementList} to which the generated {@link ForLoop} will be added
-		 * @param exprStartOffset The offset to the start value for the loop index. If set to
-		 * 	{@link SubdomainIteratorCodeGenerator#NULL_EXPRESSION}, the initialization statement will be omitted
-		 * @param exprNegEndOffset The negative offset to the end value for the loop index
-		 * @param bIsOutermostLoopOfInnerNest Specifies whether the loop for this dimension is the outer-most
-		 * 	loop of the &quot;regular&quot; loop nest structure and subsequentially will be treated as reference
-		 * 	for unrolling (if the nest contains a stencil call)
-		 *
-		 * @return The generated loop or <code>null</code> if no loop was created for the dimension
+		 * Creates a single {@link ForLoop} corresponding to dimension
+		 * <code>nDim</code> of the {@link SubdomainIterator} and adds it to the
+		 * <code>cmpstmtOuter</code> statement.
+		 * 
+		 * @param nDim
+		 *            The dimension for which to create the {@link ForLoop}
+		 * @param slGenerated
+		 *            The {@link StatementList} to which the generated
+		 *            {@link ForLoop} will be added
+		 * @param exprStartOffset
+		 *            The offset to the start value for the loop index. If set
+		 *            to {@link SubdomainIteratorCodeGenerator#NULL_EXPRESSION},
+		 *            the initialization statement will be omitted
+		 * @param exprNegEndOffset
+		 *            The negative offset to the end value for the loop index
+		 * @param bIsOutermostLoopOfInnerNest
+		 *            Specifies whether the loop for this dimension is the
+		 *            outer-most loop of the &quot;regular&quot; loop nest
+		 *            structure and subsequentially will be treated as reference
+		 *            for unrolling (if the nest contains a stencil call)
+		 * 
+		 * @return The generated loop or <code>null</code> if no loop was
+		 *         created for the dimension
 		 */
 		private StatementListBundle generateIteratorForDimension (int nDim, StatementListBundle slGenerated, Expression exprStartOffset, Expression exprNegEndOffset, int nUnrollingFactor)
 		{
@@ -511,18 +531,24 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		}
 		
 		/**
-		 * <p>Determines whether prologue and epilogue loops should be generated.</p>
-		 * If no native SIMD datatypes are used, create prologue and epilogue loops
-		 * prologue and epilogue loops are only generated if:
+		 * <p>
+		 * Determines whether prologue and epilogue loops should be generated.
+		 * </p>
+		 * If no native SIMD datatypes are used, create prologue and epilogue
+		 * loops prologue and epilogue loops are only generated if:
 		 * <ul>
-		 * <li>the loop contains a stencil call</li>
-		 * <li>the loop is the inner most loop of a loop nest (<code>nDim == 0</code>)</li>
-		 * <li>SIMD is used with no native SIMD data types</li>
-		 * <li>within the stencil calculation (not within the initialization, for instance)</li>
+		 * 	<li>the loop contains a stencil call</li>
+		 * 	<li>the loop is the inner most loop of a loop nest (
+		 * 		<code>nDim == 0</code>)</li>
+		 * 	<li>SIMD is used with no native SIMD data types</li>
+		 * 	<li>within the stencil calculation (not within the initialization,
+		 * 		for instance)</li>
 		 * </ul>
 		 * 
-		 * @param nDim The dimension of the loop
-		 * @return <code>true</code> iff prologue and epilogue loop are to be generated for the loop in dimension <code>nDim</code>
+		 * @param nDim
+		 *            The dimension of the loop
+		 * @return <code>true</code> iff prologue and epilogue loop are to be
+		 *         generated for the loop in dimension <code>nDim</code>
 		 */
 		private boolean hasSIMDPrologueAndEpilogueLoops (int nDim)
 		{
@@ -574,10 +600,14 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		}
 		
 		/**
-		 * Returns a statement initializing the loop index <code>idIdx</code> with the start expression
-		 * <code>exprStart</code>.
-		 * @param idIdx The loop index
-		 * @param exprStart The start value or <code>null</code> if no initialization is desired
+		 * Returns a statement initializing the loop index <code>idIdx</code>
+		 * with the start expression <code>exprStart</code>.
+		 * 
+		 * @param idIdx
+		 *            The loop index
+		 * @param exprStart
+		 *            The start value or <code>null</code> if no initialization
+		 *            is desired
 		 * @return The statement initializing the loop index
 		 */
 		private Statement getStartStatement (IDExpression idIdx, Expression exprStart)
@@ -588,9 +618,13 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		}
 		
 		/**
-		 * Returns the condition expression comparing the loop index to the end value.
-		 * @param idIdx The loop index
-		 * @param exprEnd The end value
+		 * Returns the condition expression comparing the loop index to the end
+		 * value.
+		 * 
+		 * @param idIdx
+		 *            The loop index
+		 * @param exprEnd
+		 *            The end value
 		 * @return The loop condition expression
 		 */
 		private Expression getConditionExpression (IDExpression idIdx, Expression exprEnd)
@@ -601,12 +635,20 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		/**
 		 * Creates the default loop<br/>
 		 * <code>for (<i>idIdx</i> = <i>exprStart</i>; <i>idIdx</i> &lt; <i>exprEnd</i>; <i>idIdx</i> += <i>exprMainLoopStep</i>) { <i>stmtMainLoopBody</i> }</code>
-		 * @param slbStatements The {@link StatementListBundle} to which the generated code is added
-		 * @param idIdx The loop index
-		 * @param exprStart The start value
-		 * @param exprEnd The end value
-		 * @param exprMainLoopStep The step
-		 * @param stmtMainLoopBody The loop body
+		 * 
+		 * @param slbStatements
+		 *            The {@link StatementListBundle} to which the generated
+		 *            code is added
+		 * @param idIdx
+		 *            The loop index
+		 * @param exprStart
+		 *            The start value
+		 * @param exprEnd
+		 *            The end value
+		 * @param exprMainLoopStep
+		 *            The step
+		 * @param stmtMainLoopBody
+		 *            The loop body
 		 */
 		private void createDefaultLoop (StatementListBundle slbStatements, IDExpression idIdx, Expression exprStart, Expression exprEnd, Expression exprMainLoopStep, Statement stmtMainLoopBody)
 		{
@@ -620,12 +662,20 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		
 		/**
 		 * Creates a loop with a prologue and an epilogue loop.
-		 * @param slbStatements The {@link StatementListBundle} to which the generated code is added
-		 * @param idIdx The loop index
-		 * @param exprStart The starting expression
-		 * @param exprEnd The end expression
-		 * @param exprMainLoopStep The step
-		 * @param stmtMainLoopBody The loop body
+		 * 
+		 * @param slbStatements
+		 *            The {@link StatementListBundle} to which the generated
+		 *            code is added
+		 * @param idIdx
+		 *            The loop index
+		 * @param exprStart
+		 *            The starting expression
+		 * @param exprEnd
+		 *            The end expression
+		 * @param exprMainLoopStep
+		 *            The step
+		 * @param stmtMainLoopBody
+		 *            The loop body
 		 */
 		private void createLoopWithProAndEpi (StatementListBundle slbStatements,
 			IDExpression idIdx, Expression exprStart, Expression exprEnd, Expression exprMainLoopStep,
@@ -886,6 +936,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 
 		/**
 		 * Generates the statement to increment the loop counter.
+		 * 
 		 * @return The statement incrementing the loop counter
 		 */
 		private Statement generateIncrementLoopCounter ()

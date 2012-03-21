@@ -43,6 +43,8 @@ import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 /**
  *
  * @author Matthias-M. Christen
+ * 
+ * @deprecated
  */
 public class MainFunctionCodeGenerator
 {
@@ -94,7 +96,7 @@ public class MainFunctionCodeGenerator
 	 *
 	 * @param unit
 	 */
-	private void generateRuntimeForwardDeclarations (TranslationUnit unit)
+	private static void generateRuntimeForwardDeclarations (TranslationUnit unit)
 	{
 		// generate forward declarations
 		unit.addDeclarationFirst (CodeGeneratorUtil.createForwardDeclaration (Specifier.VOID, FNX_TIC));
@@ -144,7 +146,7 @@ public class MainFunctionCodeGenerator
 	 */
 	public void generateMain (TranslationUnit unit)
 	{
-		generateRuntimeForwardDeclarations (unit);
+		MainFunctionCodeGenerator.generateRuntimeForwardDeclarations (unit);
 		generateGlobals (unit);
 
 
@@ -158,12 +160,12 @@ public class MainFunctionCodeGenerator
 		NameID idArgc = new NameID ("argc");
 		NameID idArgv = new NameID ("argv");
 
-		List<Specifier> listArgvSpecifiers = new ArrayList<Specifier> ();
+		List<Specifier> listArgvSpecifiers = new ArrayList<> ();
 		listArgvSpecifiers.add (Specifier.CHAR);
 		listArgvSpecifiers.add (PointerSpecifier.UNQUALIFIED);
 		listArgvSpecifiers.add (PointerSpecifier.UNQUALIFIED);
 
-		List<Declaration> listMainParams = new ArrayList<Declaration> ();
+		List<Declaration> listMainParams = new ArrayList<> ();
 		listMainParams.add (new VariableDeclaration (Specifier.INT, new VariableDeclarator (idArgc.clone ())));
 		listMainParams.add (new VariableDeclaration (
 			CodeGeneratorUtil.specifiers (Specifier.CHAR, PointerSpecifier.UNQUALIFIED, PointerSpecifier.UNQUALIFIED),
@@ -183,7 +185,7 @@ public class MainFunctionCodeGenerator
 		VariableDeclarator declI = new VariableDeclarator (Specifier.INT, idI);
 		declI.setInitializer (new ValueInitializer (new IntegerLiteral (0)));
 
-		List<Expression> listAtoiArgs = new ArrayList<Expression> (1);
+		List<Expression> listAtoiArgs = new ArrayList<> (1);
 		listAtoiArgs.add (new ArrayAccess (idArgv, idI));
 
 		cmpstmtBody.addStatement (new ForLoop (

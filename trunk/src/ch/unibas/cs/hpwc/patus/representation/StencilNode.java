@@ -12,7 +12,7 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
 /**
  * @author Matthias-M. Christen
  */
-public class StencilNode extends Identifier implements Comparable<Expression>, ISpaceIndexable
+public class StencilNode extends Identifier implements ISpaceIndexable
 {
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
@@ -34,10 +34,14 @@ public class StencilNode extends Identifier implements Comparable<Expression>, I
 	// Implementation
 
 	/**
-	 * Creates a new stencil node locate at index <code>index</code> (which comprises
+	 * Creates a new stencil node locate at index <code>index</code> (which
+	 * comprises
 	 * the spatial, temporal, and vectorial components.
-	 * @param strIdentifier The identifier by which this node is referred to in code
-	 * @param index The node index
+	 * 
+	 * @param strIdentifier
+	 *            The identifier by which this node is referred to in code
+	 * @param index
+	 *            The node index
 	 */
 	public StencilNode (String strIdentifier, Specifier specType, Index index)
 	{
@@ -57,8 +61,9 @@ public class StencilNode extends Identifier implements Comparable<Expression>, I
 	}
 
 	/**
-	 * Returns the stencil index consisting of the spatial, temporal, and vectorial
-	 * index (relative to the center node (0, 0, 0) of the stencil.
+	 * Returns the stencil index consisting of the spatial, temporal, and
+	 * vectorial index (relative to the center node (0, 0, 0) of the stencil.
+	 * 
 	 * @return The stencil node index
 	 */
 	public Index getIndex ()

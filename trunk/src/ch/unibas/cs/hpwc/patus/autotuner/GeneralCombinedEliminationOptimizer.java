@@ -77,14 +77,14 @@ public class GeneralCombinedEliminationOptimizer extends AbstractOptimizer
 		return fResult;
 	}
 	
-	private void copyParams (int[] rgParamsDest, int[] rgParamsSrc)
+	private static void copyParams (int[] rgParamsDest, int[] rgParamsSrc)
 	{
 		System.arraycopy (rgParamsSrc, 0, rgParamsDest, 0, rgParamsSrc.length);
 	}
 	
-	private void replaceParamValue (int[] rgParamsResult, int[] rgParams, ParamConfig config)
+	private static void replaceParamValue (int[] rgParamsResult, int[] rgParams, ParamConfig config)
 	{
-		copyParams (rgParamsResult, rgParams);
+		GeneralCombinedEliminationOptimizer.copyParams (rgParamsResult, rgParams);
 		if (config.getIndex () < rgParams.length)
 			rgParamsResult[config.getIndex ()] = config.getParamValue ();
 	}
@@ -93,12 +93,12 @@ public class GeneralCombinedEliminationOptimizer extends AbstractOptimizer
 	public void optimize (IRunExecutable run)
 	{
 		// initialize the index set
-		Set<Integer> setIndexSet = new HashSet<Integer> ();
+		Set<Integer> setIndexSet = new HashSet<> ();
 		for (int i = 0; i < run.getParametersCount (); i++)
 			setIndexSet.add (i);
 		
 		// represent the set X
-		List<ParamConfig> listBest = new ArrayList<ParamConfig> ();
+		List<ParamConfig> listBest = new ArrayList<> ();
 		
 		int[] rgParams = new int[run.getParametersCount ()];
 		int[] rgParamsNew = new int[run.getParametersCount ()];
@@ -139,7 +139,7 @@ public class GeneralCombinedEliminationOptimizer extends AbstractOptimizer
 			Collections.sort (listBest);
 			for (ParamConfig config : listBest)
 			{
-				replaceParamValue (rgParamsNew, rgParams, config);
+				GeneralCombinedEliminationOptimizer.replaceParamValue (rgParamsNew, rgParams, config);
 				double fNewVal = execute (run, rgParamsNew);
 	
 				if (fNewVal < fBaseObjVal)

@@ -31,7 +31,7 @@ public class ExpressionParser
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
-	private static Map<String, ExpressionData> m_mapExpressionsCache = new HashMap<String, ExpressionData>();
+	private static Map<String, ExpressionData> m_mapExpressionsCache = new HashMap<>();
 	
 	
 	///////////////////////////////////////////////////////////////////

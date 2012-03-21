@@ -95,7 +95,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	 */
 	public StencilNodeSet ()
 	{
-		m_set = new TreeSet<StencilNode> (StencilNodeSet.COMPARATOR);
+		m_set = new TreeSet<> (StencilNodeSet.COMPARATOR);
 	}
 
 	/**
@@ -300,7 +300,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	public StencilNodeSet fill (int nDimension)
 	{
 		StencilNodeSet setResult = new StencilNodeSet (m_set);
-		Set<StencilNode> setPivots = new HashSet<StencilNode> ();
+		Set<StencilNode> setPivots = new HashSet<> ();
 		setPivots.addAll (m_set);
 
 		StencilNode nodePivot = null;
@@ -326,7 +326,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 			int[] rgSpaceIndexNodePivot = nodePivot.getSpaceIndex ();
 			int nMin = rgSpaceIndexNodePivot[nDimension];
 			int nMax = nMin;
-			Set<Integer> setExistingCoords = new TreeSet<Integer> ();
+			Set<Integer> setExistingCoords = new TreeSet<> ();
 			setExistingCoords.add (nMin);
 			for (StencilNode node : m_set)
 			{
@@ -389,7 +389,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	public StencilNodeSet getFront (int nDimension)
 	{
 		StencilNodeSet setResult = new StencilNodeSet (m_set);
-		Set<StencilNode> setPivots = new HashSet<StencilNode> ();
+		Set<StencilNode> setPivots = new HashSet<> ();
 		setPivots.addAll (m_set);
 
 		StencilNode nodePivot = null;
@@ -412,7 +412,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 			}
 
 			// check the nodes in the set of remaining nodes: compare the pivot node to each of the remaining ones
-			List<StencilNode> listRemove = new LinkedList<StencilNode> ();
+			List<StencilNode> listRemove = new LinkedList<> ();
 			boolean bPivotChanged = false;
 			for (StencilNode node : setResult.m_set)
 			{
@@ -495,7 +495,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	 */
 	public int[] getTimeIndices ()
 	{
-		Set<Integer> set = new TreeSet<Integer> ();
+		Set<Integer> set = new TreeSet<> ();
 		for (StencilNode node : this)
 			set.add (node.getIndex ().getTimeIndex ());
 
@@ -547,7 +547,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	 */
 	public int[] getVectorIndices ()
 	{
-		Set<Integer> set = new TreeSet<Integer> ();
+		Set<Integer> set = new TreeSet<> ();
 		for (StencilNode node : this)
 			set.add (node.getIndex ().getVectorIndex ());
 
@@ -615,7 +615,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	@Override
 	public String toString ()
 	{
-		Set<StencilNode> set = new TreeSet<StencilNode> ();
+		Set<StencilNode> set = new TreeSet<> ();
 		for (StencilNode node : m_set)
 			set.add (node);
 

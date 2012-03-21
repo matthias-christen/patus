@@ -261,7 +261,7 @@ public class Maxima
 	private String readUntilFirstInputPrompt (String inchar) throws MaximaTimeoutException
 	{
 		Pattern promptPattern = Pattern.compile ("^\\(\\Q" + inchar + "\\E\\d+\\)\\s*\\z", Pattern.MULTILINE);
-		FutureTask<String> maximaCall = new FutureTask<String> (new MaximaCallable (promptPattern));
+		FutureTask<String> maximaCall = new FutureTask<> (new MaximaCallable (promptPattern));
 
 		m_executorService.execute (maximaCall);
 

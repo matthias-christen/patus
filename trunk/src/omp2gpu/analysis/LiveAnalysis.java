@@ -1,10 +1,21 @@
 package omp2gpu.analysis; 
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeMap;
 
-import cetus.hir.*;
-import cetus.exec.*;
-import cetus.analysis.*;
+import cetus.analysis.CFGraph;
+import cetus.analysis.DFANode;
+import cetus.analysis.RangeDomain;
+import cetus.analysis.Section;
+import cetus.hir.DataFlowTools;
+import cetus.hir.Expression;
+import cetus.hir.PrintTools;
+import cetus.hir.Symbol;
+import cetus.hir.SymbolTools;
+import cetus.hir.Tools;
+import cetus.hir.Traversable;
 
 /**
  * @author Seyong Lee <lee222@purdue.edu>

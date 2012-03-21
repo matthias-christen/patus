@@ -110,8 +110,8 @@ public class SubdomainIdentifier extends Identifier
 		m_idTimeIndexVariable = null;
 
 		// create the index list
-		m_listVectorIndices = new ArrayList<Expression> ();
-		m_listIndices = new ArrayList<Expression> ();
+		m_listVectorIndices = new ArrayList<> ();
+		m_listIndices = new ArrayList<> ();
 
 		object_print_method = SubdomainIdentifier.class_print_method;
 	}
@@ -129,8 +129,8 @@ public class SubdomainIdentifier extends Identifier
 		m_idTimeIndexVariable = null;
 
 		// create the index list
-		m_listVectorIndices = new ArrayList<Expression> ();
-		m_listIndices = new ArrayList<Expression> ();
+		m_listVectorIndices = new ArrayList<> ();
+		m_listIndices = new ArrayList<> ();
 
 		object_print_method = SubdomainIdentifier.class_print_method;
 	}
@@ -167,11 +167,11 @@ public class SubdomainIdentifier extends Identifier
 		}
 
 		// exit if time index has not been found
-		if (idTimeIndex == null)
+		if (idTimeIndex == null || loopOuterMostTimeLoop == null)
 			return;
 
 		// find the inner most time loop
-		List<IDExpression> listTimeIndices = new LinkedList<IDExpression> ();
+		List<IDExpression> listTimeIndices = new LinkedList<> ();
 		listTimeIndices.add (idTimeIndex);
 		RangeIterator loopInnerMostTimeLoop = loopOuterMostTimeLoop;
 		for ( ; ; )
@@ -483,11 +483,11 @@ public class SubdomainIdentifier extends Identifier
 		}
 		*/
 
-		sgid.m_listVectorIndices = new ArrayList<Expression> (m_listVectorIndices.size ());
+		sgid.m_listVectorIndices = new ArrayList<> (m_listVectorIndices.size ());
 		for (Expression exprVectorIndex : m_listVectorIndices)
 			sgid.m_listVectorIndices.add (exprVectorIndex == null ? null : exprVectorIndex.clone ());
 
-		sgid.m_listIndices = new ArrayList<Expression> (m_listIndices.size ());
+		sgid.m_listIndices = new ArrayList<> (m_listIndices.size ());
 		for (Expression exprIndex : m_listIndices)
 			sgid.m_listIndices.add (exprIndex == null ? null : exprIndex.clone ());
 

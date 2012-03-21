@@ -161,7 +161,7 @@ public class InstructionListTranslator
 	 *            The array of arguments to search
 	 * @return The index of the argument in <code>rgArgs</code> which is the output argument
 	 */
-	private int getOutputArgumentIndex (Argument[] rgArgs)
+	private static int getOutputArgumentIndex (Argument[] rgArgs)
 	{
 		Argument argOut = Arguments.getOutput (rgArgs);
 		return argOut == null ? rgArgs.length - 1 : argOut.getNumber ();
@@ -178,7 +178,7 @@ public class InstructionListTranslator
 	 * @return The number of the argument (i.e., the index within the <code>rgArgs</code> array), or
 	 * 	{@link InstructionListTranslator#UNDEFINED} if the argument couldn't be found
 	 */
-	private int getArgNum (Argument[] rgArgs, String strArgName)
+	private static int getArgNum (Argument[] rgArgs, String strArgName)
 	{
 		Argument arg = null;
 		
@@ -209,7 +209,7 @@ public class InstructionListTranslator
 	 *            This array will contain the destination &rarr; source permutation on
 	 *            exit of the method
 	 */
-	private void getArgumentPermutations (Intrinsic intrinsic, IOperand[] rgSourceOps, Argument[] rgDestArgs, int[] rgPermSourceToDest, int[] rgPermDestToSource)
+	private static void getArgumentPermutations (Intrinsic intrinsic, IOperand[] rgSourceOps, Argument[] rgDestArgs, int[] rgPermSourceToDest, int[] rgPermDestToSource)
 	{
 		Arrays.fill (rgPermSourceToDest, UNDEFINED);
 		Arrays.fill (rgPermDestToSource, UNDEFINED);
@@ -221,8 +221,8 @@ public class InstructionListTranslator
 			for (int i = 0; i < rgSourceOps.length; i++)
 			{
 				rgPermSourceToDest[i] = i < rgSourceOps.length - 1 ?
-					getArgNum (rgDestArgs, rgArgNamesGeneric[i]) :
-					getOutputArgumentIndex (rgDestArgs);				// last argument is output
+					InstructionListTranslator.getArgNum (rgDestArgs, rgArgNamesGeneric[i]) :
+					InstructionListTranslator.getOutputArgumentIndex (rgDestArgs);				// last argument is output
 					
 				if (0 <= rgPermSourceToDest[i] && rgPermSourceToDest[i] < rgPermDestToSource.length)
 				{
@@ -251,11 +251,27 @@ public class InstructionListTranslator
 	 *            The destination operand to test
 	 * @return <code>true</code> iff both operands have the same type
 	 */
-	private boolean isCompatible (IOperand opSource, Argument argDest)
+	private static boolean isCompatible (IOperand opSource, Argument argDest)
 	{
 		if (opSource instanceof IOperand.IRegisterOperand)
 			return argDest.isRegister ();
 		return argDest.isMemory ();
+	}
+	
+	private String getMovFpr (IOperand op)
+	{
+		if (op instanceof IOperand.Address)
+		{
+			// assume that base addresses are aligned at vector boundaries
+			// so if the displacement is not a multiple of the vector length, we need to do an
+			// unaligned load
+			
+			int nVectorLength = m_architecture.getSIMDVectorLength (m_specDatatype) * AssemblySection.getTypeSize (m_specDatatype);
+			if ((((IOperand.Address) op).getDisplacement () % nVectorLength) != 0)
+				return TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ();
+		}
+		
+		return TypeBaseIntrinsicEnum.MOVE_FPR.value ();
 	}
 	
 	/**
@@ -275,14 +291,14 @@ public class InstructionListTranslator
 	 *            The destination-to-source permutation
 	 * @return
 	 */
-	private IOperand[] compatibilizeCommutatives (Intrinsic intrinsic,
+	private static IOperand[] compatibilizeCommutatives (Intrinsic intrinsic,
 		IOperand[] rgSourceOps, Argument[] rgDestArgs, int[] rgPermSourceToDest, int[] rgPermDestToSource)
 	{
 		for (int i = 0; i < rgSourceOps.length; i++)
 		{
 			if (rgPermSourceToDest[i] != UNDEFINED)
 			{
-				if (!isCompatible (rgSourceOps[i], rgDestArgs[rgPermSourceToDest[i]]))
+				if (!InstructionListTranslator.isCompatible (rgSourceOps[i], rgDestArgs[rgPermSourceToDest[i]]))
 				{
 					// try to find an argument which can be swapped with this non-compatible one
 					// and check whether both operands are compatible after swapping
@@ -351,7 +367,7 @@ public class InstructionListTranslator
 		int nOutputArgDestIndex, boolean bIntrinsicHasSharedResult)
 	{
 		// maps operands to substitute operands within the actual generated computation instruction
-		Map<IOperand, IOperand> mapSubstitutions = new HashMap<IOperand, IOperand> ();
+		Map<IOperand, IOperand> mapSubstitutions = new HashMap<> ();
 		
 		IOperand[] rgDestOps = new IOperand[rgDestArgs.length];
 		IOperand opSourceOutput = rgSourceOps[rgSourceOps.length - 1];
@@ -381,7 +397,7 @@ public class InstructionListTranslator
 				mapSubstitutions.put (opShared, opOut);
 				mapSubstitutions.put (opSourceOutput, opOut);
 				
-				translateInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR.value (), opShared, opOut));
+				translateInstruction (new Instruction (getMovFpr (opShared), opShared, opOut));
 			}
 		}
 		
@@ -419,7 +435,7 @@ public class InstructionListTranslator
 						{
 							// mov arg_i, tmp
 							mapSubstitutions.put (rgSourceOps[i], rgDestOps[rgPermSourceToDest[i]]);
-							translateInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR.value (), rgSourceOps[i], rgDestOps[rgPermSourceToDest[i]]));
+							translateInstruction (new Instruction (getMovFpr (rgSourceOps[i]), rgSourceOps[i], rgDestOps[rgPermSourceToDest[i]]));
 						}
 					}
 				}
@@ -433,11 +449,11 @@ public class InstructionListTranslator
 		if (bHasNonCompatibleResultOperand)
 		{
 			// mov tmp, result
-			translateInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR.value (), opTmpResultOperand, rgSourceOps[rgSourceOps.length - 1]));
+			translateInstruction (new Instruction (getMovFpr (opTmpResultOperand), opTmpResultOperand, rgSourceOps[rgSourceOps.length - 1]));
 		}
 	}
 	
-	private Argument[] createGenericArguments (int nArgsCount)
+	private static Argument[] createGenericArguments (int nArgsCount)
 	{
 		Argument[] rgRes = new Argument[nArgsCount];
 		for (int i = 0; i < nArgsCount; i++)
@@ -473,7 +489,7 @@ public class InstructionListTranslator
 		else
 		{
 			LOGGER.warn (StringUtil.concat ("No arguments were defined for the intrinsic ", intrinsic.getBaseName (), ". Assuming generic arguments."));
-			rgDestArgs = createGenericArguments (rgSourceOps.length);
+			rgDestArgs = InstructionListTranslator.createGenericArguments (rgSourceOps.length);
 		}
 
 		// check whether the number of arguments of the instruction and the intrinsic to be generated match
@@ -487,11 +503,11 @@ public class InstructionListTranslator
 		}
 		
 		boolean bIntrinsicHasSharedResult = rgSourceOps.length - 1 == rgDestArgs.length;
-		int nOutputArgDestIndex = getOutputArgumentIndex (rgDestArgs);
+		int nOutputArgDestIndex = InstructionListTranslator.getOutputArgumentIndex (rgDestArgs);
 		
 		int[] rgPermSourceToDest = new int[rgSourceOps.length];
 		int[] rgPermDestToSource = new int[rgDestArgs.length];
-		getArgumentPermutations (intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource);
+		InstructionListTranslator.getArgumentPermutations (intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource);
 				
 		if (!bIntrinsicHasSharedResult)
 		{

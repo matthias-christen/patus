@@ -279,7 +279,7 @@ public class GlobalGeneratedIdentifiers
 	public GlobalGeneratedIdentifiers (CodeGeneratorSharedObjects data)
 	{
 		m_data = data;
-		m_listVariables = new LinkedList<Variable> ();
+		m_listVariables = new LinkedList<> ();
 	}
 
 	/**
@@ -288,7 +288,7 @@ public class GlobalGeneratedIdentifiers
 	 */
 	public List<Variable> getVariables ()
 	{
-		List<Variable> list = new ArrayList<Variable> (m_listVariables.size ());
+		List<Variable> list = new ArrayList<> (m_listVariables.size ());
 		list.addAll (m_listVariables);
 		return list;
 	}
@@ -316,7 +316,7 @@ public class GlobalGeneratedIdentifiers
 	 */
 	public List<Variable> getVariables (int nVariableTypeMask)
 	{
-		List<Variable> list = new ArrayList<Variable> (m_listVariables.size ());
+		List<Variable> list = new ArrayList<> (m_listVariables.size ());
 		for (Variable v : m_listVariables)
 			if ((v.getType ().mask () & nVariableTypeMask) != 0)
 				list.add (v);
@@ -355,14 +355,14 @@ public class GlobalGeneratedIdentifiers
 	 * 	params). If set to <code>false</code>, the corresponding derived types (e.g., SIMD types) are used
 	 * @return
 	 */
-	private List<Declaration> getDeclarations (Iterable<Variable> itVars, CodeGenerationOptions.ECompatibility compatibility)
+	private static List<Declaration> getDeclarations (Iterable<Variable> itVars, CodeGenerationOptions.ECompatibility compatibility)
 	{
 		boolean bIsFortranCompatible = compatibility == CodeGenerationOptions.ECompatibility.FORTRAN;
 
-		List<Declaration> listDecls = new ArrayList<Declaration> ();
+		List<Declaration> listDecls = new ArrayList<> ();
 		for (Variable v : itVars)
 		{
-			List<Specifier> listSpecs = new ArrayList<Specifier> (v.getSpecifiers ().size () + 1);
+			List<Specifier> listSpecs = new ArrayList<> (v.getSpecifiers ().size () + 1);
 			listSpecs.addAll (v.getSpecifiers ());
 			if (bIsFortranCompatible && !v.isGrid ())
 				listSpecs.add (PointerSpecifier.UNQUALIFIED);
@@ -382,7 +382,7 @@ public class GlobalGeneratedIdentifiers
 		if (m_nidInitializeFunction == null)
 			return null;
 
-		List<Specifier> listSpecs = new ArrayList<Specifier> ();
+		List<Specifier> listSpecs = new ArrayList<> ();
 		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
 		listSpecs.add (Specifier.VOID);
 
@@ -390,7 +390,7 @@ public class GlobalGeneratedIdentifiers
 			listSpecs,
 			new ProcedureDeclarator (
 				m_nidInitializeFunction.clone (),
-				getDeclarations (getVariables (
+				GlobalGeneratedIdentifiers.getDeclarations (getVariables (
 					~EVariableType.OUTPUT_GRID.mask () &
 					~EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask () &
 					~EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask ()),
@@ -423,7 +423,7 @@ public class GlobalGeneratedIdentifiers
 	 */
 	public VariableDeclaration getStencilFunctionDeclaration (CodeGenerationOptions.ECompatibility compatibility)
 	{
-		List<Specifier> listSpecs = new ArrayList<Specifier> ();
+		List<Specifier> listSpecs = new ArrayList<> ();
 		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
 		listSpecs.add (Specifier.VOID);
 
@@ -471,7 +471,7 @@ public class GlobalGeneratedIdentifiers
 	public List<Declaration> getFunctionParameterList (
 		boolean bIncludeOutputGrids, boolean bIncludeAutotuneParameters, boolean bIncludeInternalAutotuneParameters, boolean bMakeCompatibleWithFortran)
 	{
-		List<Declaration> listDecls = new ArrayList<Declaration> (m_listVariables.size ());
+		List<Declaration> listDecls = new ArrayList<> (m_listVariables.size ());
 		for (Variable v : getFunctionParameterVarList (bIncludeOutputGrids, bIncludeAutotuneParameters, bIncludeInternalAutotuneParameters, bMakeCompatibleWithFortran))
 		{
 			if (bMakeCompatibleWithFortran)
@@ -483,7 +483,7 @@ public class GlobalGeneratedIdentifiers
 				else
 				{
 					// add a pointer specifier if the parameter is not a pointer
-					List<Specifier> listSpecs = new ArrayList<Specifier> (listSpecOrig.size () + 1);
+					List<Specifier> listSpecs = new ArrayList<> (listSpecOrig.size () + 1);
 					listSpecs.addAll (listSpecOrig);
 					listSpecs.add (PointerSpecifier.UNQUALIFIED);
 
@@ -500,7 +500,7 @@ public class GlobalGeneratedIdentifiers
 	public List<Variable> getFunctionParameterVarList (
 		boolean bIncludeOutputGrids, boolean bIncludeAutotuneParameters, boolean bIncludeInternalAutotuneParameters, boolean bMakeCompatibleWithFortran)
 	{
-		List<Variable> listVars = new ArrayList<Variable> (m_listVariables.size ());
+		List<Variable> listVars = new ArrayList<> (m_listVariables.size ());
 		for (Variable v : m_listVariables)
 		{
 			if (v.getType ().equals (EVariableType.OUTPUT_GRID) && (!bIncludeOutputGrids || bMakeCompatibleWithFortran))

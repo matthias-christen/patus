@@ -32,8 +32,6 @@ import cetus.hir.Traversable;
 import cetus.hir.Typecast;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
-import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
-import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
 
 public class ASTUtil
 {
@@ -48,7 +46,7 @@ public class ASTUtil
 	public static int[] getIndex (Statement stmt)
 	{
 		// determine the indices
-		List<Integer> listIndices = new LinkedList<Integer> ();
+		List<Integer> listIndices = new LinkedList<> ();
 		for (Traversable trvThis = stmt; ; )
 		{
 			Traversable trvParent = trvThis.getParent ();
@@ -195,11 +193,11 @@ public class ASTUtil
 				// sym.getArraySpecifiers ()... TODO: handle array specifiers
 				try
 				{
-					return ASTUtil.dereference ((List<Specifier>) sym.getTypeSpecifiers ());
+					return ASTUtil.dereference (sym.getTypeSpecifiers ());
 				}
 				catch (Exception e)
 				{
-					return new ArrayList<Specifier> (0);
+					return new ArrayList<> (0);
 				}				
 			}
 			return ASTUtil.dereference (getExpressionType (((ArrayAccess) expr).getArrayName ()));
@@ -221,7 +219,7 @@ public class ASTUtil
 		
 		// TODO: handle binary expressions
 		
-		return new ArrayList<Specifier> (0);
+		return new ArrayList<> (0);
 	}
 	
 	/**

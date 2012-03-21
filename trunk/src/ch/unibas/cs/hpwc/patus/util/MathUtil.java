@@ -31,29 +31,32 @@ public class MathUtil
 	 */
 	public static int getGCD (int a, int b)
 	{
-		if (b > a)
+		int a0 = a;
+		int b0 = b;
+		
+		if (b0 > a0)
 		{
 			// swap the arguments
-			int nTmp = a;
-			a = b;
-			b = nTmp;
+			int nTmp = a0;
+			a0 = b0;
+			b0 = nTmp;
 		}
 
 		// ensure that the arguments are non-negative
-		if (a < 0)
-			a = -a;
-		if (b < 0)
-			b = -b;
+		if (a0 < 0)
+			a0 = -a0;
+		if (b0 < 0)
+			b0 = -b0;
 
 		// Euclidean algorithm
-		for (int p; b != 0; )
+		for (int p; b0 != 0; )
 		{
-			p = a;
-			a = b;
-			b = p % b;
+			p = a0;
+			a0 = b0;
+			b0 = p % b0;
 		}
 
-		return a;
+		return a0;
 	}
 
 	/**

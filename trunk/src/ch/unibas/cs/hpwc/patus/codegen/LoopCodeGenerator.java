@@ -105,11 +105,16 @@ public class LoopCodeGenerator
 	}
 
 	/**
-	 * Returns the &quot;real&quot; number of threads that execute the loop <code>loop</code>,
-	 * i.e. replaces the {@link Globals#NUMBER_OF_THREADS} placeholder by the number provided
+	 * Returns the &quot;real&quot; number of threads that execute the loop
+	 * <code>loop</code>,
+	 * i.e. replaces the {@link Globals#NUMBER_OF_THREADS} placeholder by the
+	 * number provided
 	 * by the hardware/programming model-specific backend.
-	 * @param loop The loop
-	 * @return An expression that evaluates the the number of threads that execute <code>loop</code>
+	 * 
+	 * @param loop
+	 *            The loop
+	 * @return An expression that evaluates the the number of threads that
+	 *         execute <code>loop</code>
 	 */
 	public Expression getNumberOfThreadsInDimension (Loop loop, int nDim, CodeGeneratorRuntimeOptions options)
 	{

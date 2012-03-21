@@ -149,8 +149,8 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	{
 		m_data = data;
 
-		m_mapVariableIdentifiers = new HashMap<Variable, Identifier> ();
-		m_mapParamValues = new HashMap<String, Double> ();
+		m_mapVariableIdentifiers = new HashMap<> ();
+		m_mapParamValues = new HashMap<> ();
 
 		m_fSampleValue = 0.0;
 		m_nTmpArgCount = 0;
@@ -168,8 +168,8 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		if (m_mapCommandLineParamIndices != null)
 			return;
 
-		m_mapCommandLineParamIndices = new HashMap<Variable, Integer> ();
-		m_listCommandLineParams = new ArrayList<Variable> ();
+		m_mapCommandLineParamIndices = new HashMap<> ();
+		m_listCommandLineParams = new ArrayList<> ();
 
 		int nIdx = 1;
 		for (GlobalGeneratedIdentifiers.Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
@@ -266,7 +266,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	 */
 	public List<Expression> getExpressionsForVariables (List<Variable> listVariables, EOutputGridType typeOutputGrid)
 	{
-		List<Expression> listExprs = new ArrayList<Expression> (listVariables.size ());
+		List<Expression> listExprs = new ArrayList<> (listVariables.size ());
 		for (Variable v : listVariables)
 			listExprs.add (getExpressionForVariable (v, typeOutputGrid));
 		return listExprs;
@@ -599,7 +599,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		StatementList sl = m_cgValidate.generate (getGridSet ());
 
 		// replace parameter variables by values
-		Map<String, Double> mapVariables = new HashMap<String, Double> ();
+		Map<String, Double> mapVariables = new HashMap<> ();
 		for (Variable v : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
 			if (v.getType () == EVariableType.KERNEL_PARAMETER)
 				mapVariables.put (v.getName (), getParameterSampleValue (v));
@@ -629,7 +629,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	 */
 	private int getGlobalAlignmentRestriction (List<Variable> listVariables)
 	{
-		Set<Specifier> setTypes = new HashSet<Specifier> ();
+		Set<Specifier> setTypes = new HashSet<> ();
 		for (Variable v : listVariables)
 		{
 			for (Specifier s : v.getSpecifiers ())
@@ -663,7 +663,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		boolean bIsFortranCompatible = m_kernelSourceFile.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
 
 		// build the list of arguments; adjust the pointers so that the alignment restrictions are satisfied
-		List<Expression> listArgs = new ArrayList<Expression> ();
+		List<Expression> listArgs = new ArrayList<> ();
 		for (Variable v : listVariables)
 		{
 			Expression exprArg = getExpressionForVariable (v, EOutputGridType.OUTPUTGRID_POINTER);
@@ -748,7 +748,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 			GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID.mask () |
 			GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID.mask ());
 
-		Set<IDExpression> set = new HashSet<IDExpression> ();
+		Set<IDExpression> set = new HashSet<> ();
 		for (Variable v : listVars)
 			set.add (new NameID (v.getName ()));
 
@@ -819,7 +819,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		Expression exprTotalBytes = null;
 
 		SubdomainIdentifier sdidRoot = m_data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid ();
-		Map<MemoryObject, StencilNode> mapMemoryObjects = new HashMap<MemoryObject, StencilNode> ();
+		Map<MemoryObject, StencilNode> mapMemoryObjects = new HashMap<> ();
 
 		for (StencilNode node : nodes)
 			mapMemoryObjects.put (m_data.getData ().getMemoryObjectManager ().getMemoryObject (sdidRoot, node, true), node);

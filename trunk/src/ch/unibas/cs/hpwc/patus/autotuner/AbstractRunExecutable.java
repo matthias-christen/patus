@@ -87,7 +87,7 @@ public abstract class AbstractRunExecutable implements IRunExecutable
 		setParameterSets (listParamSets);
 		m_listConstraints = listConstraints;
 
-		m_mapCachedExecutions = new HashMap<IntArray, ProgramExecutionResult> ();
+		m_mapCachedExecutions = new HashMap<> ();
 	}
 
 	/* (non-Javadoc)
@@ -225,7 +225,7 @@ public abstract class AbstractRunExecutable implements IRunExecutable
 	public Histogram<Double, int[]> createHistogram ()
 	{
 		// create the histogram map
-		Histogram<Double, int[]> histogram = new Histogram<Double, int[]> ();
+		Histogram<Double, int[]> histogram = new Histogram<> ();
 		histogram.setAcceptableRange (0.0, 1.0e50);
 
 		// fill the histogram map

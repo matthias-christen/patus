@@ -58,7 +58,7 @@ public class HookeJeevesOptimizer extends AbstractOptimizer
 		StringBuilder sbResult = new StringBuilder ();
 		boolean bImproved = false;
 		
-		copy (rgStart, rgCurrent);
+		HookeJeevesOptimizer.copy (rgStart, rgCurrent);
 
 		for (int i = 0; i < nParamsCount; i++)
 		{
@@ -168,7 +168,7 @@ public class HookeJeevesOptimizer extends AbstractOptimizer
 		}
 	}
 	
-	private void copy (int[] rgSrc, int[] rgDest)
+	private static void copy (int[] rgSrc, int[] rgDest)
 	{
 		System.arraycopy (rgSrc, 0, rgDest, 0, rgSrc.length);
 	}

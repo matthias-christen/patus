@@ -175,8 +175,8 @@ public class LAGraph implements IGraph<LAGraph.Vertex, LAGraph.Edge>
 	
 	public LAGraph ()
 	{
-		m_mapVertices = new HashMap<Vertex, Vertex> ();
-		m_setEdges = new HashSet<LAGraph.Edge> ();
+		m_mapVertices = new HashMap<> ();
+		m_setEdges = new HashSet<> ();
 	}
 	
 	public void addVertex (Vertex v)

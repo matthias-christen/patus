@@ -40,7 +40,7 @@ public class TestOptimizerUtil
 	@Before
 	public void setUp () throws Exception
 	{
-		m_listConstraints = new ArrayList<Expression> (1);
+		m_listConstraints = new ArrayList<> (1);
 		m_listConstraints.add (
 			new BinaryExpression (
 				new BinaryExpression (new NameID ("$1"), BinaryOperator.MULTIPLY, new BinaryExpression (new NameID ("$2"), BinaryOperator.MULTIPLY, new NameID ("$3"))),

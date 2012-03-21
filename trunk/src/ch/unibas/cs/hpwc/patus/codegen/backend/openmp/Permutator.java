@@ -31,7 +31,7 @@ public class Permutator
 				throw new RuntimeException ("The number of selectors must correspond to the number of elements per operand");
 			
 			// build the selector map
-			m_mapSelectors = new HashMap<Integer, List<Selector>> ();
+			m_mapSelectors = new HashMap<> ();
 			int nSelectorSetSize = -1;
 			int nIndex = 0;
 			for (Selector s : rgSelectors)
@@ -44,7 +44,7 @@ public class Permutator
 				
 				List<Selector> list = m_mapSelectors.get (s.getID ());
 				if (list == null)
-					m_mapSelectors.put (s.getID (), list = new ArrayList<Selector> ());
+					m_mapSelectors.put (s.getID (), list = new ArrayList<> ());
 				list.add (s);
 				
 				nIndex++;
@@ -60,7 +60,7 @@ public class Permutator
 		
 		public List<Operand> apply (List<Operand> listOperands, Operand opDesiredResult)
 		{
-			List<Operand> listResults = new ArrayList<Operand> ();
+			List<Operand> listResults = new ArrayList<> ();
 			
 			// find selector configurations such that each desired element is contained at least once
 			boolean[] rgSelectorApplied = new boolean[m_nElementPerOperand];
@@ -282,7 +282,7 @@ public class Permutator
 	
 	public Permutator ()
 	{		
-		m_setAllOperands = new HashSet<Operand> ();
+		m_setAllOperands = new HashSet<> ();
 	}
 	
 	public Operand findSequence (List<Operand> listInputOperands, Operand opResult, Operator[] rgOperators)
@@ -290,9 +290,9 @@ public class Permutator
 		m_setAllOperands.clear ();
 		m_setAllOperands.addAll (listInputOperands);
 		
-		List<Operand> listInput = new ArrayList<Operand> ();
+		List<Operand> listInput = new ArrayList<> ();
 		listInput.addAll (listInputOperands);
-		List<List<Operand>> listInputLocal = new ArrayList<List<Operand>> ();
+		List<List<Operand>> listInputLocal = new ArrayList<> ();
 		
 		for (int i = 0; i < MAX_ITER; i++)
 		{
@@ -304,7 +304,7 @@ public class Permutator
 				{
 					for (Operand o : listInput)
 					{
-						List<Operand> l = new ArrayList<Operand> (1);
+						List<Operand> l = new ArrayList<> (1);
 						l.add (o);
 						listInputLocal.add (l);
 					}
@@ -314,7 +314,7 @@ public class Permutator
 					for (int j = 0; j < listInput.size (); j++)
 						for (int k = 0; k <= j; k++)
 						{
-							List<Operand> l = new ArrayList<Operand> (2);
+							List<Operand> l = new ArrayList<> (2);
 							l.add (listInput.get (j));
 							l.add (listInput.get (k));
 							listInputLocal.add (l);

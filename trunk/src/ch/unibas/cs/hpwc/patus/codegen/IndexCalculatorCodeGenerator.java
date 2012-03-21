@@ -395,7 +395,7 @@ public class IndexCalculatorCodeGenerator
 						rgSizes[l] = null;
 				}
 
-				m_rgTargetIndices[j] = calculateMultiToOne (rgIndices, rgSizes);
+				m_rgTargetIndices[j] = IndexCalculatorCodeGenerator.calculateMultiToOne (rgIndices, rgSizes);
 			}
 		}
 
@@ -548,17 +548,22 @@ public class IndexCalculatorCodeGenerator
 	{
 		m_data = data;
 
-		m_listSizesAndStrides = new ArrayList<IndexCalculatorCodeGenerator.SizesAndStrides> ();
+		m_listSizesAndStrides = new ArrayList<> ();
 		m_nTmpStrides = 0;
 	}
 
 	/**
-	 * Creates an expression dividing <code>exprNumerator</code> by <code>exprDenominator</code>.
-	 * @param exprNumerator The numerator
-	 * @param exprDenominator The denominator
-	 * @return Returns an expression computing <code>exprNumerator</code> / <code>exprDenominator</code>
+	 * Creates an expression dividing <code>exprNumerator</code> by
+	 * <code>exprDenominator</code>.
+	 * 
+	 * @param exprNumerator
+	 *            The numerator
+	 * @param exprDenominator
+	 *            The denominator
+	 * @return Returns an expression computing <code>exprNumerator</code> /
+	 *         <code>exprDenominator</code>
 	 */
-	protected Expression divide (Expression exprNumerator, Expression exprDenominator)
+	protected static Expression divide (Expression exprNumerator, Expression exprDenominator)
 	{
 		if (exprDenominator == null || ((exprDenominator instanceof IntegerLiteral) && (((IntegerLiteral) exprDenominator).getValue () == 1)))
 			return exprNumerator.clone ();
@@ -566,9 +571,13 @@ public class IndexCalculatorCodeGenerator
 	}
 
 	/**
-	 * Creates a new identifier named <code>strName</code> and assigns it the value <code>exprValue</code>.
-	 * @param strName The name of the identifier to create
-	 * @param exprValue The value to assign
+	 * Creates a new identifier named <code>strName</code> and assigns it the
+	 * value <code>exprValue</code>.
+	 * 
+	 * @param strName
+	 *            The name of the identifier to create
+	 * @param exprValue
+	 *            The value to assign
 	 * @return The identifier object
 	 */
 	protected Identifier createIdentifier (String strName, Expression exprValue, CompoundStatement cmpstmt)
@@ -650,16 +659,31 @@ public class IndexCalculatorCodeGenerator
 	}
 
 	/**
-	 * Calculates a <i>d</i>-dimensional index from a one-dimensional one, <code>exprIndex</code>.
-	 * @param exprIndex The one-dimensional index from which the multi-dimensional one is calculated
-	 * @param rgIndex The multi-dimensional index; an array of identifiers to which the calculations
-	 * 	will be assigned. Can be <code>null</code>; in this case, temporary variables will be created
-	 * 	and returned.
-	 * @param rgSizes The array of sizes. Can be <code>null</code> if <code>rgStrides</code> is not <code>null</code>
-	 * @param rgStrides The array of strides or <code>null</code> if not known and the strides are
-	 * 	to be automatically calculated from the sizes, <code>rgSizes</code>
-	 * @param cmpstmt The compound statement to which the temporary calculations are added
-	 * @return An array containing the identifiers holding the values of the indices
+	 * Calculates a <i>d</i>-dimensional index from a one-dimensional one,
+	 * <code>exprIndex</code>.
+	 * 
+	 * @param exprIndex
+	 *            The one-dimensional index from which the multi-dimensional one
+	 *            is calculated
+	 * @param rgIndex
+	 *            The multi-dimensional index; an array of identifiers to which
+	 *            the calculations
+	 *            will be assigned. Can be <code>null</code>; in this case,
+	 *            temporary variables will be created
+	 *            and returned.
+	 * @param rgSizes
+	 *            The array of sizes. Can be <code>null</code> if
+	 *            <code>rgStrides</code> is not <code>null</code>
+	 * @param rgStrides
+	 *            The array of strides or <code>null</code> if not known and the
+	 *            strides are
+	 *            to be automatically calculated from the sizes,
+	 *            <code>rgSizes</code>
+	 * @param cmpstmt
+	 *            The compound statement to which the temporary calculations are
+	 *            added
+	 * @return An array containing the identifiers holding the values of the
+	 *         indices
 	 */
 	public Expression[] calculateOneToMulti (Expression exprIndex, Identifier[] rgIndex, Expression[] rgSizes, Expression[] rgStrides, CompoundStatement cmpstmt)
 	{
@@ -717,12 +741,17 @@ public class IndexCalculatorCodeGenerator
 	}
 
 	/**
-	 * Calculates a one-dimensional index from the multi-dimensional index <code>rgIndex</code>.
-	 * @param rgIndex The index
-	 * @param rgSizes The sizes, must be of the same size as <code>rgIndex</code>
-	 * @return
+	 * Calculates a one-dimensional index from the multi-dimensional index
+	 * <code>rgIndex</code>.
+	 * 
+	 * @param rgIndex
+	 *            The index
+	 * @param rgSizes
+	 *            The sizes, must be of the same size as <code>rgIndex</code>
+	 * @return The one-dimensional index obtained from the multi-index
+	 *         <code>rgIndex</code>
 	 */
-	public Expression calculateMultiToOne (Expression[] rgIndex, Expression[] rgSizes)
+	public static Expression calculateMultiToOne (Expression[] rgIndex, Expression[] rgSizes)
 	{
 		if (rgIndex.length != rgSizes.length)
 			throw new RuntimeException ("Index and sizes must be of the same size.");
@@ -743,11 +772,18 @@ public class IndexCalculatorCodeGenerator
 	}
 	
 	/**
-	 * Collapses the multi-dimensional hardware index to a one-dimensional one. 
-	 * @param nDimension The dimension for which to collapse the hardware index
-	 * @param nParallelismLevelStart The first (lowest) parallelism level the final index should depend on
-	 * @param nParallelismLevelEnd The last (highest) parallelism level the final index should depend on
-	 * @return A one-dimensional index computed from the possibly multi-dimensional one
+	 * Collapses the multi-dimensional hardware index to a one-dimensional one.
+	 * 
+	 * @param nDimension
+	 *            The dimension for which to collapse the hardware index
+	 * @param nParallelismLevelStart
+	 *            The first (lowest) parallelism level the final index should
+	 *            depend on
+	 * @param nParallelismLevelEnd
+	 *            The last (highest) parallelism level the final index should
+	 *            depend on
+	 * @return A one-dimensional index computed from the possibly
+	 *         multi-dimensional one
 	 */
 	public Expression calculateHardwareIndicesToOne (int nDimension, int nParallelismLevelStart, int nParallelismLevelEnd)
 	{
@@ -779,17 +815,23 @@ public class IndexCalculatorCodeGenerator
 			i++;
 		}
 		
-		return Symbolic.simplify (calculateMultiToOne (rgIndex, rgSizes));
+		return Symbolic.simplify (IndexCalculatorCodeGenerator.calculateMultiToOne (rgIndex, rgSizes));
 	}
 
 	/**
-	 * Calculates a d-dimensional index with index values restricted to &le; <code>sizeDomain</code>,
-	 * where the target dimensionality d is <code>sizeDomain.getDimensionality ()</code>.<br/>
-	 * Intermediate expressions that are generated to compute the index are added to <code>cmpstmt</code>.
+	 * Calculates a d-dimensional index with index values restricted to &le;
+	 * <code>sizeDomain</code>,
+	 * where the target dimensionality d is
+	 * <code>sizeDomain.getDimensionality ()</code>.<br/>
+	 * Intermediate expressions that are generated to compute the index are
+	 * added to <code>cmpstmt</code>.
+	 * 
 	 * @param sizeDomain
-	 * @param cmpstmt The compound statement to which intermediate calculations are added. If <code>null</code>,
-	 * 	the statements are added to the initialization statement
-	 * @return
+	 * @param cmpstmt
+	 *            The compound statement to which intermediate calculations are
+	 *            added. If <code>null</code>,
+	 *            the statements are added to the initialization statement
+	 * @return A d-dimensional index
 	 */
 	public Expression[] calculateIndicesFromHardwareIndices (Size sizeDomain, CompoundStatement cmpstmt, CodeGeneratorRuntimeOptions options)
 	{
@@ -832,12 +874,19 @@ public class IndexCalculatorCodeGenerator
 	}
 	
 	/**
-	 * Converts the d-dimensional index <code>rgIndices</code> to a D-dimensional target index
+	 * Converts the d-dimensional index <code>rgIndices</code> to a
+	 * D-dimensional target index
 	 * (D being the dimensionality of the domain).
-	 * @param rgIndices The d-dimensional index to convert
-	 * @param sizeDomain The D-dimensional domain
-	 * @param cmpstmt The compound statement to which auxiliary calculations are added as the index is converted
-	 * @param options Code generation options
+	 * 
+	 * @param rgIndices
+	 *            The d-dimensional index to convert
+	 * @param sizeDomain
+	 *            The D-dimensional domain
+	 * @param cmpstmt
+	 *            The compound statement to which auxiliary calculations are
+	 *            added as the index is converted
+	 * @param options
+	 *            Code generation options
 	 * @return The D-dimensional target index
 	 */
 	public Expression[] convertIndices (final Expression[] rgIndices, final Expression[] rgSizes,

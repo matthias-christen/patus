@@ -136,27 +136,27 @@ public abstract class AbstractBackend implements IBackend
 	}
 
 	@Override
-	public Expression plus (Expression expr, Specifier specDatatype, boolean bVectorize)
+	public Expression unary_plus (Expression expr, Specifier specDatatype, boolean bVectorize)
 	{
-		return m_mixinArithmetic.plus (expr, specDatatype, bVectorize);
+		return m_mixinArithmetic.unary_plus (expr, specDatatype, bVectorize);
 	}
 
 	@Override
-	public Expression minus (Expression expr, Specifier specDatatype, boolean bVectorize)
+	public Expression unary_minus (Expression expr, Specifier specDatatype, boolean bVectorize)
 	{
-		return m_mixinArithmetic.minus (expr, specDatatype, bVectorize);
+		return m_mixinArithmetic.unary_minus (expr, specDatatype, bVectorize);
 	}
 
 	@Override
-	public Expression add (Expression expr1, Expression expr2, Specifier specDatatype, boolean bVectorize)
+	public Expression plus (Expression expr1, Expression expr2, Specifier specDatatype, boolean bVectorize)
 	{
-		return m_mixinArithmetic.add (expr1, expr2, specDatatype, bVectorize);
+		return m_mixinArithmetic.plus (expr1, expr2, specDatatype, bVectorize);
 	}
 
 	@Override
-	public Expression subtract (Expression expr1, Expression expr2, Specifier specDatatype, boolean bVectorize)
+	public Expression minus (Expression expr1, Expression expr2, Specifier specDatatype, boolean bVectorize)
 	{
-		return m_mixinArithmetic.subtract (expr1, expr2, specDatatype, bVectorize);
+		return m_mixinArithmetic.minus (expr1, expr2, specDatatype, bVectorize);
 	}
 
 	@Override

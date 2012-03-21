@@ -45,7 +45,7 @@ public class ExpressionUtil
 
 	private final static Logger LOGGER = Logger.getLogger (ExpressionUtil.class);
 
-	private static Map<String, Map<String, Map<Boolean, Expression>>> m_mapCeil = new HashMap<String, Map<String,Map<Boolean,Expression>>> ();
+	private static Map<String, Map<String, Map<Boolean, Expression>>> m_mapCeil = new HashMap<> ();
 
 
 	///////////////////////////////////////////////////////////////////
@@ -54,7 +54,9 @@ public class ExpressionUtil
 
 	/**
 	 * Deterines whether <code>expr</code> is a number literal.
-	 * @param expr The expression to test
+	 * 
+	 * @param expr
+	 *            The expression to test
 	 * @return <code>true</code> iff <code>expr</code> is a number literal
 	 */
 	public static boolean isNumberLiteral (Expression expr)
@@ -64,7 +66,9 @@ public class ExpressionUtil
 
 	/**
 	 * Determines whether the expression <code>expr</code> is zero.
-	 * @param expr The expression to test
+	 * 
+	 * @param expr
+	 *            The expression to test
 	 * @return <code>true</code> iff <code>expr</code> is zeor
 	 */
 	public static boolean isZero (Expression expr)
@@ -80,9 +84,12 @@ public class ExpressionUtil
 	}
 
 	/**
-	 *
+	 * Determines whether <code>literal</code> is a zero number literal.
+	 * 
 	 * @param literal
-	 * @return
+	 *            The literal to check
+	 * @return <code>true</code> iff <code>literal</code> is a zero number
+	 *         literal
 	 */
 	public static boolean isZeroLiteral (Literal literal)
 	{
@@ -94,10 +101,15 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Determines whether the expression <code>expr</code> has the value <code>nValue</code>.
-	 * @param expr The expression to test
-	 * @param nValue The expected value
-	 * @return <code>true</code> if <code>expr</code> evaluates to <code>nValue</code>
+	 * Determines whether the expression <code>expr</code> has the value
+	 * <code>nValue</code>.
+	 * 
+	 * @param expr
+	 *            The expression to test
+	 * @param nValue
+	 *            The expected value
+	 * @return <code>true</code> if <code>expr</code> evaluates to
+	 *         <code>nValue</code>
 	 */
 	public static boolean isValue (Expression expr, int nValue)
 	{
@@ -112,10 +124,15 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Determines whether the literal <code>literal</code> is an integer literal and has the value <code>nValue</code>.
-	 * @param literal The literal to examine
-	 * @param nValue The value
-	 * @return <code>true</code> iff literal is an {@link IntegerLiteral} and has the value <code>nValue</code>
+	 * Determines whether the literal <code>literal</code> is an integer literal
+	 * and has the value <code>nValue</code>.
+	 * 
+	 * @param literal
+	 *            The literal to examine
+	 * @param nValue
+	 *            The value
+	 * @return <code>true</code> iff literal is an {@link IntegerLiteral} and
+	 *         has the value <code>nValue</code>
 	 */
 	public static boolean isValueLiteral (Literal literal, int nValue)
 	{
@@ -126,7 +143,9 @@ public class ExpressionUtil
 
 	/**
 	 * Tries to extract an integer constant from <code>expr</code>.
-	 * @param expr The expression from which to extract an integer constant
+	 * 
+	 * @param expr
+	 *            The expression from which to extract an integer constant
 	 * @return The integer represented by <code>expr</code>
 	 */
 	public static int getIntegerValue (Expression expr)
@@ -147,9 +166,13 @@ public class ExpressionUtil
 	}
 
 	/**
-	 *
+	 * Tries to extract a numerical value from the expression <code>expr</code>.
+	 * If the expression contains an essential variable, a runtime exception is
+	 * thrown.
+	 * 
 	 * @param expr
-	 * @return
+	 *            The expression from which to extract a numerical value
+	 * @return The numerical value of expression <code>expr</code>
 	 */
 	public static double getFloatValue (Expression expr)
 	{
@@ -169,9 +192,13 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Creates an expression that calculates the exponential expression <code>exprBase</code>^<code>exprExponent</code>.
-	 * @param exprBase The base
-	 * @param exprExponent The exponent
+	 * Creates an expression that calculates the exponential expression
+	 * <code>exprBase</code>^<code>exprExponent</code>.
+	 * 
+	 * @param exprBase
+	 *            The base
+	 * @param exprExponent
+	 *            The exponent
 	 * @return An expression that calculates <code>exprBase</code>^<code>exprExponent</code>
 	 */
 	public static Expression createExponentExpression (Expression exprBase, Expression exprExponent)
@@ -182,10 +209,14 @@ public class ExpressionUtil
 	}
 
 	/**
-	 *
+	 * Creates an expression that calculates the exponential expression
+	 * <code>exprBase</code>^<code>nExponent</code>.
+	 * 
 	 * @param exprBase
+	 *            The base
 	 * @param nExponent
-	 * @return
+	 *            The exponent
+	 * @return An expression that calculates <code>exprBase</code>^<code>nExponent</code>
 	 */
 	private static ExpressionData createExponentExpression (ExpressionData exprBase, int nExponent)
 	{
@@ -236,60 +267,66 @@ public class ExpressionUtil
 	}
 
 	/**
-	 *
-	 * @param exprBase
-	 * @param exprExponent
-	 * @return
+	 * Creates an expression that calculates the exponential expression
+	 * <code>edBase</code>^<code>edExponent</code>.
+	 * 
+	 * @param edBase
+	 *            The base
+	 * @param edExponent
+	 *            The exponent
+	 * @return An expression that calculates <code>edBase</code>^<code>edExponent</code>
 	 */
-	public static ExpressionData createExponentExpression (ExpressionData exprBase, ExpressionData exprExponent)
+	public static ExpressionData createExponentExpression (ExpressionData edBase, ExpressionData edExponent)
 	{
-		if (ExpressionUtil.isZero (exprBase.getExpression ()))
+		if (ExpressionUtil.isZero (edBase.getExpression ()))
 			return new ExpressionData (new IntegerLiteral (0), 0, Symbolic.EExpressionType.EXPRESSION);
-		if (ExpressionUtil.isValue (exprExponent.getExpression (), 1))
+		if (ExpressionUtil.isValue (edExponent.getExpression (), 1))
 			return new ExpressionData (new IntegerLiteral (1), 0, Symbolic.EExpressionType.EXPRESSION);
 
-		if (exprExponent.getExpression () instanceof IntegerLiteral)
-			return ExpressionUtil.createExponentExpression (exprBase, (int) ((IntegerLiteral) exprExponent.getExpression ()).getValue ());
+		if (edExponent.getExpression () instanceof IntegerLiteral)
+			return ExpressionUtil.createExponentExpression (edBase, (int) ((IntegerLiteral) edExponent.getExpression ()).getValue ());
 
-		if (exprExponent.getExpression () instanceof FloatLiteral)
+		if (edExponent.getExpression () instanceof FloatLiteral)
 		{
-			double fExponent = ((FloatLiteral) exprExponent.getExpression ()).getValue ();
+			double fExponent = ((FloatLiteral) edExponent.getExpression ()).getValue ();
 
 			if (Math.floor (fExponent) == fExponent)
-				return ExpressionUtil.createExponentExpression (exprBase, (int) fExponent);
+				return ExpressionUtil.createExponentExpression (edBase, (int) fExponent);
 
 			// exp
-			if (exprBase.getExpression () instanceof IDExpression && ((IDExpression) exprBase.getExpression ()).getName ().equals ("%e"))
+			if (edBase.getExpression () instanceof IDExpression && ((IDExpression) edBase.getExpression ()).getName ().equals ("%e"))
 				return new ExpressionData (new FloatLiteral (Math.exp (fExponent)), 0, Symbolic.EExpressionType.EXPRESSION);
 
 			if (fExponent == 0.5)
 			{
 				return new ExpressionData (
-					new FunctionCall (new NameID ("sqrt"), CodeGeneratorUtil.expressions (exprBase.getExpression ())),
-					exprBase.getFlopsCount () + 1,
+					new FunctionCall (new NameID ("sqrt"), CodeGeneratorUtil.expressions (edBase.getExpression ())),
+					edBase.getFlopsCount () + 1,
 					Symbolic.EExpressionType.EXPRESSION);
 			}
 		}
 
 		// exp
-		if (exprBase.getExpression () instanceof IDExpression && ((IDExpression) exprBase.getExpression ()).getName ().equals ("%e"))
+		if (edBase.getExpression () instanceof IDExpression && ((IDExpression) edBase.getExpression ()).getName ().equals ("%e"))
 		{
 			return new ExpressionData (
-				new FunctionCall (new NameID ("exp"), CodeGeneratorUtil.expressions (exprExponent.getExpression ())),
-				exprExponent.getFlopsCount () + 1,
+				new FunctionCall (new NameID ("exp"), CodeGeneratorUtil.expressions (edExponent.getExpression ())),
+				edExponent.getFlopsCount () + 1,
 				Symbolic.EExpressionType.EXPRESSION);
 		}
 
 		// the generic case
 		return new ExpressionData (
-			new FunctionCall (new NameID ("pow"), CodeGeneratorUtil.expressions (exprBase.getExpression (), exprExponent.getExpression ())),
-			exprBase.getFlopsCount () + exprExponent.getFlopsCount () + 1,
+			new FunctionCall (new NameID ("pow"), CodeGeneratorUtil.expressions (edBase.getExpression (), edExponent.getExpression ())),
+			edBase.getFlopsCount () + edExponent.getFlopsCount () + 1,
 			Symbolic.EExpressionType.EXPRESSION);
 	}
 
 	/**
 	 * Calculates the sum of the expressions <code>rgExpressions</code>.
-	 * @param rgExpressions The expressions to add
+	 * 
+	 * @param rgExpressions
+	 *            The expressions to add
 	 * @return The sum of all the expressions <code>rgExpressions</code>
 	 */
 	public static Expression sum (Expression... rgExpressions)
@@ -299,7 +336,9 @@ public class ExpressionUtil
 
 	/**
 	 * Calculates the sum of the expressions <code>rgExpressions</code>.
-	 * @param rgExpressions The expressions to add
+	 * 
+	 * @param rgExpressions
+	 *            The expressions to add
 	 * @return The sum of all the expressions <code>rgExpressions</code>
 	 */
 	public static Expression sum (Expression[] rgExpressions, int nStart, int nEnd)
@@ -318,7 +357,9 @@ public class ExpressionUtil
 
 	/**
 	 * Calculates the product of the expressions <code>rgExpressions</code>.
-	 * @param rgExpressions The expressions to multiply
+	 * 
+	 * @param rgExpressions
+	 *            The expressions to multiply
 	 * @return The product of all the expressions <code>rgExpressions</code>
 	 */
 	public static Expression product (Expression... rgExpressions)
@@ -328,7 +369,9 @@ public class ExpressionUtil
 
 	/**
 	 * Calculates the product of the expressions <code>rgExpressions</code>.
-	 * @param rgExpressions The expressions to multiply
+	 * 
+	 * @param rgExpressions
+	 *            The expressions to multiply
 	 * @return The product of all the expressions <code>rgExpressions</code>
 	 */
 	public static Expression product (Expression[] rgExpressions, int nStart, int nEnd)
@@ -346,12 +389,17 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Compares the literals <code>listLHS</code> and <code>litRHS</code> by means of the comparison
-	 * operator <code>op</code>.
-	 * @param litLHS The left hand side of the comparison
-	 * @param op The comparison operator
-	 * @param litRHS The right hand side of the comparison
-	 * @return <code>true</code> iff the relation <code>litLHS</code> &lt;op&gt; <code>litRHS</code> holds
+	 * Compares the literals <code>listLHS</code> and <code>litRHS</code> by
+	 * means of the comparison operator <code>op</code>.
+	 * 
+	 * @param litLHS
+	 *            The left hand side of the comparison
+	 * @param op
+	 *            The comparison operator
+	 * @param litRHS
+	 *            The right hand side of the comparison
+	 * @return <code>true</code> iff the relation <code>litLHS</code> &lt;op&gt;
+	 *         <code>litRHS</code> holds
 	 */
 	public static boolean compare (IntegerLiteral litLHS, BinaryOperator op, IntegerLiteral litRHS)
 	{
@@ -375,14 +423,16 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Returns the minimum of the expressions <code>rgExprs</code>
-	 * or an expression that computes the minimum.
-	 * @param rgExprs An array of expressions from which to find the minimum
+	 * Returns the minimum of the expressions <code>rgExprs</code> or an
+	 * expression that computes the minimum.
+	 * 
+	 * @param rgExprs
+	 *            An array of expressions from which to find the minimum
 	 * @return min(<code>expr1</code>, <code>expr2</code>, ...)
 	 */
 	public static Expression min (Expression... rgExprs)
 	{
-		List<Expression> listArgs = new LinkedList<Expression> ();
+		List<Expression> listArgs = new LinkedList<> ();
 
 		long nMin = Long.MAX_VALUE;
 		double fMin = Double.MAX_VALUE;
@@ -427,9 +477,11 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Returns the minimum of the expressions <code>listExpressions</code>
-	 * or an expression that computes the minimum.
-	 * @param rgExprs An array of expressions from which to find the minimum
+	 * Returns the minimum of the expressions <code>listExpressions</code> or an
+	 * expression that computes the minimum.
+	 * 
+	 * @param rgExprs
+	 *            An array of expressions from which to find the minimum
 	 * @return min(<code>expr1</code>, <code>expr2</code>, ...)
 	 */
 	public static Expression min (List<Expression> listExpressions)
@@ -440,14 +492,16 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Returns the maximum of the expressions <code>rgExpr</code>
-	 * or an expression that computes the maximum.
-	 * @param rgExprs An array of expressions from which to find the maximum
+	 * Returns the maximum of the expressions <code>rgExpr</code> or an
+	 * expression that computes the maximum.
+	 * 
+	 * @param rgExprs
+	 *            An array of expressions from which to find the maximum
 	 * @return max(<code>expr1</code>, <code>expr2</code>, ...)
 	 */
 	public static Expression max (Expression... rgExprs)
 	{
-		List<Expression> listArgs = new LinkedList<Expression> ();
+		List<Expression> listArgs = new LinkedList<> ();
 
 		long nMax = Long.MIN_VALUE;
 		double fMax = Double.MIN_VALUE;
@@ -492,9 +546,11 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Returns the maximum of the expressions <code>listExpressions</code>
-	 * or an expression that computes the maximum.
-	 * @param rgExprs An array of expressions from which to find the maximum
+	 * Returns the maximum of the expressions <code>listExpressions</code> or an
+	 * expression that computes the maximum.
+	 * 
+	 * @param rgExprs
+	 *            An array of expressions from which to find the maximum
 	 * @return max(<code>expr1</code>, <code>expr2</code>, ...)
 	 */
 	public static Expression max (List<Expression> listExpressions)
@@ -506,7 +562,9 @@ public class ExpressionUtil
 
 	/**
 	 * Returns an expression computing the floor of <code>expr</code>.
-	 * @param expr The expression for which to compute the floor
+	 * 
+	 * @param expr
+	 *            The expression for which to compute the floor
 	 * @return The floor of <code>expr</code>
 	 */
 	public static Expression floor (Expression expr)
@@ -529,9 +587,12 @@ public class ExpressionUtil
 
 	/**
 	 * Calculates the ceiling of the expression <code>expr</code>.
-	 * If the expression is a number, it is simplified. If it is a fraction it is treated specially:
+	 * If the expression is a number, it is simplified. If it is a fraction it
+	 * is treated specially:
 	 * we make use of the fact that <code>ceil(a/b) = floor((a+b-1)/b)</code>.
-	 * @param expr The expression of which to calculate the ceiling.
+	 * 
+	 * @param expr
+	 *            The expression of which to calculate the ceiling.
 	 * @return ceil(expr)
 	 */
 	public static Expression ceil (Expression expr)
@@ -541,9 +602,12 @@ public class ExpressionUtil
 
 	/**
 	 * Calculates the ceiling of the expression <code>expr</code>.
-	 * If the expression is a number, it is simplified. If it is a fraction it is treated specially:
+	 * If the expression is a number, it is simplified. If it is a fraction it
+	 * is treated specially:
 	 * we make use of the fact that <code>ceil(a/b) = floor((a+b-1)/b)</code>.
-	 * @param expr The expression of which to calculate the ceiling.
+	 * 
+	 * @param expr
+	 *            The expression of which to calculate the ceiling.
 	 * @return ceil(expr)
 	 */
 	public static Expression ceil (Expression expr, boolean bSimplify)
@@ -598,10 +662,13 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Calculates the ceiling of the expression <code>exprNumerator / exprDenominator</code>.
+	 * Calculates the ceiling of the expression
+	 * <code>exprNumerator / exprDenominator</code>.
 	 * If the expression is a number, it is simplified. Otherwise
 	 * we make use of the fact that <code>ceil(a/b) = floor((a+b-1)/b)</code>.
-	 * @param expr The expression of which to calculate the ceiling.
+	 * 
+	 * @param expr
+	 *            The expression of which to calculate the ceiling.
 	 * @return ceil(expr)
 	 */
 	public static Expression ceil (Expression exprNumerator, Expression exprDenominator)
@@ -610,10 +677,13 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Calculates the ceiling of the expression <code>exprNumerator / exprDenominator</code>.
+	 * Calculates the ceiling of the expression
+	 * <code>exprNumerator / exprDenominator</code>.
 	 * If the expression is a number, it is simplified. Otherwise
 	 * we make use of the fact that <code>ceil(a/b) = floor((a+b-1)/b)</code>.
-	 * @param expr The expression of which to calculate the ceiling.
+	 * 
+	 * @param expr
+	 *            The expression of which to calculate the ceiling.
 	 * @return ceil(expr)
 	 */
 	public static Expression ceil (Expression exprNumerator, Expression exprDenominator, boolean bSimplify)
@@ -623,10 +693,10 @@ public class ExpressionUtil
 		String strDenominator = exprDenominator.toString ();
 		Map<String, Map<Boolean, Expression>> mapCeil2 = m_mapCeil.get (strNumerator);
 		if (mapCeil2 == null)
-			m_mapCeil.put (strNumerator, mapCeil2 = new HashMap<String, Map<Boolean, Expression>> ());
+			m_mapCeil.put (strNumerator, mapCeil2 = new HashMap<> ());
 		Map<Boolean, Expression> map = mapCeil2.get (strDenominator);
 		if (map == null)
-			mapCeil2.put (strDenominator, map = new HashMap<Boolean, Expression> ());
+			mapCeil2.put (strDenominator, map = new HashMap<> ());
 		Expression exprResult = map.get (bSimplify);
 		if (exprResult != null)
 		{
@@ -635,7 +705,7 @@ public class ExpressionUtil
 			return exprResult.clone ();
 		}
 
-		// calculate explicitly if both numerator and denomiator are literals
+		// calculate explicitly if both numerator and denominator are literals
 		if (exprNumerator instanceof Literal && exprDenominator instanceof Literal)
 		{
 			double fNumerator = 0;
@@ -692,10 +762,13 @@ public class ExpressionUtil
 	}
 
 	/**
-	 * Retrieves the first specifier that is encountered within <code>trv</code>.
-	 * @param trv The traversable in which to search for a {@link Specifier}
-	 * @return The first specifier encountered in <code>trv</code> or <code>specDefault</code>
-	 * 	if no {@link Specifier} could be found
+	 * Retrieves the first specifier that is encountered within <code>trv</code>
+	 * .
+	 * 
+	 * @param trv
+	 *            The traversable in which to search for a {@link Specifier}
+	 * @return The first specifier encountered in <code>trv</code> or
+	 *         <code>specDefault</code> if no {@link Specifier} could be found
 	 */
 	public static Specifier getSpecifier (Traversable[] rgTraversables, Specifier specDefault)
 	{
@@ -720,7 +793,9 @@ public class ExpressionUtil
 
 	/**
 	 * Counts the number of Flops in the expression <code>expr</code>.
-	 * @param expr The expression in which to count the number of Flops
+	 * 
+	 * @param expr
+	 *            The expression in which to count the number of Flops
 	 * @return The number of Flops in the expression <code>expr</code>
 	 */
 	public static int getNumberOfFlops (Expression expr)
@@ -750,8 +825,10 @@ public class ExpressionUtil
 
 	/**
 	 * Returns a binary expression for <code>expr+1</code>.
+	 * 
 	 * @param expr
-	 * @return
+	 *            The expression to increment
+	 * @return <code>expr+1</code>
 	 */
 	public static Expression increment (Expression expr)
 	{
@@ -760,11 +837,29 @@ public class ExpressionUtil
 
 	/**
 	 * Returns a binary expression for <code>expr-1</code>.
+	 * 
 	 * @param expr
-	 * @return
+	 *            The expression to decrement
+	 * @return <code>expr-1</code>
 	 */
 	public static Expression decrement (Expression expr)
 	{
 		return new BinaryExpression (expr, BinaryOperator.SUBTRACT, Globals.ONE.clone ());
+	}
+	
+	/**
+	 * Creates a {@link FloatLiteral} for the datatype <code>specDatatype</code>
+	 * .
+	 * 
+	 * @param fValue
+	 *            The value of the literal
+	 * @param specDatatype
+	 *            The datatype of the literal
+	 * @return A number literal with value <code>fValue</code> and datatype
+	 *         <code>specDatatype</code>
+	 */
+	public static FloatLiteral createFloatLiteral (double fValue, Specifier specDatatype)
+	{
+		return new FloatLiteral (fValue, specDatatype.equals (Specifier.FLOAT) ? "f" : "");
 	}
 }

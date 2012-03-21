@@ -46,7 +46,7 @@ public class MetaHeuristicOptimizer extends AbstractOptimizer
 				protected double evaluate (IChromosome chromosome)
 				{
 					StringBuilder sbResult = new StringBuilder ();					
-					double fResult = run.execute (getParametersFromChromosome (chromosome), sbResult, checkBounds ());
+					double fResult = run.execute (MetaHeuristicOptimizer.getParametersFromChromosome (chromosome), sbResult, checkBounds ());
 					chromosome.setApplicationData (sbResult.toString ());
 
 					// JGAP maximizes the fitness function, and only positive results are allowed
@@ -96,7 +96,7 @@ public class MetaHeuristicOptimizer extends AbstractOptimizer
 	    setProgramOutput ((String) chromosome.getApplicationData ());
 	}
 	
-	private int[] getParametersFromChromosome (IChromosome chromosome)
+	private static int[] getParametersFromChromosome (IChromosome chromosome)
 	{
 		int rgParams[] = new int[chromosome.getGenes ().length];
 		for (int i = 0; i < rgParams.length; i++)

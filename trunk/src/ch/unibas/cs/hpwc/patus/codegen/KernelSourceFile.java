@@ -60,11 +60,12 @@ public class KernelSourceFile
 		}
 
 		// write the code
+		PrintWriter out = null;
 		try
 		{
 			KernelSourceFile.LOGGER.info ("Writing kernel source...");
 
-			PrintWriter out = new PrintWriter (new IndentOutputStream (new FileOutputStream (new File (fileOutputDirectory, m_unit.getOutputFilename ()))));
+			out = new PrintWriter (new IndentOutputStream (new FileOutputStream (new File (fileOutputDirectory, m_unit.getOutputFilename ()))));
 			out.println (cg.getIncludesAndDefines (true));
 
 			String strAdditionalKernelSpecificCode = data.getCodeGenerators ().getBackendCodeGenerator ().getAdditionalKernelSpecificCode ();
@@ -81,6 +82,11 @@ public class KernelSourceFile
 		catch (IOException e)
 		{
 			e.printStackTrace ();
+		}
+		finally
+		{
+			if (out != null)
+				out.close ();
 		}
 	}
 

@@ -212,7 +212,7 @@ public class StandaloneAutotuner
 					return false;
 	
 				// assign the parameter list
-				List<Integer> listValues = new LinkedList<Integer> ();
+				List<Integer> listValues = new LinkedList<> ();
 				int nParamsCount = 0;
 				for (int k = nStartValue; k <= nEndValue; k = bIsStepMultiplicative ? k * nStep : k + nStep)
 				{
@@ -284,8 +284,8 @@ public class StandaloneAutotuner
 
 		m_strFilename = m_rgParams[0];
 
-		m_listParamSets = new ArrayList<ParamSet> (m_rgParams.length - 1);
-		m_listConstraints = new ArrayList<Expression> ();
+		m_listParamSets = new ArrayList<> (m_rgParams.length - 1);
+		m_listConstraints = new ArrayList<> ();
 
 		for (int i = 1; i < m_rgParams.length; i++)
 		{
@@ -334,7 +334,7 @@ public class StandaloneAutotuner
 						throw new RuntimeException ("Malformed argument " + m_rgParams[i]);
 
 					// assign the parameter list
-					List<Integer> listValues = new LinkedList<Integer> ();
+					List<Integer> listValues = new LinkedList<> ();
 					int nParamsCount = 0;
 					for (int k = nStartValue; k <= nEndValue; k = bIsStepMultiplicative ? k * nStep : k + nStep)
 					{

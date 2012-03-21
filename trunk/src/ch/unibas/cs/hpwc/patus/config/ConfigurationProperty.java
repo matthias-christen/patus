@@ -115,7 +115,7 @@ public class ConfigurationProperty
 		m_strKey = StringUtil.concat (strCategory, ".", strName);
 		
 		// set values
-		m_listValues = new ArrayList<Object> (rgValues.length);
+		m_listValues = new ArrayList<> (rgValues.length);
 		for (Object objValue : rgValues)
 			m_listValues.add (objValue);
 	}

@@ -96,7 +96,7 @@ public class StrategyFix
 
 						if (sgit.getIterator ().getVectorIndices () != null)
 						{
-							List<Expression> listVectorIndices = new ArrayList<Expression> (sgit.getIterator ().getVectorIndices ().size ());
+							List<Expression> listVectorIndices = new ArrayList<> (sgit.getIterator ().getVectorIndices ().size ());
 							for (Expression exprVecIdx : sgit.getIterator ().getVectorIndices ())
 								listVectorIndices.add (exprVecIdx.clone ());
 							sdidEmbed.setVectorIndex (listVectorIndices);
@@ -112,7 +112,7 @@ public class StrategyFix
 
 						if (sgit.getIterator ().getVectorIndices () != null)
 						{
-							List<Expression> listVectorIndices = new ArrayList<Expression> (sgit.getIterator ().getVectorIndices ().size ());
+							List<Expression> listVectorIndices = new ArrayList<> (sgit.getIterator ().getVectorIndices ().size ());
 							for (Expression exprVecIdx : sgit.getIterator ().getVectorIndices ())
 								listVectorIndices.add (exprVecIdx.clone ());
 							sdidPoint.setVectorIndex (listVectorIndices);

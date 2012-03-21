@@ -81,11 +81,11 @@ public class Configuration
 
 	private Configuration ()
 	{
-		m_listConfigurables = new LinkedList<IConfigurable> ();
-		m_mapProperties = new HashMap<String, ConfigurationProperty> ();
+		m_listConfigurables = new LinkedList<> ();
+		m_mapProperties = new HashMap<> ();
 
 		m_properties = new Properties ();
-		String strConfigPath = getConfigFilePath ();
+		String strConfigPath = Configuration.getConfigFilePath ();
 		File filePath = new File (strConfigPath);
 		if (!filePath.exists ())
 			filePath.mkdirs ();
@@ -104,7 +104,7 @@ public class Configuration
 	 * Returns the path to the configuration file
 	 * @return
 	 */
-	private String getConfigFilePath ()
+	private static String getConfigFilePath ()
 	{
 		if (System.getProperty ("os.name").indexOf ("Windows") != -1)
 		{

@@ -23,13 +23,16 @@ import ch.unibas.cs.hpwc.patus.graph.IParametrizedVertex;
 public class GraphColoringGreedy<V extends IParametrizedVertex<Integer>, E extends IEdge<V>>
 {
 	/**
-	 * Colors the vertices of the graph <code>graph</code> using the greedy algorithm.
-	 * @param graph The graph whose vertices to color
+	 * Colors the vertices of the graph <code>graph</code> using the greedy
+	 * algorithm.
+	 * 
+	 * @param graph
+	 *            The graph whose vertices to color
 	 * @return The number of colors used for the coloring
 	 */
 	public static <V extends IParametrizedVertex<Integer>, E extends IEdge<V>> int run (IGraph<V, E> graph)
 	{
-		return new GraphColoringGreedy<V, E> (graph).run ();
+		return new GraphColoringGreedy<> (graph).run ();
 	}
 
 	
@@ -58,12 +61,13 @@ public class GraphColoringGreedy<V extends IParametrizedVertex<Integer>, E exten
 	private GraphColoringGreedy (IGraph<V, E> graph)
 	{
 		m_graph = graph;
-		m_listColors = new ArrayList<Integer> ();
+		m_listColors = new ArrayList<> ();
 		m_nLastColor = 0;
 	}
 	
 	/**
 	 * Runs the greedy vertex coloring algorithm.
+	 * 
 	 * @return The number of colors used for the coloring
 	 */
 	private int run ()
@@ -95,7 +99,7 @@ public class GraphColoringGreedy<V extends IParametrizedVertex<Integer>, E exten
 	 */
 	private Collection<Integer> getUnusedColors (V vertex)
 	{
-		Map<Integer, Boolean> mapColors = new HashMap<Integer, Boolean> ();
+		Map<Integer, Boolean> mapColors = new HashMap<> ();
 		for (int nCol : m_listColors)
 			mapColors.put (nCol, Boolean.TRUE);
 		

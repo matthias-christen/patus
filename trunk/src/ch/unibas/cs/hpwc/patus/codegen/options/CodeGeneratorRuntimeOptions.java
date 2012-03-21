@@ -50,7 +50,7 @@ public class CodeGeneratorRuntimeOptions implements Cloneable
 
 	public CodeGeneratorRuntimeOptions ()
 	{
-		m_mapOptions = new HashMap<String, Object> ();
+		m_mapOptions = new HashMap<> ();
 	}
 
 	public void setOption (String strOption, Object objValue)

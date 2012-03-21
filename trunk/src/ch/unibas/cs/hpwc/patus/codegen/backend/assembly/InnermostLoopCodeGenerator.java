@@ -122,7 +122,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			StatementListBundle slb = new StatementListBundle ();
 			
 			// generate the instruction list doing the computation
-			Map<StencilNode, IOperand.IRegisterOperand> mapReuse = new HashMap<StencilNode, IOperand.IRegisterOperand> ();
+			Map<StencilNode, IOperand.IRegisterOperand> mapReuse = new HashMap<> ();
 			for (String strGrid : m_mapReuseNodesToRegisters.keySet ())
 			{
 				Map<StencilNode, IOperand.IRegisterOperand> map = m_mapReuseNodesToRegisters.get (strGrid);
@@ -139,7 +139,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			InstructionList ilComputation = m_assemblySection.translate (ilComputationTemp, specType);
 							
 			// generate the loop
-			Map<String, String> mapUnalignedMoves = new HashMap<String, String> ();
+			Map<String, String> mapUnalignedMoves = new HashMap<> ();
 			Intrinsic intrMoveFpr = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), specType);
 			Intrinsic intrMoveFprUnaligned = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), specType);
 			mapUnalignedMoves.put (intrMoveFpr.getName (), intrMoveFprUnaligned.getName ());
@@ -176,14 +176,14 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		 */
 		private void assignReuseRegisters (InstructionList il)
 		{
-			m_mapReuseNodesToRegisters = new HashMap<String, Map<StencilNode, IOperand.IRegisterOperand>> ();
-			m_mapRegistersToReuseNodes = new HashMap<IOperand.IRegisterOperand, StencilNode> ();
-			m_listReuseRegisterSets = new LinkedList<List<IOperand.IRegisterOperand>> ();
+			m_mapReuseNodesToRegisters = new HashMap<> ();
+			m_mapRegistersToReuseNodes = new HashMap<> ();
+			m_listReuseRegisterSets = new LinkedList<> ();
 			
 			for (StencilNodeSet set : findReuseStencilNodeSets ())
 			{
 				// sort nodes by unit stride direction coordinate
-				List<StencilNode> listNodes = new ArrayList<StencilNode> (set.size ());
+				List<StencilNode> listNodes = new ArrayList<> (set.size ());
 				for (StencilNode n : set)
 					listNodes.add (n);
 				Collections.sort (listNodes, new Comparator<StencilNode> ()
@@ -196,7 +196,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				});
 				
 				// request registers for reuse stencil nodes
-				List<IOperand.IRegisterOperand> listSet = new LinkedList<IOperand.IRegisterOperand> ();
+				List<IOperand.IRegisterOperand> listSet = new LinkedList<> ();
 				m_listReuseRegisterSets.add (listSet);
 				
 				int nPrevCoord = Integer.MIN_VALUE;
@@ -217,7 +217,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 					
 					Map<StencilNode, IOperand.IRegisterOperand> map = m_mapReuseNodesToRegisters.get (node.getName ());
 					if (map == null)
-						m_mapReuseNodesToRegisters.put (node.getName (), map = new HashMap<StencilNode, IOperand.IRegisterOperand> ());
+						m_mapReuseNodesToRegisters.put (node.getName (), map = new HashMap<> ());
 					
 					// request a new register for the actual node
 					IOperand.IRegisterOperand opReg = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
@@ -266,7 +266,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			}
 			
 			// find stencil node sets to reuse within the innermost loop
-			ReuseNodesCollector reuse = new ReuseNodesCollector (m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ().getAllNodes (), 0);
+			ReuseNodesCollector reuse = new ReuseNodesCollector (
+				m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ().getAllNodes (), 0, getSIMDVectorLength ());
 			reuse.addUnrollNodes (0, m_nUnrollFactor);
 			return reuse.getSetsWithMaxNodesConstraint (nAvailableRegisters);
 		}
@@ -298,7 +299,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		 */
 		private void assignConstantRegisters (InstructionList il)
 		{
-			m_mapConstantsAndParams = new HashMap<Expression, IOperand.IRegisterOperand> ();
+			m_mapConstantsAndParams = new HashMap<> ();
 			if (m_assemblySection.getConstantsAndParamsCount () < MAX_REGISTERS_FOR_CONSTANTS)
 			{
 				for (Expression exprConstOrParam : m_assemblySection.getConstantsAndParams ())
@@ -345,8 +346,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		 * Returns the instruction list implementing the header of the prolog
 		 * loop.
 		 * The prolog loop header precedes the prolog computation, which deals
-		 * with non-aligned
-		 * first grid points.
+		 * with non-aligned first grid points.
 		 * 
 		 * @return The prolog loop header instruction list
 		 */

@@ -112,7 +112,7 @@ public class DomainPointEnumerator implements Iterable<int[]>
 
 	public DomainPointEnumerator ()
 	{
-		m_listDimensions = new ArrayList<MinMax> ();
+		m_listDimensions = new ArrayList<> ();
 		m_nPointsCount = 1;
 	}
 

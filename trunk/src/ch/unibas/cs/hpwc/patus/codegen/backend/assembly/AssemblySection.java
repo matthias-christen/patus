@@ -74,6 +74,8 @@ public class AssemblySection
 	 * The set of registers which got clobbered during the inline assembly section
 	 */
 	protected Set<IOperand.Register> m_setClobberedRegisters;
+	
+	boolean m_bIsMemoryClobbered;
 
 	/**
 	 * Data structure identifying which registers are currently in use
@@ -200,6 +202,11 @@ public class AssemblySection
 		m_mapRegisterUsage.put (register, false);
 	}
 	
+	public void setMemoryClobbered (boolean bMemoryClobbered)
+	{
+		m_bIsMemoryClobbered = bMemoryClobbered;
+	}
+	
 	/**
 	 * Returns the list of inputs as a string.
 	 * @return The list of inputs as a string
@@ -266,6 +273,9 @@ public class AssemblySection
 			
 			sbClobberedRegisters.append ('"');
 		}
+		
+		if (m_bIsMemoryClobbered)
+			sbClobberedRegisters.append (", \"memory\"");
 
 		return sbClobberedRegisters.toString ();
 	}

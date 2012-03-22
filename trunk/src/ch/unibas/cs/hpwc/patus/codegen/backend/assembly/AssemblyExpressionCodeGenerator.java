@@ -90,7 +90,7 @@ public class AssemblyExpressionCodeGenerator
 		int nUnrollFactor = options.getIntValue (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR);
 		
 		// apply fused multiply adds/subs if corresponding intrinsics are defined
-		Expression exprFMAed = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (expr, m_assemblySection.getDatatype ());
+		Expression exprFMAed = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (expr, m_assemblySection.getDatatype (), false);
 		
 		// generate the inline assembly code
 		m_allocator.countRegistersNeeded (exprFMAed);

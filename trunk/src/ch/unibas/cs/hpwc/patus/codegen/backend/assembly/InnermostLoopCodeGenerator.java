@@ -24,6 +24,7 @@ import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -35,7 +36,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	///////////////////////////////////////////////////////////////////
 	// Constants
 	
-	public final static String INPUT_LOOPMAX = "loop_max";
+	public final static String INPUT_LOOPTRIPCOUNT = "loop_max";
 	
 	public final static String OPTION_INLINEASM_UNROLLFACTOR = "iasm_unroll";
 	
@@ -98,7 +99,16 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			m_nUnrollFactor = options.getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
 			
 			// add the length of the inner most loop as an input
-			m_assemblySection.addInput (INPUT_LOOPMAX, m_sdit.getDomainSubdomain ().getSize ().getCoord (0));
+			m_assemblySection.addInput (
+				INPUT_LOOPTRIPCOUNT,
+				ExpressionUtil.min (
+					m_sdit.getDomainSubdomain ().getSize ().getCoord (0),
+					m_data.getStencilCalculation ().getDomainSize ().getSize ().getCoord (0)
+				)
+			);
+			
+			// the memory will be clobbered after the stencil calculation
+			m_assemblySection.setMemoryClobbered (true);
 			
 			// request a register to be used as loop counter
 			m_regCounter = m_assemblySection.getFreeRegister (TypeRegisterType.GPR);		
@@ -257,7 +267,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			RegisterAllocator regcnt = new RegisterAllocator (m_data, m_assemblySection, null);
 			int nRegsForCalculations = 0;
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
-				nRegsForCalculations = Math.max (nRegsForCalculations, regcnt.countRegistersNeeded (stencil.getExpression ()));
+				if (!stencil.isConstant ())
+					nRegsForCalculations = Math.max (nRegsForCalculations, regcnt.countRegistersNeeded (stencil.getExpression ()));
 			nAvailableRegisters -= nRegsForCalculations * m_nUnrollFactor;
 			
 			// error if there are too few registers

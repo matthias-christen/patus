@@ -10,14 +10,18 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.codegen;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.BreadthFirstIterator;
 import cetus.hir.Expression;
+import cetus.hir.FunctionCall;
 import cetus.hir.Specifier;
 import cetus.hir.Traversable;
-import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
+import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 
 /**
  * This class replaces subexpressions that can be computed by a fused
@@ -31,6 +35,9 @@ public class FuseMultiplyAddCodeGenerator
 	// Member Variables
 
 	private CodeGeneratorSharedObjects m_data;
+	
+	private Map<Specifier, Boolean> m_mapHasFMA;
+	private Map<Specifier, Boolean> m_mapHasFMS;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -39,7 +46,78 @@ public class FuseMultiplyAddCodeGenerator
 	public FuseMultiplyAddCodeGenerator (CodeGeneratorSharedObjects data)
 	{
 		m_data = data;
+
+		m_mapHasFMA = new HashMap<> ();
+		m_mapHasFMS = new HashMap<> ();
 	}
+	
+	private boolean hasFMA (Specifier specDatatype)
+	{
+		return hasIntrinsic (TypeBaseIntrinsicEnum.FMA.value (), specDatatype, m_mapHasFMA);
+	}
+	
+	private boolean hasFMS (Specifier specDatatype)
+	{
+		return hasIntrinsic (TypeBaseIntrinsicEnum.FMS.value (), specDatatype, m_mapHasFMS);		
+	}
+	
+	private boolean hasIntrinsic (String strFnx, Specifier specDatatype, Map<Specifier, Boolean> map)
+	{
+		Boolean bHasIntrinsic = map.get (specDatatype);
+		if (bHasIntrinsic != null)
+			return bHasIntrinsic;
+		
+		boolean bHasIntr = m_data.getArchitectureDescription ().getIntrinsic (strFnx, specDatatype) != null;
+		map.put (specDatatype, bHasIntr);
+		return bHasIntr;
+	}
+	
+	private Expression createFMA (boolean bIsAdd, Expression exprSummand, Expression exprFactor1, Expression exprFactor2,
+		Specifier specDatatype, boolean bResolveToIntrinsics)
+	{
+		if (bIsAdd)
+		{
+			// fused multiply-add
+			
+			if (hasFMA (specDatatype))
+			{
+				if (bResolveToIntrinsics)
+				{
+					return m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
+						exprSummand.clone (), exprFactor1.clone (), exprFactor2.clone (), specDatatype, false);
+				}
+				
+				// don't resolve to an intrinsic; use the generic function
+				return new FunctionCall (
+					Globals.FNX_FMA.clone (),
+					CodeGeneratorUtil.expressions (exprSummand.clone (), exprFactor1.clone (), exprFactor2.clone ())
+				);
+			}
+			
+			// no FMA intrinsic defined
+			return null;
+		}
+		else
+		{
+			// fused multiply-subtract
+
+			if (hasFMS (specDatatype))
+			{
+				if (bResolveToIntrinsics)
+					return m_data.getCodeGenerators ().getBackendCodeGenerator ().fms (
+						exprSummand.clone (), exprFactor1.clone (), exprFactor2.clone (), specDatatype, false);
+				
+				// don't resolve to an intrinsic; use the generic function
+				return new FunctionCall (
+					Globals.FNX_FMS.clone (),
+					CodeGeneratorUtil.expressions (exprSummand.clone (), exprFactor1.clone (), exprFactor2.clone ()));
+			}
+			
+			// no FMS intrinsic defined
+			return null;
+		}
+	}
+	
 	
 	/**
 	 * Creates a new expression in which additions and multiplies are replaced
@@ -48,14 +126,23 @@ public class FuseMultiplyAddCodeGenerator
 	 * @param expression
 	 *            The expression in which to substitute multiply and add
 	 *            operations by a fused multiply-add
+	 * @param specDatatype
+	 *            The datatype of the expression
+	 * @param bResolveToIntrinsics
+	 *            Specifies whether FMA/FMS calls are to be resolved to
+	 *            intrinsics.
+	 *            If set to <code>true</code>, the intrinsic as defined in the
+	 *            architecture description will be used.
+	 *            If set to <code>false</code>, a generic function call named
+	 *            {@link TypeBaseIntrinsicEnum#FMA} or
+	 *            {@link TypeBaseIntrinsicEnum#FMS}, respectively, with
+	 *            arguments ("summand", "factor1", "factor2") (as defined in
+	 *            {@link Globals}) will be used.
 	 * @return A new expression containing fused multiply-adds
 	 */
-	public Expression applyFMAs (Expression expression, Specifier specDatatype)
+	public Expression applyFMAs (Expression expression, Specifier specDatatype, boolean bResolveToIntrinsics)
 	{
-		IArchitectureDescription arch = m_data.getArchitectureDescription ();
-		boolean bHasFMA = arch.getIntrinsic (TypeBaseIntrinsicEnum.FMA.value (), specDatatype) != null;
-		boolean bHasFMS = arch.getIntrinsic (TypeBaseIntrinsicEnum.FMS.value (), specDatatype) != null;
-		if (!bHasFMA && !bHasFMS)
+		if (!hasFMA (specDatatype) && !hasFMS (specDatatype))
 			return expression;
 		
 		boolean bFMAFound = false;
@@ -83,24 +170,16 @@ public class FuseMultiplyAddCodeGenerator
 						if (BinaryOperator.MULTIPLY.equals (bexprLeft.getOperator ()))
 						{
 							// conditions are met: create the FMA call
+							Expression exprFMA = createFMA (bIsAdd, bexprTop.getRHS (), bexprLeft.getLHS (), bexprLeft.getRHS (), specDatatype, bResolveToIntrinsics);
 
-							Expression exprFMA = bIsAdd ?
-								(bHasFMA ?
-									m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
-										bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false) :
-									bexprTop
-								) :
-								(bHasFMS ?
-									m_data.getCodeGenerators ().getBackendCodeGenerator ().fms (
-										bexprTop.getRHS ().clone (), bexprLeft.getLHS ().clone (), bexprLeft.getRHS ().clone (), specDatatype, false) :
-									bexprTop
-								);
-
-							if (bexprTop == exprNew)
-								exprNew = exprFMA;
-							else
-								bexprTop.swapWith (exprFMA);
-
+							if (exprFMA != null)
+							{
+								if (bexprTop == exprNew)
+									exprNew = exprFMA;
+								else
+									bexprTop.swapWith (exprFMA);
+							}
+							
 							bFMAFound = true;
 							break;
 						}
@@ -113,23 +192,16 @@ public class FuseMultiplyAddCodeGenerator
 						BinaryExpression bexprRight = (BinaryExpression) bexprTop.getRHS ();
 						if (BinaryOperator.MULTIPLY.equals (bexprRight.getOperator ()))
 						{
-							Expression exprFMA = bIsAdd ?
-								(bHasFMA ?
-									m_data.getCodeGenerators ().getBackendCodeGenerator ().fma (
-										bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false) :
-									bexprTop
-								) :
-								(bHasFMS ?
-									m_data.getCodeGenerators ().getBackendCodeGenerator ().fms (
-										bexprTop.getLHS ().clone (), bexprRight.getLHS ().clone (), bexprRight.getRHS ().clone (), specDatatype, false) :
-									bexprTop
-								);
+							Expression exprFMA = createFMA (bIsAdd, bexprTop.getLHS (), bexprRight.getLHS (), bexprRight.getRHS (), specDatatype, bResolveToIntrinsics);
 
-							if (bexprTop == exprNew)
-								exprNew = exprFMA;
-							else
-								bexprTop.swapWith (exprFMA);
-
+							if (exprFMA != null)
+							{
+								if (bexprTop == exprNew)
+									exprNew = exprFMA;
+								else
+									bexprTop.swapWith (exprFMA);
+							}
+							
 							bFMAFound = true;
 							break;
 						}
@@ -140,7 +212,7 @@ public class FuseMultiplyAddCodeGenerator
 
 		// recursively apply if an FMA has been found and replaced
 		if (bFMAFound)
-			return applyFMAs (exprNew, specDatatype);
+			return applyFMAs (exprNew, specDatatype, bResolveToIntrinsics);
 
 		return exprNew;
 	}

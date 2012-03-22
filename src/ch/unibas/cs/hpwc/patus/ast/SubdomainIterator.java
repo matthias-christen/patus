@@ -272,15 +272,6 @@ public class SubdomainIterator extends Loop
 			Symbolic.simplify (getNumberOfBlocksInDimension (nDim), Symbolic.ALL_VARIABLES_INTEGER));
 	}
 
-//	/**
-//	 * Adds the declarations for the iterator box to <code>cmpstmt</code>.
-//	 * @param cmpstmt
-//	 */
-//	public void addIteratorDeclarationsToCode (CompoundStatement cmpstmt)
-//	{
-//
-//	}
-
 	@Override
 	public String toString ()
 	{

@@ -179,22 +179,6 @@ public class StencilAssemblySection extends AssemblySection
 	}
 	
 	/**
-	 * Finds all the {@link FloatLiteral} in <code>trv</code> and calls
-	 * {@link StencilAssemblySection#addConstant(double, Specifier)} for each of the literals.
-	 * 
-	 * @param trv
-	 */
-	private void findConstants (Traversable trv)
-	{
-		for (DepthFirstIterator it = new DepthFirstIterator (trv); it.hasNext (); )
-		{
-			Object obj = it.next ();
-			if (obj instanceof FloatLiteral)
-				m_mapConstantsAndParams.put ((FloatLiteral) obj, m_mapConstantsAndParams.size ());
-		}
-	}
-
-	/**
 	 * Adds a single grid pointer as input.
 	 * 
 	 * @param node
@@ -268,6 +252,37 @@ public class StencilAssemblySection extends AssemblySection
 		m_mapStrides.put (arrBaseVector, (IOperand.IRegisterOperand) addInput (exprStride, exprStride));
 	}
 
+	private void addToConstantsAndParamsMap (Expression expr)
+	{
+		if (!m_mapConstantsAndParams.containsKey (expr))
+			m_mapConstantsAndParams.put (expr, m_mapConstantsAndParams.size ());
+	}
+	
+	/**
+	 * Finds all the {@link FloatLiteral}s and {@link NameID}s which are stencil
+	 * parameters in <code>trv</code> and adds them to the constants and
+	 * parameters map <code>m_mapConstantsAndParams</code>.
+	 * 
+	 * @param trv
+	 *            The {@link Traversable} to search for floating point literals
+	 *            and stencil parameters
+	 */
+	private void findConstantsAndParams (Traversable trv)
+	{
+		for (DepthFirstIterator it = new DepthFirstIterator (trv); it.hasNext (); )
+		{
+			Object obj = it.next ();
+			if (obj instanceof FloatLiteral)
+				addToConstantsAndParamsMap ((FloatLiteral) obj);
+			else if (obj instanceof NameID)
+			{
+				// if the NameID is a stencil parameter, add it to the map
+				if (m_data.getStencilCalculation ().isArgument (((NameID) obj).getName ()))
+					addToConstantsAndParamsMap ((NameID) obj);
+			}
+		}
+	}
+
 	/**
 	 * Adds the constants in <code>listConstants</code> to an array and uses the
 	 * address of the array as an input for the assembly section.
@@ -277,26 +292,23 @@ public class StencilAssemblySection extends AssemblySection
 	 */
 	public void addConstants ()
 	{
-		Map<StencilNode, Stencil> mapStencils = new HashMap<> ();
+		Map<NameID, Stencil> mapStencils = new HashMap<> ();
 
-		// add constants and constant stencils
+		// add constants/parameters and constant stencils
 		for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
 		{
 			if (!stencil.isConstant ())
-				findConstants (stencil.getExpression ());
+				findConstantsAndParams (stencil.getExpression ());
 			else
 			{
 				for (StencilNode nodeOut : stencil.getOutputNodes ())
 				{
-					m_mapConstantsAndParams.put (nodeOut, m_mapConstantsAndParams.size ());
-					mapStencils.put (nodeOut, stencil);
+					NameID nidNode = new NameID (nodeOut.getName ());
+					addToConstantsAndParamsMap (nidNode);
+					mapStencils.put (nidNode, stencil);
 				}
 			}
 		}
-		
-		// add stencil parameters
-		for (String strParamName : m_data.getStencilCalculation ().getArguments (EArgumentType.PARAMETER))
-			m_mapConstantsAndParams.put (new NameID (strParamName), m_mapConstantsAndParams.size ());
 		
 		// nothing to do if no constants have been found
 		if (m_mapConstantsAndParams.size () == 0)
@@ -307,8 +319,10 @@ public class StencilAssemblySection extends AssemblySection
 		for (Expression expr : m_mapConstantsAndParams.keySet ())
 		{
 			int nIdx = m_mapConstantsAndParams.get (expr);
-			if (expr instanceof StencilNode)
-				rgConstsAndParams[nIdx] = mapStencils.get (expr).getExpression ();
+			
+			Stencil stencil = mapStencils.get (expr);
+			if (stencil != null)
+				rgConstsAndParams[nIdx] = stencil.getExpression ();
 			else					
 				rgConstsAndParams[nIdx] = expr;
 		}

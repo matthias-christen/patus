@@ -205,8 +205,10 @@
 			<intrinsic base-name="minus" name="vsubsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg"/>
 			<intrinsic base-name="multiply" name="vmulsd" datatype="double" arguments="reg/mem,reg,=reg"/>
 			<intrinsic base-name="divide" name="vdivsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<!--
 			<intrinsic base-name="fma" name="vfmaddsd" datatype="double" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
 			<intrinsic base-name="fms" name="vfmsubsd" datatype="double" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			-->
 			<intrinsic base-name="move-fpr" name="vmovsd" datatype="double"/>
 
 			<!-- vector operations -->
@@ -218,8 +220,10 @@
 			<!--<intrinsic base-name="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
 			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
 			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>-->
+			<!--
 			<intrinsic base-name="fma" name="vfmaddpd" datatype="__m256d" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
 			<intrinsic base-name="fms" name="vfmsubpd" datatype="__m256d" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			-->
 			<intrinsic base-name="move-fpr" name="vmovapd" datatype="__m256d"/>
 			<intrinsic base-name="move-fpr-unaligned" name="vmovupd" datatype="__m256d"/>
 			
@@ -230,8 +234,10 @@
 			<intrinsic base-name="minus" name="vsubss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg"/>
 			<intrinsic base-name="multiply" name="vmulss" datatype="float" arguments="reg/mem,reg,=reg"/>
 			<intrinsic base-name="divide" name="vdivss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<!--
 			<intrinsic base-name="fma" name="vfmaddss" datatype="float" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
 			<intrinsic base-name="fms" name="vfmsubss" datatype="float" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			-->
 			<intrinsic base-name="move-fpr" name="vmovss" datatype="float"/>
 			
 			<!-- vector operations -->
@@ -243,8 +249,10 @@
 			<!--<intrinsic base-name="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
 			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
 			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>-->
+			<!--
 			<intrinsic base-name="fma" name="vfmaddps" datatype="__m256" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
 			<intrinsic base-name="fms" name="vfmsubps" datatype="__m256" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			-->
 			<intrinsic base-name="move-fpr" name="vmovaps" datatype="__m256"/>
 			<intrinsic base-name="move-fpr-unaligned" name="vmovups" datatype="__m256"/>
 		</intrinsics>

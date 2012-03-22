@@ -21,6 +21,7 @@ import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.FunctionCall;
 import cetus.hir.IDExpression;
+import cetus.hir.Identifier;
 import cetus.hir.Initializer;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.Literal;
@@ -32,6 +33,9 @@ import cetus.hir.Traversable;
 import cetus.hir.Typecast;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
+import cetus.hir.ValueInitializer;
+import cetus.hir.VariableDeclaration;
+import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
@@ -86,6 +90,12 @@ public class OpenMPCodeGenerator extends AbstractBackend
 			return 0;
 		};
 	};
+
+
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
+	private int m_nConstSuffix = 0;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -297,8 +307,11 @@ public class OpenMPCodeGenerator extends AbstractBackend
 		}
 		else
 		{
-			// TODO: create identifier for the non-vector expression and _mm_load1_ps it into the SIMD vector
-			throw new RuntimeException ("Not implemented");
+			VariableDeclarator decl = new VariableDeclarator (CodeGeneratorUtil.createNameID ("const", m_nConstSuffix++));
+			m_data.getData ().addDeclaration (new VariableDeclaration (specDatatype, decl));
+			decl.setInitializer (new ValueInitializer (expr.clone ()));
+			
+			return createExpressionInitializer (new Identifier (decl), nSIMDVectorLength);
 		}
 	}
 	

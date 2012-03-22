@@ -79,9 +79,9 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			l.addInstruction (new Instruction ("neg", regCounter));
 			l.addInstruction (new Instruction ("shr", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter));
 			
-			l.addInstruction (new Instruction ("cmp", regCounter, as.getInput (INPUT_LOOPMAX)));
+			l.addInstruction (new Instruction ("cmp", regCounter, as.getInput (INPUT_LOOPTRIPCOUNT)));
 			l.addInstruction (new Instruction ("jg",  Label.getLabelOperand (LABEL_PROLOGHDR_LESSTHANMAX)));
-			l.addInstruction (new Instruction ("mov", as.getInput (INPUT_LOOPMAX), regCounter));
+			l.addInstruction (new Instruction ("mov", as.getInput (INPUT_LOOPTRIPCOUNT), regCounter));
 			
 			l.addInstruction (Label.getLabel (LABEL_PROLOGHDR_LESSTHANMAX));
 			l.addInstruction (new Instruction ("mov", regCounter, m_regSaveCounter));
@@ -121,7 +121,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			// restore the loop counter
 			l.addInstruction (new Instruction ("mov", m_regSaveCounter, regCounter));
 			l.addInstruction (Label.getLabel (LABEL_MAINHDR));
-			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPMAX), regCounter));
+			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPTRIPCOUNT), regCounter));
 			l.addInstruction (new Instruction ("neg", regCounter));
 			l.addInstruction (new Instruction ("shr", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), regCounter));
 			l.addInstruction (new Instruction ("mov", regCounter, m_regTmp));
@@ -170,7 +170,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			
 			l.addInstruction (Label.getLabel (LABEL_EPILOGHDR));
 			l.addInstruction (new Instruction ("mov", new IOperand.Immediate (nSIMDVectorLength), regCounter));
-			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPMAX), regCounter));
+			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPTRIPCOUNT), regCounter));
 			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), m_regTmp));
 			l.addInstruction (new Instruction ("add", m_regTmp, regCounter));
 			l.addInstruction (new Instruction ("add", m_regSaveCounter, regCounter));

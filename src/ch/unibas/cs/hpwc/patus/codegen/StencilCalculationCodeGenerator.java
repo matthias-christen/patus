@@ -581,7 +581,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				boolean bFirst = true;
 
 				if (!bSuppressVectorization)
-					exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype);
+					exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype, true);
 
 				// add the stencil computation to the generated code
 				for (StencilNode nodeOutput : stencil.getOutputNodes ())

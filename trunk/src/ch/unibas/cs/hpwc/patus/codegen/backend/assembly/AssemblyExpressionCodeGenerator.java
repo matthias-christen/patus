@@ -13,6 +13,7 @@ import cetus.hir.Expression;
 import cetus.hir.FunctionCall;
 import cetus.hir.IDExpression;
 import cetus.hir.Literal;
+import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
@@ -55,6 +56,8 @@ public class AssemblyExpressionCodeGenerator
 	private Map<StencilNode, IOperand.IRegisterOperand> m_mapReuseNodesToRegisters;
 	
 	private Map<Expression, IOperand.IRegisterOperand> m_mapConstantsAndParams;
+	
+	private Map<NameID, IOperand.IRegisterOperand[]> m_mapTempoararies;
 		
 	private RegisterAllocator m_allocator;
 
@@ -64,13 +67,15 @@ public class AssemblyExpressionCodeGenerator
 
 	public AssemblyExpressionCodeGenerator (StencilAssemblySection as, CodeGeneratorSharedObjects data,
 		Map<StencilNode, IOperand.IRegisterOperand> mapReuseNodesToRegisters,
-		Map<Expression, IOperand.IRegisterOperand> mapConstantsAndParams)
+		Map<Expression, IOperand.IRegisterOperand> mapConstantsAndParams,
+		Map<NameID, IOperand.IRegisterOperand[]> mapTemporaries)
 	{
 		m_data = data;
 		m_assemblySection = as;
 		m_mapReuseNodesToRegisters = mapReuseNodesToRegisters;
 		m_mapConstantsAndParams = mapConstantsAndParams;
-		
+		m_mapTempoararies = mapTemporaries;
+				
 		Map<StencilNode, Boolean> mapReuse = new HashMap<> ();
 		for (StencilNode node : m_mapReuseNodesToRegisters.keySet ())
 			mapReuse.put (node, true);
@@ -97,15 +102,28 @@ public class AssemblyExpressionCodeGenerator
 		IOperand[] rgResult = traverse (exprFMAed, m_assemblySection.getDatatype (), nUnrollFactor, il);
 		
 		// write the result back
-		// TODO: handle temporaries (scalar stencil nodes)
 		if (nodeOutput.isScalar ())
 		{
-
+			IOperand.IRegisterOperand[] rgDest = new IOperand.IRegisterOperand[nUnrollFactor];
+			for (int i = 0; i < nUnrollFactor; i++)
+			{
+				if (rgResult[i] instanceof IOperand.IRegisterOperand)
+					rgDest[i] = (IOperand.IRegisterOperand) rgResult[i];
+				else
+				{
+					rgDest[i] = new IOperand.PseudoRegister ();
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
+				}
+			}
+			
+			m_mapTempoararies.put (new NameID (nodeOutput.getName ()), rgDest);
 		}
-		
-		IOperand[] rgDest = processStencilNode (nodeOutput, nUnrollFactor, il);
-		for (int i = 0; i < nUnrollFactor; i++)
-			il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
+		else
+		{
+			IOperand[] rgDest = processStencilNode (nodeOutput, nUnrollFactor, il);
+			for (int i = 0; i < nUnrollFactor; i++)
+				il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
+		}
 	}
 	
 	/**
@@ -128,7 +146,7 @@ public class AssemblyExpressionCodeGenerator
 		if (expr instanceof StencilNode)
 			return processStencilNode ((StencilNode) expr, nUnrollFactor, il);
 		if (expr instanceof Literal || expr instanceof IDExpression)
-			return processConstantOrParam (expr, nUnrollFactor, il);
+			return processConstantOrIdentifier (expr, nUnrollFactor, il);
 		
 		if (RegisterAllocator.isAddSubSubtree (expr))
 			return processAddSubSubtree (expr, specDatatype, nUnrollFactor, il);
@@ -264,8 +282,6 @@ public class AssemblyExpressionCodeGenerator
 		return AssemblyExpressionCodeGenerator.addInstruction (
 			il, nUnrollFactor, Globals.getIntrinsicBase (expr.getOperator ()).value (),
 			null, processArguments (specDatatype, nUnrollFactor, il, expr.getLHS (), expr.getRHS ()));
-
-		//isReservedRegister (rgOpRHS[i]) ? new IOperand.PseudoRegister () : rgOpRHS[i];
 	}
 	
 	/**
@@ -368,107 +384,28 @@ public class AssemblyExpressionCodeGenerator
 		return rgOpResults;
 	}
 	
-	private IOperand[] processVariable (IDExpression id, int nUnrollFactor, InstructionList il)
+	private IOperand[] processConstantOrIdentifier (Expression exprConstantOrIdentifier, int nUnrollFactor, InstructionList il)
 	{
-		if (m_mapConstantsAndParams.containsKey (id))
-			return new IOperand[] { m_mapConstantsAndParams.get (id) };
-		
-/*		
-		// if id is constant, we need only one register, otherwise we need nUnrollFactor registers
-		boolean bIsConstant =
-			m_data.getStencilCalculation ().getStencilBundle ().isConstantOutputStencilNode (id) ||
-			m_data.getStencilCalculation ().isArgument (id.getName ());
-		
-		// allocate pseudo registers
-		IOperand.IRegisterOperand[] rgRegs = new IOperand.IRegisterOperand[bIsConstant ? 1 : nUnrollFactor];		
-		for (int i = 0; i < rgRegs.length; i++)
+		// try to find the NameID in the temporaries map
+		IOperand[] rgResult = null;
+		if (exprConstantOrIdentifier instanceof NameID)
 		{
-			rgRegs[i] = new IOperand.PseudoRegister ();
-
-			// if id is a constant, load the value from memory
-			// otherwise assume it's a temporary variable
-			if (bIsConstant)
-			{
-				Intrinsic intrinsic = m_data.getArchitectureDescription ().getIntrinsic (
-					TypeBaseIntrinsicEnum.MOVE_FPR.value (), m_assemblySection.getDatatype ());
-				if (intrinsic == null)
-					throw new RuntimeException ("No FRP move instruction defined");
-				
-				il.addInstruction (new Instruction (intrinsic.getName (), new IOperand[] { X, rgRegs[i] }));
-			}
-		}
+			rgResult = m_mapTempoararies.get (exprConstantOrIdentifier);
+			if (rgResult != null)
+				return rgResult;
+		}		
 		
-		m_mapVariables.put (id.getName (), rgRegs);
-		
-		return rgRegs;
-*/
-		return null;
-	}
-	
-	private IOperand[] processConstantOrParam (Expression exprConstantOrParam, int nUnrollFactor, InstructionList il)
-	{
 		// find the register the constant is saved in or load the constant into a register (if too many registers)
-		IOperand[] rgResult = new IOperand[nUnrollFactor];
-		
-		IOperand op = m_mapConstantsAndParams.get (exprConstantOrParam);
+		IOperand op = m_mapConstantsAndParams.get (exprConstantOrIdentifier);
 		if (op == null)
-		{
-			// the constant or parameter is not contained in the map, i.e., there are no special registers
-			// reserved for them => load into a temporary register from memory
-			
-			op = m_assemblySection.getConstantOrParamAddress (exprConstantOrParam);
-			
-//			int nConstParamIdx = m_assemblySection.getConstantOrParamIndex (exprConstantOrParam);
-//			if (nConstParamIdx == -1)
-//			{
-//				// the constant/parameter was not found in the assembly section constant/param input array
-//				if (exprConstantOrParam instanceof IDExpression)
-//					return processVariable ((IDExpression) exprConstantOrParam, nUnrollFactor, il);
-//				
-//				throw new RuntimeException (StringUtil.concat ("Don't know how to process ", exprConstantOrParam.toString ()));
-//			}
-//			else
-//			{
-//				// the constant/parameter was found in the assembly section constant/param input array
-//				
-//				Specifier specType = m_assemblySection.getDatatype ();
-//				int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (specType);
-//				
-////				il.addInstruction (new Instruction (
-////					TypeBaseIntrinsicEnum.MOVE_FPR.value (),
-////					new IOperand[] {
-////						new IOperand.Address (
-////							(IOperand.IRegisterOperand) m_assemblySection.getInput (StencilAssemblySection.INPUT_CONSTANTS_ARRAYPTR),
-////							nConstParamIdx * AssemblySection.getTypeSize (specType) * nSIMDVectorLength),
-////						op = new IOperand.PseudoRegister ()
-////					}
-////				));
-//				
-//				op = m_assemblySection.getConstantOrParamAddress ();
-//			}
-		}
+			op = m_assemblySection.getConstantOrParamAddress (exprConstantOrIdentifier);
 		
+		if (op == null)
+			throw new RuntimeException (StringUtil.concat ("Could not find or resolve ", exprConstantOrIdentifier.toString ()));
+				
+		rgResult = new IOperand[nUnrollFactor];
 		for (int i = 0; i < nUnrollFactor; i++)
 			rgResult[i] = op;
 		return rgResult;
-	}
-	
-	/**
-	 * Determines whether <code>opReg</code> is a register reserved for stencil
-	 * node
-	 * reuse or for constants.
-	 * 
-	 * @param opReg
-	 *            The register operand to test
-	 * @return <code>true</code> iff <code>opReg</code> is a reserved register
-	 */
-	private boolean isReservedRegister (IOperand opReg)
-	{
-		if (m_mapReuseNodesToRegisters.containsValue (opReg))
-			return true;
-		if (m_mapConstantsAndParams.containsValue (opReg))
-			return true;
-		
-		return false;
-	}
+	}	
 }

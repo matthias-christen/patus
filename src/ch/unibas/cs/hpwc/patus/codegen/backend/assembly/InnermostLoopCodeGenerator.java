@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import cetus.hir.Expression;
+import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
@@ -89,12 +90,16 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		 * Maps constant values to registers, in which the constants are stored during the computation
 		 */
 		private Map<Expression, IOperand.IRegisterOperand> m_mapConstantsAndParams;
+		
+		private Map<NameID, IOperand.IRegisterOperand[]> m_mapTemporaries;
 
 		
 		public CodeGenerator (SubdomainIterator sdit, CodeGeneratorRuntimeOptions options)
 		{
 			m_sdit = sdit;
 			m_options = options;
+			
+			m_mapTemporaries = new HashMap<> ();
 			
 			m_assemblySection = new StencilAssemblySection (m_data, m_sdit.getIterator (), m_options);
 			m_nUnrollFactor = options.getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
@@ -216,7 +221,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		
 		private InstructionList generateComputation (Map<StencilNode, IRegisterOperand> mapReuse, CodeGeneratorRuntimeOptions options)
 		{
-			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams);
+			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (
+				m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams, m_mapTemporaries);
 
 			InstructionList il = new InstructionList ();
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())

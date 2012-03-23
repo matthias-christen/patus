@@ -26,7 +26,6 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperan
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.FindStencilNodeBaseVectors;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
-import ch.unibas.cs.hpwc.patus.representation.StencilCalculation.EArgumentType;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;

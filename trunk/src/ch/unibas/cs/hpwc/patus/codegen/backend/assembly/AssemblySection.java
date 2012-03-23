@@ -202,6 +202,11 @@ public class AssemblySection
 		m_mapRegisterUsage.put (register, false);
 	}
 	
+	public void killAllRegisters ()
+	{
+		m_mapRegisterUsage.clear ();
+	}
+
 	public void setMemoryClobbered (boolean bMemoryClobbered)
 	{
 		m_bIsMemoryClobbered = bMemoryClobbered;

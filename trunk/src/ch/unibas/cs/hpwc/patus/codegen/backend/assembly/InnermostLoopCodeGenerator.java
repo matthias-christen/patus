@@ -21,6 +21,7 @@ import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.IInnermostLoopCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -132,42 +133,63 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			StatementListBundle slb = new StatementListBundle ();
 			
 			// generate the instruction list doing the computation
-			Map<StencilNode, IOperand.IRegisterOperand> mapReuse = new HashMap<> ();
-			for (String strGrid : m_mapReuseNodesToRegisters.keySet ())
-			{
-				Map<StencilNode, IOperand.IRegisterOperand> map = m_mapReuseNodesToRegisters.get (strGrid);
-				for (StencilNode node : map.keySet ())
-					mapReuse.put (node, map.get (node));
-			}
+			Map<StencilNode, IOperand.IRegisterOperand> mapReuse = createReuseMap ();
+										
+			// generate the instructions for the computation
+			InstructionList ilComputationTempUnrolled = generateComputation (mapReuse, m_options);
 			
-			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams);
-			
-			InstructionList ilComputationTemp = new InstructionList ();
-			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
+			// create a non-unrolled version for prologue and epilogue loops
+			InstructionList ilComputationTempNotUnrolled = ilComputationTempUnrolled;
+			int nUnrollingFactor = m_options.getIntValue (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR);
+			if (nUnrollingFactor != 1)
 			{
-				if (!stencil.isConstant ())
-					cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), ilComputationTemp, m_options);
+				CodeGeneratorRuntimeOptions optNoUnroll = m_options.clone ();
+				optNoUnroll.setOption (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR, 1);
+				ilComputationTempNotUnrolled = generateComputation (mapReuse, optNoUnroll);
 			}
 				
 			// translate the generic instruction list to the architecture-specific one
-			InstructionList ilComputation = m_assemblySection.translate (ilComputationTemp, specType);
+			InstructionList ilComputationUnrolled = m_assemblySection.translate (ilComputationTempUnrolled, specType);
+			InstructionList ilComputationNotUnrolled = ilComputationUnrolled;
+			if (nUnrollingFactor != 1)
+			{
+				m_assemblySection.killAllRegisters ();
+				ilComputationNotUnrolled = m_assemblySection.translate (ilComputationTempNotUnrolled, specType);
+			}
 							
 			// generate the loop
 			Map<String, String> mapUnalignedMoves = new HashMap<> ();
 			Intrinsic intrMoveFpr = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), specType);
 			Intrinsic intrMoveFprUnaligned = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), specType);
 			mapUnalignedMoves.put (intrMoveFpr.getName (), intrMoveFprUnaligned.getName ());
+			
+			InstructionList ilComputationNotUnrolledUnaligned = ilComputationNotUnrolled.replaceInstructions (mapUnalignedMoves);
 						
+			// unaligned prologue
 			il.addInstructions (m_assemblySection.translate (generatePrologHeader (), specType));
-			il.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
+			il.addInstructions (ilComputationNotUnrolledUnaligned);
 			il.addInstructions (m_assemblySection.translate (generatePrologFooter (), specType));
 			
-			il.addInstructions (m_assemblySection.translate (generateMainHeader (), specType));
-			il.addInstructions (ilComputation);
-			il.addInstructions (m_assemblySection.translate (generateMainFooter (), specType));
+			// unrolled main loop
+			il.addInstructions (m_assemblySection.translate (generateUnrolledMainHeader (), specType));
+			il.addInstructions (ilComputationUnrolled);
+			il.addInstructions (m_assemblySection.translate (generateUnrolledMainFooter (), specType));
 			
+			// non-unrolled, aligned main computation (clean up unrolling)
+			if (nUnrollingFactor > 1)
+			{
+				InstructionList ilSimpleMainHeader = generateSimpleMainHeader ();
+				if (ilSimpleMainHeader != null)
+				{
+					il.addInstructions (m_assemblySection.translate (ilSimpleMainHeader, specType));
+					il.addInstructions (ilComputationNotUnrolled);
+					il.addInstructions (m_assemblySection.translate (generateSimpleMainFooter (), specType));
+				}
+			}
+			
+			// unaligned epilogue
 			il.addInstructions (m_assemblySection.translate (generateEpilogHeader (), specType));
-			il.addInstructions (ilComputation.replaceInstructions (mapUnalignedMoves));
+			il.addInstructions (ilComputationNotUnrolledUnaligned);
 			il.addInstructions (m_assemblySection.translate (generateEpilogFooter (), specType));
 			
 			// create the inline assembly statement
@@ -177,6 +199,33 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			slb.addStatement (stmt);
 			
 			return slb;
+		}
+		
+		private Map<StencilNode, IOperand.IRegisterOperand> createReuseMap ()
+		{
+			Map<StencilNode, IOperand.IRegisterOperand> mapReuse = new HashMap<> ();
+			for (String strGrid : m_mapReuseNodesToRegisters.keySet ())
+			{
+				Map<StencilNode, IOperand.IRegisterOperand> map = m_mapReuseNodesToRegisters.get (strGrid);
+				for (StencilNode node : map.keySet ())
+					mapReuse.put (node, map.get (node));
+			}
+			
+			return mapReuse;
+		}
+		
+		private InstructionList generateComputation (Map<StencilNode, IRegisterOperand> mapReuse, CodeGeneratorRuntimeOptions options)
+		{
+			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams);
+
+			InstructionList il = new InstructionList ();
+			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
+			{
+				if (!stencil.isConstant ())
+					cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), il, options);
+			}
+			
+			return il;
 		}
 		
 		/**
@@ -293,19 +342,35 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		 */
 		protected void rotateReuseRegisters (InstructionList il)
 		{
+			int nUnrollingFactor = m_options.getIntValue (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR);
+				
 			for (List<IOperand.IRegisterOperand> listSet : m_listReuseRegisterSets)
 			{
+				IOperand.IRegisterOperand[] rgRegs = new IOperand.IRegisterOperand[listSet.size ()];
+				listSet.toArray (rgRegs);
+				int i = 0;
+
 				// swap registers
-				IOperand.IRegisterOperand opPrev = null;
-				for (IOperand.IRegisterOperand op : listSet)
+				for ( ; i < rgRegs.length - nUnrollingFactor; i++)
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgRegs[i + nUnrollingFactor], rgRegs[i]));
+
+				// load new values into the register that corresponds to the largest coordinates
+				for ( ; i < rgRegs.length; i++)
 				{
-					if (opPrev != null)
-						il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, op, opPrev));
-					opPrev = op;
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED,
+						m_assemblySection.getGrid (m_mapRegistersToReuseNodes.get (rgRegs[i]), 0), rgRegs[i]));
 				}
 				
-				// load a new value into the register that corresponds to the largest coordinate
-				il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, m_assemblySection.getGrid (m_mapRegistersToReuseNodes.get (opPrev), 0), opPrev));
+//				IOperand.IRegisterOperand opPrev = null;
+//				for (IOperand.IRegisterOperand op : listSet)
+//				{
+//					if (opPrev != null)
+//						il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, op, opPrev));
+//					opPrev = op;
+//				}
+//				
+//				// load a new value into the register that corresponds to the largest coordinate
+//				il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, m_assemblySection.getGrid (m_mapRegistersToReuseNodes.get (opPrev), 0), opPrev));
 			}
 		}
 		
@@ -377,14 +442,26 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		 * 
 		 * @return
 		 */
-		abstract public InstructionList generateMainHeader ();
+		abstract public InstructionList generateUnrolledMainHeader ();
 		
 		/**
 		 * 
 		 * @return
 		 */
-		abstract public InstructionList generateMainFooter ();
+		abstract public InstructionList generateUnrolledMainFooter ();
 		
+		/**
+		 * 
+		 * @return
+		 */
+		abstract public InstructionList generateSimpleMainHeader ();
+		
+		/**
+		 * 
+		 * @return
+		 */
+		abstract public InstructionList generateSimpleMainFooter ();
+
 		/**
 		 * 
 		 * @return

@@ -26,8 +26,10 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 	// Constants
 	
 	private final static String LABEL_PROLOGHDR_LESSTHANMAX = "phdr_ltmax";
-	private final static String LABEL_MAINHDR = "mhdr";
-	private final static String LABEL_MAINHDR_STARTCOMPUTATION = "mhdr_startcomp";
+	private final static String LABEL_UNROLLEDMAINHDR = "umhdr";
+	private final static String LABEL_UNROLLEDMAINHDR_STARTCOMPUTATION = "umhdr_startcomp";
+	private final static String LABEL_SIMPLEMAINHDR = "smhdr";
+	private final static String LABEL_SIMPLEMAINHDR_STARTCOMPUTATION = "smhdr_startcomp";
 	private final static String LABEL_EPILOGHDR = "ehdr";
 	private final static String LABEL_EPILOGHDR_ENDCOMPUTATION = "ehdr_endcomp";
 
@@ -37,8 +39,8 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 		///////////////////////////////////////////////////////////////////
 		// Member Variables
 
-		private IOperand m_regSaveCounter;
-		private IOperand m_regTmp;
+		private IOperand m_regPrologLength;
+		private IOperand m_regMainItersCount;
 		
 		
 		///////////////////////////////////////////////////////////////////
@@ -49,8 +51,8 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			super (sdit, options);
 			
 			// find a free register to save the initial value of the counter
-			m_regSaveCounter = getAssemblySection ().getFreeRegister (TypeRegisterType.GPR);
-			m_regTmp = getAssemblySection ().getFreeRegister (TypeRegisterType.GPR);
+			m_regPrologLength = getAssemblySection ().getFreeRegister (TypeRegisterType.GPR);
+			m_regMainItersCount = getAssemblySection ().getFreeRegister (TypeRegisterType.GPR);
 		}
 		
 		private StencilNode getOutputStencilNode ()
@@ -67,26 +69,33 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			IOperand.IRegisterOperand regCounter = getCounterRegister ();
 			int nSIMDVectorLengthInBytes = getSIMDVectorLength () * getBaseTypeSize ();
 			
-			IOperand opGridAddress = as.getGrid (getOutputStencilNode(), 0);
+			IOperand opGridAddress = as.getGrid (getOutputStencilNode (), 0);
 			if (opGridAddress instanceof IOperand.Address)
 				opGridAddress = ((IOperand.Address) opGridAddress).getRegBase ();
 			// TODO: if grids are combined into one input ref, we need to LEA
 			
+			// mask the last log2(nSIMDVectorLengthInBytes) bits of the address opGridAddress
 			l.addInstruction (new Instruction ("mov", opGridAddress, regCounter));
 			l.addInstruction (new Instruction ("add", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
 			l.addInstruction (new Instruction ("and", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
+			
+			// compute (nSIMDVectorLengthInBytes - bits) / sizeof (datatype)
+			// this is the number of elements we need to compute in the prologue
 			l.addInstruction (new Instruction ("sub", new IOperand.Immediate (nSIMDVectorLengthInBytes), regCounter));
 			l.addInstruction (new Instruction ("neg", regCounter));
 			l.addInstruction (new Instruction ("shr", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter));
 			
-			l.addInstruction (new Instruction ("cmp", regCounter, as.getInput (INPUT_LOOPTRIPCOUNT)));
+			// make sure that this computed number of elements doesn't exceed the actual number of elements
+			// (compute min(#elts, #actual num elts))
+			l.addInstruction (new Instruction ("cmp", regCounter, as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT)));
 			l.addInstruction (new Instruction ("jg",  Label.getLabelOperand (LABEL_PROLOGHDR_LESSTHANMAX)));
-			l.addInstruction (new Instruction ("mov", as.getInput (INPUT_LOOPTRIPCOUNT), regCounter));
+			l.addInstruction (new Instruction ("mov", as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT), regCounter));
 			
+			// check whether there is work to do, otherwise jump to the main loop
 			l.addInstruction (Label.getLabel (LABEL_PROLOGHDR_LESSTHANMAX));
-			l.addInstruction (new Instruction ("mov", regCounter, m_regSaveCounter));
+			l.addInstruction (new Instruction ("mov", regCounter, m_regPrologLength));
 			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
-			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_MAINHDR)));
+			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_UNROLLEDMAINHDR)));
 			
 			return l;
 		}
@@ -109,7 +118,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 		}
 
 		@Override
-		public InstructionList generateMainHeader ()
+		public InstructionList generateUnrolledMainHeader ()
 		{
 			StencilAssemblySection as = getAssemblySection ();
 			InstructionList l = new InstructionList ();
@@ -118,69 +127,137 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			int nSIMDVectorLength = getSIMDVectorLength ();
 			int nLoopUnrollingFactor = getRuntimeOptions ().getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
 			
+			// compute the number of main loop iterations
+
 			// restore the loop counter
-			l.addInstruction (new Instruction ("mov", m_regSaveCounter, regCounter));
-			l.addInstruction (Label.getLabel (LABEL_MAINHDR));
-			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPTRIPCOUNT), regCounter));
+			l.addInstruction (new Instruction ("mov", m_regPrologLength, regCounter));
+			l.addInstruction (Label.getLabel (LABEL_UNROLLEDMAINHDR));
+			
+			// compute (loop_trip_count - #prolog_elts) / (simd_vec_len * unrolling_factor)
+			// (this is the number of iterations)
+			l.addInstruction (new Instruction ("sub", as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT), regCounter));
 			l.addInstruction (new Instruction ("neg", regCounter));
 			l.addInstruction (new Instruction ("shr", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), regCounter));
-			l.addInstruction (new Instruction ("mov", regCounter, m_regTmp));
+			
+			// save this value
+			l.addInstruction (new Instruction ("mov", regCounter, m_regMainItersCount));
+			
+			// check whether there is work to do; if not, jump to the cleanup
 			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
-			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_EPILOGHDR)));
-			l.addInstruction (Label.getLabel (LABEL_MAINHDR_STARTCOMPUTATION));		
+			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (nLoopUnrollingFactor > 1 ? LABEL_SIMPLEMAINHDR : LABEL_EPILOGHDR)));
+			l.addInstruction (Label.getLabel (LABEL_UNROLLEDMAINHDR_STARTCOMPUTATION));
 			
 			return l;
 		}
-
-		@Override
-		public InstructionList generateMainFooter ()
+		
+		/**
+		 * Increments the addresses and decrements the loop counter.
+		 */
+		private InstructionList generateMainFooter (String strHeadLabel, int nLoopUnrollingFactor)
 		{
-			// increment addresses and decrement counter
-
 			StencilAssemblySection as = getAssemblySection ();
 			InstructionList l = new InstructionList ();
 			
 			int nSIMDVectorLengthInBytes = getSIMDVectorLength () * getBaseTypeSize ();
+			IOperand.Immediate opIncrement = new IOperand.Immediate (nSIMDVectorLengthInBytes * nLoopUnrollingFactor);
 			
 			// increment pointers
 			for (IOperand opGridAddrRegister : as.getGrids ())
-				l.addInstruction (new Instruction ("add", new IOperand.Immediate (nSIMDVectorLengthInBytes), opGridAddrRegister));
+				l.addInstruction (new Instruction ("add", opIncrement, opGridAddrRegister));
 			
 			// rotate reuse registers
 			rotateReuseRegisters (l);
 			
-			// loop
+			// loop: decrement the loop counter and jump to the loop head if not zero
 			l.addInstruction (new Instruction ("dec", getCounterRegister ()));
-			l.addInstruction (new Instruction ("jnz", Label.getLabelOperand (LABEL_MAINHDR_STARTCOMPUTATION)));
+			l.addInstruction (new Instruction ("jnz", Label.getLabelOperand (strHeadLabel)));
 
 			return l;
+		}
+
+		@Override
+		public InstructionList generateUnrolledMainFooter ()
+		{
+			return generateMainFooter (
+				LABEL_UNROLLEDMAINHDR_STARTCOMPUTATION,
+				getRuntimeOptions ().getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1)
+			);
+		}
+		
+		@Override
+		public InstructionList generateSimpleMainHeader ()
+		{
+			StencilAssemblySection as = getAssemblySection ();
+			InstructionList l = new InstructionList ();
+			
+			IOperand.IRegisterOperand regCounter = getCounterRegister ();
+			int nSIMDVectorLength = getSIMDVectorLength ();
+			int nLoopUnrollingFactor = getRuntimeOptions ().getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
+			
+			l.addInstruction (Label.getLabel (LABEL_SIMPLEMAINHDR));
+			
+			// compute the number of elements computed in the main loop (veclen * unroll * #iters)
+			l.addInstruction (new Instruction ("mov", m_regMainItersCount, regCounter));
+			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), regCounter));
+			
+			// add the number of elements computed in the prologue
+			l.addInstruction (new Instruction ("add", m_regPrologLength, regCounter));
+			
+			// subtract the loop trip count and take the negative to get the number of remaining elements
+			l.addInstruction (new Instruction ("sub", as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT), regCounter));
+			l.addInstruction (new Instruction ("neg", regCounter));
+			
+			// process them in vectorized fashion: divide by the vector length
+			l.addInstruction (new Instruction ("shr", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength)), regCounter));
+
+			// check whether there is work to do; if not, jump to the epilogue
+			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
+			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_EPILOGHDR)));
+			l.addInstruction (Label.getLabel (LABEL_SIMPLEMAINHDR_STARTCOMPUTATION));		
+
+			return l;
+		}
+		
+		@Override
+		public InstructionList generateSimpleMainFooter ()
+		{
+			return generateMainFooter (LABEL_SIMPLEMAINHDR_STARTCOMPUTATION, 1);
 		}
 
 		@Override
 		public InstructionList generateEpilogHeader ()
 		{
-			// TODO Auto-generated method stub
-			
 			StencilAssemblySection as = getAssemblySection ();
 			InstructionList l = new InstructionList ();
 			
-			IOperand.IRegisterOperand regCounter = getCounterRegister ();
-			int nSIMDVectorLength = getSIMDVectorLength ();
-			int nLoopUnrollingFactor = getRuntimeOptions ().getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
-			
 			l.addInstruction (Label.getLabel (LABEL_EPILOGHDR));
-			l.addInstruction (new Instruction ("mov", new IOperand.Immediate (nSIMDVectorLength), regCounter));
-			l.addInstruction (new Instruction ("sub", as.getInput (INPUT_LOOPTRIPCOUNT), regCounter));
-			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (nSIMDVectorLength * nLoopUnrollingFactor)), m_regTmp));
-			l.addInstruction (new Instruction ("add", m_regTmp, regCounter));
-			l.addInstruction (new Instruction ("add", m_regSaveCounter, regCounter));
-			l.addInstruction (new Instruction ("cmp", new IOperand.Immediate (nSIMDVectorLength), regCounter));
-			l.addInstruction (new Instruction ("je",  Label.getLabelOperand (LABEL_EPILOGHDR_ENDCOMPUTATION)));
+
+			// epi_length = (INPUT_LOOPTRIPCOUNT - pro_length) (mod veclen)
+			// since
+			// 		INPUT_LOOPTRIPCOUNT = pro_length + k*main_length + epi_length,
+			//		main_lenght = 0 (mod veclen))
 			
+			// we reuse the prolog length register to compute the epilog length
+			IOperand regEpilogLength = m_regPrologLength;
+			
+			// we compute -(INPUT_LOOPTRIPCOUNT - pro_length)
+			l.addInstruction (new Instruction ("sub", as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT), regEpilogLength));
+			l.addInstruction (new Instruction ("and", new IOperand.Immediate (getSIMDVectorLength () - 1), regEpilogLength));
+
+			// nothing to do if the epilogue length was 0
+			l.addInstruction (new Instruction ("or", m_regPrologLength, regEpilogLength));
+			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_EPILOGHDR_ENDCOMPUTATION)));
+
 			// adjust the pointers
-			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter));
+			
+			// we need to subtract (veclen - epi_length % veclen), but
+			// veclen - epi_length % veclen = -epi_length % veclen (if the % operator maps to 0 .. veclen-1; if we use
+			// 		a % b := a & (b-1)
+			// where b is a power of 2, this is the case)
+			
+			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regEpilogLength));			
 			for (IOperand opGridAddrRegister : as.getGrids ())
-				l.addInstruction (new Instruction ("sub", regCounter, opGridAddrRegister));		
+				l.addInstruction (new Instruction ("sub", regEpilogLength, opGridAddrRegister));		
 
 			return l;
 		}

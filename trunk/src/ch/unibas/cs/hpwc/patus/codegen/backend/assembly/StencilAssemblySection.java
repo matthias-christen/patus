@@ -2,8 +2,10 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
@@ -17,6 +19,7 @@ import cetus.hir.Specifier;
 import cetus.hir.Traversable;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
@@ -43,6 +46,44 @@ public class StencilAssemblySection extends AssemblySection
 	// Constants
 	
 	public final static String INPUT_CONSTANTS_ARRAYPTR = "constants";
+	
+	
+	///////////////////////////////////////////////////////////////////
+	// Inner Types
+
+	public static class OperandWithInstructions
+	{
+		private IInstruction[] m_rgInstrPre;
+		private IOperand m_op;
+		private IInstruction[] m_rgInstrPost;
+		
+		public OperandWithInstructions (IOperand op)
+		{
+			this (null, op, null);
+		}
+		
+		public OperandWithInstructions (IInstruction[] rgInstrPre, IOperand op, IInstruction[] rgInstrPost)
+		{
+			m_rgInstrPre = rgInstrPre;
+			m_op = op;
+			m_rgInstrPost = rgInstrPost;
+		}
+
+		public IInstruction[] getInstrPre ()
+		{
+			return m_rgInstrPre;
+		}
+
+		public IOperand getOp ()
+		{
+			return m_op;
+		}
+
+		public IInstruction[] getInstrPost ()
+		{
+			return m_rgInstrPost;
+		}
+	}
 		
 
 	///////////////////////////////////////////////////////////////////
@@ -68,6 +109,9 @@ public class StencilAssemblySection extends AssemblySection
 	private List<IOperand.IRegisterOperand> m_listGridInputs;
 	
 	private Map<IntArray, IOperand.IRegisterOperand> m_mapStrides;
+	private Map<IntArray, Expression> m_mapStrideExpressions;
+	private boolean m_bUseNegOnStrides;
+	
 	private Map<Expression, Integer> m_mapConstantsAndParams;
 
 	private FindStencilNodeBaseVectors m_baseVectors;
@@ -94,13 +138,14 @@ public class StencilAssemblySection extends AssemblySection
 		m_mapGrids = new HashMap<> ();
 		m_listGridInputs = new ArrayList<> ();
 		m_mapStrides = new HashMap<> ();
+		m_mapStrideExpressions = new HashMap<> ();
 		m_mapConstantsAndParams = new HashMap<> ();
+		m_bUseNegOnStrides = false;
 		
 		m_baseVectors = new FindStencilNodeBaseVectors (new int[] { 1, 2, 4, 8 });	// TODO: put this in architecture.xml
 		m_specDatatype = null;
 		
 		m_data.getData ().getMemoryObjectManager ().clear ();
-		createInputs ();
 	}
 	
 	/**
@@ -132,17 +177,55 @@ public class StencilAssemblySection extends AssemblySection
 	 * Creates the inputs to the assembly section (i.e., generates the values
 	 * that are assigned to registers within the inline assembly input section).
 	 */
-	protected void createInputs ()
+	public void createInputs ()
 	{
-		addGrids ();
-		addStrides ();		
-		addConstants ();
+		int nInitialFreeRegisters = getFreeRegistersCount (TypeRegisterType.GPR) - 2;
+		int nNumInputs = m_listInputs.size ();
+		int nNumRegistersForGrids = getNumRegistersForGrids ();
+		int nNumRegistersForStrides = countStrides ();
+		
+		// 1 additional register is needed for the constants array
+		int nFreeRegisters = nInitialFreeRegisters - nNumInputs - nNumRegistersForGrids - nNumRegistersForStrides - 1;
+		if (nFreeRegisters >= 0)
+		{
+			// enough free registers
+			addGrids ();
+			addStrides (m_mapStrideExpressions.keySet ());
+			addConstants ();
+		}
+		else
+		{
+			// check whether be negating stride registers we can save enough
+			Set<IntArray> setPositiveStrides = new HashSet<> ();
+			for (IntArray v : m_mapStrides.keySet ())
+				setPositiveStrides.add (v.abs ());
+			int nSavedRegisters = nNumRegistersForStrides - setPositiveStrides.size ();
+			
+			if (nFreeRegisters + nSavedRegisters >= 0)
+			{
+				addGrids ();
+				addStrides (setPositiveStrides);
+				m_bUseNegOnStrides = true;
+				addConstants ();
+			}
+			else
+				throw new RuntimeException ("no regs left");
+		}
+	}
+	
+	private int getNumRegistersForGrids ()
+	{
+		StencilNodeSet setAllGrids = m_data.getStencilCalculation ().getInputBaseNodeSet ().union (
+			m_data.getStencilCalculation ().getOutputBaseNodeSet ());
+		
+		return setAllGrids.size ();
 	}
 	
 	private void addGrids ()
 	{
 		// TODO: get reference nodes for "current" memory objects!!!
-		StencilNodeSet setAllGrids = m_data.getStencilCalculation ().getInputBaseNodeSet ().union (m_data.getStencilCalculation ().getOutputBaseNodeSet ());
+		StencilNodeSet setAllGrids = m_data.getStencilCalculation ().getInputBaseNodeSet ().union (
+			m_data.getStencilCalculation ().getOutputBaseNodeSet ());
 		
 		if (setAllGrids.size () > 10)
 		{
@@ -154,7 +237,20 @@ public class StencilAssemblySection extends AssemblySection
 			addGrid (node);		
 	}
 	
-	private void addStrides ()
+	/**
+	 * Adds the stride expressions as assembly section inputs.
+	 * <p>Call {@link StencilAssemblySection#countStrides()} before calling this method.</p>
+	 */
+	private void addStrides (Iterable<IntArray> itBaseVectors)
+	{
+		for (IntArray arrBaseVector : itBaseVectors)
+		{
+			Expression exprStride = m_mapStrideExpressions.get (arrBaseVector);
+			m_mapStrides.put (arrBaseVector, (IOperand.IRegisterOperand) addInput (exprStride, exprStride));
+		}
+	}
+	
+	private int countStrides ()
 	{
 		StencilNodeSet setNodes = m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ().getAllNodes ();
 		for (StencilNode node : setNodes)
@@ -175,6 +271,8 @@ public class StencilAssemblySection extends AssemblySection
 			
 			addStride (v, node);
 		}
+		
+		return m_mapStrideExpressions.size ();
 	}
 	
 	/**
@@ -247,8 +345,7 @@ public class StencilAssemblySection extends AssemblySection
 		}
 		
 		exprStride = new BinaryExpression (exprStride, BinaryOperator.MULTIPLY, new SizeofExpression (CodeGeneratorUtil.specifiers (getDatatype ())));
-		
-		m_mapStrides.put (arrBaseVector, (IOperand.IRegisterOperand) addInput (exprStride, exprStride));
+		m_mapStrideExpressions.put (arrBaseVector, exprStride);
 	}
 
 	private void addToConstantsAndParamsMap (Expression expr)
@@ -372,7 +469,16 @@ public class StencilAssemblySection extends AssemblySection
 		Integer nIdx = m_mapConstantsAndParams.get (exprConstantOrParam);
 		return nIdx == null ? -1 : nIdx;
 	}
-	
+
+	/**
+	 * Returns the address operand for the constant or stencil parameter
+	 * <code>exprConstantOrParam</code>.
+	 * 
+	 * @param exprConstantOrParam
+	 *            The expression (a constant, i.e., a floating point literal, or
+	 *            a stencil parameter) for which to retrieve its address
+	 * @return The address operand for <code>exprConstantOrParam</code>
+	 */
 	public IOperand getConstantOrParamAddress (Expression exprConstantOrParam)
 	{
 		int nConstParamIdx = getConstantOrParamIndex (exprConstantOrParam);
@@ -395,6 +501,19 @@ public class StencilAssemblySection extends AssemblySection
 		return m_listGridInputs;
 	}
 	
+	/**
+	 * Determines whether the stencil nodes <code>node</code> and
+	 * <code>nodeRef</code> are compatible, i.e., whether all their spatial
+	 * indices coincide except in the first (the reuse) dimension.
+	 * 
+	 * @param node
+	 *            The stencil node to check whether it is compatible with the
+	 *            stencil node <code>nodeRef</code>
+	 * @param nodeRef
+	 *            The reference stencil node
+	 * @return <code>true</code> iff the stencil nodes <code>node</code> and
+	 *         <code>nodeRef</code> are compatible
+	 */
 	private static boolean isNodeCompatible (StencilNode node, StencilNode nodeRef)
 	{
 		if (nodeRef.getSpaceIndex ().length != node.getSpaceIndex ().length)
@@ -408,6 +527,19 @@ public class StencilAssemblySection extends AssemblySection
 		return true;
 	}
 	
+	/**
+	 * Finds a reference node, which is compatible with <code>node</code>, for
+	 * an arbitrary stencil node, <code>node</code>. Two stencil nodes are
+	 * <i>compatible</i> iff all their spatial coordinates coincide except the
+	 * one in the first (the reuse) dimension. <code>null</code> is returned if
+	 * no compatible node could be found.
+	 * 
+	 * @param node
+	 *            The stencil node for which to find a compatible reference node
+	 * @return A stencil node from the node set which is compatible with
+	 *         <code>node</code> or <code>null</code> if no such node could be
+	 *         found
+	 */
 	private StencilNode findReferenceNode (StencilNode node)
 	{
 		if (m_mapGrids.isEmpty ())
@@ -420,14 +552,36 @@ public class StencilAssemblySection extends AssemblySection
 		return null;
 	}
 	
+	private OperandWithInstructions getStride (IntArray arrBaseVector)
+	{
+		IOperand op = m_mapStrides.get (arrBaseVector);
+		if (op != null)
+			return new OperandWithInstructions (op);
+		
+		if (m_bUseNegOnStrides)
+		{
+			op = m_mapStrides.get (arrBaseVector.neg ());
+			if (op != null)
+			{
+				
+			}
+		}
+		else
+			throw new RuntimeException ("Stride not found");
+	}
+	
 	/**
+	 * Returns the address to access the stencil node <code>node</code> shifted
+	 * in unit stride direction by <code>nElementsShift</code>.
 	 * 
 	 * @param node
-	 * @param nElementsShift The number of elements by which the node is shifted to the right
-	 * 	for unrolling
-	 * @return
+	 *            The stencil node for which to retrieve the address operand
+	 * @param nElementsShift
+	 *            The number of elements by which the node is shifted to the
+	 *            right for unrolling
+	 * @return The address operand to access <code>node</code>
 	 */
-	public IOperand getGrid (StencilNode node, int nElementsShift)
+	public OperandWithInstructions getGrid (StencilNode node, int nElementsShift)
 	{
 		StencilNode nodeLocal = node;
 		int nElementsShiftLocal = nElementsShift;
@@ -476,7 +630,7 @@ public class StencilAssemblySection extends AssemblySection
 		IntArray v = new IntArray (m_baseVectors.getBaseVector (nodeLocal), true);
 		v.set (0, 0);
 		
-		return new IOperand.Address (opBase, m_mapStrides.get (v), m_baseVectors.getScalingFactor (nodeLocal), nUnitStrideOffset);
+		return new IOperand.Address (opBase, getStride (v, il), m_baseVectors.getScalingFactor (nodeLocal), nUnitStrideOffset);
 	}
 		
 	/**

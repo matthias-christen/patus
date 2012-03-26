@@ -150,6 +150,22 @@ public class IntArray implements Iterable<Integer>, Comparable<IntArray>
 				return false;
 		return true;
 	}
+	
+	public IntArray abs ()
+	{
+		IntArray arr = new IntArray (m_rgValues);
+		for (int i = 0; i < m_rgValues.length; i++)
+			m_rgValues[i] = Math.abs (m_rgValues[i]);
+		return arr;
+	}
+	
+	public IntArray neg ()
+	{
+		IntArray arr = new IntArray (m_rgValues);
+		for (int i = 0; i < m_rgValues.length; i++)
+			m_rgValues[i] = -m_rgValues[i];
+		return arr;
+	}
 
 	@Override
 	public boolean equals (Object obj)

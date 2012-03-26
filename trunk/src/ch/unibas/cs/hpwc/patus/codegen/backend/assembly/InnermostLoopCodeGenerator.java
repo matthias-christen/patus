@@ -23,6 +23,8 @@ import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.IInnermostLoopCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.RemoveMultipleMemoryLoad;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -53,13 +55,16 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	 * The maximum number of registers to be reserved for constants
 	 */
 	public final static int MAX_REGISTERS_FOR_CONSTANTS = 3; 
-
+	
 
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
 	
 	protected abstract class CodeGenerator
 	{
+		///////////////////////////////////////////////////////////////////
+		// Member Variables
+
 		private CodeGeneratorRuntimeOptions m_options;
 		
 		/**
@@ -92,8 +97,14 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		private Map<Expression, IOperand.IRegisterOperand> m_mapConstantsAndParams;
 		
 		private Map<NameID, IOperand.IRegisterOperand[]> m_mapTemporaries;
+		
+		private IInstructionListOptimizer[] m_rgPreTranslateOptimizers;
+		private IInstructionListOptimizer[] m_rgPostTranslateOptimizers;
 
 		
+		///////////////////////////////////////////////////////////////////
+		// Implementation
+
 		public CodeGenerator (SubdomainIterator sdit, CodeGeneratorRuntimeOptions options)
 		{
 			m_sdit = sdit;
@@ -117,7 +128,21 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			m_assemblySection.setMemoryClobbered (true);
 			
 			// request a register to be used as loop counter
-			m_regCounter = m_assemblySection.getFreeRegister (TypeRegisterType.GPR);		
+			m_regCounter = m_assemblySection.getFreeRegister (TypeRegisterType.GPR);	
+			
+			// initialize the optimizers to execute before/after the translation of the
+			// computation instruction list
+			m_rgPreTranslateOptimizers = new IInstructionListOptimizer[] {
+				new RemoveMultipleMemoryLoad (m_data.getArchitectureDescription (), false)
+			};
+			m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] { };			
+		}
+		
+		protected void initialize ()
+		{
+			// create the assembly section inputs, i.e., assign registers with grid pointers,
+			// strides, and the constant array pointer
+			m_assemblySection.createInputs ();
 		}
 		
 		/**
@@ -154,12 +179,15 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			}
 				
 			// translate the generic instruction list to the architecture-specific one
-			InstructionList ilComputationUnrolled = m_assemblySection.translate (ilComputationTempUnrolled, specType);
-			InstructionList ilComputationNotUnrolled = ilComputationUnrolled;
+			InstructionList ilComputationUnrolled = m_assemblySection.translate (
+				ilComputationTempUnrolled, specType, m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
+			
+			InstructionList ilComputationNotUnrolled = ilComputationUnrolled;			
 			if (nUnrollingFactor != 1)
 			{
 				m_assemblySection.killAllRegisters ();
-				ilComputationNotUnrolled = m_assemblySection.translate (ilComputationTempNotUnrolled, specType);
+				ilComputationNotUnrolled = m_assemblySection.translate (
+					ilComputationTempNotUnrolled, specType, m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
 			}
 							
 			// generate the loop
@@ -363,8 +391,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				// load new values into the register that corresponds to the largest coordinates
 				for ( ; i < rgRegs.length; i++)
 				{
-					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED,
-						m_assemblySection.getGrid (m_mapRegistersToReuseNodes.get (rgRegs[i]), 0), rgRegs[i]));
+					StencilAssemblySection.OperandWithInstructions op = m_assemblySection.getGrid (m_mapRegistersToReuseNodes.get (rgRegs[i]), 0);
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, op.getOp (), rgRegs[i]), op);
 				}
 				
 //				IOperand.IRegisterOperand opPrev = null;

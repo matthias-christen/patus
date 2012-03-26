@@ -13,7 +13,7 @@ public class InstructionListAnalyzer
 		int nIdx = 0;
 		for (IInstruction instruction : il)
 		{
-			if (nCurrentInstrIdx > nIdx)
+			if (nCurrentInstrIdx < nIdx)
 			{
 				if (instruction instanceof Instruction)
 				{

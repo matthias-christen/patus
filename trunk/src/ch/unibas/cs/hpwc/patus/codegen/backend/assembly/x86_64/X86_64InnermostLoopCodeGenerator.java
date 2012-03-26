@@ -53,6 +53,8 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			// find a free register to save the initial value of the counter
 			m_regPrologLength = getAssemblySection ().getFreeRegister (TypeRegisterType.GPR);
 			m_regMainItersCount = getAssemblySection ().getFreeRegister (TypeRegisterType.GPR);
+			
+			initialize ();
 		}
 		
 		private StencilNode getOutputStencilNode ()
@@ -69,7 +71,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			IOperand.IRegisterOperand regCounter = getCounterRegister ();
 			int nSIMDVectorLengthInBytes = getSIMDVectorLength () * getBaseTypeSize ();
 			
-			IOperand opGridAddress = as.getGrid (getOutputStencilNode (), 0);
+			IOperand opGridAddress = as.getGrid (getOutputStencilNode (), 0).getOp ();
 			if (opGridAddress instanceof IOperand.Address)
 				opGridAddress = ((IOperand.Address) opGridAddress).getRegBase ();
 			// TODO: if grids are combined into one input ref, we need to LEA

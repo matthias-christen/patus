@@ -30,13 +30,33 @@ public class InstructionList implements Iterable<IInstruction>
 
 	public void addInstruction (IInstruction instruction)
 	{
-		m_listInstructions.add (instruction);
+		if (instruction != null)
+			m_listInstructions.add (instruction);
+	}
+	
+	public void addInstruction (IInstruction instruction, StencilAssemblySection.OperandWithInstructions op)
+	{
+		addInstructions (op.getInstrPre ());
+		addInstruction (instruction);
+		addInstructions (op.getInstrPost ());
 	}
 	
 	public void addInstructions (InstructionList il)
 	{
-		for (IInstruction instr : il)
-			m_listInstructions.add (instr);
+		if (il != null)
+		{
+			for (IInstruction instr : il)
+				m_listInstructions.add (instr);
+		}
+	}
+	
+	public void addInstructions (IInstruction[] rgInstructions)
+	{
+		if (rgInstructions != null)
+		{
+			for (IInstruction instr : rgInstructions)
+				m_listInstructions.add (instr);
+		}
 	}
 
 	@Override
@@ -148,6 +168,11 @@ public class InstructionList implements Iterable<IInstruction>
 		return m_listInstructions.size ();
 	}
 	
+	public boolean isEmpty ()
+	{
+		return m_listInstructions.isEmpty ();
+	}
+
 	@Override
 	public String toString ()
 	{

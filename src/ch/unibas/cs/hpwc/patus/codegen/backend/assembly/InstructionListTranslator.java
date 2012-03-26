@@ -258,19 +258,53 @@ public class InstructionListTranslator
 		return argDest.isMemory ();
 	}
 	
-	private String getMovFpr (IOperand op)
+	private String getMovFpr (IOperand... op)
 	{
-		if (op instanceof IOperand.Address)
-		{
-			// assume that base addresses are aligned at vector boundaries
-			// so if the displacement is not a multiple of the vector length, we need to do an
-			// unaligned load
-			
-			int nVectorLength = m_architecture.getSIMDVectorLength (m_specDatatype) * AssemblySection.getTypeSize (m_specDatatype);
-			if ((((IOperand.Address) op).getDisplacement () % nVectorLength) != 0)
-				return TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ();
-		}
+		return InstructionListTranslator.getMovFpr (m_architecture, m_specDatatype, op);
+	}
+	
+	/**
+	 * Returns an aligned/unaligned move instruction depending on the operand
+	 * and, if the operand is an address, on the displacement. The method
+	 * assumes that any addresses (both base addresses and indices) are aligned
+	 * at vector boundaries.
+	 * 
+	 * @param arch
+	 *            The architecture description
+	 * @param specDatatype
+	 *            A datatype or <code>null</code> if a generic data type is to
+	 *            be used (if all SIMD vectors have the same length in bits,
+	 *            <code>null</code> is fine)
+	 * @param rgOperands
+	 *            The operands to examine and from which to determine what move
+	 *            instruction to use
+	 * @return The name of the move instruction to use to move the operands
+	 *         <code>rgOperands</code>
+	 */
+	public static String getMovFpr (IArchitectureDescription arch, Specifier specDatatype, IOperand... rgOperands)
+	{
+		int nVectorLength = -1;
 		
+		for (IOperand op : rgOperands)
+		{
+			if (op instanceof IOperand.Address)
+			{
+				// assume that base addresses are aligned at vector boundaries
+				// so if the displacement is not a multiple of the vector length, we need to do an
+				// unaligned load
+				
+				if (nVectorLength == -1)
+				{
+					nVectorLength =
+						arch.getSIMDVectorLength (specDatatype == null ? Specifier.FLOAT : specDatatype) *
+						AssemblySection.getTypeSize (specDatatype == null ? Specifier.FLOAT : specDatatype);
+				}
+				
+				if ((((IOperand.Address) op).getDisplacement () % nVectorLength) != 0)
+					return TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ();
+			}
+		}
+
 		return TypeBaseIntrinsicEnum.MOVE_FPR.value ();
 	}
 	
@@ -582,5 +616,12 @@ public class InstructionListTranslator
 	{
 		InstructionListTranslator translator = new InstructionListTranslator (arch, ilIn, specDatatype);
 		return translator.run ();
+	}
+	
+	public static InstructionList translate (IArchitectureDescription arch, IInstruction instruction, Specifier specDatatype)
+	{
+		InstructionList ilIn = new InstructionList ();
+		ilIn.addInstruction (instruction);
+		return InstructionListTranslator.translate (arch, ilIn, specDatatype);
 	}
 }

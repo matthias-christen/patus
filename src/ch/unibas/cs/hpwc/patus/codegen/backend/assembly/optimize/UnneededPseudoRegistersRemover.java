@@ -46,6 +46,9 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 	 */
 	private IOperand[] substitutePseudoRegisters (IOperand[] rgOps)
 	{
+		if (m_mapSubstitute.isEmpty ())
+			return rgOps;
+		
 		IOperand[] rgOpsNew = new IOperand[rgOps.length];
 		
 		for (int i = 0; i < rgOps.length; i++)

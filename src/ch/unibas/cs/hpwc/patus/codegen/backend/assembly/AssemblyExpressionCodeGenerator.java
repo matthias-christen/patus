@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 import cetus.hir.BinaryExpression;
 import cetus.hir.Expression;
@@ -53,6 +54,8 @@ public class AssemblyExpressionCodeGenerator
 	
 	private StencilAssemblySection m_assemblySection;
 	
+	private Queue<IInstruction[]> m_quInstructionsToAdd;
+	
 	private Map<StencilNode, IOperand.IRegisterOperand> m_mapReuseNodesToRegisters;
 	
 	private Map<Expression, IOperand.IRegisterOperand> m_mapConstantsAndParams;
@@ -75,6 +78,8 @@ public class AssemblyExpressionCodeGenerator
 		m_mapReuseNodesToRegisters = mapReuseNodesToRegisters;
 		m_mapConstantsAndParams = mapConstantsAndParams;
 		m_mapTempoararies = mapTemporaries;
+		
+		m_quInstructionsToAdd = new LinkedList<> ();
 				
 		Map<StencilNode, Boolean> mapReuse = new HashMap<> ();
 		for (StencilNode node : m_mapReuseNodesToRegisters.keySet ())
@@ -378,7 +383,12 @@ public class AssemblyExpressionCodeGenerator
 		if (!bIsReuse)
 		{
 			for (int i = 0; i < nUnrollFactor; i++)
-				rgOpResults[i] = m_assemblySection.getGrid (node, i);
+			{
+				StencilAssemblySection.OperandWithInstructions op = m_assemblySection.getGrid (node, i);
+				il.addInstructions (op.getInstrPre ());
+				rgOpResults[i] = op.getOp ();
+				m_quInstructionsToAdd.add (op.getInstrPost ());
+			}
 		}
 		
 		return rgOpResults;

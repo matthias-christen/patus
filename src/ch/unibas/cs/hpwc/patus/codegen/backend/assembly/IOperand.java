@@ -62,6 +62,11 @@ public interface IOperand
 		{
 			return m_register.getName ();
 		}
+		
+		public TypeRegister getRegister ()
+		{
+			return m_register;
+		}
 				
 		@Override
 		public String getAsString ()
@@ -83,6 +88,26 @@ public interface IOperand
 		public String getAsString ()
 		{
 			return StringUtil.concat ("%", m_nIndex);
+		}
+
+		@Override
+		public int hashCode ()
+		{
+			return m_nIndex;
+		}
+
+		@Override
+		public boolean equals (Object obj)
+		{
+			if (this == obj)
+				return true;
+			if (!(obj instanceof InputRef))
+				return false;
+			
+			InputRef other = (InputRef) obj;
+			if (m_nIndex != other.m_nIndex)
+				return false;
+			return true;
 		}
 	}
 	
@@ -117,6 +142,8 @@ public interface IOperand
 		@Override
 		public boolean equals (Object obj)
 		{
+			if (this == obj)
+				return true;
 			if (!(obj instanceof PseudoRegister))
 				return false;
 			return ((PseudoRegister) obj).m_nNumber == m_nNumber;

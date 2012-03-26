@@ -15,6 +15,7 @@ import cetus.hir.SomeExpression;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
+import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
@@ -31,7 +32,7 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  */
 public class AssemblySection
 {
-	// /////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////
 	// Inner Types
 
 	public static class AssemblySectionInput
@@ -65,7 +66,7 @@ public class AssemblySection
 	}
 
 
-	// /////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
 	protected CodeGeneratorSharedObjects m_data;
@@ -75,6 +76,10 @@ public class AssemblySection
 	 */
 	protected Set<IOperand.Register> m_setClobberedRegisters;
 	
+	/**
+	 * Flag indicating whether the memory is clobbered in the inline assembly section.
+	 * The flag needs to be set using {@link AssemblySection#setMemoryClobbered(boolean)}.
+	 */
 	boolean m_bIsMemoryClobbered;
 
 	/**
@@ -88,7 +93,7 @@ public class AssemblySection
 	protected List<AssemblySectionInput> m_listInputs;
 
 
-	// /////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////
 	// Implementation
 
 	public AssemblySection (CodeGeneratorSharedObjects data)
@@ -103,7 +108,7 @@ public class AssemblySection
 				return r1.getBaseName ().compareTo (r2.getBaseName ());
 			}
 		});
-
+		
 		m_mapRegisterUsage = new HashMap<> ();
 
 		m_listInputs = new ArrayList<> ();
@@ -142,6 +147,11 @@ public class AssemblySection
 				return asi.getOperand ();
 		return null;
 	}
+	
+	public InstructionList translate (InstructionList ilInstructions, Specifier specDatatype)
+	{
+		return translate (ilInstructions, specDatatype, new IInstructionListOptimizer[] { }, new IInstructionListOptimizer[] { });
+	}
 
 	/**
 	 * 
@@ -149,14 +159,25 @@ public class AssemblySection
 	 * @param specDatatype
 	 * @return
 	 */
-	public InstructionList translate (InstructionList ilInstructions, Specifier specDatatype, IInstructionListOptimizer... rgOptimizers)
+	public InstructionList translate (InstructionList ilInstructions, Specifier specDatatype,
+		IInstructionListOptimizer[] rgPreTranslateOptimizers,
+		IInstructionListOptimizer[] rgPostTranslateOptimizers)
 	{
+		if (ilInstructions.isEmpty ())
+			return ilInstructions;
+		
+		InstructionList ilTmp = ilInstructions;
+		
+		// apply pre-translate peep hole optimizations
+		for (IInstructionListOptimizer optimizer : rgPreTranslateOptimizers)
+			ilTmp = optimizer.optimize (ilTmp);
+
 		// translate the generic instruction list to the architecture-specific one
-		InstructionList ilTmp = InstructionListTranslator.translate (
-			m_data.getArchitectureDescription (), ilInstructions, specDatatype);
+		ilTmp = InstructionListTranslator.translate (
+			m_data.getArchitectureDescription (), ilTmp, specDatatype);
 
 		// apply peep hole optimizations
-		for (IInstructionListOptimizer optimizer : rgOptimizers)
+		for (IInstructionListOptimizer optimizer : rgPostTranslateOptimizers)
 			ilTmp = optimizer.optimize (ilTmp);
 
 		// allocate registers
@@ -206,7 +227,48 @@ public class AssemblySection
 	{
 		m_mapRegisterUsage.clear ();
 	}
+	
+	/**
+	 * Returns the number of registers of type <code>type</code>.
+	 * 
+	 * @param type
+	 *            The register type
+	 * @return The number of registers of type <code>type</code>
+	 * @see IArchitectureDescription#getRegistersCount(TypeRegisterType)
+	 */
+	public int getRegistersCount (TypeRegisterType type)
+	{
+		return m_data.getArchitectureDescription ().getRegistersCount (type);
+	}
+	
+	/**
+	 * Counts how many registers of type <code>type</code> are currently free.
+	 * 
+	 * @param type
+	 *            The register type
+	 * @return The number of registers that are currently available
+	 */
+	public int getFreeRegistersCount (TypeRegisterType type)
+	{
+		int nRegistersCount = getRegistersCount (type);
+		
+		for (Register reg : m_mapRegisterUsage.keySet ())
+		{
+			if (m_mapRegisterUsage.get (reg) && (((TypeRegisterClass) reg.getRegister ().getClazz ()).getType ().equals (type)))
+				nRegistersCount--;
+		}
+		
+		return nRegistersCount;
+	}
 
+	/**
+	 * Sets the &quot;memory clobbered&quot; flag, i.e., tells the compiler that
+	 * if <code>bMemoryClobbered == true</code> memory locations are written to
+	 * within the inline assembly section.
+	 * 
+	 * @param bMemoryClobbered
+	 *            The &quot;memory clobbered&quot; flag
+	 */
 	public void setMemoryClobbered (boolean bMemoryClobbered)
 	{
 		m_bIsMemoryClobbered = bMemoryClobbered;
@@ -268,8 +330,8 @@ public class AssemblySection
 			String strRegName = reg.getBaseName ();
 			if (strRegName.startsWith ("ymm"))
 			{
-				// GNU: error: unknown register name ‘ymmX’ in ‘asm’
-				// replace "ymmX" by "xmmX"
+				// GNU: error: unknown register name ‘ymm?’ in ‘asm’
+				// replace "ymm?" by "xmm?"
 				sbClobberedRegisters.append ('x');
 				sbClobberedRegisters.append (strRegName.substring (1));
 			}
@@ -286,9 +348,13 @@ public class AssemblySection
 	}
 		
 	/**
+	 * Creates a Cetus statement from the list of assembly instructions
+	 * <code>ilInstructions</code>.
 	 * 
 	 * @param options
-	 * @return
+	 *            Runtime code generation options
+	 * @return The statement containing the list of assembly instructions as an
+	 *         inline assembly section
 	 */
 	public Statement generate (InstructionList ilInstructions, CodeGeneratorRuntimeOptions options)
 	{

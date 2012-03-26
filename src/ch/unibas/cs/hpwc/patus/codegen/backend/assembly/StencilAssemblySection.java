@@ -197,10 +197,11 @@ public class StencilAssemblySection extends AssemblySection
 		{
 			// check whether be negating stride registers we can save enough
 			Set<IntArray> setPositiveStrides = new HashSet<> ();
-			for (IntArray v : m_mapStrides.keySet ())
-				setPositiveStrides.add (v.abs ());
-			int nSavedRegisters = nNumRegistersForStrides - setPositiveStrides.size ();
-			
+			for (IntArray v : m_mapStrideExpressions.keySet ())
+				if (!setPositiveStrides.contains (v) && !setPositiveStrides.contains (v.neg ()))
+					setPositiveStrides.add (v);
+				
+			int nSavedRegisters = nNumRegistersForStrides - setPositiveStrides.size ();			
 			if (nFreeRegisters + nSavedRegisters >= 0)
 			{
 				addGrids ();
@@ -319,7 +320,7 @@ public class StencilAssemblySection extends AssemblySection
 			return;
 		
 		// don't do anything if the base vector was added already
-		if (m_mapStrides.containsKey (arrBaseVector))
+		if (m_mapStrideExpressions.containsKey (arrBaseVector))
 			return;
 		
 		// get the (local) memory object corresponding to the node
@@ -554,6 +555,9 @@ public class StencilAssemblySection extends AssemblySection
 	
 	private OperandWithInstructions getStride (IntArray arrBaseVector)
 	{
+		if (arrBaseVector.isZero ())
+			return new OperandWithInstructions (null);
+			
 		IOperand op = m_mapStrides.get (arrBaseVector);
 		if (op != null)
 			return new OperandWithInstructions (op);
@@ -563,11 +567,15 @@ public class StencilAssemblySection extends AssemblySection
 			op = m_mapStrides.get (arrBaseVector.neg ());
 			if (op != null)
 			{
-				
+				return new OperandWithInstructions (
+					new IInstruction[] { new Instruction ("neg", op) },
+					op,
+					new IInstruction[] { new Instruction ("neg", op) }
+				);
 			}
 		}
-		else
-			throw new RuntimeException ("Stride not found");
+
+		throw new RuntimeException ("Stride not found");
 	}
 	
 	/**
@@ -622,7 +630,7 @@ public class StencilAssemblySection extends AssemblySection
 		int nUnitStrideOffset = (nodeLocal.getSpaceIndex ()[0] + nElementsShiftLocal * nSIMDVectorLength) * AssemblySection.getTypeSize (specDatatype);
 		
 		if (!bHasOffsetInNonUnitStride)
-			return new IOperand.Address (opBase, nUnitStrideOffset);
+			return new OperandWithInstructions (new IOperand.Address (opBase, nUnitStrideOffset));
 		
 		// general case
 		// TODO: what if too many strides?
@@ -630,7 +638,12 @@ public class StencilAssemblySection extends AssemblySection
 		IntArray v = new IntArray (m_baseVectors.getBaseVector (nodeLocal), true);
 		v.set (0, 0);
 		
-		return new IOperand.Address (opBase, getStride (v, il), m_baseVectors.getScalingFactor (nodeLocal), nUnitStrideOffset);
+		OperandWithInstructions opStride = getStride (v);
+		return new OperandWithInstructions (
+			opStride.getInstrPre (),
+			new IOperand.Address (opBase, (IOperand.IRegisterOperand) opStride.getOp (), m_baseVectors.getScalingFactor (nodeLocal), nUnitStrideOffset),
+			opStride.getInstrPost ()
+		);
 	}
 		
 	/**

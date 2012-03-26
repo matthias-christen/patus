@@ -153,17 +153,17 @@ public class IntArray implements Iterable<Integer>, Comparable<IntArray>
 	
 	public IntArray abs ()
 	{
-		IntArray arr = new IntArray (m_rgValues);
-		for (int i = 0; i < m_rgValues.length; i++)
-			m_rgValues[i] = Math.abs (m_rgValues[i]);
+		IntArray arr = new IntArray (m_rgValues, true);
+		for (int i = 0; i < arr.m_rgValues.length; i++)
+			arr.m_rgValues[i] = Math.abs (arr.m_rgValues[i]);
 		return arr;
 	}
 	
 	public IntArray neg ()
 	{
-		IntArray arr = new IntArray (m_rgValues);
-		for (int i = 0; i < m_rgValues.length; i++)
-			m_rgValues[i] = -m_rgValues[i];
+		IntArray arr = new IntArray (m_rgValues, true);
+		for (int i = 0; i < arr.m_rgValues.length; i++)
+			arr.m_rgValues[i] = -arr.m_rgValues[i];
 		return arr;
 	}
 

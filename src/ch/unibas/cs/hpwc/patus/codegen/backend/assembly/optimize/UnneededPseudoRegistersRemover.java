@@ -46,8 +46,8 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 	 */
 	private IOperand[] substitutePseudoRegisters (IOperand[] rgOps)
 	{
-		if (m_mapSubstitute.isEmpty ())
-			return rgOps;
+		// note that if registers are to be substituted, we always need to return a new array
+		// (if not, we would modify the original operands array in "optimize," and so the substitution map won't work)
 		
 		IOperand[] rgOpsNew = new IOperand[rgOps.length];
 		
@@ -115,6 +115,10 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 					{
 						if (rgOpsNew[i] instanceof IOperand.PseudoRegister)
 						{
+							// nothing to do if the register is already the same as the output register
+							if (rgOpsNew[i].equals (rgOps[rgOps.length - 1]))
+								break;
+							
 							if (InstructionListAnalyzer.isLastRead (il, (IOperand.PseudoRegister) rgOpsNew[i], nCurrentInstructionIdx))
 							{
 								regNewResult = (IOperand.PseudoRegister) rgOpsNew[i];

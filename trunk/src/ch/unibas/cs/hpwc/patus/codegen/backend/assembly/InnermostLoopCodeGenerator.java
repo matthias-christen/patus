@@ -308,7 +308,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 							listSet.add (opReg);
 							
 							// load the value into the register
-							il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, m_assemblySection.getGrid (node, i - node.getSpaceIndex ()[0]), opReg));
+							StencilAssemblySection.OperandWithInstructions opGrid = m_assemblySection.getGrid (node, i - node.getSpaceIndex ()[0]);
+							il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, opGrid.getOp (), opReg), opGrid);
 						}
 					}
 					
@@ -323,7 +324,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 					m_mapRegistersToReuseNodes.put (opReg, node);
 
 					// load the value into the register
-					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, m_assemblySection.getGrid (node, 0), opReg));
+					StencilAssemblySection.OperandWithInstructions opGrid = m_assemblySection.getGrid (node, 0);
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, (IOperand.IRegisterOperand) opGrid, opReg), opGrid);
 					
 					nPrevCoord = node.getSpaceIndex ()[0];
 				}
@@ -383,6 +385,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				IOperand.IRegisterOperand[] rgRegs = new IOperand.IRegisterOperand[listSet.size ()];
 				listSet.toArray (rgRegs);
 				int i = 0;
+				
+				// TODO: check correctness
 
 				// swap registers
 				for ( ; i < rgRegs.length - nUnrollingFactor; i++)
@@ -395,6 +399,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, op.getOp (), rgRegs[i]), op);
 				}
 				
+				// OLD CODE -->
 //				IOperand.IRegisterOperand opPrev = null;
 //				for (IOperand.IRegisterOperand op : listSet)
 //				{
@@ -405,6 +410,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 //				
 //				// load a new value into the register that corresponds to the largest coordinate
 //				il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, m_assemblySection.getGrid (m_mapRegistersToReuseNodes.get (opPrev), 0), opPrev));
+				// <--
 			}
 		}
 		

@@ -117,7 +117,7 @@ public class AssemblyExpressionCodeGenerator
 				else
 				{
 					rgDest[i] = new IOperand.PseudoRegister ();
-					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
+					addInstructions (il, i == nUnrollFactor - 1, new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
 				}
 			}
 			
@@ -127,7 +127,7 @@ public class AssemblyExpressionCodeGenerator
 		{
 			IOperand[] rgDest = processStencilNode (nodeOutput, nUnrollFactor, il);
 			for (int i = 0; i < nUnrollFactor; i++)
-				il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
+				addInstructions (il, i == nUnrollFactor - 1, new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
 		}
 	}
 	
@@ -166,6 +166,26 @@ public class AssemblyExpressionCodeGenerator
 	}
 	
 	/**
+	 * Adds the single instruction <code>instr</code> to the instruction list,
+	 * followed by the instructions that have been accumulated in the
+	 * {@link AssemblyExpressionCodeGenerator#m_quInstructionsToAdd} queue.
+	 * 
+	 * @param il
+	 *            The instruction list to which to add the instruction
+	 * @param instr
+	 *            the instruction to add
+	 */
+	private void addInstructions (InstructionList il, boolean bAddAccumulatedInstructions, IInstruction... instr)
+	{
+		// add the instruction proper
+		il.addInstructions (instr);
+
+		// add any accumulated post-instruction instructions
+		while (bAddAccumulatedInstructions && !m_quInstructionsToAdd.isEmpty ())
+			il.addInstructions (m_quInstructionsToAdd.poll ());
+	}
+	
+	/**
 	 * Adds the instruction based on <code>strIntrinsicBaseName</code> <code>nUnrollFactor</code>-times
 	 * to the instruction list <code>il</code>.
 	 * 
@@ -183,7 +203,7 @@ public class AssemblyExpressionCodeGenerator
 	 *            The operand arguments to the instruction
 	 * @return An array of operands containing the result for each of the unrollings
 	 */
-	private static IOperand[] addInstruction (InstructionList il, int nUnrollFactor, String strIntrinsicBaseName, IOperand[] rgResult, IOperand[]... rgArguments)
+	private IOperand[] addInstruction (InstructionList il, int nUnrollFactor, String strIntrinsicBaseName, IOperand[] rgResult, IOperand[]... rgArguments)
 	{
 		IOperand[] rgResultLocal = rgResult;
 		if (rgResultLocal == null)
@@ -200,7 +220,7 @@ public class AssemblyExpressionCodeGenerator
 				rgArgs[j] = rgArguments[j][i];
 			rgArgs[rgArguments.length] = rgResultLocal[i];
 			
-			il.addInstruction (new Instruction (strIntrinsicBaseName, rgArgs));
+			addInstructions (il, i == nUnrollFactor - 1, new Instruction (strIntrinsicBaseName, rgArgs));
 		}
 		
 		return rgResultLocal;
@@ -228,7 +248,7 @@ public class AssemblyExpressionCodeGenerator
 				rgResult = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
 			else
 			{
-				rgResult = AssemblyExpressionCodeGenerator.addInstruction (il, nUnrollFactor,
+				rgResult = addInstruction (il, nUnrollFactor,
 					addsub.getBaseIntrinsic (),
 					i == 1 ? null : rgResult,
 					traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il),
@@ -284,7 +304,7 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] processBinaryExpression (BinaryExpression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		return AssemblyExpressionCodeGenerator.addInstruction (
+		return addInstruction (
 			il, nUnrollFactor, Globals.getIntrinsicBase (expr.getOperator ()).value (),
 			null, processArguments (specDatatype, nUnrollFactor, il, expr.getLHS (), expr.getRHS ()));
 	}
@@ -323,7 +343,7 @@ public class AssemblyExpressionCodeGenerator
 	private IOperand[] processFusedMultiplyAddSub (Intrinsic intrinsic, Expression exprSummand, Expression exprFactor1, Expression exprFactor2,
 		Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		return AssemblyExpressionCodeGenerator.addInstruction (
+		return addInstruction (
 			il, nUnrollFactor, intrinsic.getBaseName (), null,
 			processArguments (specDatatype, nUnrollFactor, il, exprSummand, exprFactor1, exprFactor2)
 		);
@@ -347,7 +367,7 @@ public class AssemblyExpressionCodeGenerator
 		IOperand[] rgOps = traverse (expr, specDatatype, nUnrollFactor, il);
 		
 		if (expr.getOperator ().equals (UnaryOperator.MINUS))
-			rgOps = AssemblyExpressionCodeGenerator.addInstruction (il, nUnrollFactor, TypeBaseIntrinsicEnum.UNARY_MINUS.value (), null, rgOps);
+			rgOps = addInstruction (il, nUnrollFactor, TypeBaseIntrinsicEnum.UNARY_MINUS.value (), null, rgOps);
 
 		return rgOps;
 	}
@@ -385,9 +405,17 @@ public class AssemblyExpressionCodeGenerator
 			for (int i = 0; i < nUnrollFactor; i++)
 			{
 				StencilAssemblySection.OperandWithInstructions op = m_assemblySection.getGrid (node, i);
-				il.addInstructions (op.getInstrPre ());
 				rgOpResults[i] = op.getOp ();
-				m_quInstructionsToAdd.add (op.getInstrPost ());
+
+				// the pre- and post-instructions will be the same for each node access
+				// (since in the unrolling direction only the displacement changes), but
+				// we need to add the additional instructions only once
+				
+				if (i == 0)
+				{
+					il.addInstructions (op.getInstrPre ());
+					m_quInstructionsToAdd.add (op.getInstrPost ());
+				}
 			}
 		}
 		

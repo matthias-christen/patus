@@ -236,13 +236,10 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] processAddSubSubtree (Expression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		List<AddSub> list = new LinkedList<> ();
-		RegisterAllocator.linearizeAddSubSubtree (expr, list);
-		
 		IOperand[] rgResult = null;
 		
 		int i = 0;
-		for (AddSub addsub : list)
+		for (AddSub addsub : RegisterAllocator.linearizeAddSubSubtree (expr))
 		{
 			if (i == 0)
 				rgResult = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
@@ -251,8 +248,8 @@ public class AssemblyExpressionCodeGenerator
 				rgResult = addInstruction (il, nUnrollFactor,
 					addsub.getBaseIntrinsic (),
 					i == 1 ? null : rgResult,
-					traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il),
-					rgResult
+					rgResult,
+					traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il)
 				);
 			}
 			

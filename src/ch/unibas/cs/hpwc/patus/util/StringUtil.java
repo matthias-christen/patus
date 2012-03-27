@@ -220,4 +220,11 @@ public class StringUtil
 		
 		return s.substring (0, nIdx + 1);		
 	}
+	
+	public static String padRight (String s, int nNumTotalChars)
+	{
+		if (s.length () > nNumTotalChars)
+			return s.substring (0, nNumTotalChars);
+		return String.format (StringUtil.concat ("%1$-", nNumTotalChars, "s"), s);
+	}
 }

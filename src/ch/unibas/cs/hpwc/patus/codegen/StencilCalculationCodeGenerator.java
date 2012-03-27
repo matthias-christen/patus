@@ -749,7 +749,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		m_data = data;
 	}
 	
-	private ParameterAssignment createStencilCalculationParamAssignment (CodeGeneratorRuntimeOptions options)
+	private static ParameterAssignment createStencilCalculationParamAssignment (CodeGeneratorRuntimeOptions options)
 	{
 		return new ParameterAssignment (
 			CodeGeneratorData.PARAM_COMPUTATION_TYPE,
@@ -791,7 +791,8 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		return slb;
 	}
 	
-	public void generateSingleConstantStencilCalculation (Stencil stencil, Specifier specDatatype, StatementListBundle slbGenerated, CodeGeneratorRuntimeOptions options)
+	public void generateSingleConstantStencilCalculation (
+		Stencil stencil, Specifier specDatatype, StatementListBundle slbGenerated, CodeGeneratorRuntimeOptions options)
 	{
 		if (!stencil.isConstant ())
 			throw new RuntimeException ("This method works only for constant stencils");
@@ -803,7 +804,8 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		
 		cg.generateSingleCalculation (
 			stencil, specDatatype, rgDefaultOffset,
-			m_data.getData ().getInitializationStatements (createStencilCalculationParamAssignment (options))
+			m_data.getData ().getInitializationStatements (
+				StencilCalculationCodeGenerator.createStencilCalculationParamAssignment (options))
 		);
 	}
 	

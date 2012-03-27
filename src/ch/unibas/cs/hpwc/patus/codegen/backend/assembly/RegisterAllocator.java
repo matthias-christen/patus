@@ -286,9 +286,11 @@ public class RegisterAllocator
 	 * @param op
 	 *            Set to {@link BinaryOperator#ADD} when calling the method
 	 */
-	public static void linearizeAddSubSubtree (Expression expr, List<AddSub> list)
+	public static List<AddSub> linearizeAddSubSubtree (Expression expr)
 	{
+		List<AddSub> list = new LinkedList<> ();
 		RegisterAllocator.linearizeAddSubSubtree (expr, list, BinaryOperator.ADD);
+		return list;
 	}
 
 	/**

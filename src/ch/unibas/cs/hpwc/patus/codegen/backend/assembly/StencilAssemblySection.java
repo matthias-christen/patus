@@ -157,6 +157,11 @@ public class StencilAssemblySection extends AssemblySection
 	 * the stencil computation can't be in mixed precisions.
 	 */
 	private Specifier m_specDatatype;
+	
+	/**
+	 * The offset from the default center stencil node (to account for loop unrolling)
+	 */
+	private int[] m_rgOffset;
 
 	
 	///////////////////////////////////////////////////////////////////
@@ -181,7 +186,9 @@ public class StencilAssemblySection extends AssemblySection
 		m_baseVectors = new FindStencilNodeBaseVectors (new int[] { 1, 2, 4, 8 });	// TODO: put this in architecture.xml
 		m_specDatatype = null;
 		
-		m_data.getData ().getMemoryObjectManager ().clear ();
+		m_rgOffset = (int[]) options.getObjectValue (CodeGeneratorRuntimeOptions.OPTION_INNER_UNROLLINGCONFIGURATION);
+		
+		//m_data.getData ().getMemoryObjectManager ().clear ();
 	}
 	
 	/**
@@ -323,12 +330,14 @@ public class StencilAssemblySection extends AssemblySection
 		if (m_mapGrids.containsKey (node))
 			return;
 		
+		StencilNode nodeOffset = new StencilNode (node);
+		nodeOffset.getIndex ().offsetInSpace (m_rgOffset);
 		IOperand op = addInput (
 			node,
 			new UnaryExpression (
 				UnaryOperator.ADDRESS_OF,
 				m_data.getData ().getMemoryObjectManager ().getMemoryObjectExpression (
-					m_sdid, node, null, true, true, false, m_slbGeneratedCode, m_options
+					m_sdid, nodeOffset, null, true, true, false, m_slbGeneratedCode, m_options
 				)
 			)
 		);

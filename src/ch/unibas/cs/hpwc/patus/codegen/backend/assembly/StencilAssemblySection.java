@@ -83,6 +83,42 @@ public class StencilAssemblySection extends AssemblySection
 		{
 			return m_rgInstrPost;
 		}
+		
+		@Override
+		public String toString ()
+		{
+			StringBuilder sb = new StringBuilder ();
+			
+			sb.append ("Pre:  ");
+			if (m_rgInstrPre == null)
+				sb.append ("-\n");
+			else
+			{
+				for (IInstruction instr : m_rgInstrPre)
+				{
+					sb.append (instr.toString ());
+					sb.append ('\n');
+				}
+			}
+			
+			sb.append ("Op:   ");
+			sb.append (m_op.toString ());
+			sb.append ('\n');
+
+			sb.append ("Post: ");
+			if (m_rgInstrPost == null)
+				sb.append ("-\n");
+			else
+			{
+				for (IInstruction instr : m_rgInstrPost)
+				{
+					sb.append (instr.toString ());
+					sb.append ('\n');
+				}
+			}
+
+			return sb.toString ();
+		}
 	}
 		
 

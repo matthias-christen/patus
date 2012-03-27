@@ -3,6 +3,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,14 +22,14 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
 /**
  * @author Matthias-M. Christen
  */
-public class RemoveMultipleMemoryLoad implements IInstructionListOptimizer
+public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 {
 	///////////////////////////////////////////////////////////////////
 	// Constants
 	
 	private final static int NUM_READAHEAD_INSTRUCTIONS = 4;
 	
-	private final static Logger LOGGER = Logger.getLogger (RemoveMultipleMemoryLoad.class);
+	private final static Logger LOGGER = Logger.getLogger (MultipleMemoryLoadRemover.class);
 
 
 	///////////////////////////////////////////////////////////////////
@@ -234,6 +235,7 @@ public class RemoveMultipleMemoryLoad implements IInstructionListOptimizer
 		{
 			Set<IOperand.Address> setAddresses = new HashSet<> ();
 			Set<IOperand.Address> setCommonAddrs = new HashSet<> ();
+			Set<IOperand.IRegisterOperand> setOutputRegs = new HashSet<> ();
 			
 			for (IInstruction instruction : m_rgReadAheadInstructions)
 			{
@@ -256,6 +258,22 @@ public class RemoveMultipleMemoryLoad implements IInstructionListOptimizer
 								setAddresses.add ((IOperand.Address) rgOps[i]);
 						}
 					}
+					if (rgOps[rgOps.length - 1] instanceof IOperand.IRegisterOperand)
+						setOutputRegs.add ((IOperand.IRegisterOperand) rgOps[rgOps.length - 1]);
+				}
+			}
+			
+			// check whether registers used to calculate the addresses from which data is read
+			// are modified within the window (in m_rgReadAheadInstructions), i.e., if a register
+			// occurs as output register in setOutputRegs
+			
+			for (Iterator<IOperand.Address> it = setCommonAddrs.iterator (); it.hasNext (); )
+			{
+				IOperand.Address opAddr = it.next ();
+				if ((opAddr.getRegBase () != null && setOutputRegs.contains (opAddr.getRegBase ())) ||
+					(opAddr.getRegIndex () != null && setOutputRegs.contains (opAddr.getRegIndex ())))
+				{
+					it.remove ();
 				}
 			}
 			
@@ -305,7 +323,7 @@ public class RemoveMultipleMemoryLoad implements IInstructionListOptimizer
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	public RemoveMultipleMemoryLoad (IArchitectureDescription arch, boolean bTranslateGenerated)
+	public MultipleMemoryLoadRemover (IArchitectureDescription arch, boolean bTranslateGenerated)
 	{
 		m_arch = arch;
 		m_bTranslateGenerated = bTranslateGenerated;

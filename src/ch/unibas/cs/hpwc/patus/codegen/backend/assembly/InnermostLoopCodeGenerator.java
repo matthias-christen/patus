@@ -24,7 +24,7 @@ import ch.unibas.cs.hpwc.patus.codegen.IInnermostLoopCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.RemoveMultipleMemoryLoad;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.MultipleMemoryLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -133,7 +133,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			// initialize the optimizers to execute before/after the translation of the
 			// computation instruction list
 			m_rgPreTranslateOptimizers = new IInstructionListOptimizer[] {
-				new RemoveMultipleMemoryLoad (m_data.getArchitectureDescription (), false)
+				new MultipleMemoryLoadRemover (m_data.getArchitectureDescription (), false)
 			};
 			m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] { };			
 		}
@@ -199,11 +199,13 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			InstructionList ilComputationNotUnrolledUnaligned = ilComputationNotUnrolled.replaceInstructions (mapUnalignedMoves);
 						
 			// unaligned prologue
+			il.addInstruction (new Comment ("unaligned prolog"));
 			il.addInstructions (m_assemblySection.translate (generatePrologHeader (), specType));
 			il.addInstructions (ilComputationNotUnrolledUnaligned);
 			il.addInstructions (m_assemblySection.translate (generatePrologFooter (), specType));
 			
 			// unrolled main loop
+			il.addInstruction (new Comment ("(unrolled) aligned main loop"));
 			il.addInstructions (m_assemblySection.translate (generateUnrolledMainHeader (), specType));
 			il.addInstructions (ilComputationUnrolled);
 			il.addInstructions (m_assemblySection.translate (generateUnrolledMainFooter (), specType));
@@ -214,6 +216,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				InstructionList ilSimpleMainHeader = generateSimpleMainHeader ();
 				if (ilSimpleMainHeader != null)
 				{
+					il.addInstruction (new Comment ("aligned unrolling cleanup loop"));
 					il.addInstructions (m_assemblySection.translate (ilSimpleMainHeader, specType));
 					il.addInstructions (ilComputationNotUnrolled);
 					il.addInstructions (m_assemblySection.translate (generateSimpleMainFooter (), specType));
@@ -221,6 +224,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			}
 			
 			// unaligned epilogue
+			il.addInstruction (new Comment ("unaligned epilog"));
 			il.addInstructions (m_assemblySection.translate (generateEpilogHeader (), specType));
 			il.addInstructions (ilComputationNotUnrolledUnaligned);
 			il.addInstructions (m_assemblySection.translate (generateEpilogFooter (), specType));
@@ -256,7 +260,10 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
 			{
 				if (!stencil.isConstant ())
+				{
+					il.addInstruction (new Comment (stencil.getStencilExpression ()));
 					cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), il, options);
+				}
 			}
 			
 			return il;

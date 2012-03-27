@@ -592,7 +592,8 @@ public class InstructionListTranslator
 	 */
 	private InstructionList run ()
 	{
-		for (IInstruction instruction : new UnneededPseudoRegistersRemover ().optimize (m_ilIn))
+		InstructionList ilIn = new UnneededPseudoRegistersRemover ().optimize (m_ilIn);
+		for (IInstruction instruction : ilIn)
 			translateInstruction (instruction);
 		return m_ilOut;
 	}

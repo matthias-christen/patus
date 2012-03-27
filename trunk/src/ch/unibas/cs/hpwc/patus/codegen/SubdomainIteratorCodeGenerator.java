@@ -58,6 +58,7 @@ import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.DomainPointEnumerator;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
+import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StatementListBundleUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -299,7 +300,13 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 				// cleanup loop
 				if (nUnrollFactor > 1 && bHasCleanupLoops)
 				{
-					slbInnerLoop = generateIteratorForDimension (nDimension, slbParent, SubdomainIteratorCodeGenerator.NULL_EXPRESSION, null, 1);
+					slbInnerLoop = generateIteratorForDimension (
+						nDimension,
+						slbParent,
+						SubdomainIteratorCodeGenerator.NULL_EXPRESSION,
+						null,
+						1
+					);
 
 					StencilLoopUnrollingConfiguration configCleanup = config.clone ();
 					configCleanup.setUnrollingForDimension (nDimension, 1, 1);
@@ -323,42 +330,67 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 			else
 			{
 				// create the stencil calculation statement
+				createStencilCalculation (slbParent, bHasProEpiLoops, config);
+			}
+		}
+		
+		private void createStencilCalculation (StatementListBundle slbParent, boolean bHasProEpiLoops, StencilLoopUnrollingConfiguration config)
+		{
+			// make sure that the statements to compute the indices are added
+			m_data.getData ().getMemoryObjectManager ().resetIndices ();
+			m_data.getCodeGenerators ().getUnrollGeneratedIdentifiers ().reset ();
 
-				// make sure that the statements to compute the indices are added
+			// set the code generator options and let the stencil code generator generate the code for the stencil calculation
+			CodeGeneratorRuntimeOptions options = m_options.clone ();
+			options.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILLOOPUNROLLINGFACTOR, config);
+
+			// has prologue/epilogue loops?
+			if (bHasProEpiLoops)
+			{
+				// main loop
+				SubdomainIteratorCodeGenerator.LOGGER.debug (StringUtil.concat (
+					"Creating main loop for ",
+					m_sdIterator.getLoopHeadAnnotation (),
+					" (no native SIMD datatypes; has prologue/epilogue loops)")
+				);
+				
+				StatementListBundleUtil.addToLoopBody (
+					slbParent,
+					SubdomainIteratorCodeGenerator.TAG_MAINLOOP,
+					m_cgParent.generate (m_sdIterator.getLoopBody ().clone (), options)
+				);
+
+				// create the loop body for the prologue and epilogue loops
 				m_data.getData ().getMemoryObjectManager ().resetIndices ();
 				m_data.getCodeGenerators ().getUnrollGeneratedIdentifiers ().reset ();
 
-				// set the code generator options and let the stencil code generator generate the code for the stencil calculation
-				CodeGeneratorRuntimeOptions options = m_options.clone ();
-				options.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILLOOPUNROLLINGFACTOR, config);
+				// create the code generation options for the prologue and epilogue loops
+				// no loop unrolling in the unit stride direction, no vectorization
+				CodeGeneratorRuntimeOptions optionsProEpi = m_options.clone ();
+				StencilLoopUnrollingConfiguration configUnrollProEpi = config.clone ();
+				configUnrollProEpi.setUnrollingForDimension (0, 1, 1);
+				optionsProEpi.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILLOOPUNROLLINGFACTOR, configUnrollProEpi);
+				optionsProEpi.setOption (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, Boolean.TRUE);
 
-				// has prologue/epilogue loops?
-				if (bHasProEpiLoops)
-				{
-					// main loop
-					SubdomainIteratorCodeGenerator.LOGGER.debug (StringUtil.concat ("Creating main loop for ", m_sdIterator.getLoopHeadAnnotation (), " (no native SIMD datatypes; has prologue/epilogue loops)"));
-					StatementListBundleUtil.addToLoopBody (slbParent, SubdomainIteratorCodeGenerator.TAG_MAINLOOP, m_cgParent.generate (m_sdIterator.getLoopBody ().clone (), options));
-
-					// create the loop body for the prologue and epilogue loops
-					m_data.getData ().getMemoryObjectManager ().resetIndices ();
-					m_data.getCodeGenerators ().getUnrollGeneratedIdentifiers ().reset ();
-
-					// create the code generation options for the prologue and epilogue loops
-					// no loop unrolling in the unit stride direction, no vectorization
-					CodeGeneratorRuntimeOptions optionsProEpi = m_options.clone ();
-					StencilLoopUnrollingConfiguration configUnrollProEpi = config.clone ();
-					configUnrollProEpi.setUnrollingForDimension (0, 1, 1);
-					optionsProEpi.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILLOOPUNROLLINGFACTOR, configUnrollProEpi);
-					optionsProEpi.setOption (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, Boolean.TRUE);
-
-					StatementListBundleUtil.addToLoopBody (slbParent, SubdomainIteratorCodeGenerator.TAG_PROEPILOOP, m_cgParent.generate (m_sdIterator.getLoopBody (), optionsProEpi));
-				}
-				else
-				{
-					SubdomainIteratorCodeGenerator.LOGGER.debug (StringUtil.concat ("Creating main loop for ", m_sdIterator.getLoopHeadAnnotation (), " (native SIMD datatypes; no prologue/epilogue loops)"));
-					StatementListBundleUtil.addToLoopBody (slbParent, m_cgParent.generate (m_sdIterator.getLoopBody (), options));
-				}
+				StatementListBundleUtil.addToLoopBody (
+					slbParent,
+					SubdomainIteratorCodeGenerator.TAG_PROEPILOOP,
+					m_cgParent.generate (m_sdIterator.getLoopBody (), optionsProEpi)
+				);
 			}
+			else
+			{
+				SubdomainIteratorCodeGenerator.LOGGER.debug (StringUtil.concat (
+					"Creating main loop for ",
+					m_sdIterator.getLoopHeadAnnotation (),
+					" (native SIMD datatypes; no prologue/epilogue loops)")
+				);
+				
+				StatementListBundleUtil.addToLoopBody (
+					slbParent,
+					m_cgParent.generate (m_sdIterator.getLoopBody ().clone (), options)
+				);
+			}			
 		}
 
 		/**
@@ -450,7 +482,8 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		 * @return The generated loop or <code>null</code> if no loop was
 		 *         created for the dimension
 		 */
-		private StatementListBundle generateIteratorForDimension (int nDim, StatementListBundle slGenerated, Expression exprStartOffset, Expression exprNegEndOffset, int nUnrollingFactor)
+		private StatementListBundle generateIteratorForDimension (
+			int nDim, StatementListBundle slGenerated, Expression exprStartOffset, Expression exprNegEndOffset, int nUnrollingFactor)
 		{
 			Expression exprIteratorSize = m_sdIterator.getIteratorSubdomain ().getBox ().getSize ().getCoord (nDim);
 			Expression exprDomainSize = m_sdIterator.getDomainSubdomain ().getBox ().getSize ().getCoord (nDim);
@@ -560,8 +593,11 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		}
 		
 		/**
-		 * Determines whether inline assembly is to be used for the innermost loop
-		 * @return <code>true</code> iff inline assembly is to be used for the innermost loop
+		 * Determines whether inline assembly is to be used for the innermost
+		 * loop.
+		 * 
+		 * @return <code>true</code> iff inline assembly is to be used for the
+		 *         innermost loop
 		 */
 		private boolean isSpecializedCGUsedForInnerMost ()
 		{
@@ -581,8 +617,36 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 			m_options.setOption (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR, config.getUnrollingFactor (0));
 				
 			// generate the code
-			StatementListBundle slbInnerLoop = m_data.getCodeGenerators ().getInnermostLoopCodeGenerator ().generate (m_sdIterator, m_options);
-	
+			byte nDimensionality = m_sdIterator.getIterator ().getDimensionality ();
+			Set<IntArray> setUnrollings = new HashSet<> ();
+			for (int[] rgOffset : config.getConfigurationSpace (nDimensionality))
+			{
+				IntArray arr = new IntArray (rgOffset, true);
+				arr.set (0, 0);
+				setUnrollings.add (arr);
+			}
+			
+			// clear the index cache before invoking the inner-most loop CG
+			m_data.getData ().getMemoryObjectManager ().clear ();
+			
+			// generate one version of the code for each unrolling configuration
+			// TODO: since only the base grid addresses change, cache generated versions of the code
+			StatementListBundle slbInnerLoop = null;
+			for (IntArray arr : setUnrollings)
+			{
+				CodeGeneratorRuntimeOptions options = m_options.clone ();
+				options.setOption (CodeGeneratorRuntimeOptions.OPTION_INNER_UNROLLINGCONFIGURATION, arr.get ());
+				
+				StatementListBundle slb = m_data.getCodeGenerators ().getInnermostLoopCodeGenerator ().generate (m_sdIterator, options);
+				
+				if (slb != null)
+				{
+					if (slbInnerLoop == null)
+						slbInnerLoop = new StatementListBundle ();
+					slbInnerLoop.addStatements (slb);
+				}
+			}
+			
 			// add the code to the parent loop
 			if (slbInnerLoop != null)
 			{
@@ -858,7 +922,8 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 
 			// add the iteration counter
 			m_idCounter = m_data.getData ().getGeneratedIdentifiers ().getLoopCounterIdentifier (m_sdIterator.getIterator ());
-			slbGenerated.addStatement (new ExpressionStatement (new AssignmentExpression (m_idCounter.clone (), AssignmentOperator.NORMAL, new IntegerLiteral (0))));
+			slbGenerated.addStatement (new ExpressionStatement (new AssignmentExpression (
+				m_idCounter.clone (), AssignmentOperator.NORMAL, new IntegerLiteral (0))));
 
 			// create the outer loops that are not affected by data reuse
 			StatementListBundle slbAddLoop = slbGenerated;

@@ -34,9 +34,17 @@ public class CodeGeneratorRuntimeOptions implements Cloneable
 	public final static int VALUE_STENCILCALCULATION_VALIDATE = 2;
 
 	/**
-	 * Suppresses vectorization of the stencil calculation code (if the value is {@link Boolean#TRUE})
+	 * Suppresses vectorization of the stencil calculation code (if the value is
+	 * {@link Boolean#TRUE})
 	 */
 	public final static String OPTION_NOVECTORIZE = "NoVectorize";
+
+	/**
+	 * The loop unrolling configuration used to generated the inner-most loop
+	 * when used with a special code generator. The value of the option is
+	 * <code>int[]</code>: the offset from the default center node.
+	 */
+	public static final String OPTION_INNER_UNROLLINGCONFIGURATION = "InnerMostUnrollingConfig";
 
 
 	///////////////////////////////////////////////////////////////////

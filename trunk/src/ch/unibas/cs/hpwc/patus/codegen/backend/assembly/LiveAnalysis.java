@@ -1,8 +1,10 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import java.text.DecimalFormat;
 import java.util.Arrays;
 
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  * 
@@ -171,22 +173,34 @@ public class LiveAnalysis
 					m_rgLivePseudoRegisters[i][reg.getNumber ()] = STATE_LIVE;
 				}
 				
-				// promote unassigned flags from previous instruction
-				for (int j = 0; j < m_rgLivePseudoRegisters[i].length; j++)
-				{
-					if (i == 0)
-					{
-						if (m_rgLivePseudoRegisters[i][j] == STATE_UNASSIGNED)
-							m_rgLivePseudoRegisters[i][j] = STATE_DEAD;
-					}
-					else
-					{
-						if (m_rgLivePseudoRegisters[i][j] == STATE_UNASSIGNED)
-							m_rgLivePseudoRegisters[i][j] = m_rgLivePseudoRegisters[i - 1][j];
-					}
-				}
 			}
+
+			// promote unassigned flags from previous instruction
+			promoteUnassignedFlags (i);
 		}
+	}
+	
+	/**
+	 * Promotes unassigned flags from previous instruction.
+	 * 
+	 * @param nCurIdx
+	 *            The current instruction index
+	 */
+	private void promoteUnassignedFlags (int nCurIdx)
+	{
+		for (int j = 0; j < m_rgLivePseudoRegisters[nCurIdx].length; j++)
+		{
+			if (nCurIdx == 0)
+			{
+				if (m_rgLivePseudoRegisters[nCurIdx][j] == STATE_UNASSIGNED)
+					m_rgLivePseudoRegisters[nCurIdx][j] = STATE_DEAD;
+			}
+			else
+			{
+				if (m_rgLivePseudoRegisters[nCurIdx][j] == STATE_UNASSIGNED)
+					m_rgLivePseudoRegisters[nCurIdx][j] = m_rgLivePseudoRegisters[nCurIdx - 1][j];
+			}
+		}		
 	}
 	
 	/**
@@ -225,17 +239,24 @@ public class LiveAnalysis
 	public String toString ()
 	{
 		StringBuilder sb = new StringBuilder ();
+		
+		final int nInstrStrLen = 60;
+		DecimalFormat fmt = new DecimalFormat (" 00");
+		
+		sb.append (StringUtil.padRight ("Instr \\ Reg", nInstrStrLen));
+		for (int i = 0; i < m_rgLivePseudoRegisters[0].length; i++)
+			sb.append (fmt.format (i));
+		sb.append ('\n');
+		
 		for (int i = 0; i < m_rgLivePseudoRegisters.length; i++)
 		{
-			sb.append ('I');
-			if (i < 10)
-				sb.append ('0');
-			sb.append (i);
-			sb.append (": ");
-			
-			sb.append (Arrays.toString (m_rgLivePseudoRegisters[i]));
-			sb.append ('\t');
-			sb.append (m_rgInstructions[i].toString ());
+			sb.append (StringUtil.padRight (m_rgInstructions[i].toString (), nInstrStrLen));
+
+			for (int j = 0; j < m_rgLivePseudoRegisters[i].length; j++)
+			{
+				sb.append ("  ");
+				sb.append (m_rgLivePseudoRegisters[i][j] == STATE_LIVE ? '*' : ' ');
+			}
 			sb.append ('\n');
 		}
 		

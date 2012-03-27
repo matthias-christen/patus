@@ -364,9 +364,12 @@ public class AssemblySection
 		StringBuilder sbInstructions = new StringBuilder ();
 		for (IInstruction instruction : ilInstructions)
 		{
-			sbInstructions.append ('"');
+			if (!(instruction instanceof Comment))
+				sbInstructions.append ('"');
 			instruction.issue (sbInstructions);
-			sbInstructions.append ("\"\n");
+			if (!(instruction instanceof Comment))
+				sbInstructions.append ('"');
+			sbInstructions.append ('\n');
 		}
 		
 		// build the list of child expressions (the inputs)

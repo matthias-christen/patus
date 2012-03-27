@@ -414,7 +414,8 @@ public class AssemblyExpressionCodeGenerator
 				if (i == 0)
 				{
 					il.addInstructions (op.getInstrPre ());
-					m_quInstructionsToAdd.add (op.getInstrPost ());
+					if (op.getInstrPost () != null)
+						m_quInstructionsToAdd.add (op.getInstrPost ());
 				}
 			}
 		}

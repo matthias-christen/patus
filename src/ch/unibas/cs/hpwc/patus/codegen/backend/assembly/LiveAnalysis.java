@@ -2,8 +2,10 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.text.DecimalFormat;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -75,8 +77,8 @@ public class LiveAnalysis
 			if (instr instanceof Instruction)
 			{
 				for (IOperand op : ((Instruction) instr).getOperands ())
-					if (op instanceof PseudoRegister)
-						nMaxIdx = Math.max (nMaxIdx, ((PseudoRegister) op).getNumber ());
+					if (op instanceof IOperand.PseudoRegister)
+						nMaxIdx = Math.max (nMaxIdx, ((IOperand.PseudoRegister) op).getNumber ());
 			}
 		}
 		
@@ -88,12 +90,14 @@ public class LiveAnalysis
 	 * 
 	 * @return The live analysis graph
 	 */
-	public LAGraph run ()
+	public Map<TypeRegisterType, LAGraph> run ()
 	{
-		LAGraph graph = new LAGraph ();
+		Map<TypeRegisterType, LAGraph> mapGraphs = new HashMap<> ();
+		for (TypeRegisterType type : TypeRegisterType.values ())
+			mapGraphs.put (type, new LAGraph ());
 		
 		// construct the matrix and add the vertices to the LAGraph
-		createStateMatrix (graph);
+		createStateMatrix (mapGraphs);
 		
 		// construct the graph from the matrix:
 		// add an edge between two vertices if the two corresponding pseudo registers are live at the same time
@@ -105,8 +109,10 @@ public class LiveAnalysis
 			{
 				for (int k = j + 1; k < m_rgLivePseudoRegisters[i].length; k++)
 				{
-					if (m_rgLivePseudoRegisters[i][j] == STATE_LIVE && m_rgLivePseudoRegisters[i][k] == STATE_LIVE)
+					if (m_rgLivePseudoRegisters[i][j] == STATE_LIVE && m_rgLivePseudoRegisters[i][k] == STATE_LIVE &&
+						m_rgPseudoRegisters[j].getRegisterType ().equals (m_rgPseudoRegisters[k].getRegisterType ()))
 					{
+						LAGraph graph = mapGraphs.get (m_rgPseudoRegisters[j].getRegisterType ());
 						graph.addEdge (new LAGraph.Vertex (m_rgPseudoRegisters[j]), new LAGraph.Vertex (m_rgPseudoRegisters[k]));
 						graph.addEdge (new LAGraph.Vertex (m_rgPseudoRegisters[k]), new LAGraph.Vertex (m_rgPseudoRegisters[j]));
 					}
@@ -114,7 +120,7 @@ public class LiveAnalysis
 			}
 		}
 				
-		return graph;
+		return mapGraphs;
 	}
 	
 	/**
@@ -124,7 +130,7 @@ public class LiveAnalysis
 	 * @param graph
 	 *            An instance of the live analysis graph, to which vertices are added in this method.
 	 */
-	private void createStateMatrix (LAGraph graph)
+	private void createStateMatrix (Map<TypeRegisterType, LAGraph> mapGraphs)
 	{
 		// create the matrix of pseudo registers
 		int nPseudoRegistersCount = getMaxPseudoRegIndex () + 1;
@@ -151,7 +157,7 @@ public class LiveAnalysis
 					if (rgOps[j] instanceof IOperand.PseudoRegister)
 					{
 						IOperand.PseudoRegister reg = (IOperand.PseudoRegister) rgOps[j];
-						graph.addVertex (new LAGraph.Vertex (reg));
+						mapGraphs.get (reg.getRegisterType ()).addVertex (new LAGraph.Vertex (reg));
 						m_rgPseudoRegisters[reg.getNumber ()] = reg;
 						
 						if (isLastRead (reg, i))
@@ -167,7 +173,7 @@ public class LiveAnalysis
 				if (rgOps[rgOps.length - 1] instanceof IOperand.PseudoRegister)
 				{
 					IOperand.PseudoRegister reg = (IOperand.PseudoRegister) rgOps[rgOps.length - 1];
-					graph.addVertex (new LAGraph.Vertex (reg));
+					mapGraphs.get (reg.getRegisterType ()).addVertex (new LAGraph.Vertex (reg));
 					m_rgPseudoRegisters[reg.getNumber ()] = reg;
 					
 					m_rgLivePseudoRegisters[i][reg.getNumber ()] = STATE_LIVE;

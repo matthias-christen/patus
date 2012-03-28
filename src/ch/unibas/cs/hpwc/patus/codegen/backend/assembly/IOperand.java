@@ -1,6 +1,7 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public interface IOperand
@@ -120,12 +121,21 @@ public interface IOperand
 			m_nPseudoRegisterNumber = 0;
 		}
 		
+		public static boolean isPseudoRegisterOfType (IOperand op, TypeRegisterType regtype)
+		{
+			if (!(op instanceof PseudoRegister))
+				return false;
+			return ((PseudoRegister) op).getRegisterType ().equals (regtype);
+		}
+		
 		
 		private int m_nNumber;
+		private TypeRegisterType m_regtype;
 		
-		public PseudoRegister ()
+		public PseudoRegister (TypeRegisterType regtype)
 		{
 			m_nNumber = m_nPseudoRegisterNumber++;
+			m_regtype = regtype;
 		}
 		
 		public int getNumber ()
@@ -133,10 +143,15 @@ public interface IOperand
 			return m_nNumber;
 		}
 		
+		public TypeRegisterType getRegisterType ()
+		{
+			return m_regtype;
+		}
+		
 		@Override
 		public String getAsString ()
 		{
-			return StringUtil.concat ("{pseudoreg-", m_nNumber, "}");
+			return StringUtil.concat ("{pseudoreg-", m_nNumber, ":", m_regtype.toString (), "}");
 		}
 		
 		@Override
@@ -307,5 +322,5 @@ public interface IOperand
 	 * 
 	 * @return The assembly string representation
 	 */
-	public abstract String getAsString ();
+	public abstract String getAsString ();	
 }

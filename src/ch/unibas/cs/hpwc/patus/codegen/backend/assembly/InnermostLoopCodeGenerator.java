@@ -182,7 +182,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			InstructionList ilComputationUnrolled = m_assemblySection.translate (
 				ilComputationTempUnrolled, specType, m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
 			
-			InstructionList ilComputationNotUnrolled = ilComputationUnrolled;			
+			InstructionList ilComputationNotUnrolled = ilComputationUnrolled;
 			if (nUnrollingFactor != 1)
 			{
 				m_assemblySection.killAllRegisters ();
@@ -253,6 +253,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		
 		private InstructionList generateComputation (Map<StencilNode, IRegisterOperand> mapReuse, CodeGeneratorRuntimeOptions options)
 		{
+			m_assemblySection.reset ();
 			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (
 				m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams, m_mapTemporaries);
 

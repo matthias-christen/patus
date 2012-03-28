@@ -188,6 +188,13 @@ public class InstructionListTranslatorTest
 		}
 		
 		@Override
+		public TypeRegisterClass getDefaultRegisterClass (TypeRegisterType nType)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+		
+		@Override
 		public List<String> getIncludeFiles ()
 		{
 			// TODO Auto-generated method stub

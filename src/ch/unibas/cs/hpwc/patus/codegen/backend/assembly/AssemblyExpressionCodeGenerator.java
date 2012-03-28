@@ -20,6 +20,7 @@ import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
@@ -116,7 +117,7 @@ public class AssemblyExpressionCodeGenerator
 					rgDest[i] = (IOperand.IRegisterOperand) rgResult[i];
 				else
 				{
-					rgDest[i] = new IOperand.PseudoRegister ();
+					rgDest[i] = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
 					addInstructions (il, i == nUnrollFactor - 1, new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
 				}
 			}
@@ -213,7 +214,7 @@ public class AssemblyExpressionCodeGenerator
 		for (int i = 0; i < nUnrollFactor; i++)
 		{
 			if (!bHasResult)
-				rgResultLocal[i] = new IOperand.PseudoRegister ();
+				rgResultLocal[i] = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
 			
 			IOperand[] rgArgs = new IOperand[rgArguments.length + 1];
 			for (int j = 0; j < rgArguments.length; j++)

@@ -12,6 +12,7 @@ import org.apache.log4j.Logger;
 
 import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
@@ -90,7 +91,7 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 					listCommonAddrSets.get (normalizeIndex (m_nReadAheadInstructionIdx - 1)),
 					setCurrentCommonAddrs))
 				{
-					IOperand.IRegisterOperand opReg = new IOperand.PseudoRegister ();
+					IOperand.IRegisterOperand opReg = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
 					createMovInstruction (opNewAddr, opReg);
 					m_mapReplacements.put (opNewAddr, opReg);
 				}

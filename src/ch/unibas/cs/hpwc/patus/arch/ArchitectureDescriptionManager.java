@@ -360,6 +360,23 @@ public class ArchitectureDescriptionManager
 		}
 		
 		@Override
+		public TypeRegisterClass getDefaultRegisterClass (TypeRegisterType type)
+		{
+			if (m_type.getAssembly () == null)
+				return null;
+			if (m_type.getAssembly ().getRegisters () == null)
+				return null;
+			
+			// search for a register of type "type" and return its class
+			for (TypeRegister reg : m_type.getAssembly ().getRegisters ().getRegister ())
+				if (((TypeRegisterClass) reg.getClazz ()).getType ().equals (type))
+					return (TypeRegisterClass) reg.getClazz ();
+
+			// no outer-most register of type "type" found
+			return null;
+		}
+		
+		@Override
 		public List<String> getIncludeFiles ()
 		{
 			List<String> listIncludes = new ArrayList<> ();
@@ -529,8 +546,14 @@ public class ArchitectureDescriptionManager
 				}
 				else
 				{
-					if (fieldSrc.get (objSrc) == null)
+					Object objSrcVal = fieldSrc.get (objSrc);
+					if (objSrcVal == null)
 						fieldDest.set (objDest, null);
+					else if (objSrcVal instanceof TypeRegisterClass)
+					{
+						// special treatment because of key
+						fieldDest.set (objDest, objSrcVal);
+					}
 					else
 					{
 						Object objVal = fieldSrc.getType ().newInstance ();

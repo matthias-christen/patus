@@ -9,6 +9,7 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Label;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.StencilAssemblySection;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.StencilAssemblySection.OperandWithInstructions;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.MathUtil;
@@ -66,18 +67,22 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 		public InstructionList generatePrologHeader ()
 		{
 			StencilAssemblySection as = getAssemblySection ();
+			as.reset ();
+			
 			InstructionList l = new InstructionList ();
 			
 			IOperand.IRegisterOperand regCounter = getCounterRegister ();
 			int nSIMDVectorLengthInBytes = getSIMDVectorLength () * getBaseTypeSize ();
 			
-			IOperand opGridAddress = as.getGrid (getOutputStencilNode (), 0).getOp ();
-			if (opGridAddress instanceof IOperand.Address)
-				opGridAddress = ((IOperand.Address) opGridAddress).getRegBase ();
-			// TODO: if grids are combined into one input ref, we need to LEA
-			
+			OperandWithInstructions opGrid = as.getGrid (getOutputStencilNode (), 0);
+			l.addInstructions (opGrid.getInstrPre ());
+			IOperand opGridAddress = opGrid.getOp ();
+			if (opGrid.getOp () instanceof IOperand.Address)
+				opGridAddress = ((IOperand.Address) opGrid.getOp ()).getRegBase ();
+						
 			// mask the last log2(nSIMDVectorLengthInBytes) bits of the address opGridAddress
 			l.addInstruction (new Instruction ("mov", opGridAddress, regCounter));
+			l.addInstructions (opGrid.getInstrPost ());
 			l.addInstruction (new Instruction ("add", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
 			l.addInstruction (new Instruction ("and", new IOperand.Immediate (nSIMDVectorLengthInBytes - 1), regCounter));
 			

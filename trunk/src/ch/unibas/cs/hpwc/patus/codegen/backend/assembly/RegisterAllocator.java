@@ -334,21 +334,28 @@ public class RegisterAllocator
 	 *            The live analysis graph
 	 * @return A map mapping {@link PseudoRegister} to register names
 	 */
-	public static Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapPseudoRegistersToRegisters (LAGraph graph, AssemblySection as)
+	public static Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapPseudoRegistersToRegisters (Map<TypeRegisterType, LAGraph> mapGraphs, AssemblySection as)
 	{
 		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapRegisters = new HashMap<> ();
 		
-		// color the graph
-		int nColorsCount = GraphColoringGreedy.run (graph);
-		
-		// allocate registers
-		IOperand.IRegisterOperand[] rgRegisters = new IOperand.IRegisterOperand[nColorsCount];
-		for (int i = 0; i < nColorsCount; i++)
-			rgRegisters[i] = as.getFreeRegister (TypeRegisterType.SIMD);
-		
-		// create the map
-		for (LAGraph.Vertex vertex : graph.getVertices ())
-			mapRegisters.put ((IOperand.PseudoRegister) vertex.getOperand (), rgRegisters[vertex.getColor ()]);
+		// color the graphs
+		for (TypeRegisterType regtype : mapGraphs.keySet ())
+		{
+			LAGraph graph = mapGraphs.get (regtype);
+			if (graph.getVerticesCount () == 0)
+				continue;
+			
+			int nColorsCount = GraphColoringGreedy.run (graph);
+			
+			// allocate registers
+			IOperand.IRegisterOperand[] rgRegisters = new IOperand.IRegisterOperand[nColorsCount];
+			for (int i = 0; i < nColorsCount; i++)
+				rgRegisters[i] = as.getFreeRegister (regtype);
+			
+			// create the map
+			for (LAGraph.Vertex vertex : graph.getVertices ())
+				mapRegisters.put ((IOperand.PseudoRegister) vertex.getOperand (), rgRegisters[vertex.getColor ()]);
+		}
 		
 		return mapRegisters;
 	}

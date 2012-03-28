@@ -7,24 +7,33 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import cetus.hir.ArrayAccess;
+import cetus.hir.AssignmentExpression;
+import cetus.hir.AssignmentOperator;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
+import cetus.hir.ExpressionStatement;
 import cetus.hir.FloatLiteral;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.SizeofExpression;
 import cetus.hir.Specifier;
 import cetus.hir.Traversable;
+import cetus.hir.Typecast;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
+import cetus.hir.UserSpecifier;
+import cetus.hir.VariableDeclarator;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.MemoryObject;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.Address;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.FindStencilNodeBaseVectors;
@@ -45,7 +54,9 @@ public class StencilAssemblySection extends AssemblySection
 	///////////////////////////////////////////////////////////////////
 	// Constants
 	
-	public final static String INPUT_CONSTANTS_ARRAYPTR = "constants";
+	public final static String INPUT_CONSTANTS_ARRAYPTR = "_constants_";
+	public final static String INPUT_GRIDS_ARRAYPTR = "_grids_";
+	public final static String INPUT_STRIDE_ARRAYPTR = "_strides_";
 	
 	
 	///////////////////////////////////////////////////////////////////
@@ -142,11 +153,15 @@ public class StencilAssemblySection extends AssemblySection
 	private StatementListBundle m_slbGeneratedCode;
 	
 	private Map<StencilNode, IOperand.IRegisterOperand> m_mapGrids;
-	private List<IOperand.IRegisterOperand> m_listGridInputs;
+	private List<IOperand> m_listGridInputs;
+	private Map<IOperand, Boolean> m_mapGridLoaded;
+	private Map<IOperand, Integer> m_mapGridIndices;
+	private boolean m_bUseGridPointers;
 	
 	private Map<IntArray, IOperand.IRegisterOperand> m_mapStrides;
 	private Map<IntArray, Expression> m_mapStrideExpressions;
 	private boolean m_bUseNegOnStrides;
+	private boolean m_bUseStridePointers;
 	
 	private Map<Expression, Integer> m_mapConstantsAndParams;
 
@@ -162,6 +177,8 @@ public class StencilAssemblySection extends AssemblySection
 	 * The offset from the default center stencil node (to account for loop unrolling)
 	 */
 	private int[] m_rgOffset;
+	
+	private TypeRegisterClass m_clsDefaultGPRClass;
 
 	
 	///////////////////////////////////////////////////////////////////
@@ -177,17 +194,24 @@ public class StencilAssemblySection extends AssemblySection
 		m_slbGeneratedCode = new StatementListBundle ();
 
 		m_mapGrids = new HashMap<> ();
+		m_mapGridLoaded = new HashMap<> ();
+		m_mapGridIndices = new HashMap<> ();
 		m_listGridInputs = new ArrayList<> ();
 		m_mapStrides = new HashMap<> ();
 		m_mapStrideExpressions = new HashMap<> ();
 		m_mapConstantsAndParams = new HashMap<> ();
+		
 		m_bUseNegOnStrides = false;
+		m_bUseGridPointers = false;
+		m_bUseStridePointers = false;
 		
 		m_baseVectors = new FindStencilNodeBaseVectors (new int[] { 1, 2, 4, 8 });	// TODO: put this in architecture.xml
 		m_specDatatype = null;
 		
 		m_rgOffset = (int[]) options.getObjectValue (CodeGeneratorRuntimeOptions.OPTION_INNER_UNROLLINGCONFIGURATION);
 		
+		m_clsDefaultGPRClass = m_data.getArchitectureDescription ().getDefaultRegisterClass (TypeRegisterType.GPR);
+
 		//m_data.getData ().getMemoryObjectManager ().clear ();
 	}
 	
@@ -222,6 +246,10 @@ public class StencilAssemblySection extends AssemblySection
 	 */
 	public void createInputs ()
 	{
+		// set to 0, 1, 2, 3, or 4 to manually select a code generation path (see below) for debugging purposes.
+		// set to -1 for default behavior.
+		int nDebugSelectVariant = 2;
+
 		int nInitialFreeRegisters = getFreeRegistersCount (TypeRegisterType.GPR) - 2;
 		int nNumInputs = m_listInputs.size ();
 		int nNumRegistersForGrids = getNumRegistersForGrids ();
@@ -229,7 +257,8 @@ public class StencilAssemblySection extends AssemblySection
 		
 		// 1 additional register is needed for the constants array
 		int nFreeRegisters = nInitialFreeRegisters - nNumInputs - nNumRegistersForGrids - nNumRegistersForStrides - 1;
-		if (nFreeRegisters >= 0)
+		if (((nFreeRegisters >= 0)
+			&& nDebugSelectVariant == -1) || nDebugSelectVariant == 0)
 		{
 			// enough free registers
 			addGrids ();
@@ -237,23 +266,53 @@ public class StencilAssemblySection extends AssemblySection
 			addConstants ();
 		}
 		else
-		{
+		{			
 			// check whether be negating stride registers we can save enough
 			Set<IntArray> setPositiveStrides = new HashSet<> ();
 			for (IntArray v : m_mapStrideExpressions.keySet ())
 				if (!setPositiveStrides.contains (v) && !setPositiveStrides.contains (v.neg ()))
 					setPositiveStrides.add (v);
 				
-			int nSavedRegisters = nNumRegistersForStrides - setPositiveStrides.size ();			
-			if (nFreeRegisters + nSavedRegisters >= 0)
+			int nSavedRegisters = nNumRegistersForStrides - setPositiveStrides.size ();
+			
+			if (((nFreeRegisters + nSavedRegisters >= 0)
+				&& nDebugSelectVariant == -1) || nDebugSelectVariant == 1)
 			{
 				addGrids ();
 				addStrides (setPositiveStrides);
 				m_bUseNegOnStrides = true;
 				addConstants ();
 			}
-			else
-				throw new RuntimeException ("no regs left");
+			else if (((nFreeRegisters + nNumRegistersForGrids - 2 >= 0)
+				&& nDebugSelectVariant == -1) || nDebugSelectVariant == 2)
+			{
+				// there are enough registers for the individual strides if all the grids are addressed indirectly (LEA)
+				// note that we need one register to save the grid pointers array, and at least one into which the
+				// grid address is LEAed, hence we need at least 2 free registers
+				
+				addGridPointers ();
+				addStrides (m_mapStrideExpressions.keySet ());
+				addConstants ();
+			}
+			else if (((nFreeRegisters + nNumRegistersForGrids - 2 + nSavedRegisters >= 0)
+				&& nDebugSelectVariant == -1) || nDebugSelectVariant == 3)
+			{
+				// there are enough registers for reduced strides (by negating)
+				// if all the grids are addressed indirectly (LEA)
+
+				addGridPointers ();
+				addStrides (setPositiveStrides);
+				m_bUseNegOnStrides = true;
+				addConstants ();
+			}
+			else // default -- or nDebugSelectVariant == 4
+			{
+				// not enough registers; load both grids and strides indirectly
+
+				addGridPointers ();
+				addStridePointers ();
+				addConstants ();
+			}
 		}
 	}
 	
@@ -271,14 +330,43 @@ public class StencilAssemblySection extends AssemblySection
 		StencilNodeSet setAllGrids = m_data.getStencilCalculation ().getInputBaseNodeSet ().union (
 			m_data.getStencilCalculation ().getOutputBaseNodeSet ());
 		
-		if (setAllGrids.size () > 10)
-		{
-			// TODO: "too many grids"
-			throw new RuntimeException ("Too many grids...");
-		}
-
 		for (StencilNode node : setAllGrids)
-			addGrid (node);		
+			m_listGridInputs.add (addGrid (node));
+	}
+	
+	/**
+	 * Creates an array holding all the grid pointers and initializes it with
+	 * the respective pointers before the inline assembly section.
+	 * The address of the array is added as an input to the inline assembly section.
+	 */
+	private void addGridPointers ()
+	{
+		m_bUseGridPointers = true;
+		
+		StencilNodeSet setAllGrids = m_data.getStencilCalculation ().getInputBaseNodeSet ().union (
+			m_data.getStencilCalculation ().getOutputBaseNodeSet ());
+		
+		Specifier specDatatype = new UserSpecifier (new NameID (m_clsDefaultGPRClass.getDatatype ()));
+		VariableDeclarator decl = m_data.getCodeGenerators ().getConstantGeneratedIdentifiers ().createDeclarator (
+			INPUT_GRIDS_ARRAYPTR, specDatatype, true, setAllGrids.size ());
+		
+		addInput (INPUT_GRIDS_ARRAYPTR, decl.getID ());
+		
+		int nIdx = 0;
+		for (StencilNode node : setAllGrids)
+		{
+			m_slbGeneratedCode.addStatement (new ExpressionStatement (new AssignmentExpression (
+				new ArrayAccess (decl.getID ().clone (), new IntegerLiteral (nIdx)),
+				AssignmentOperator.NORMAL,
+				new Typecast (CodeGeneratorUtil.specifiers (specDatatype), getGridPointer (node))
+			)));
+			
+			IOperand op = addGrid (node);
+			m_listGridInputs.add (new IOperand.Address (getInput (INPUT_GRIDS_ARRAYPTR), nIdx * m_clsDefaultGPRClass.getWidth ().intValue () / 8));
+			m_mapGridIndices.put (op, nIdx);
+			
+			nIdx++;
+		}
 	}
 	
 	/**
@@ -294,6 +382,11 @@ public class StencilAssemblySection extends AssemblySection
 		}
 	}
 	
+	/**
+	 * Counts the number of stride variables that ideally have to be used.
+	 * 
+	 * @return The ideal number of stride variables
+	 */
 	private int countStrides ()
 	{
 		StencilNodeSet setNodes = m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ().getAllNodes ();
@@ -319,29 +412,48 @@ public class StencilAssemblySection extends AssemblySection
 		return m_mapStrideExpressions.size ();
 	}
 	
+	private void addStridePointers ()
+	{
+		m_bUseStridePointers = true;
+		throw new RuntimeException ("Not implemented");
+	}
+	
+	/**
+	 * Creates an expression pointing to the grid at the location identified by
+	 * the stencil node <code>node</code>.
+	 * 
+	 * @param node
+	 *            The stencil node for which to create the grid address
+	 * @return An expression pointing to the grid location at <code>node</code>
+	 */
+	private Expression getGridPointer (StencilNode node)
+	{
+		StencilNode nodeOffset = new StencilNode (node);
+		nodeOffset.getIndex ().offsetInSpace (m_rgOffset);
+
+		return new UnaryExpression (
+			UnaryOperator.ADDRESS_OF,
+			m_data.getData ().getMemoryObjectManager ().getMemoryObjectExpression (
+				m_sdid, nodeOffset, null, true, true, false, m_slbGeneratedCode, m_options
+			)
+		);		
+	}
+	
 	/**
 	 * Adds a single grid pointer as input.
 	 * 
 	 * @param node
 	 *            The stencil node corresponding to the grid
 	 */
-	protected void addGrid (StencilNode node)
+	protected IOperand addGrid (StencilNode node)
 	{
-		if (m_mapGrids.containsKey (node))
-			return;
+		IOperand op = m_mapGrids.get (node);
+		if (op != null)
+			return op;
 		
-		StencilNode nodeOffset = new StencilNode (node);
-		nodeOffset.getIndex ().offsetInSpace (m_rgOffset);
-		IOperand op = addInput (
-			node,
-			new UnaryExpression (
-				UnaryOperator.ADDRESS_OF,
-				m_data.getData ().getMemoryObjectManager ().getMemoryObjectExpression (
-					m_sdid, nodeOffset, null, true, true, false, m_slbGeneratedCode, m_options
-				)
-			)
-		);
-		m_listGridInputs.add ((IOperand.IRegisterOperand) op);
+		op = m_bUseGridPointers ?
+			new IOperand.PseudoRegister (TypeRegisterType.GPR) :
+			addInput (node, getGridPointer (node));
 		
 		// add the node to the grid
 		m_mapGrids.put (node, (IOperand.IRegisterOperand) op);
@@ -351,6 +463,8 @@ public class StencilAssemblySection extends AssemblySection
 		for (StencilNode n : m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ())
 			if (n != node && mo.contains (n))
 				m_mapGrids.put (n, (IOperand.IRegisterOperand) op);
+		
+		return op;
 	}
 	
 	/**
@@ -456,8 +570,8 @@ public class StencilAssemblySection extends AssemblySection
 		if (m_mapConstantsAndParams.size () == 0)
 			return;
 		
-		Expression[] rgConstsAndParams = new Expression[m_mapConstantsAndParams.size ()];
-		
+		// build the expression array
+		Expression[] rgConstsAndParams = new Expression[m_mapConstantsAndParams.size ()];		
 		for (Expression expr : m_mapConstantsAndParams.keySet ())
 		{
 			int nIdx = m_mapConstantsAndParams.get (expr);
@@ -542,7 +656,7 @@ public class StencilAssemblySection extends AssemblySection
 	 * Returns an iterable over the register containing the grid pointers.
 	 * @return
 	 */
-	public Iterable<IOperand.IRegisterOperand> getGrids ()
+	public Iterable<IOperand> getGrids ()
 	{
 		return m_listGridInputs;
 	}
@@ -639,7 +753,6 @@ public class StencilAssemblySection extends AssemblySection
 		StencilNode nodeLocal = node;
 		int nElementsShiftLocal = nElementsShift;
 		
-		// TODO: if too many grids need to use LEA...
 		IOperand.IRegisterOperand opBase = m_mapGrids.get (nodeLocal);
 		if (opBase == null)
 		{
@@ -652,6 +765,24 @@ public class StencilAssemblySection extends AssemblySection
 			nElementsShiftLocal += nodeLocal.getSpaceIndex ()[0] - nodeRef.getSpaceIndex ()[0];
 			nodeLocal = nodeRef;
 			opBase = m_mapGrids.get (nodeLocal);
+		}
+		
+		// load the grid address if we are using an array of grid pointers and the address hasn't been loaded yet
+		IInstruction[] rgPreInstructions = null;
+		if (IOperand.PseudoRegister.isPseudoRegisterOfType (opBase, TypeRegisterType.GPR))
+		{
+			if (!m_mapGridLoaded.containsKey (opBase))
+			{
+				rgPreInstructions = new IInstruction[] {
+					new Instruction (
+						"mov",
+						new IOperand.Address (getInput (INPUT_GRIDS_ARRAYPTR), m_mapGridIndices.get (opBase) * m_clsDefaultGPRClass.getWidth ().intValue () / 8),
+						opBase
+					)
+				};
+				
+				m_mapGridLoaded.put (opBase, true);
+			}
 		}
 		
 		// no index register is needed if the offset is only in the unit stride direction (dimension 0)
@@ -675,7 +806,7 @@ public class StencilAssemblySection extends AssemblySection
 		int nUnitStrideOffset = (nodeLocal.getSpaceIndex ()[0] + nElementsShiftLocal * nSIMDVectorLength) * AssemblySection.getTypeSize (specDatatype);
 		
 		if (!bHasOffsetInNonUnitStride)
-			return new OperandWithInstructions (new IOperand.Address (opBase, nUnitStrideOffset));
+			return new OperandWithInstructions (rgPreInstructions, new IOperand.Address (opBase, nUnitStrideOffset), null);
 		
 		// general case
 		// TODO: what if too many strides?
@@ -684,8 +815,17 @@ public class StencilAssemblySection extends AssemblySection
 		v.set (0, 0);
 		
 		OperandWithInstructions opStride = getStride (v);
+		
+		// add the pre-instructions from loading the grid pointer
+		IInstruction[] rgPreInstructionsNew = rgPreInstructions == null ?
+			opStride.getInstrPre () :
+			new IInstruction[(opStride.getInstrPre () == null ? 0 : opStride.getInstrPre ().length) + rgPreInstructions.length];
+		if (rgPreInstructions != null)
+			for (int i = rgPreInstructionsNew.length - rgPreInstructions.length; i < rgPreInstructionsNew.length; i++)
+				rgPreInstructionsNew[i] = rgPreInstructions[i - rgPreInstructionsNew.length + rgPreInstructions.length];
+		
 		return new OperandWithInstructions (
-			opStride.getInstrPre (),
+			rgPreInstructionsNew,
 			new IOperand.Address (opBase, (IOperand.IRegisterOperand) opStride.getOp (), m_baseVectors.getScalingFactor (nodeLocal), nUnitStrideOffset),
 			opStride.getInstrPost ()
 		);
@@ -717,5 +857,10 @@ public class StencilAssemblySection extends AssemblySection
 	public StatementListBundle getAuxiliaryStatements ()
 	{
 		return m_slbGeneratedCode;
+	}
+
+	public void reset ()
+	{
+		m_mapGridLoaded.clear ();
 	}
 }

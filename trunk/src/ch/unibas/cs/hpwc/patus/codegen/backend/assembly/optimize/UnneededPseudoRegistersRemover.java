@@ -3,6 +3,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize;
 import java.util.HashMap;
 import java.util.Map;
 
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
@@ -53,7 +54,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 		
 		for (int i = 0; i < rgOps.length; i++)
 		{
-			if (rgOps[i] instanceof IOperand.PseudoRegister)
+			if (IOperand.PseudoRegister.isPseudoRegisterOfType (rgOps[i], TypeRegisterType.SIMD))
 			{
 				rgOpsNew[i] = m_mapSubstitute.get (rgOps[i]);
 				if (rgOpsNew[i] == null)
@@ -78,7 +79,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 	{
 		// omit the last (=result) operand
 		for (int i = 0; i < rgOps.length - 1; i++)
-			if (rgOps[i] instanceof IOperand.PseudoRegister)
+			if (IOperand.PseudoRegister.isPseudoRegisterOfType (rgOps[i], TypeRegisterType.SIMD))
 				return true;
 		return false;
 	}
@@ -97,7 +98,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 				IOperand[] rgOps = instr.getOperands ();
 				
 				boolean bHasPseudoRegisters = UnneededPseudoRegistersRemover.hasInputPseudoRegisters (rgOps);
-				boolean bIsResultPseudoRegister = rgOps[rgOps.length - 1] instanceof IOperand.PseudoRegister;
+				boolean bIsResultPseudoRegister = IOperand.PseudoRegister.isPseudoRegisterOfType (rgOps[rgOps.length - 1], TypeRegisterType.SIMD);
 				
 				// substitute any pseudo register with pseudo registers previously marked as substitutees
 				IOperand[] rgOpsNew = bHasPseudoRegisters || bIsResultPseudoRegister ? substitutePseudoRegisters (rgOps) : rgOps;
@@ -113,7 +114,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 					IOperand.PseudoRegister regNewResult = null;
 					for (int i = 0; i < rgOpsNew.length - 1; i++)
 					{
-						if (rgOpsNew[i] instanceof IOperand.PseudoRegister)
+						if (IOperand.PseudoRegister.isPseudoRegisterOfType (rgOpsNew[i], TypeRegisterType.SIMD))
 						{
 							// nothing to do if the register is already the same as the output register
 							if (rgOpsNew[i].equals (rgOps[rgOps.length - 1]))

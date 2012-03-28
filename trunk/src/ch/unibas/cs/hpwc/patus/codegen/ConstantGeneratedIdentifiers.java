@@ -135,10 +135,24 @@ public class ConstantGeneratedIdentifiers
 	 * @return A variable declarator for a new identifier named
 	 *         <code>strIdentifierName</code>
 	 */
-	public VariableDeclarator createDeclarator (String strIdentifierName, Specifier specDatatype, boolean bIsArray)
+	public VariableDeclarator createDeclarator (String strIdentifierName, Specifier specDatatype, boolean bIsArray, Integer nArrayLength)
 	{
 		NameID nid = new NameID (StringUtil.concat (strIdentifierName, getTempIdentifierSuffix (strIdentifierName)));
-		VariableDeclarator decl = bIsArray ? new VariableDeclarator (nid, new ArraySpecifier ()) : new VariableDeclarator (nid);
+		
+		VariableDeclarator decl = null;
+		if (bIsArray)
+		{
+			ArraySpecifier spec = null;
+			if (nArrayLength == null)
+				spec = new ArraySpecifier ();
+			else
+				spec = new ArraySpecifier (new IntegerLiteral (nArrayLength));
+			
+			decl = new VariableDeclarator (nid, spec);
+		}
+		else
+			decl = new VariableDeclarator (nid);
+			
 		VariableDeclaration declaration = new VariableDeclaration (m_data.getArchitectureDescription ().getType (specDatatype), decl);
 		m_data.getData ().addDeclaration (declaration);
 		
@@ -193,7 +207,12 @@ public class ConstantGeneratedIdentifiers
 			return new Traversable[] { rgConstants[0] };
 		}
 
-		throw new RuntimeException ("If no constant calculator is provided, getConstantIdentifier only works for size-1 constant arrays.");
+		///
+		Traversable[] rgResult = new Traversable[rgConstants.length];
+		for (int i = 0; i < rgConstants.length; i++)
+			rgResult[i] = rgConstants[i];
+		return rgResult;
+		//throw new RuntimeException ("If no constant calculator is provided, getConstantIdentifier only works for size-1 constant arrays.");
 	}
 
 	private Traversable[] createConstantCalculationsArrayWithCalculator (
@@ -258,7 +277,8 @@ public class ConstantGeneratedIdentifiers
 		return false;
 	}
 
-	private Initializer createInitializer (Traversable[] rgConstantCalculations, VariableDeclarator declGeneratedVar, Specifier specDatatype,
+	private Initializer createInitializer (IConstantExpressionCalculator calc,
+		Traversable[] rgConstantCalculations, VariableDeclarator declGeneratedVar, Specifier specDatatype,
 		StatementListBundle slbGeneratedCode, CodeGeneratorRuntimeOptions options)
 	{
 		// special case if there is only one constant to initialize
@@ -278,8 +298,10 @@ public class ConstantGeneratedIdentifiers
 		
 			
 		// more than one constants...
+
 		
-		int nSIMDVecLen = getSIMDVectorLength (specDatatype, options);
+		// TODO: nicer: some other way to find out whether to vectorize
+		int nSIMDVecLen = calc instanceof SIMDScalarGeneratedIdentifiers ? getSIMDVectorLength (specDatatype, options) : 1;
 		
 		// create a values array holding the initializer values
 		List<Expression> listValues = new ArrayList<> (rgConstantCalculations.length * nSIMDVecLen);
@@ -418,11 +440,11 @@ public class ConstantGeneratedIdentifiers
 			return rgConstants[0];
 
 		// create the variable declaration
-		VariableDeclarator decl = createDeclarator (strIdentifierName, specDatatype, rgConstants.length > 1);
+		VariableDeclarator decl = createDeclarator (strIdentifierName, specDatatype, rgConstants.length > 1, null);
 		exprResult = new Identifier (decl);
 
 		// initialize the newly created identifier if possible
-		Initializer initializer = createInitializer (rgConstantCalculations, decl, specDatatype, slbGeneratedCode, options);
+		Initializer initializer = createInitializer (calc, rgConstantCalculations, decl, specDatatype, slbGeneratedCode, options);
 		if (initializer != null)
 			decl.setInitializer (initializer);
 		else

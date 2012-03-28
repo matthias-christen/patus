@@ -5,6 +5,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+
 /**
  * 
  * @author Matthias-M. Christen
@@ -74,10 +76,10 @@ public class InstructionList implements Iterable<IInstruction>
 	{
 		// do a live analysis
 		LiveAnalysis analysis = new LiveAnalysis (this);
-		LAGraph graph = analysis.run ();
+		Map<TypeRegisterType, LAGraph> mapGraphs = analysis.run ();
 		
 		// allocate registers
-		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> map = RegisterAllocator.mapPseudoRegistersToRegisters (graph, as);
+		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> map = RegisterAllocator.mapPseudoRegistersToRegisters (mapGraphs, as);
 		
 		// replace the pseudo registers by allocated registers
 		return replacePseudoRegisters (map);
@@ -97,30 +99,56 @@ public class InstructionList implements Iterable<IInstruction>
 			if (instr instanceof Instruction)
 			{
 				IOperand[] rgOps = ((Instruction) instr).getOperands ();
-				boolean bConstructedNew = false;
+				IOperand[] rgOpsNew = null;
 
 				// search all operands of the instruction and replace pseudo register instances by actual registers
 				for (int i = 0; i < rgOps.length; i++)
 				{
+					IOperand opNew = null;
+					
+					// translate pseudo registers
 					if (rgOps[i] instanceof IOperand.PseudoRegister)
+						opNew = mapPseudoRegsToRegs.get (rgOps[i]);
+					else if (rgOps[i] instanceof IOperand.Address)
 					{
-						if (!bConstructedNew)
-						{
-							IOperand[] rgOpsTmp = rgOps;
-							rgOps = new IOperand[rgOpsTmp.length];
-							for (int j = 0; j < rgOpsTmp.length; j++)
-								rgOps[j] = rgOpsTmp[j];
-							bConstructedNew = true;
-						}
+						IOperand.Address opAddr = (IOperand.Address) rgOps[i];
 						
-						IOperand.IRegisterOperand reg = mapPseudoRegsToRegs.get (rgOps[i]);
-						if (reg != null)
-							rgOps[i] = reg;
+						IOperand.IRegisterOperand regBase = null;
+						IOperand.IRegisterOperand regIndex = null;
+						if (opAddr.getRegBase () instanceof IOperand.PseudoRegister)
+							regBase = mapPseudoRegsToRegs.get (opAddr.getRegBase ());
+						if (opAddr.getRegIndex () != null && (opAddr.getRegIndex () instanceof IOperand.PseudoRegister))
+							regIndex = mapPseudoRegsToRegs.get (opAddr.getRegIndex ());
+						
+						if (regBase != null || regIndex != null)
+						{
+							opNew = new IOperand.Address (
+								regBase == null ? opAddr.getRegBase () : regBase,
+								regIndex == null ? opAddr.getRegIndex () : regIndex,
+								opAddr.getScale (),
+								opAddr.getDisplacement ()
+							);
+						}
+					}
+
+					// set the new operand to the operands array
+					if (opNew != null)
+					{
+						// create the new operands array if it hasn't been created yet
+						if (rgOpsNew == null)
+						{
+							rgOpsNew = new IOperand[rgOps.length];
+							for (int j = 0; j < rgOps.length; j++)
+								rgOpsNew[j] = rgOps[j];
+						}
+
+						rgOpsNew[i] = opNew;
 					}
 				}
 				
-				if (bConstructedNew)
-					instrNew = new Instruction (((Instruction) instrNew).getIntrinsicBaseName (), rgOps);
+				// generate a new instruction if one of the operands has been modified
+				if (rgOpsNew != null)
+					instrNew = new Instruction (((Instruction) instrNew).getIntrinsicBaseName (), rgOpsNew);
 			}
 			
 			il.addInstruction (instrNew);

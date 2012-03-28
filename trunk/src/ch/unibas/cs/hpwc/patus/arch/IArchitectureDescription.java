@@ -221,6 +221,18 @@ public interface IArchitectureDescription
 	 *         of type <code>type</code>
 	 */
 	public abstract Iterable<TypeRegisterClass> getRegisterClasses (TypeRegisterType type);
+	
+	/**
+	 * Returns the default register class (the one declared in the outermost
+	 * register) corresponding to the register type <code>type</code>.
+	 * 
+	 * @param type
+	 *            The register type for which to retrieve the default register
+	 *            class
+	 * @return The default register class for the register type
+	 *         <code>type</code>
+	 */
+	public abstract TypeRegisterClass getDefaultRegisterClass (TypeRegisterType type);
 
 	/**
 	 * Returns a list of architecture-specific header files that need to be included.

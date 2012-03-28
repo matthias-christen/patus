@@ -103,48 +103,6 @@ public class SIMDScalarGeneratedIdentifiers implements IConstantExpressionCalcul
 			this,
 			options
 		);
-		
-		
-//		if (rgScalars.length == 1)
-//			return createVectorizedScalar (rgScalars[0], specDatatype, slbGeneratedCode, options);
-//		
-//		// vectorize?
-//		boolean bVectorize =
-//			// always vectorize if native SIMD datatypes are used
-//			m_data.getOptions ().useNativeSIMDDatatypes () ||
-//			// vectorize if OPTION_NOVECTORIZE==false and SIMD is used
-//			(!options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, false) && m_data.getArchitectureDescription ().useSIMD ());
-//
-//		// create the splats and create a single array for all the values
-//		VariableDeclarator decl = m_data.getCodeGenerators ().getConstantGeneratedIdentifiers ().createDeclarator ("constarr", specDatatype, true);
-//		List<Expression> listValues = new ArrayList<Expression> ();
-//		
-//		for (int i = 0; i < rgScalars.length; i++)
-//		{
-//			Traversable trvResult = calculateConstantExpression (rgScalars[i], specDatatype, bVectorize);
-//			if (trvResult instanceof Initializer)
-//			{
-//				for (Traversable trvVal : trvResult.getChildren ())
-//					listValues.add ((Expression) trvVal);
-//			}
-//			else
-//			{
-//				// fill the initializer with dummy values
-//				int nSIMDVecLen = m_data.getArchitectureDescription ().getSIMDVectorLength (specDatatype);
-//				for (int j = 0; j < nSIMDVecLen; j++)
-//					listValues.add (createFloatLiteral (0, specDatatype));
-//				
-//				// add the code that initializes the array element
-//				slbGeneratedCode.addStatement (new ExpressionStatement (new AssignmentExpression (
-//					new ArrayAccess (decl.getID ().clone (), new IntegerLiteral (i)),
-//					AssignmentOperator.NORMAL,
-//					(Expression) trvResult
-//				)));
-//			}
-//		}
-//		
-//		decl.setInitializer (new Initializer (listValues));
-//		return decl.getID ();
 	}
 
 	/**

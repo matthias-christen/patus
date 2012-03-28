@@ -8,6 +8,7 @@ import org.apache.log4j.Logger;
 
 import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
@@ -422,7 +423,7 @@ public class InstructionListTranslator
 				if (!(opSourceOutput instanceof IOperand.IRegisterOperand))
 				{
 					bHasNonCompatibleResultOperand = true;
-					opTmpResultOperand = new IOperand.PseudoRegister ();
+					opTmpResultOperand = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
 					opOut = opTmpResultOperand;
 				}
 
@@ -453,7 +454,7 @@ public class InstructionListTranslator
 				else
 				{				
 					boolean bIsCompatible = isCompatible (rgSourceOps[i], rgDestArgs[rgPermSourceToDest[i]]);
-					rgDestOps[rgPermSourceToDest[i]] = bIsCompatible ? rgSourceOps[i] : new IOperand.PseudoRegister ();
+					rgDestOps[rgPermSourceToDest[i]] = bIsCompatible ? rgSourceOps[i] : new IOperand.PseudoRegister (TypeRegisterType.SIMD);
 					
 					if (!bIsCompatible)
 					{

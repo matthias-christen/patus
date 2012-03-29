@@ -14,6 +14,7 @@ import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.analysis.ReuseNodesCollector;
+import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
@@ -185,7 +186,6 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			InstructionList ilComputationNotUnrolled = ilComputationUnrolled;
 			if (nUnrollingFactor != 1)
 			{
-				m_assemblySection.killAllRegisters ();
 				ilComputationNotUnrolled = m_assemblySection.translate (
 					ilComputationTempNotUnrolled, specType, m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
 			}
@@ -260,7 +260,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			InstructionList il = new InstructionList ();
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
 			{
-				if (!stencil.isConstant ())
+				if (!StencilAnalyzer.isStencilConstant (stencil, m_data.getStencilCalculation ()))
 				{
 					il.addInstruction (new Comment (stencil.getStencilExpression ()));
 					cgExpr.generate (stencil.getExpression (), stencil.getOutputNodes ().iterator ().next (), il, options);
@@ -360,7 +360,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			RegisterAllocator regcnt = new RegisterAllocator (m_data, m_assemblySection, null);
 			int nRegsForCalculations = 0;
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
-				if (!stencil.isConstant ())
+				if (!StencilAnalyzer.isStencilConstant (stencil, m_data.getStencilCalculation ()))
 					nRegsForCalculations = Math.max (nRegsForCalculations, regcnt.countRegistersNeeded (stencil.getExpression ()));
 			nAvailableRegisters -= nRegsForCalculations * m_nUnrollFactor;
 			

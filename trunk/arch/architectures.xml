@@ -190,7 +190,7 @@
 	</architectureType>
 	
 	<architectureType name="x86_64 AVX asm" inherits-from="x86_64 AVX">
-		<codegenerator src-suffix="c" backend="OpenMP_AVX" innermost-loop-cg="x86_64" use-function-pointers="true"/>
+		<codegenerator src-suffix="c" backend="OpenMP_AVX_Asm" innermost-loop-cg="x86_64" use-function-pointers="true"/>
 		<datatypes>
 			<!-- declare SSE datatypes -->
 			<!-- restrict alignment to 32 bytes -->
@@ -208,7 +208,7 @@
 			<intrinsic base-name="move-fpr" name="vmovsd" datatype="double"/>
 
 			<!-- vector operations -->
-			<intrinsic base-name="unary_minus" name="neg_pd" datatype="__m256d"/>
+			<intrinsic base-name="unary_minus" name="vxorpd" datatype="__m256d" arguments="reg/mem,imm:{0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000},=reg"/>
 			<intrinsic base-name="plus" name="vaddpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
 			<intrinsic base-name="minus" name="vsubpd" datatype="__m256d" arguments="reg/mem:rhs,reg:lhs,=reg"/>
 			<intrinsic base-name="multiply" name="vmulpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
@@ -229,7 +229,7 @@
 			<intrinsic base-name="move-fpr" name="vmovss" datatype="float"/>
 			
 			<!-- vector operations -->
-			<intrinsic base-name="unary_minus" name="neg_ps" datatype="__m256"/>
+			<intrinsic base-name="unary_minus" name="vxorps" datatype="__m256" arguments="reg/mem,imm:{0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000},=reg"/>
 			<intrinsic base-name="plus" name="vaddps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
 			<intrinsic base-name="minus" name="vsubps" datatype="__m256" arguments="reg/mem:rhs,reg:lhs,=reg"/>
 			<intrinsic base-name="multiply" name="vmulps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
@@ -350,7 +350,7 @@
 	</architectureType>
 	
 	<architectureType name="x86_64 AVX FMA4 asm" inherits-from="x86_64 AVX asm">
-		<codegenerator src-suffix="c" backend="OpenMP_AVX" innermost-loop-cg="x86_64" use-function-pointers="true"/>
+		<codegenerator src-suffix="c" backend="OpenMP_AVX_Asm" innermost-loop-cg="x86_64" use-function-pointers="true"/>
 		<datatypes>
 			<!-- declare SSE datatypes -->
 			<!-- restrict alignment to 32 bytes -->

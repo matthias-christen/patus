@@ -23,6 +23,7 @@ import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.PointerSpecifier;
 import cetus.hir.Specifier;
+import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.ast.StencilProperty;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
 import ch.unibas.cs.hpwc.patus.codegen.MemoryObjectManager;
@@ -424,6 +425,21 @@ public class StencilCalculation
 			m_mapArguments.put (strArgumentName, type);
 		}
 	}
+	
+	/**
+	 * Pre-registers an argument so that
+	 * {@link StencilAnalyzer#isStencilConstant(Stencil, StencilCalculation)}
+	 * can be called correctly.
+	 * 
+	 * @param strArgumentName
+	 *            The name of the argument
+	 * @param specType
+	 *            The type of the argument
+	 */
+	public void preAddStencilOperationParameter (String strArgumentName, Specifier specType)
+	{
+		m_mapArguments.put (strArgumentName, new ArgumentType (EArgumentType.PARAMETER, specType));
+	}
 
 	public void addSizeParameter (NameID nidSizeParam)
 	{
@@ -486,6 +502,14 @@ public class StencilCalculation
 	public boolean isArgument (String strArgumentName)
 	{
 		return m_mapArguments.containsKey (strArgumentName);
+	}
+	
+	public boolean isParameter (String strArgumentName)
+	{
+		ArgumentType type = getArgumentType (strArgumentName);
+		if (type == null)
+			return false;
+		return type.getType ().equals (EArgumentType.PARAMETER);
 	}
 
 	/**

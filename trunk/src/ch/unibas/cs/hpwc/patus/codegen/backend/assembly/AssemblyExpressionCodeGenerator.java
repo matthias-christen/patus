@@ -154,14 +154,14 @@ public class AssemblyExpressionCodeGenerator
 		if (expr instanceof Literal || expr instanceof IDExpression)
 			return processConstantOrIdentifier (expr, nUnrollFactor, il);
 		
+		if (expr instanceof UnaryExpression)
+			return processUnaryExpression ((UnaryExpression) expr, specDatatype, nUnrollFactor, il);
 		if (RegisterAllocator.isAddSubSubtree (expr))
 			return processAddSubSubtree (expr, specDatatype, nUnrollFactor, il);
 		if (expr instanceof BinaryExpression)
 			return processBinaryExpression ((BinaryExpression) expr, specDatatype, nUnrollFactor, il);
 		if (expr instanceof FunctionCall)
 			return processFunctionCall ((FunctionCall) expr, specDatatype, nUnrollFactor, il);
-		if (expr instanceof UnaryExpression)
-			return processUnaryExpression ((UnaryExpression) expr, specDatatype, nUnrollFactor, il);
 		
 		return null;
 	}
@@ -362,7 +362,7 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] processUnaryExpression (UnaryExpression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		IOperand[] rgOps = traverse (expr, specDatatype, nUnrollFactor, il);
+		IOperand[] rgOps = traverse (expr.getExpression (), specDatatype, nUnrollFactor, il);
 		
 		if (expr.getOperator ().equals (UnaryOperator.MINUS))
 			rgOps = addInstruction (il, nUnrollFactor, TypeBaseIntrinsicEnum.UNARY_MINUS.value (), null, rgOps);

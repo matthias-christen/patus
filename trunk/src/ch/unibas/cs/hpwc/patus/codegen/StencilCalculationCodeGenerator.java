@@ -42,6 +42,7 @@ import cetus.hir.StringLiteral;
 import cetus.hir.Traversable;
 import cetus.hir.VariableDeclaration;
 import cetus.hir.VariableDeclarator;
+import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.analysis.StrategyAnalyzer;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.ast.IStatementList;
@@ -182,7 +183,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				
 				for (ParameterAssignment pa : m_slbGenerated)
 				{
-					if (!bIsCreatingValidation && stencil.isConstant ())
+					if (!bIsCreatingValidation && StencilAnalyzer.isStencilConstant (stencil, m_data.getStencilCalculation ()))
 					{
 						// if the stencil is constant, add the computation to the head of the
 						// function instead within the computation loop and, if the loop is unrolled,
@@ -288,7 +289,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 				return trv == exprMain ? exprMain : null;
 			}
 
-			if ((trv instanceof Identifier) || (trv instanceof Literal) || ((trv instanceof NameID) && m_data.getStencilCalculation ().isArgument (((NameID) trv).getName ())))
+			if ((trv instanceof Identifier) || (trv instanceof Literal) || ((trv instanceof NameID) && m_data.getStencilCalculation ().isParameter (((NameID) trv).getName ())))
 			{
 				return m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalar (
 					(Expression) trv, specDatatype, m_slbGenerated, m_options);
@@ -794,7 +795,7 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 	public void generateSingleConstantStencilCalculation (
 		Stencil stencil, Specifier specDatatype, StatementListBundle slbGenerated, CodeGeneratorRuntimeOptions options)
 	{
-		if (!stencil.isConstant ())
+		if (!StencilAnalyzer.isStencilConstant (stencil, m_data.getStencilCalculation ()))
 			throw new RuntimeException ("This method works only for constant stencils");
 		
 		StencilCodeGenerator cg = new StencilCodeGenerator (null, slbGenerated, options);

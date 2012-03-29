@@ -248,6 +248,11 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 					// find read addresses (i.e., read input operands, but not the output operand,
 					// which is at the last position)
 					
+					///
+					if (((Instruction) instruction).getIntrinsicBaseName ().equals ("mov"))
+						continue;
+					///
+					
 					IOperand[] rgOps = ((Instruction) instruction).getOperands ();
 					for (int i = 0; i < rgOps.length - 1; i++)
 					{

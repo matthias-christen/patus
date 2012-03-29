@@ -26,6 +26,7 @@ import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 import cetus.hir.UserSpecifier;
 import cetus.hir.VariableDeclarator;
+import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
@@ -33,7 +34,6 @@ import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.MemoryObject;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.Address;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.FindStencilNodeBaseVectors;
@@ -533,7 +533,7 @@ public class StencilAssemblySection extends AssemblySection
 			else if (obj instanceof NameID)
 			{
 				// if the NameID is a stencil parameter, add it to the map
-				if (m_data.getStencilCalculation ().isArgument (((NameID) obj).getName ()))
+				if (m_data.getStencilCalculation ().isParameter (((NameID) obj).getName ()))
 					addToConstantsAndParamsMap ((NameID) obj);
 			}
 		}
@@ -553,7 +553,7 @@ public class StencilAssemblySection extends AssemblySection
 		// add constants/parameters and constant stencils
 		for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
 		{
-			if (!stencil.isConstant ())
+			if (!StencilAnalyzer.isStencilConstant (stencil, m_data.getStencilCalculation ()))
 				findConstantsAndParams (stencil.getExpression ());
 			else
 			{
@@ -771,7 +771,7 @@ public class StencilAssemblySection extends AssemblySection
 		IInstruction[] rgPreInstructions = null;
 		if (IOperand.PseudoRegister.isPseudoRegisterOfType (opBase, TypeRegisterType.GPR))
 		{
-			if (!m_mapGridLoaded.containsKey (opBase))
+			//if (!m_mapGridLoaded.containsKey (opBase))
 			{
 				rgPreInstructions = new IInstruction[] {
 					new Instruction (

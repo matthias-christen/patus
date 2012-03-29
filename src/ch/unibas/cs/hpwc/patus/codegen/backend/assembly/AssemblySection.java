@@ -181,9 +181,13 @@ public class AssemblySection
 			ilTmp = optimizer.optimize (ilTmp);
 
 		// allocate registers
-		return ilTmp.allocateRegisters (this);
+		Iterable<IOperand.Register> itUsedRegs = getUsedRegisters ();
+		ilTmp = ilTmp.allocateRegisters (this);
+		restoreUsedRegisters (itUsedRegs);
+		
+		return ilTmp;
 	}
-
+	
 	/**
 	 * Returns the next free register of type <code>regtype</code>.
 	 * 
@@ -222,10 +226,35 @@ public class AssemblySection
 	{
 		m_mapRegisterUsage.put (register, false);
 	}
+
+	public void killRegisters (Iterable<IOperand.Register> itRegisters)
+	{
+		for (IOperand.Register op : itRegisters)
+			m_mapRegisterUsage.put (op, false);
+	}
 	
 	public void killAllRegisters ()
 	{
 		m_mapRegisterUsage.clear ();
+	}
+
+	public Iterable<IOperand.Register> getUsedRegisters ()
+	{
+		List<IOperand.Register> listUsedRegisters = new ArrayList<> (m_mapRegisterUsage.size ());
+		for (IOperand.Register op : m_mapRegisterUsage.keySet ())
+			if (m_mapRegisterUsage.get (op))
+				listUsedRegisters.add (op);
+		return listUsedRegisters;
+	}
+
+	/**
+	 *
+	 */
+	public void restoreUsedRegisters (Iterable<IOperand.Register> itUsedRegisters)
+	{
+		m_mapRegisterUsage.clear ();
+		for (IOperand.Register op : itUsedRegisters)
+			m_mapRegisterUsage.put (op, true);
 	}
 	
 	/**

@@ -22,6 +22,7 @@ import cetus.hir.ArrayAccess;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
+import cetus.hir.IDExpression;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
@@ -90,7 +91,7 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	 * The standard output space index
 	 */
 	private int[] m_rgOutputSpaceIndex;
-
+	
 
 	///////////////////////////////////////////////////////////////////
 	// Implementation
@@ -203,19 +204,6 @@ public class Stencil implements IStencilStructure, IStencilOperations
 		return !(m_setAllInputNodes.size () > 0 || (m_setAllInputNodes.size () == 0 && m_edStencilCalculation != null));
 	}
 	
-	/**
-	 * Determines whether the stencil is constant, i.e., does not depend on any
-	 * grid points, but
-	 * is an expression depending only on operation parameters and number
-	 * literals.
-	 * 
-	 * @return <code>true</code> iff the stencil is constant
-	 */
-	public boolean isConstant ()
-	{
-		return m_setAllInputNodes.isEmpty ();
-	}
-
 	@Override
 	public Iterable<Index> getOutputIndices ()
 	{

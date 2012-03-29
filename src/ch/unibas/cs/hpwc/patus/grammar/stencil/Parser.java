@@ -587,6 +587,14 @@ public class Parser {
 			errors.SemErr ("No stencil operation defined in the stencil specification.");
 	}
 	
+	private boolean containsStencilNode (Expression expr)
+	{
+		for (DepthFirstIterator it = new DepthFirstIterator (expr); it.hasNext (); )
+			if (it.next () instanceof StencilNode)
+				return true;
+		return false;
+	}
+	
 
 	///////////////////////////////////////////////////////////////////////////
 	// LL(1) Conflict Resolvers
@@ -857,7 +865,7 @@ public class Parser {
 
 	StencilBundle  StencilOperationImplementation() {
 		StencilBundle  bundle;
-		bundle = new StencilBundle (); 
+		bundle = new StencilBundle (m_stencil); 
 		AssignmentStatement(bundle);
 		while (la.kind == 1 || la.kind == 22 || la.kind == 23) {
 			AssignmentStatement(bundle);
@@ -931,14 +939,15 @@ public class Parser {
 			}
 			Expect(29);
 		}
-		if (bIsGridVariable) 
-		{ 
+		if (bIsGridVariable) { 
 		registerStream (strIdentifier, specVarType, bIsConstant, boxGrid, listDimensions, EStreamDirection.INPUT); 
 		if (!bIsConstant) 
 		registerStream (strIdentifier, specVarType, bIsConstant, boxGrid, listDimensions, EStreamDirection.OUTPUT); 
 		} 
-		else 
+		else { 
 		registerScalar (strIdentifier, specVarType, listDimensions, true); 
+		m_stencil.preAddStencilOperationParameter (strIdentifier, specVarType); 
+		} 
 	}
 
 	int  IntegerLiteral() {
@@ -985,7 +994,11 @@ public class Parser {
 		String strIdentifier = t.val; 
 		Expect(9);
 		ExpressionData exprRHS = StencilExpression(stencil, false, false);
-		Expression exprSimplified = null; if (exprRHS.getExpression () instanceof FloatLiteral) exprSimplified = exprRHS.getExpression (); else exprSimplified = Symbolic.simplify (exprRHS.getExpression ()); 
+		Expression exprSimplified = null; 
+		if (exprRHS.getExpression () instanceof FloatLiteral) 
+		exprSimplified = exprRHS.getExpression (); 
+		else if (!containsStencilNode (exprRHS.getExpression ())) 
+		exprSimplified = Symbolic.simplify (exprRHS.getExpression ()); 
 		if (exprSimplified instanceof FloatLiteral || exprSimplified instanceof IntegerLiteral) 
 		registerConstant (strIdentifier, (Literal) exprSimplified); 
 		else { 

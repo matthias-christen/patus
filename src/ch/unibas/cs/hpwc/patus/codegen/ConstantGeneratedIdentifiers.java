@@ -248,7 +248,7 @@ public class ConstantGeneratedIdentifiers
 	private boolean isLiteralOrParam (Expression expr)
 	{
 		// is expr a stencil parameter?
-		if ((expr instanceof NameID) && m_data.getStencilCalculation ().isArgument (((NameID) expr).getName ()))
+		if ((expr instanceof NameID) && m_data.getStencilCalculation ().isParameter (((NameID) expr).getName ()))
 			return true;
 		
 		// is it a number literal?

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 
 import cetus.hir.IDExpression;
+import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 import ch.unibas.cs.hpwc.patus.util.VectorUtil;
 
@@ -29,6 +30,8 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
+	private StencilCalculation m_calc;
+	
 	/**
 	 * The &quot;fused&quot; stencil that contains the nodes of all the
 	 * stencils that have been added to the bundle
@@ -54,36 +57,37 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	/**
 	 * Constructs a new stencil bundle.
 	 */
-	public StencilBundle ()
+	public StencilBundle (StencilCalculation calc)
 	{
+		m_calc = calc;
 		m_stencilFused = null;
 		m_listStencils = new LinkedList<> ();
 		m_setConstantOutputNodes = new HashSet<> ();
 	}
 
-	/**
-	 * Copy constructor.
-	 * @param bundle The bundle from which to create a new stencil bundle
-	 */
-	public StencilBundle (StencilBundle bundle)
-	{
-		this ();
-
-		try
-		{
-			m_stencilFused = StencilBundle.createStencilFromTemplate (bundle.getFusedStencil (), true);
-			for (Stencil stencil : bundle)
-				addStencilToList (StencilBundle.createStencilFromTemplate (stencil, true));
-		}
-		catch (SecurityException e)
-		{
-			e.printStackTrace();
-		}
-		catch (NoSuchMethodException e)
-		{
-			e.printStackTrace();
-		}
-	}
+//	/**
+//	 * Copy constructor.
+//	 * @param bundle The bundle from which to create a new stencil bundle
+//	 */
+//	public StencilBundle (StencilBundle bundle)
+//	{
+//		this ();
+//
+//		try
+//		{
+//			m_stencilFused = StencilBundle.createStencilFromTemplate (bundle.getFusedStencil (), true);
+//			for (Stencil stencil : bundle)
+//				addStencilToList (StencilBundle.createStencilFromTemplate (stencil, true));
+//		}
+//		catch (SecurityException e)
+//		{
+//			e.printStackTrace();
+//		}
+//		catch (NoSuchMethodException e)
+//		{
+//			e.printStackTrace();
+//		}
+//	}
 
 	/**
 	 * Returns the fused stencil containing all the nodes of the stencils
@@ -117,7 +121,7 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 		int nFlopsCount = 0;
 		
 		for (Stencil stencil : m_listStencils)
-			if (!stencil.isConstant ())
+			if (!StencilAnalyzer.isStencilConstant (stencil, m_calc))
 				nFlopsCount += stencil.getFlopsCount ();
 		
 		return nFlopsCount;
@@ -147,7 +151,7 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 		
 		// if the stencil is constant (i.e., depends only on parameters and number literals),
 		// add its output nodes to the set of constant ouput nodes
-		if (stencil.isConstant ())
+		if (StencilAnalyzer.isStencilConstant (stencil, m_calc))
 			for (StencilNode nodeOut : stencil.getOutputNodes ())
 				m_setConstantOutputNodes.add (nodeOut.getName ());
 	}

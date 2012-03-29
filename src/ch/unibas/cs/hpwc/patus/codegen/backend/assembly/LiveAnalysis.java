@@ -4,11 +4,13 @@ import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
+ * Performs a pseudo register live analysis on the provided instruction list.
  * 
  * @author Matthias-M. Christen
  */
@@ -139,6 +141,8 @@ public class LiveAnalysis
 			Arrays.fill (m_rgLivePseudoRegisters[i], STATE_UNASSIGNED);
 		m_rgPseudoRegisters = new IOperand.PseudoRegister[nPseudoRegistersCount];
 				
+		IOperand.PseudoRegister[] rgRegs = new IOperand.PseudoRegister[2]; 
+
 		for (int i = 0; i < m_rgInstructions.length; i++)
 		{
 			IInstruction instr = m_rgInstructions[i];
@@ -152,11 +156,35 @@ public class LiveAnalysis
 				//   (pseudo registers are not reused, i.e., they are written only once)
 				
 				// check whether a register gets killed
-				for (int j = 0; j < rgOps.length - 1; j++)
+				for (int j = 0; j < rgOps.length; j++)
 				{
+					// check the last operand (the output) only if it is an address
+					// if it is an address, it might contain register reads
+					if (j == rgOps.length - 1 && !(rgOps[j] instanceof IOperand.Address))
+						break;
+					
+					// gather registers to check
+					rgRegs[0] = null;
+					rgRegs[1] = null;
+					
 					if (rgOps[j] instanceof IOperand.PseudoRegister)
+						rgRegs[0] = (IOperand.PseudoRegister) rgOps[j];
+					else if (rgOps[j] instanceof IOperand.Address)
 					{
-						IOperand.PseudoRegister reg = (IOperand.PseudoRegister) rgOps[j];
+						IOperand.Address opAddr = (IOperand.Address) rgOps[j];
+						int k = 0;
+						if (opAddr.getRegBase () instanceof IOperand.PseudoRegister)
+							rgRegs[k++] = (IOperand.PseudoRegister) opAddr.getRegBase ();
+						if (opAddr.getRegIndex () instanceof IOperand.PseudoRegister)
+							rgRegs[k++] = (IOperand.PseudoRegister) opAddr.getRegIndex ();
+					}
+					
+					// check the registers
+					for (IOperand.PseudoRegister reg : rgRegs)
+					{
+						if (reg == null)
+							continue;
+						
 						mapGraphs.get (reg.getRegisterType ()).addVertex (new LAGraph.Vertex (reg));
 						m_rgPseudoRegisters[reg.getNumber ()] = reg;
 						
@@ -166,7 +194,7 @@ public class LiveAnalysis
 							if (i < m_rgInstructions.length - 1)
 								m_rgLivePseudoRegisters[i + 1][reg.getNumber ()] = STATE_DEAD;
 						}
-					}
+					}					
 				}
 				
 				// new write register becomes live
@@ -178,7 +206,6 @@ public class LiveAnalysis
 					
 					m_rgLivePseudoRegisters[i][reg.getNumber ()] = STATE_LIVE;
 				}
-				
 			}
 
 			// promote unassigned flags from previous instruction
@@ -227,31 +254,50 @@ public class LiveAnalysis
 			IInstruction instr = m_rgInstructions[i];
 			if (instr instanceof Instruction)
 			{
-				// check input operands (i.e., all operands except the last
 				IOperand[] rgOps = ((Instruction) instr).getOperands ();
+				
+				// check output operand: last read if no read occurred previously and the register is written to
+				IOperand opOut = rgOps[rgOps.length - 1];
+				if (reg.equals (opOut))
+					return true;
+				
+				// if the output operand is an address, check whether reg is the base or the index register,
+				// in which case there is a read
+				if (opOut instanceof IOperand.Address)
+					if (reg.equals (((IOperand.Address) opOut).getRegBase ()) || reg.equals (((IOperand.Address) opOut).getRegIndex ()))
+						return false;
+				
+				// check input operands (i.e., all operands except the last
 				for (int j = 0; j < rgOps.length - 1; j++)
+				{
 					if (reg.equals (rgOps[j]))
 					{
 						// another, later read was found
 						return false;
 					}
+					
+					// check whether the register is read within an address
+					if (rgOps[j] instanceof IOperand.Address)
+						if (reg.equals (((IOperand.Address) rgOps[j]).getRegBase ()) || reg.equals (((IOperand.Address) rgOps[j]).getRegIndex ()))
+							return false;					
+				}
 			}
 		}
 		
 		return true;
 	}
 	
-	@Override
-	public String toString ()
+	public String visualize (Set<TypeRegisterType> setRegTypesToShow)
 	{
 		StringBuilder sb = new StringBuilder ();
 		
-		final int nInstrStrLen = 60;
+		final int nInstrStrLen = 100;
 		DecimalFormat fmt = new DecimalFormat (" 00");
 		
 		sb.append (StringUtil.padRight ("Instr \\ Reg", nInstrStrLen));
-		for (int i = 0; i < m_rgLivePseudoRegisters[0].length; i++)
-			sb.append (fmt.format (i));
+		for (int i = 0; i < m_rgPseudoRegisters.length; i++)
+			if (setRegTypesToShow == null || (m_rgPseudoRegisters[i] != null && setRegTypesToShow.contains (m_rgPseudoRegisters[i].getRegisterType ())))
+				sb.append (fmt.format (i));
 		sb.append ('\n');
 		
 		for (int i = 0; i < m_rgLivePseudoRegisters.length; i++)
@@ -260,12 +306,32 @@ public class LiveAnalysis
 
 			for (int j = 0; j < m_rgLivePseudoRegisters[i].length; j++)
 			{
+				if (setRegTypesToShow != null && (m_rgPseudoRegisters[j] == null || !setRegTypesToShow.contains (m_rgPseudoRegisters[j].getRegisterType ())))
+					continue;
+				
 				sb.append ("  ");
-				sb.append (m_rgLivePseudoRegisters[i][j] == STATE_LIVE ? '*' : ' ');
+				switch (m_rgLivePseudoRegisters[i][j])
+				{
+				case STATE_LIVE:
+					sb.append ('*');
+					break;
+				case STATE_DEAD:
+					sb.append (' ');
+					break;
+				case STATE_UNASSIGNED:
+					sb.append ('ø');
+					break;
+				}
 			}
 			sb.append ('\n');
 		}
 		
 		return sb.toString ();
+	}
+	
+	@Override
+	public String toString ()
+	{
+		return visualize (null);
 	}
 }

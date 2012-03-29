@@ -5,6 +5,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 
 /**
@@ -13,6 +15,12 @@ import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
  */
 public class InstructionList implements Iterable<IInstruction>
 {
+	///////////////////////////////////////////////////////////////////
+	// Constants
+	
+	private final static Logger LOGGER = Logger.getLogger (InstructionList.class);
+
+	
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
@@ -33,7 +41,20 @@ public class InstructionList implements Iterable<IInstruction>
 	public void addInstruction (IInstruction instruction)
 	{
 		if (instruction != null)
+		{
+			///
+//			if (instruction instanceof Instruction && !m_listInstructions.isEmpty ())
+//			{
+//				if ("mov".equals (((Instruction) instruction).getIntrinsicBaseName ()))
+//				{
+//					if (m_listInstructions.get (m_listInstructions.size () - 1).toString ().equals (instruction.toString ()))
+//						return;
+//				}
+//			}
+			///
+				
 			m_listInstructions.add (instruction);
+		}
 	}
 	
 	public void addInstruction (IInstruction instruction, StencilAssemblySection.OperandWithInstructions op)
@@ -48,7 +69,7 @@ public class InstructionList implements Iterable<IInstruction>
 		if (il != null)
 		{
 			for (IInstruction instr : il)
-				m_listInstructions.add (instr);
+				addInstruction (instr);
 		}
 	}
 	
@@ -57,7 +78,7 @@ public class InstructionList implements Iterable<IInstruction>
 		if (rgInstructions != null)
 		{
 			for (IInstruction instr : rgInstructions)
-				m_listInstructions.add (instr);
+				addInstruction (instr);
 		}
 	}
 
@@ -74,6 +95,8 @@ public class InstructionList implements Iterable<IInstruction>
 	 */
 	public InstructionList allocateRegisters (AssemblySection as)
 	{
+		LOGGER.info ("Performing live analysis and allocating registers...");
+		
 		// do a live analysis
 		LiveAnalysis analysis = new LiveAnalysis (this);
 		Map<TypeRegisterType, LAGraph> mapGraphs = analysis.run ();

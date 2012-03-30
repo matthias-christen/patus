@@ -1,7 +1,9 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
@@ -30,11 +32,29 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionListAnalyzer;
  */
 public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 {
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
+	/**	
+	 * A map containing the pseudo registers (values) by which a particular
+	 * pseudo register (key) is substituted
+	 */
 	private Map<IOperand.PseudoRegister, IOperand.PseudoRegister> m_mapSubstitute;
 	
+	/**
+	 * A map containing the set of pseudo registers which are substituted by the
+	 * key pseudo register
+	 */
+	private Map<IOperand.PseudoRegister, Set<IOperand.PseudoRegister>> m_mapSubsitutedRegisters;
+	
+	
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
 	public UnneededPseudoRegistersRemover ()
 	{
 		m_mapSubstitute = new HashMap<> ();
+		m_mapSubsitutedRegisters = new HashMap<> ();
 	}
 	
 	/**
@@ -84,6 +104,16 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 		return false;
 	}
 	
+	private void addSubstitute (IOperand.PseudoRegister regOld, IOperand.PseudoRegister regNew)
+	{
+		m_mapSubstitute.put (regOld, regNew);
+		
+		Set<IOperand.PseudoRegister> set = m_mapSubsitutedRegisters.get (regNew);
+		if (set == null)
+			m_mapSubsitutedRegisters.put (regNew, set = new HashSet<> ());
+		set.add (regOld);
+	}	
+	
 	@Override
 	public InstructionList optimize (InstructionList il)
 	{
@@ -120,7 +150,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 							if (rgOpsNew[i].equals (rgOps[rgOps.length - 1]))
 								break;
 							
-							if (InstructionListAnalyzer.isLastRead (il, (IOperand.PseudoRegister) rgOpsNew[i], nCurrentInstructionIdx))
+							if (InstructionListAnalyzer.isLastRead (il, (IOperand.PseudoRegister) rgOpsNew[i], nCurrentInstructionIdx, m_mapSubsitutedRegisters))
 							{
 								regNewResult = (IOperand.PseudoRegister) rgOpsNew[i];
 								break;
@@ -132,7 +162,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 					if (regNewResult != null)
 					{
 						rgOpsNew[rgOpsNew.length - 1] = regNewResult;
-						m_mapSubstitute.put ((IOperand.PseudoRegister) rgOps[rgOps.length - 1], regNewResult);
+						addSubstitute ((IOperand.PseudoRegister) rgOps[rgOps.length - 1], regNewResult);						
 					}
 				}
 				

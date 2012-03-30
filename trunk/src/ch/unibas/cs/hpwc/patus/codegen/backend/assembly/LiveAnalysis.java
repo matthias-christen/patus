@@ -255,19 +255,8 @@ public class LiveAnalysis
 			if (instr instanceof Instruction)
 			{
 				IOperand[] rgOps = ((Instruction) instr).getOperands ();
-				
-				// check output operand: last read if no read occurred previously and the register is written to
-				IOperand opOut = rgOps[rgOps.length - 1];
-				if (reg.equals (opOut))
-					return true;
-				
-				// if the output operand is an address, check whether reg is the base or the index register,
-				// in which case there is a read
-				if (opOut instanceof IOperand.Address)
-					if (reg.equals (((IOperand.Address) opOut).getRegBase ()) || reg.equals (((IOperand.Address) opOut).getRegIndex ()))
-						return false;
-				
-				// check input operands (i.e., all operands except the last
+								
+				// check input operands (i.e., all operands except the last)
 				for (int j = 0; j < rgOps.length - 1; j++)
 				{
 					if (reg.equals (rgOps[j]))
@@ -281,6 +270,17 @@ public class LiveAnalysis
 						if (reg.equals (((IOperand.Address) rgOps[j]).getRegBase ()) || reg.equals (((IOperand.Address) rgOps[j]).getRegIndex ()))
 							return false;					
 				}
+
+				// check output operand: last read if no read occurred previously and the register is written to
+				IOperand opOut = rgOps[rgOps.length - 1];
+				if (reg.equals (opOut))
+					return true;
+				
+				// if the output operand is an address, check whether reg is the base or the index register,
+				// in which case there is a read
+				if (opOut instanceof IOperand.Address)
+					if (reg.equals (((IOperand.Address) opOut).getRegBase ()) || reg.equals (((IOperand.Address) opOut).getRegIndex ()))
+						return false;
 			}
 		}
 		

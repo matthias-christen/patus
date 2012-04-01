@@ -53,4 +53,7 @@ public interface IGraph<V extends IVertex, E extends IEdge<V>>
 	 * @return The number of edges
 	 */
 	public abstract int getEdgesCount ();
+	
+	public abstract void removeAllVertices ();
+	public abstract void removeAllEdges ();
 }

@@ -11,10 +11,14 @@ import java.util.TreeSet;
 
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
+import cetus.hir.Identifier;
+import cetus.hir.Initializer;
 import cetus.hir.SomeExpression;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
+import cetus.hir.VariableDeclaration;
+import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
@@ -24,6 +28,7 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperan
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.Register;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -66,6 +71,9 @@ public class AssemblySection
 	}
 
 
+	public static final String INPUT_CONSTANTS_ARRAYPTR = "_constants_";
+
+
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
@@ -74,23 +82,23 @@ public class AssemblySection
 	/**
 	 * The set of registers which got clobbered during the inline assembly section
 	 */
-	protected Set<IOperand.Register> m_setClobberedRegisters;
+	private Set<IOperand.Register> m_setClobberedRegisters;
 	
 	/**
 	 * Flag indicating whether the memory is clobbered in the inline assembly section.
 	 * The flag needs to be set using {@link AssemblySection#setMemoryClobbered(boolean)}.
 	 */
-	boolean m_bIsMemoryClobbered;
+	private boolean m_bIsMemoryClobbered;
 
 	/**
 	 * Data structure identifying which registers are currently in use
 	 */
-	protected Map<IOperand.Register, Boolean> m_mapRegisterUsage;
+	private Map<IOperand.Register, Boolean> m_mapRegisterUsage;
 
 	/**
 	 * The list of inputs to the assembly section
 	 */
-	protected List<AssemblySectionInput> m_listInputs;
+	private List<AssemblySectionInput> m_listInputs;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -110,7 +118,6 @@ public class AssemblySection
 		});
 		
 		m_mapRegisterUsage = new HashMap<> ();
-
 		m_listInputs = new ArrayList<> ();
 
 		Label.reset ();
@@ -132,6 +139,14 @@ public class AssemblySection
 
 		return op;
 	}
+	
+	private AssemblySectionInput getASInput (Object objInput)
+	{
+		for (AssemblySectionInput asi : m_listInputs)
+			if (asi.getKey ().equals (objInput))
+				return asi;
+		return null;		
+	}
 
 	/**
 	 * Retrieves the operand corresponding to the assembly section input <code>input</code>.
@@ -140,12 +155,25 @@ public class AssemblySection
 	 *            The input for which the retrieve the corresponding operand
 	 * @return The operand corresponding to <code>input</code>
 	 */
-	public IOperand.IRegisterOperand getInput (Object input)
+	public IOperand.IRegisterOperand getInput (Object objInput)
 	{
-		for (AssemblySectionInput asi : m_listInputs)
-			if (asi.getKey ().equals (input))
-				return asi.getOperand ();
-		return null;
+		AssemblySectionInput asi = getASInput (objInput);
+		return asi == null ? null : asi.getOperand ();
+	}
+	
+	public int getInputsCount ()
+	{
+		return m_listInputs.size ();
+	}
+	
+	public IArchitectureDescription getArchitectureDescription ()
+	{
+		return m_data.getArchitectureDescription ();
+	}
+	
+	public CodeGeneratorSharedObjects getSharedObjects ()
+	{
+		return m_data;
 	}
 	
 	public InstructionList translate (InstructionList ilInstructions, Specifier specDatatype)
@@ -422,18 +450,28 @@ public class AssemblySection
 		));
 	}
 
-	/**
-	 * Returns the size of a floating point data type.
-	 * 
-	 * @param specDatatype
-	 * @return
-	 */
-	public static int getTypeSize (Specifier specDatatype)
+	public int getConstantsAndParamsCount ()
 	{
-		if (specDatatype.equals (Specifier.FLOAT))
-			return Float.SIZE / 8;
-		if (specDatatype.equals (Specifier.DOUBLE))
-			return Double.SIZE / 8;
 		return 0;
+	}
+	
+	public void addSpillMemorySpace (int nMemoryPlacesCount, Specifier specDatatype)
+	{
+		AssemblySectionInput asi = getASInput (INPUT_CONSTANTS_ARRAYPTR);
+		if (asi == null)
+		{
+			// TODO: add input
+			throw new RuntimeException ("not implemented");
+		}
+		
+		if (!(asi.getValue () instanceof Identifier))
+			throw new RuntimeException ("Identifier expected for INPUT_CONSTANTS_ARRAYPTR");
+		
+		VariableDeclaration decl = (VariableDeclaration) ((Identifier) asi.getValue ()).getSymbol ().getDeclaration ();
+		Initializer initializer = ((VariableDeclarator) decl.getDeclarator (0)).getInitializer ();
+
+		int nCount = nMemoryPlacesCount * m_data.getArchitectureDescription ().getSIMDVectorLength (specDatatype);
+		for (int i = 0; i < nCount; i++)
+			initializer.getChildren ().add (ExpressionUtil.createFloatLiteral (0, specDatatype));
 	}
 }

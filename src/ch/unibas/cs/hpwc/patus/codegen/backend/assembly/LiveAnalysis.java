@@ -19,9 +19,11 @@ public class LiveAnalysis
 	///////////////////////////////////////////////////////////////////
 	// Constants
 	
-	private final static byte STATE_LIVE = 1;
-	private final static byte STATE_DEAD = 0;
-	private final static byte STATE_UNASSIGNED = -1;
+	public final static int STATE_UNASSIGNED = Integer.MIN_VALUE;
+	public final static int STATE_DEAD = -1;
+	public final static int STATE_LIVE = 0;
+	
+	private final static int NO_NEXT_READ = -1;
 
 	
 	///////////////////////////////////////////////////////////////////
@@ -35,7 +37,7 @@ public class LiveAnalysis
 	/**
 	 * A matrix showing which pseudo registers (second index) are live at which instruction (first index)
 	 */
-	private byte[][] m_rgLivePseudoRegisters;
+	private int[][] m_rgLivePseudoRegisters;
 	
 	/**
 	 * The array of pseudo registers used in the instructions
@@ -94,6 +96,7 @@ public class LiveAnalysis
 	 */
 	public Map<TypeRegisterType, LAGraph> run ()
 	{
+		// create the map holding the analysis graphs
 		Map<TypeRegisterType, LAGraph> mapGraphs = new HashMap<> ();
 		for (TypeRegisterType type : TypeRegisterType.values ())
 			mapGraphs.put (type, new LAGraph ());
@@ -101,9 +104,24 @@ public class LiveAnalysis
 		// construct the matrix and add the vertices to the LAGraph
 		createStateMatrix (mapGraphs);
 		
-		// construct the graph from the matrix:
-		// add an edge between two vertices if the two corresponding pseudo registers are live at the same time
-		// (the vertices were added in createStateMatrix)
+		// add edges according to the state matrix
+		createLAGraphEdges (mapGraphs);
+				
+		return mapGraphs;
+	}
+	
+	/**
+	 * Construct the graph from the matrix: Add an edge between two vertices if
+	 * the two corresponding pseudo registers are live at the same time (the
+	 * vertices were added in createStateMatrix)
+	 * 
+	 * @param mapGraphs
+	 *            The map of LA graphs
+	 */
+	public void createLAGraphEdges (Map<TypeRegisterType, LAGraph> mapGraphs)
+	{
+		for (LAGraph graph : mapGraphs.values ())
+			graph.removeAllEdges ();
 		
 		for (int i = 0; i < m_rgLivePseudoRegisters.length; i++)
 		{
@@ -111,7 +129,7 @@ public class LiveAnalysis
 			{
 				for (int k = j + 1; k < m_rgLivePseudoRegisters[i].length; k++)
 				{
-					if (m_rgLivePseudoRegisters[i][j] == STATE_LIVE && m_rgLivePseudoRegisters[i][k] == STATE_LIVE &&
+					if (m_rgLivePseudoRegisters[i][j] >= STATE_LIVE && m_rgLivePseudoRegisters[i][k] >= STATE_LIVE &&
 						m_rgPseudoRegisters[j].getRegisterType ().equals (m_rgPseudoRegisters[k].getRegisterType ()))
 					{
 						LAGraph graph = mapGraphs.get (m_rgPseudoRegisters[j].getRegisterType ());
@@ -120,9 +138,26 @@ public class LiveAnalysis
 					}
 				}
 			}
-		}
-				
-		return mapGraphs;
+		}		
+	}
+	
+	/**
+	 * Returns the state matrix, i.e. the raw analysis result. The matrix can be
+	 * modified externally, after which
+	 * {@link LiveAnalysis#createLAGraphEdges(Map)} has to be run to reflect the
+	 * modifications on the LA graph.
+	 * 
+	 * @return The state matrix holding the information in which instruction
+	 *         which pseudo registers are live
+	 */
+	public int[][] getLivePseudoRegisters ()
+	{
+		return m_rgLivePseudoRegisters;
+	}
+	
+	public IOperand.IRegisterOperand[] getPseudoRegisters ()
+	{
+		return m_rgPseudoRegisters;
 	}
 	
 	/**
@@ -136,7 +171,7 @@ public class LiveAnalysis
 	{
 		// create the matrix of pseudo registers
 		int nPseudoRegistersCount = getMaxPseudoRegIndex () + 1;
-		m_rgLivePseudoRegisters = new byte[m_rgInstructions.length][nPseudoRegistersCount];
+		m_rgLivePseudoRegisters = new int[m_rgInstructions.length][nPseudoRegistersCount];
 		for (int i = 0; i < m_rgInstructions.length; i++)
 			Arrays.fill (m_rgLivePseudoRegisters[i], STATE_UNASSIGNED);
 		m_rgPseudoRegisters = new IOperand.PseudoRegister[nPseudoRegistersCount];
@@ -188,13 +223,16 @@ public class LiveAnalysis
 						mapGraphs.get (reg.getRegisterType ()).addVertex (new LAGraph.Vertex (reg));
 						m_rgPseudoRegisters[reg.getNumber ()] = reg;
 						
-						if (isLastRead (reg, i))
+						int nNextReadIdx = getNextRead (reg, i);
+						if (nNextReadIdx == NO_NEXT_READ)
 						{
 							m_rgLivePseudoRegisters[i][reg.getNumber ()] = STATE_LIVE;
 							if (i < m_rgInstructions.length - 1)
 								m_rgLivePseudoRegisters[i + 1][reg.getNumber ()] = STATE_DEAD;
 						}
-					}					
+						else
+							m_rgLivePseudoRegisters[i][reg.getNumber ()] = nNextReadIdx - i;
+					}
 				}
 				
 				// new write register becomes live
@@ -204,7 +242,7 @@ public class LiveAnalysis
 					mapGraphs.get (reg.getRegisterType ()).addVertex (new LAGraph.Vertex (reg));
 					m_rgPseudoRegisters[reg.getNumber ()] = reg;
 					
-					m_rgLivePseudoRegisters[i][reg.getNumber ()] = STATE_LIVE;
+					m_rgLivePseudoRegisters[i][reg.getNumber ()] = getNextRead (reg, i) - i;
 				}
 			}
 
@@ -231,23 +269,30 @@ public class LiveAnalysis
 			else
 			{
 				if (m_rgLivePseudoRegisters[nCurIdx][j] == STATE_UNASSIGNED)
-					m_rgLivePseudoRegisters[nCurIdx][j] = m_rgLivePseudoRegisters[nCurIdx - 1][j];
+				{
+					m_rgLivePseudoRegisters[nCurIdx][j] = m_rgLivePseudoRegisters[nCurIdx - 1][j] >= STATE_LIVE ?
+						m_rgLivePseudoRegisters[nCurIdx - 1][j] - 1 : m_rgLivePseudoRegisters[nCurIdx - 1][j];
+				}
 			}
 		}		
 	}
 	
 	/**
-	 * Determines whether the last read of the pseudo register <code>reg</code> occurs in
-	 * the instruction with index <code>nCurrentIstrIdx</code>.
+	 * Determines when the next read of the pseudo register <code>reg</code>
+	 * occurs in the instruction list after the instruction with index
+	 * <code>nCurrentIstrIdx</code>. If the register is read for the last time
+	 * in the instruction with index <code>nCurrentInstrIdx</code>,
+	 * {@link LiveAnalysis#NO_NEXT_READ} is returned.
 	 * 
 	 * @param reg
 	 *            The pseudo register
 	 * @param nCurrentInstrIdx
 	 *            The index of the instruction
-	 * @return <code>true</code> iff the last read of the register <code>reg</code> occurs
-	 *         in the instruction with index <code>nCurrentInstrIdx</code>
+	 * @return The index of the instruction in which the next read of register
+	 *         <code>reg</code> occurs or {@link LiveAnalysis#NO_NEXT_READ} if
+	 *         there is none
 	 */
-	private boolean isLastRead (IOperand.PseudoRegister reg, int nCurrentInstrIdx)
+	private int getNextRead (IOperand.PseudoRegister reg, int nCurrentInstrIdx)
 	{
 		for (int i = nCurrentInstrIdx + 1; i < m_rgInstructions.length; i++)
 		{
@@ -262,29 +307,29 @@ public class LiveAnalysis
 					if (reg.equals (rgOps[j]))
 					{
 						// another, later read was found
-						return false;
+						return i;
 					}
 					
 					// check whether the register is read within an address
 					if (rgOps[j] instanceof IOperand.Address)
 						if (reg.equals (((IOperand.Address) rgOps[j]).getRegBase ()) || reg.equals (((IOperand.Address) rgOps[j]).getRegIndex ()))
-							return false;					
+							return i;					
 				}
 
 				// check output operand: last read if no read occurred previously and the register is written to
 				IOperand opOut = rgOps[rgOps.length - 1];
 				if (reg.equals (opOut))
-					return true;
+					return NO_NEXT_READ;
 				
 				// if the output operand is an address, check whether reg is the base or the index register,
 				// in which case there is a read
 				if (opOut instanceof IOperand.Address)
 					if (reg.equals (((IOperand.Address) opOut).getRegBase ()) || reg.equals (((IOperand.Address) opOut).getRegIndex ()))
-						return false;
+						return i;
 			}
 		}
 		
-		return true;
+		return NO_NEXT_READ;
 	}
 	
 	public String visualize (Set<TypeRegisterType> setRegTypesToShow)
@@ -292,7 +337,7 @@ public class LiveAnalysis
 		StringBuilder sb = new StringBuilder ();
 		
 		final int nInstrStrLen = 100;
-		DecimalFormat fmt = new DecimalFormat (" 00");
+		DecimalFormat fmt = new DecimalFormat (" 000");
 		
 		sb.append (StringUtil.padRight ("Instr \\ Reg", nInstrStrLen));
 		for (int i = 0; i < m_rgPseudoRegisters.length; i++)
@@ -309,17 +354,16 @@ public class LiveAnalysis
 				if (setRegTypesToShow != null && (m_rgPseudoRegisters[j] == null || !setRegTypesToShow.contains (m_rgPseudoRegisters[j].getRegisterType ())))
 					continue;
 				
-				sb.append ("  ");
 				switch (m_rgLivePseudoRegisters[i][j])
 				{
-				case STATE_LIVE:
-					sb.append ('*');
+				case STATE_UNASSIGNED:
+					sb.append ("   -");
 					break;
 				case STATE_DEAD:
-					sb.append (' ');
+					sb.append ("    ");
 					break;
-				case STATE_UNASSIGNED:
-					sb.append ('ø');
+				default:
+					sb.append (fmt.format (m_rgLivePseudoRegisters[i][j]));
 					break;
 				}
 			}

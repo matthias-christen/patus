@@ -16,6 +16,7 @@ import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.analysis.ReuseNodesCollector;
 import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
+import ch.unibas.cs.hpwc.patus.arch.ArchitectureDescriptionManager;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
@@ -462,7 +463,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		 */
 		public int getBaseTypeSize ()
 		{
-			return AssemblySection.getTypeSize (m_assemblySection.getDatatype ());
+			return ArchitectureDescriptionManager.getTypeSize (m_assemblySection.getDatatype ());
 		}
 		
 		public IOperand.IRegisterOperand getCounterRegister ()

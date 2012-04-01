@@ -5,6 +5,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.DepthFirstIterator;
@@ -35,6 +37,12 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  */
 public class RegisterAllocator
 {
+	///////////////////////////////////////////////////////////////////
+	// Constants
+	
+	private final static Logger LOGGER = Logger.getLogger (RegisterAllocator.class);
+
+	
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 	
@@ -326,17 +334,22 @@ public class RegisterAllocator
 	
 	/**
 	 * Runs the register allocation algorithm on the live analysis graph
-	 * <code>graph</code> and
-	 * returns a map specifying how to map the {@link PseudoRegister}s used in
-	 * the generated {@link InstructionList} to actual register names.
+	 * <code>graph</code> and returns a map specifying how to map the
+	 * {@link PseudoRegister}s used in the generated {@link InstructionList} to
+	 * actual register names.
 	 * 
 	 * @param graph
 	 *            The live analysis graph
 	 * @return A map mapping {@link PseudoRegister} to register names
+	 * @throws TooFewRegistersException
+	 *             If, after coloring the LA graph, it is seen that there are too
+	 *             few free registers of a particular register type
 	 */
-	public static Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapPseudoRegistersToRegisters (Map<TypeRegisterType, LAGraph> mapGraphs, AssemblySection as)
+	public static Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapPseudoRegistersToRegisters (Map<TypeRegisterType, LAGraph> mapGraphs, AssemblySection as) throws TooFewRegistersException
 	{
 		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapRegisters = new HashMap<> ();
+		
+		Iterable<IOperand.Register> itUsedRegisters = as.getUsedRegisters ();
 		
 		// color the graphs
 		for (TypeRegisterType regtype : mapGraphs.keySet ())
@@ -346,6 +359,14 @@ public class RegisterAllocator
 				continue;
 			
 			int nColorsCount = GraphColoringGreedy.run (graph);
+			LOGGER.info (StringUtil.concat ("Allocation attempt requires ", nColorsCount, " ", regtype.toString (), " registers"));
+			
+			int nFreeRegisters = as.getFreeRegistersCount (regtype);
+			if (nColorsCount > nFreeRegisters)
+			{
+				as.restoreUsedRegisters (itUsedRegisters);
+				throw new TooFewRegistersException (regtype, nColorsCount - nFreeRegisters);
+			}
 			
 			// allocate registers
 			IOperand.IRegisterOperand[] rgRegisters = new IOperand.IRegisterOperand[nColorsCount];

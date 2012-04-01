@@ -128,6 +128,8 @@ public interface IArchitectureDescription
 	 */
 	public abstract int getSIMDVectorLength (Specifier specType);
 
+	public abstract int getSIMDVectorLengthInBytes ();
+
 	/**
 	 * Returns the factor at which memory addresses must be aligned for the
 	 * promoted type corresponding to the primitive type <code>specType</code>.

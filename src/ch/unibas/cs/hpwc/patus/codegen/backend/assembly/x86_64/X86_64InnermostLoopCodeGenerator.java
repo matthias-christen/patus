@@ -3,6 +3,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.x86_64;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.AssemblySection;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InnermostLoopCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
@@ -127,7 +128,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 		@Override
 		public InstructionList generateUnrolledMainHeader ()
 		{
-			StencilAssemblySection as = getAssemblySection ();
+			AssemblySection as = getAssemblySection ();
 			InstructionList l = new InstructionList ();
 			
 			IOperand.IRegisterOperand regCounter = getCounterRegister ();
@@ -194,7 +195,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 		@Override
 		public InstructionList generateSimpleMainHeader ()
 		{
-			StencilAssemblySection as = getAssemblySection ();
+			AssemblySection as = getAssemblySection ();
 			InstructionList l = new InstructionList ();
 			
 			IOperand.IRegisterOperand regCounter = getCounterRegister ();

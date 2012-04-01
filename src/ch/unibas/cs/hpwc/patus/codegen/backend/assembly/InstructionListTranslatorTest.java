@@ -115,6 +115,13 @@ public class InstructionListTranslatorTest
 			// TODO Auto-generated method stub
 			return 0;
 		}
+		
+		@Override
+		public int getSIMDVectorLengthInBytes ()
+		{
+			// TODO Auto-generated method stub
+			return 0;
+		}
 
 		@Override
 		public int getAlignmentRestriction (Specifier specType)

@@ -7,7 +7,11 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import cetus.hir.Specifier;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  * 
@@ -28,6 +32,9 @@ public class InstructionList implements Iterable<IInstruction>
 	 * The list of instructions within this portion of the inline assembly section
 	 */
 	private List<IInstruction> m_listInstructions;
+
+
+	private int m_nSpillArrayIndex;
 		
 	
 	///////////////////////////////////////////////////////////////////
@@ -96,16 +103,108 @@ public class InstructionList implements Iterable<IInstruction>
 	public InstructionList allocateRegisters (AssemblySection as)
 	{
 		LOGGER.info ("Performing live analysis and allocating registers...");
-		
+				
 		// do a live analysis
 		LiveAnalysis analysis = new LiveAnalysis (this);
 		Map<TypeRegisterType, LAGraph> mapGraphs = analysis.run ();
 		
+		List<Integer> listOffsets = new ArrayList<> ();
+		m_nSpillArrayIndex = as.getConstantsAndParamsCount ();
+
 		// allocate registers
-		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> map = RegisterAllocator.mapPseudoRegistersToRegisters (mapGraphs, as);
+		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> map = null;
+		boolean bAllRegistersAllocated = false;
+		while (!bAllRegistersAllocated)
+		{
+			try
+			{
+				// try to allocate the registers
+				map = RegisterAllocator.mapPseudoRegistersToRegisters (mapGraphs, as);
+				bAllRegistersAllocated = true;
+			}
+			catch (TooFewRegistersException e)
+			{
+				if (e.getRegisterType ().equals (TypeRegisterType.SIMD))
+				{
+					for (int i = 0; i < e.getExcessRegisterRequirement (); i++)
+						spillRegisters (as, analysis, listOffsets);
+					analysis.createLAGraphEdges (mapGraphs);
+				}
+				else
+					e.printStackTrace ();
+			}
+		}
+		
+		as.addSpillMemorySpace (
+			m_nSpillArrayIndex - as.getConstantsAndParamsCount (),
+			as instanceof StencilAssemblySection ? ((StencilAssemblySection) as).getDatatype () : Specifier.FLOAT
+		);
 		
 		// replace the pseudo registers by allocated registers
 		return replacePseudoRegisters (map);
+	}
+	
+	private void spillRegisters (AssemblySection as, LiveAnalysis analysis, List<Integer> listIndexOffsets)
+	{
+		// find the point and the register at which the corresponding register
+		// is not accessed for the largest amount of time
+		int[][] rgData = analysis.getLivePseudoRegisters ();
+		int nMaxNoAccess = 0;
+		int nNoAccessInstrIdx = 0;
+		int nNoAccessRegIdx = 0;
+		for (int nInstrIdx = 0; nInstrIdx < rgData.length; nInstrIdx++)
+			for (int nRegIdx = 0; nRegIdx < rgData[nInstrIdx].length; nRegIdx++)
+				if (rgData[nInstrIdx][nRegIdx] > nMaxNoAccess)
+				{
+					nMaxNoAccess = rgData[nInstrIdx][nRegIdx];
+					nNoAccessInstrIdx = nInstrIdx;
+					nNoAccessRegIdx = nRegIdx;
+				}
+		
+		LOGGER.info (StringUtil.concat ("Spilling ", analysis.getPseudoRegisters ()[nNoAccessRegIdx].toString (),
+			" to memory at instruction ", nNoAccessInstrIdx, "; loading back at instruction ", nNoAccessInstrIdx + nMaxNoAccess,
+			" (", nMaxNoAccess, " instructions)"));
+		
+		// add memory operations to save and restore the register
+		addSpillInstruction (as, analysis, nNoAccessInstrIdx + 1, nNoAccessRegIdx, true, listIndexOffsets);
+		addSpillInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, false, listIndexOffsets);
+		m_nSpillArrayIndex++;
+		
+		// modify the analysis matrix
+		rgData[nNoAccessInstrIdx][nNoAccessRegIdx] = LiveAnalysis.STATE_LIVE;
+		for (int nInstrIdx = nNoAccessInstrIdx + 1; nInstrIdx < nNoAccessInstrIdx + nMaxNoAccess; nInstrIdx++)
+			rgData[nInstrIdx][nNoAccessRegIdx] = LiveAnalysis.STATE_DEAD;
+	}
+	
+	private void addSpillInstruction (AssemblySection as, LiveAnalysis analysis, int nInstrIdx, int nNoAccessRegIdx, boolean bSpillToMemory, List<Integer> listIndexOffsets)
+	{
+		Intrinsic intrinsic = as.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), Specifier.FLOAT);
+		
+		IOperand opReg = analysis.getPseudoRegisters ()[nNoAccessRegIdx];
+		IOperand opMem = new IOperand.Address (
+			as.getInput (AssemblySection.INPUT_CONSTANTS_ARRAYPTR),
+			m_nSpillArrayIndex * as.getArchitectureDescription ().getSIMDVectorLengthInBytes ()
+		);
+		
+		m_listInstructions.add (
+			getOffsetIndex (nInstrIdx, listIndexOffsets),
+			new Instruction (
+				intrinsic.getName (),
+				bSpillToMemory ? opReg : opMem,
+				bSpillToMemory ? opMem : opReg
+			)
+		);
+		
+		listIndexOffsets.add (nInstrIdx);
+	}
+	
+	private int getOffsetIndex (int nIdxOld, List<Integer> listIndexOffsets)
+	{
+		int nOffset = 0;
+		for (int nInsertIndex : listIndexOffsets)
+			if (nInsertIndex < nIdxOld)
+				nOffset++;
+		return nIdxOld + nOffset;
 	}
 	
 	/**

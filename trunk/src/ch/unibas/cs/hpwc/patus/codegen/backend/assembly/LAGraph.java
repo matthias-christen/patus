@@ -233,6 +233,19 @@ public class LAGraph implements IGraph<LAGraph.Vertex, LAGraph.Edge>
 	}
 	
 	@Override
+	public void removeAllVertices ()
+	{
+		m_mapVertices.clear ();
+		removeAllEdges ();
+	}
+	
+	@Override
+	public void removeAllEdges ()
+	{
+		m_setEdges.clear ();
+	}
+	
+	@Override
 	public String toString ()
 	{
 		StringBuilder sb = new StringBuilder ("LAGraph {\n");

@@ -7,6 +7,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import cetus.hir.Specifier;
+import ch.unibas.cs.hpwc.patus.arch.ArchitectureDescriptionManager;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
@@ -298,7 +299,7 @@ public class InstructionListTranslator
 				{
 					nVectorLength =
 						arch.getSIMDVectorLength (specDatatype == null ? Specifier.FLOAT : specDatatype) *
-						AssemblySection.getTypeSize (specDatatype == null ? Specifier.FLOAT : specDatatype);
+						ArchitectureDescriptionManager.getTypeSize (specDatatype == null ? Specifier.FLOAT : specDatatype);
 				}
 				
 				if ((((IOperand.Address) op).getDisplacement () % nVectorLength) != 0)

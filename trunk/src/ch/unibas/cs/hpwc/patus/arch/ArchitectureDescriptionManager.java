@@ -208,6 +208,13 @@ public class ArchitectureDescriptionManager
 
 			return type.getSimdVectorLength ();
 		}
+		
+		@Override
+		public int getSIMDVectorLengthInBytes ()
+		{
+			Specifier spec = Specifier.FLOAT;
+			return getSIMDVectorLength (spec) * getTypeSize (spec);
+		}
 
 		@Override
 		public int getAlignmentRestriction (Specifier specType)
@@ -608,5 +615,20 @@ public class ArchitectureDescriptionManager
 	public HardwareDescription getHardwareDescription (String strHardwareName)
 	{
 		return m_mapDescriptions.get (strHardwareName);
+	}
+
+	/**
+	 * Returns the size of a floating point data type.
+	 * 
+	 * @param specDatatype
+	 * @return
+	 */
+	public static int getTypeSize (Specifier specDatatype)
+	{
+		if (specDatatype.equals (Specifier.FLOAT))
+			return Float.SIZE / 8;
+		if (specDatatype.equals (Specifier.DOUBLE))
+			return Double.SIZE / 8;
+		return 0;
 	}
 }

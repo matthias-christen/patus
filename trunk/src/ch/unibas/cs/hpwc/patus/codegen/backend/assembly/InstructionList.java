@@ -187,7 +187,7 @@ public class InstructionList implements Iterable<IInstruction>
 		);
 		
 		m_listInstructions.add (
-			getOffsetIndex (nInstrIdx, listIndexOffsets),
+			InstructionList.getOffsetIndex (nInstrIdx, listIndexOffsets),
 			new Instruction (
 				intrinsic.getName (),
 				bSpillToMemory ? opReg : opMem,
@@ -198,7 +198,7 @@ public class InstructionList implements Iterable<IInstruction>
 		listIndexOffsets.add (nInstrIdx);
 	}
 	
-	private int getOffsetIndex (int nIdxOld, List<Integer> listIndexOffsets)
+	private static int getOffsetIndex (int nIdxOld, List<Integer> listIndexOffsets)
 	{
 		int nOffset = 0;
 		for (int nInsertIndex : listIndexOffsets)

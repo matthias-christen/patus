@@ -322,5 +322,11 @@ public interface IOperand
 	 * 
 	 * @return The assembly string representation
 	 */
-	public abstract String getAsString ();	
+	public abstract String getAsString ();
+	
+	@Override
+	public boolean equals (Object obj);
+	
+	@Override
+	public int hashCode ();
 }

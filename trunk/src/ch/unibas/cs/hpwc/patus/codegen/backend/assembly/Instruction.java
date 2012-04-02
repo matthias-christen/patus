@@ -1,5 +1,7 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import java.util.Arrays;
+
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 
 /**
@@ -64,5 +66,39 @@ public class Instruction implements IInstruction
 		StringBuilder sb = new StringBuilder ();
 		issue (sb);
 		return sb.toString ();
+	}
+
+	@Override
+	public int hashCode ()
+	{
+		final int nPrime = 31;
+		int nResult = nPrime + Arrays.hashCode (m_rgOperands);
+		nResult = nPrime * nResult + ((m_strIntrinsicBaseName == null) ? 0 : m_strIntrinsicBaseName.hashCode ());
+
+		return nResult;
+	}
+
+	@Override
+	public boolean equals (Object obj)
+	{
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof Instruction))
+			return false;
+		
+		Instruction instrOther = (Instruction) obj;
+		if (!Arrays.equals (m_rgOperands, instrOther.m_rgOperands))
+			return false;
+		if (m_strIntrinsicBaseName == null)
+		{
+			if (instrOther.m_strIntrinsicBaseName != null)
+				return false;
+		}
+		else if (!m_strIntrinsicBaseName.equals (instrOther.m_strIntrinsicBaseName))
+			return false;
+		
+		return true;
 	}
 }

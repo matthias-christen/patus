@@ -27,6 +27,7 @@ import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.MultipleMemoryLoadRemover;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.UnneededAddressLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -116,18 +117,10 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			
 			m_assemblySection = new StencilAssemblySection (m_data, m_sdit.getIterator (), m_options);
 			m_nUnrollFactor = options.getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
-			
-			// add the length of the inner most loop as an input
-			m_assemblySection.addInput (
-				INPUT_LOOPTRIPCOUNT,
-				ExpressionUtil.min (
-					m_sdit.getDomainSubdomain ().getSize ().getCoord (0),
-					m_data.getStencilCalculation ().getDomainSize ().getSize ().getCoord (0)
-				)
-			);
-			
+						
 			// the memory will be clobbered after the stencil calculation
 			m_assemblySection.setMemoryClobbered (true);
+			m_assemblySection.setConditionCodesClobbered (true);
 			
 			// request a register to be used as loop counter
 			m_regCounter = m_assemblySection.getFreeRegister (TypeRegisterType.GPR);	
@@ -137,7 +130,9 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			m_rgPreTranslateOptimizers = new IInstructionListOptimizer[] {
 				new MultipleMemoryLoadRemover (m_data.getArchitectureDescription (), false)
 			};
-			m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] { };			
+			m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] {
+				new UnneededAddressLoadRemover ()
+			};			
 		}
 		
 		protected void initialize ()
@@ -145,6 +140,15 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			// create the assembly section inputs, i.e., assign registers with grid pointers,
 			// strides, and the constant array pointer
 			m_assemblySection.createInputs ();
+
+			// add the length of the inner most loop as an input
+			m_assemblySection.addInput (
+				INPUT_LOOPTRIPCOUNT,
+				ExpressionUtil.min (
+					m_sdit.getDomainSubdomain ().getSize ().getCoord (0),
+					m_data.getStencilCalculation ().getDomainSize ().getSize ().getCoord (0)
+				)
+			);
 		}
 		
 		/**
@@ -539,6 +543,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	 * Flag indicating whether the architecture supports unaligned data movement
 	 */
 	private boolean m_bArchSupportsUnalignedMoves;
+
+	private Map<Traversable, Map<Integer, StatementListBundle>> m_mapCachedCodes;
 	
 	
 
@@ -552,13 +558,32 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		m_bArchSupportsSIMD = m_data.getArchitectureDescription ().getSIMDVectorLength (Specifier.FLOAT) > 1;
 		m_bArchSupportsUnalignedMoves = true;
 		if (m_bArchSupportsSIMD)
-			m_bArchSupportsUnalignedMoves = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), Specifier.FLOAT) != null;				
+			m_bArchSupportsUnalignedMoves = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), Specifier.FLOAT) != null;
+		
+		m_mapCachedCodes = new HashMap<> ();
 	}
 	
 	@Override
 	public StatementListBundle generate (Traversable sdit, CodeGeneratorRuntimeOptions options)
 	{
 		return newCodeGenerator ((SubdomainIterator) sdit, options).generate ();
+		
+		/*
+		Map<Integer, StatementListBundle> map = m_mapCachedCodes.get (sdit);
+		if (map == null)
+			m_mapCachedCodes.put (sdit, map = new HashMap<> ());
+		
+		StatementListBundle slb = map.get (options.getIntValue (OPTION_INLINEASM_UNROLLFACTOR));
+		if (slb == null)
+		{
+			map.put (
+				options.getIntValue (OPTION_INLINEASM_UNROLLFACTOR),
+				slb = newCodeGenerator ((SubdomainIterator) sdit, options).generate ()
+			);
+		}
+
+		return slb;
+		*/
 	}
 	
 	/**

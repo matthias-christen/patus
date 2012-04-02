@@ -89,6 +89,8 @@ public class AssemblySection
 	 * The flag needs to be set using {@link AssemblySection#setMemoryClobbered(boolean)}.
 	 */
 	private boolean m_bIsMemoryClobbered;
+	
+	private boolean m_bIsConditionCodesClobbered;
 
 	/**
 	 * Data structure identifying which registers are currently in use
@@ -204,15 +206,15 @@ public class AssemblySection
 		ilTmp = InstructionListTranslator.translate (
 			m_data.getArchitectureDescription (), ilTmp, specDatatype);
 
-		// apply peep hole optimizations
-		for (IInstructionListOptimizer optimizer : rgPostTranslateOptimizers)
-			ilTmp = optimizer.optimize (ilTmp);
-
 		// allocate registers
 		Iterable<IOperand.Register> itUsedRegs = getUsedRegisters ();
 		ilTmp = ilTmp.allocateRegisters (this);
 		restoreUsedRegisters (itUsedRegs);
 		
+		// apply peep hole optimizations
+		for (IInstructionListOptimizer optimizer : rgPostTranslateOptimizers)
+			ilTmp = optimizer.optimize (ilTmp);
+
 		return ilTmp;
 	}
 	
@@ -331,6 +333,16 @@ public class AssemblySection
 		m_bIsMemoryClobbered = bMemoryClobbered;
 	}
 	
+	public void setConditionCodesClobbered (boolean bConditionCodesClobbered)
+	{
+		m_bIsConditionCodesClobbered = bConditionCodesClobbered;
+	}
+	
+	private String getOutputsAsString ()
+	{
+		// "=&r"(dummy1)
+	}
+	
 	/**
 	 * Returns the list of inputs as a string.
 	 * @return The list of inputs as a string
@@ -351,7 +363,16 @@ public class AssemblySection
 		{
 			if (sbInputs.length () > 0)
 				sbInputs.append (", ");
-			sbInputs.append ("\"r\"(");
+			
+			if (asi.getType ().equals ())
+			{
+				// registers which are modified in the inline assembly section must be tied to an output
+				sbInputs.append ('\"');
+				sbInputs.append (asi.getNumber ());
+				sbInputs.append ("\"(");
+			}
+			else
+				sbInputs.append ("\"r\"(");
 			
 			// cast to data type of the register
 			if (cls != null)
@@ -400,6 +421,9 @@ public class AssemblySection
 		
 		if (m_bIsMemoryClobbered)
 			sbClobberedRegisters.append (", \"memory\"");
+		
+		if (m_bIsConditionCodesClobbered)
+			sbClobberedRegisters.append (", \"cc\"");
 
 		return sbClobberedRegisters.toString ();
 	}

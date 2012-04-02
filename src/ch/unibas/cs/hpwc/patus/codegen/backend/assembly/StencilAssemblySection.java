@@ -229,13 +229,39 @@ public class StencilAssemblySection extends AssemblySection
 			for (StencilNode node : m_data.getStencilCalculation ().getOutputBaseNodeSet ())
 			{
 				if (m_specDatatype == null)
+				{
 					m_specDatatype = node.getSpecifier ();
+					if (m_specDatatype != null)
+						break;
+				}
 				else
 				{
 					if (!m_specDatatype.equals (node.getSpecifier ()))
 						throw new RuntimeException ("");
 				}
 			}
+			
+			if (m_specDatatype == null)
+			{
+				for (StencilNode node : m_data.getStencilCalculation ().getInputBaseNodeSet ())
+				{
+					if (m_specDatatype == null)
+					{
+						m_specDatatype = node.getSpecifier ();
+						if (m_specDatatype != null)
+							break;
+					}
+					else
+					{
+						if (!m_specDatatype.equals (node.getSpecifier ()))
+							throw new RuntimeException ("");
+					}
+				}					
+			}
+			
+			// default...
+			if (m_specDatatype == null)
+				m_specDatatype = Specifier.FLOAT;
 		}
 		
 		return m_specDatatype;
@@ -249,7 +275,7 @@ public class StencilAssemblySection extends AssemblySection
 	{
 		// set to 0, 1, 2, 3, or 4 to manually select a code generation path (see below) for debugging purposes.
 		// set to -1 for default behavior.
-		int nDebugSelectVariant = 2;
+		int nDebugSelectVariant = -1;
 
 		int nInitialFreeRegisters = getFreeRegistersCount (TypeRegisterType.GPR) - 2;
 		int nNumInputs = getInputsCount ();

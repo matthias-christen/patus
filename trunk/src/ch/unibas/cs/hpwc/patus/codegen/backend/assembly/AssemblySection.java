@@ -13,10 +13,12 @@ import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.Identifier;
 import cetus.hir.Initializer;
+import cetus.hir.NameID;
 import cetus.hir.SomeExpression;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
+import cetus.hir.UserSpecifier;
 import cetus.hir.VariableDeclaration;
 import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
@@ -40,18 +42,29 @@ public class AssemblySection
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
 
+	public enum EAssemblySectionInputType
+	{
+		CONSTANT,
+		CONST_POINTER,
+		VAR_POINTER
+	}
+	
 	public static class AssemblySectionInput
 	{
 		private Object m_objKey;
-		private IOperand.IRegisterOperand m_operand;
+		private IOperand.InputRef m_operand;
 		private Expression m_exprValue;
+		private EAssemblySectionInputType m_type;
+		private int m_nNumber;
 
 
-		public AssemblySectionInput (Object objKey, IOperand.IRegisterOperand op, Expression exprValue)
+		public AssemblySectionInput (Object objKey, IOperand.InputRef op, Expression exprValue, EAssemblySectionInputType type, int nNumber)
 		{
 			m_objKey = objKey;
 			m_operand = op;
 			m_exprValue = exprValue;
+			m_type = type;
+			m_nNumber = nNumber;
 		}
 
 		public Object getKey ()
@@ -59,7 +72,7 @@ public class AssemblySection
 			return m_objKey;
 		}
 
-		public IOperand.IRegisterOperand getOperand ()
+		public IOperand.InputRef getOperand ()
 		{
 			return m_operand;
 		}
@@ -68,10 +81,22 @@ public class AssemblySection
 		{
 			return m_exprValue;
 		}
+		
+		public EAssemblySectionInputType getType ()
+		{
+			return m_type;
+		}
+		
+		public int getNumber ()
+		{
+			return m_nNumber;
+		}
 	}
 
 
 	public static final String INPUT_CONSTANTS_ARRAYPTR = "_constants_";
+	
+	public static final String INPUT_DUMMY = "dummy";
 
 
 	///////////////////////////////////////////////////////////////////
@@ -103,6 +128,9 @@ public class AssemblySection
 	private List<AssemblySectionInput> m_listInputs;
 
 
+	protected TypeRegisterClass m_clsDefaultGPRClass;
+
+
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
@@ -122,6 +150,8 @@ public class AssemblySection
 		m_mapRegisterUsage = new HashMap<> ();
 		m_listInputs = new ArrayList<> ();
 
+		m_clsDefaultGPRClass = m_data.getArchitectureDescription ().getDefaultRegisterClass (TypeRegisterType.GPR);
+
 		Label.reset ();
 	}
 
@@ -134,10 +164,10 @@ public class AssemblySection
 	 *            The expression to assign to the operand (register) on entry into the assembly section
 	 * @return The operand generated for the input
 	 */
-	public IOperand addInput (Object input, Expression exprValue)
+	public IOperand addInput (Object input, Expression exprValue, EAssemblySectionInputType type)
 	{
-		IOperand.InputRef op = new IOperand.InputRef (m_listInputs.size ());
-		m_listInputs.add (new AssemblySectionInput (input, op, exprValue));
+		IOperand.InputRef op = new IOperand.InputRef (input.toString ());
+		m_listInputs.add (new AssemblySectionInput (input, op, exprValue, type, m_listInputs.size ()));
 
 		return op;
 	}
@@ -338,16 +368,38 @@ public class AssemblySection
 		m_bIsConditionCodesClobbered = bConditionCodesClobbered;
 	}
 	
-	private String getOutputsAsString ()
+	private String getOutputsAsString (List<Traversable> listChildren)
 	{
-		// "=&r"(dummy1)
+		StringBuilder sbOutputs = new StringBuilder ();
+		
+		// create a "=&r"(dummy1) for each VAR_POINTER
+		for (AssemblySectionInput asi : m_listInputs)
+		{
+			if (asi.getType ().equals (EAssemblySectionInputType.VAR_POINTER))
+			{
+				if (sbOutputs.length () > 0)
+					sbOutputs.append (", ");
+								
+				Specifier specDatatype = new UserSpecifier (new NameID (m_clsDefaultGPRClass.getDatatype ()));
+				VariableDeclarator decl = m_data.getCodeGenerators ().getConstantGeneratedIdentifiers ().createDeclarator (
+					INPUT_DUMMY, specDatatype, false, null);
+				listChildren.add (new Identifier (decl));
+				
+				sbOutputs.append ("\"=&r\"(");
+				sbOutputs.append (decl.getID ().toString ());
+				sbOutputs.append (')');
+			}
+		}
+		
+		return sbOutputs.toString ();
 	}
 	
 	/**
 	 * Returns the list of inputs as a string.
+	 * @param listChildren 
 	 * @return The list of inputs as a string
 	 */
-	private String getInputsAsString ()
+	private String getInputsAsString (List<Traversable> listChildren)
 	{
 		// create the inputs string
 		StringBuilder sbInputs = new StringBuilder ();
@@ -364,7 +416,7 @@ public class AssemblySection
 			if (sbInputs.length () > 0)
 				sbInputs.append (", ");
 			
-			if (asi.getType ().equals ())
+			if (asi.getType ().equals (EAssemblySectionInputType.VAR_POINTER))
 			{
 				// registers which are modified in the inline assembly section must be tied to an output
 				sbInputs.append ('\"');
@@ -384,6 +436,8 @@ public class AssemblySection
 			
 			sbInputs.append (asi.getValue ().toString ());
 			sbInputs.append (")");
+			
+			listChildren.add (asi.getValue ().clone ());
 		}
 
 		return sbInputs.toString ();
@@ -427,6 +481,30 @@ public class AssemblySection
 
 		return sbClobberedRegisters.toString ();
 	}
+	
+	private void allocateInputIndices ()
+	{
+		int nIdx = 0;
+		
+		// VAR_POINTERs get the first indices since they have to be declared as outputs of the inline assembly section
+		for (AssemblySectionInput asi : m_listInputs)
+		{
+			if (asi.getType ().equals (EAssemblySectionInputType.VAR_POINTER))
+			{
+				asi.getOperand ().setIndex (nIdx);
+				nIdx++;
+			}
+		}
+		
+		for (AssemblySectionInput asi : m_listInputs)
+		{
+			if (!asi.getType ().equals (EAssemblySectionInputType.VAR_POINTER))
+			{
+				asi.getOperand ().setIndex (nIdx);
+				nIdx++;
+			}
+		}
+	}
 		
 	/**
 	 * Creates a Cetus statement from the list of assembly instructions
@@ -440,6 +518,8 @@ public class AssemblySection
 	public Statement generate (InstructionList ilInstructions, CodeGeneratorRuntimeOptions options)
 	{
 		// create a C statement wrapping the inline assembly
+		
+		allocateInputIndices ();
 		
 		// create the string of instructions
 		StringBuilder sbInstructions = new StringBuilder ();
@@ -456,17 +536,17 @@ public class AssemblySection
 		// build the list of child expressions (the inputs)
 		// (if no children are provided to SomeExpression, the constarrs will be remove when checking whether
 		// variables are referenced)
-		List<Traversable> listChildren = new ArrayList<> (m_listInputs.size ());
-		for (AssemblySectionInput asi : m_listInputs)
-			listChildren.add (asi.getValue ().clone ());
+		List<Traversable> listChildren = new ArrayList<> (2 * m_listInputs.size ());
+		String strOutputs = getOutputsAsString (listChildren);
+		String strInputs = getInputsAsString (listChildren);
 		
 		// build the IR object
 		return new ExpressionStatement (new SomeExpression (
 			StringUtil.concat (
 				"__asm__ __volatile__ (\n",
 				sbInstructions.toString (),
-				":\n",
-				": ", getInputsAsString (), "\n",
+				": ", strOutputs, "\n",
+				": ", strInputs, "\n",
 				": ", getClobberedRegistersAsString (), "\n",
 				")"
 			),

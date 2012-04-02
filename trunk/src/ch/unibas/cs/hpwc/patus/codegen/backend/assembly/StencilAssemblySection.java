@@ -28,7 +28,6 @@ import cetus.hir.UserSpecifier;
 import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.arch.ArchitectureDescriptionManager;
-import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
@@ -177,8 +176,6 @@ public class StencilAssemblySection extends AssemblySection
 	 * The offset from the default center stencil node (to account for loop unrolling)
 	 */
 	private int[] m_rgOffset;
-	
-	private TypeRegisterClass m_clsDefaultGPRClass;
 
 	
 	///////////////////////////////////////////////////////////////////
@@ -211,8 +208,6 @@ public class StencilAssemblySection extends AssemblySection
 		
 		m_rgOffset = (int[]) options.getObjectValue (CodeGeneratorRuntimeOptions.OPTION_INNER_UNROLLINGCONFIGURATION);
 		
-		m_clsDefaultGPRClass = m_data.getArchitectureDescription ().getDefaultRegisterClass (TypeRegisterType.GPR);
-
 		//m_data.getData ().getMemoryObjectManager ().clear ();
 	}
 	
@@ -377,7 +372,7 @@ public class StencilAssemblySection extends AssemblySection
 		VariableDeclarator decl = m_data.getCodeGenerators ().getConstantGeneratedIdentifiers ().createDeclarator (
 			INPUT_GRIDS_ARRAYPTR, specDatatype, true, setAllGrids.size ());
 		
-		addInput (INPUT_GRIDS_ARRAYPTR, decl.getID ());
+		addInput (INPUT_GRIDS_ARRAYPTR, decl.getID (), EAssemblySectionInputType.CONST_POINTER);
 		
 		int nIdx = 0;
 		for (StencilNode node : setAllGrids)
@@ -405,7 +400,7 @@ public class StencilAssemblySection extends AssemblySection
 		for (IntArray arrBaseVector : itBaseVectors)
 		{
 			Expression exprStride = m_mapStrideExpressions.get (arrBaseVector);
-			m_mapStrides.put (arrBaseVector, (IOperand.IRegisterOperand) addInput (exprStride, exprStride));
+			m_mapStrides.put (arrBaseVector, (IOperand.IRegisterOperand) addInput (exprStride, exprStride, EAssemblySectionInputType.CONSTANT));
 		}
 	}
 	
@@ -480,7 +475,7 @@ public class StencilAssemblySection extends AssemblySection
 		
 		op = m_bUseGridPointers ?
 			new IOperand.PseudoRegister (TypeRegisterType.GPR) :
-			addInput (node, getGridPointer (node));
+			addInput (node, getGridPointer (node), EAssemblySectionInputType.VAR_POINTER);
 		
 		// add the node to the grid
 		m_mapGrids.put (node, (IOperand.IRegisterOperand) op);
@@ -607,7 +602,8 @@ public class StencilAssemblySection extends AssemblySection
 		addInput (
 			AssemblySection.INPUT_CONSTANTS_ARRAYPTR,
 			m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalars (
-				rgConstsAndParams, getDatatype (), m_slbGeneratedCode, m_options)
+				rgConstsAndParams, getDatatype (), m_slbGeneratedCode, m_options),
+			EAssemblySectionInputType.CONST_POINTER
 		);
 	}
 	

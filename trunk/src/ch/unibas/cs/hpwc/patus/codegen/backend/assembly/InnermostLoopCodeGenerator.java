@@ -24,6 +24,7 @@ import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.IInnermostLoopCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.AssemblySection.EAssemblySectionInputType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.MultipleMemoryLoadRemover;
@@ -147,7 +148,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				ExpressionUtil.min (
 					m_sdit.getDomainSubdomain ().getSize ().getCoord (0),
 					m_data.getStencilCalculation ().getDomainSize ().getSize ().getCoord (0)
-				)
+				),
+				EAssemblySectionInputType.CONSTANT
 			);
 		}
 		

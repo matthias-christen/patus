@@ -78,23 +78,37 @@ public interface IOperand
 	
 	public static class InputRef extends AbstractOperand implements IRegisterOperand
 	{
+		private String m_strRef;
 		private int m_nIndex;
 		
-		public InputRef (int nIndex)
+		public InputRef (String strRef)
+		{
+			m_strRef = strRef;
+			m_nIndex = -1;
+		}
+		
+		public void setIndex (int nIndex)
 		{
 			m_nIndex = nIndex;
+		}
+		
+		public int getIndex ()
+		{
+			return m_nIndex;
 		}
 		
 		@Override
 		public String getAsString ()
 		{
+			if (m_nIndex == -1)
+				return StringUtil.concat ("{in:", m_strRef, "}");
 			return StringUtil.concat ("%", m_nIndex);
 		}
 
 		@Override
 		public int hashCode ()
 		{
-			return m_nIndex;
+			return m_strRef.hashCode ();
 		}
 
 		@Override
@@ -106,8 +120,16 @@ public interface IOperand
 				return false;
 			
 			InputRef other = (InputRef) obj;
+			if (m_nIndex == -1)
+			{
+				if (other.m_nIndex != -1)
+					return false;
+				return m_strRef.equals (other.m_strRef);
+			}
+			
 			if (m_nIndex != other.m_nIndex)
 				return false;
+			
 			return true;
 		}
 	}

@@ -27,6 +27,9 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 	///////////////////////////////////////////////////////////////////
 	// Constants
 	
+	// generate a CMOV instruction
+	private final static boolean USE_CMOV = true;
+	
 	private final static String LABEL_PROLOGHDR_LESSTHANMAX = "phdr_ltmax";
 	private final static String LABEL_UNROLLEDMAINHDR = "umhdr";
 	private final static String LABEL_UNROLLEDMAINHDR_STARTCOMPUTATION = "umhdr_startcomp";
@@ -96,11 +99,21 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			// make sure that this computed number of elements doesn't exceed the actual number of elements
 			// (compute min(#elts, #actual num elts))
 			l.addInstruction (new Instruction ("cmp", regCounter, as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT)));
-			l.addInstruction (new Instruction ("jg",  Label.getLabelOperand (LABEL_PROLOGHDR_LESSTHANMAX)));
-			l.addInstruction (new Instruction ("mov", as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT), regCounter));
+			if (USE_CMOV)
+			{
+				// http://www.masm32.com/board/index.php?PHPSESSID=b5aabf9f9b1249cce5f3610ddaff70cc&topic=18246.0
+				l.addInstruction (new Instruction ("cmovng", as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT), regCounter));
+			}
+			else
+			{
+				l.addInstruction (new Instruction ("jg",  Label.getLabelOperand (LABEL_PROLOGHDR_LESSTHANMAX)));
+				l.addInstruction (new Instruction ("mov", as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT), regCounter));
+			}
 			
 			// check whether there is work to do, otherwise jump to the main loop
-			l.addInstruction (Label.getLabel (LABEL_PROLOGHDR_LESSTHANMAX));
+			if (!USE_CMOV)
+				l.addInstruction (Label.getLabel (LABEL_PROLOGHDR_LESSTHANMAX));
+			
 			l.addInstruction (new Instruction ("mov", regCounter, m_regPrologLength));
 			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
 			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_UNROLLEDMAINHDR)));
@@ -177,7 +190,8 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			rotateReuseRegisters (l);
 			
 			// loop: decrement the loop counter and jump to the loop head if not zero
-			l.addInstruction (new Instruction ("dec", getCounterRegister ()));
+			//l.addInstruction (new Instruction ("dec", getCounterRegister ()));
+			l.addInstruction (new Instruction ("sub", new IOperand.Immediate (1), getCounterRegister ()));
 			l.addInstruction (new Instruction ("jnz", Label.getLabelOperand (strHeadLabel)));
 
 			return l;

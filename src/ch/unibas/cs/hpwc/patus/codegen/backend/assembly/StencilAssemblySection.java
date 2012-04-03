@@ -290,11 +290,7 @@ public class StencilAssemblySection extends AssemblySection
 		else
 		{			
 			// check whether be negating stride registers we can save enough
-			Set<IntArray> setPositiveStrides = new HashSet<> ();
-			for (IntArray v : m_mapStrideExpressions.keySet ())
-				if (!setPositiveStrides.contains (v) && !setPositiveStrides.contains (v.neg ()))
-					setPositiveStrides.add (v);
-				
+			Set<IntArray> setPositiveStrides = getPositiveStrides ();			
 			int nSavedRegisters = nNumRegistersForStrides - setPositiveStrides.size ();
 			
 			if (((nFreeRegisters + nSavedRegisters >= 0)
@@ -336,6 +332,36 @@ public class StencilAssemblySection extends AssemblySection
 				addConstants ();
 			}
 		}
+	}
+	
+	private Set<IntArray> getPositiveStrides ()
+	{
+		Set<IntArray> set = new HashSet<> ();
+
+		for (IntArray v : m_mapStrideExpressions.keySet ())
+		{
+			IntArray vNeg = v.neg ();
+			if (!set.contains (v) && !set.contains (vNeg))
+			{
+				// decide whether to add v or vNeg
+				int nPosRefs = 0;
+				int nNegRefs = 0;
+				
+				for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
+					for (StencilNode node : stencil)
+					{
+						int[] rgBaseVector = m_baseVectors.getBaseVector (node);
+						if (v.equals (rgBaseVector))
+							nPosRefs++;
+						else if (vNeg.equals (rgBaseVector))
+							nNegRefs++;
+					}
+				
+				set.add (nPosRefs > nNegRefs ? v : vNeg);
+			}
+		}
+		
+		return set;
 	}
 	
 	private int getNumRegistersForGrids ()
@@ -726,7 +752,7 @@ public class StencilAssemblySection extends AssemblySection
 		IInstruction[] rgPreInstructions = null;
 		if (IOperand.PseudoRegister.isPseudoRegisterOfType (opBase, TypeRegisterType.GPR))
 		{
-			//if (!m_mapGridLoaded.containsKey (opBase))
+			if (!m_mapGridLoaded.containsKey (opBase))
 			{
 				rgPreInstructions = new IInstruction[] {
 					new Instruction (

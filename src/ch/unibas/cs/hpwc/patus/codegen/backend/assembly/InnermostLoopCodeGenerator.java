@@ -27,6 +27,7 @@ import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.AssemblySection.EAssemblySectionInputType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.LoadStoreMover;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.MultipleMemoryLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.UnneededAddressLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
@@ -129,7 +130,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			// initialize the optimizers to execute before/after the translation of the
 			// computation instruction list
 			m_rgPreTranslateOptimizers = new IInstructionListOptimizer[] {
-				new MultipleMemoryLoadRemover (m_data.getArchitectureDescription (), false)
+				new MultipleMemoryLoadRemover (m_data.getArchitectureDescription (), false),
+				//new LoadStoreMover ()
 			};
 			m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] {
 				new UnneededAddressLoadRemover ()

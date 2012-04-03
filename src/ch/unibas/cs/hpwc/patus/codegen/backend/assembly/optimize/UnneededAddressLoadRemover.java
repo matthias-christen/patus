@@ -11,7 +11,7 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
  */
 public class UnneededAddressLoadRemover implements IInstructionListOptimizer
 {
-	private static final String MOV_INSTRUCTION = "mov";
+	public static final String MOV_INSTRUCTION = "mov";
 
 	
 	public UnneededAddressLoadRemover ()

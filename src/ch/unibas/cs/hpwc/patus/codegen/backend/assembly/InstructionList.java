@@ -124,10 +124,10 @@ public class InstructionList implements Iterable<IInstruction>
 			}
 			catch (TooFewRegistersException e)
 			{
-				if (e.getRegisterType ().equals (TypeRegisterType.SIMD))
+				if (e.getRegisterType ().equals (TypeRegisterType.SIMD) || e.getRegisterType ().equals (TypeRegisterType.GPR))
 				{
 					for (int i = 0; i < e.getExcessRegisterRequirement (); i++)
-						spillRegisters (as, analysis, listOffsets);
+						spillRegisters (as, analysis, listOffsets, e.getRegisterType ());
 					analysis.createLAGraphEdges (mapGraphs);
 				}
 				else
@@ -144,7 +144,7 @@ public class InstructionList implements Iterable<IInstruction>
 		return replacePseudoRegisters (map);
 	}
 	
-	private void spillRegisters (AssemblySection as, LiveAnalysis analysis, List<Integer> listIndexOffsets)
+	private void spillRegisters (AssemblySection as, LiveAnalysis analysis, List<Integer> listIndexOffsets, TypeRegisterType regtype)
 	{
 		// find the point and the register at which the corresponding register
 		// is not accessed for the largest amount of time
@@ -154,7 +154,7 @@ public class InstructionList implements Iterable<IInstruction>
 		int nNoAccessRegIdx = 0;
 		for (int nInstrIdx = 0; nInstrIdx < rgData.length; nInstrIdx++)
 			for (int nRegIdx = 0; nRegIdx < rgData[nInstrIdx].length; nRegIdx++)
-				if (rgData[nInstrIdx][nRegIdx] > nMaxNoAccess)
+				if (rgData[nInstrIdx][nRegIdx] > nMaxNoAccess && analysis.getPseudoRegisters ()[nRegIdx].getRegisterType ().equals (regtype))
 				{
 					nMaxNoAccess = rgData[nInstrIdx][nRegIdx];
 					nNoAccessInstrIdx = nInstrIdx;
@@ -166,9 +166,17 @@ public class InstructionList implements Iterable<IInstruction>
 			" (", nMaxNoAccess, " instructions)"));
 		
 		// add memory operations to save and restore the register
-		addSpillInstruction (as, analysis, nNoAccessInstrIdx + 1, nNoAccessRegIdx, true, listIndexOffsets);
-		addSpillInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, false, listIndexOffsets);
-		m_nSpillArrayIndex++;
+		if (regtype.equals (TypeRegisterType.GPR))
+		{
+			// TODO: currently only implemented for reloading grid addresses
+			addGPRReloadGridAddressInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, listIndexOffsets);
+		}
+		else if (regtype.equals (TypeRegisterType.SIMD))
+		{
+			addSIMDSpillInstruction (as, analysis, nNoAccessInstrIdx + 1, nNoAccessRegIdx, true, listIndexOffsets);
+			addSIMDSpillInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, false, listIndexOffsets);
+			m_nSpillArrayIndex++;
+		}
 		
 		// modify the analysis matrix
 		rgData[nNoAccessInstrIdx][nNoAccessRegIdx] = LiveAnalysis.STATE_LIVE;
@@ -176,7 +184,27 @@ public class InstructionList implements Iterable<IInstruction>
 			rgData[nInstrIdx][nNoAccessRegIdx] = LiveAnalysis.STATE_DEAD;
 	}
 	
-	private void addSpillInstruction (AssemblySection as, LiveAnalysis analysis, int nInstrIdx, int nNoAccessRegIdx, boolean bSpillToMemory, List<Integer> listIndexOffsets)
+	private void addGPRReloadGridAddressInstruction (AssemblySection as, LiveAnalysis analysis, int nInstrIdx, int nNoAccessRegIdx, List<Integer> listIndexOffsets)
+	{
+		int nIdxLoad = nInstrIdx;
+		while (analysis.getLivePseudoRegisters ()[nIdxLoad - 1][nNoAccessRegIdx] != LiveAnalysis.STATE_DEAD)
+		{
+			nIdxLoad--;
+			if (nIdxLoad == 0)
+				break;
+		}
+		
+		Instruction instrLoad = (Instruction) analysis.getInstruction (nIdxLoad);
+		
+		m_listInstructions.add (
+			InstructionList.getOffsetIndex (nInstrIdx, listIndexOffsets),
+			new Instruction (instrLoad.getIntrinsicBaseName (), instrLoad.getOperands ())
+		);
+		
+		listIndexOffsets.add (nInstrIdx);
+	}
+	
+	private void addSIMDSpillInstruction (AssemblySection as, LiveAnalysis analysis, int nInstrIdx, int nNoAccessRegIdx, boolean bSpillToMemory, List<Integer> listIndexOffsets)
 	{
 		Intrinsic intrinsic = as.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), Specifier.FLOAT);
 		

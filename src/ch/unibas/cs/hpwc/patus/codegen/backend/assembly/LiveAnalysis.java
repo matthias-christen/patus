@@ -155,9 +155,14 @@ public class LiveAnalysis
 		return m_rgLivePseudoRegisters;
 	}
 	
-	public IOperand.IRegisterOperand[] getPseudoRegisters ()
+	public IOperand.PseudoRegister[] getPseudoRegisters ()
 	{
 		return m_rgPseudoRegisters;
+	}
+	
+	public IInstruction getInstruction (int nIdx)
+	{
+		return m_rgInstructions[nIdx];
 	}
 	
 	/**
@@ -242,7 +247,8 @@ public class LiveAnalysis
 					mapGraphs.get (reg.getRegisterType ()).addVertex (new LAGraph.Vertex (reg));
 					m_rgPseudoRegisters[reg.getNumber ()] = reg;
 					
-					m_rgLivePseudoRegisters[i][reg.getNumber ()] = getNextRead (reg, i) - i;
+					int nNextReadIdx = getNextRead (reg, i);
+					m_rgLivePseudoRegisters[i][reg.getNumber ()] = nNextReadIdx == NO_NEXT_READ ? STATE_DEAD : nNextReadIdx - i;
 				}
 			}
 

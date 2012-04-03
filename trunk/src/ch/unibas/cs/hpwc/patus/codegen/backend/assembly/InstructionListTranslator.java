@@ -9,9 +9,9 @@ import org.apache.log4j.Logger;
 import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.ArchitectureDescriptionManager;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
-import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.UnneededPseudoRegistersRemover;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -479,6 +479,15 @@ public class InstructionListTranslator
 		}
 		
 		// add the main instruction
+////
+//if (instruction.getIntrinsicBaseName ().equals (TypeBaseIntrinsicEnum.DIVIDE.value ()))
+//{
+//	IOperand.PseudoRegister opTmp = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
+//	m_ilOut.addInstruction (new Instruction ("vrcpps", rgDestOps[0], opTmp));
+//	m_ilOut.addInstruction (new Instruction ("vmulps", rgDestOps[1], opTmp, rgDestOps[2]));
+//}
+//else
+////
 		m_ilOut.addInstruction (new Instruction (intrinsic.getName (), rgDestOps));
 		
 		// add a move-result instruction if needed
@@ -550,7 +559,8 @@ public class InstructionListTranslator
 			// the intrinsic to generate has a distinct output operand
 			
 			// if possible, swap commutative operands if that helps saving MOVs
-			rgSourceOps = compatibilizeCommutatives (intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource);
+			rgSourceOps = InstructionListTranslator.compatibilizeCommutatives (
+				intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource);
 		}
 		else
 		{
@@ -567,7 +577,8 @@ public class InstructionListTranslator
 				if (rgSourceOps[rgSourceOps.length - 1] instanceof IOperand.IRegisterOperand)
 				{
 					// if possible, swap commutative operands if that helps saving MOVs
-					rgSourceOps = compatibilizeCommutatives (intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource);
+					rgSourceOps = InstructionListTranslator.compatibilizeCommutatives (
+						intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource);
 				}
 			}
 		}

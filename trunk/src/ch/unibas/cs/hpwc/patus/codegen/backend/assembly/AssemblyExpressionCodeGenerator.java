@@ -403,17 +403,40 @@ public class AssemblyExpressionCodeGenerator
 			for (int i = 0; i < nUnrollFactor; i++)
 			{
 				StencilAssemblySection.OperandWithInstructions op = m_assemblySection.getGrid (node, i);
-				rgOpResults[i] = op.getOp ();
-
-				// the pre- and post-instructions will be the same for each node access
-				// (since in the unrolling direction only the displacement changes), but
-				// we need to add the additional instructions only once
 				
-				if (i == 0)
+				if (op.getInstrPre () != null && op.getInstrPost () != null)
 				{
-					il.addInstructions (op.getInstrPre ());
-					if (op.getInstrPost () != null)
-						m_quInstructionsToAdd.add (op.getInstrPost ());
+					// if there are both pre and post instructions when accessing a stencil node,
+					// move the stencil node data into a temporary pseudo register and surround the
+					// move command with the pre and post instructions
+					// (if this isn't done, the generated code could be wrong if the instruction accesses
+					// data which would both require and not require the pre and post instructions, e.g.
+					// 		vsubps (%1,%13,2), (%1,%13)*, %%ymm3
+					// where the operand * requires negating %13.)
+					
+					if (i == 0)
+						il.addInstructions (op.getInstrPre ());
+					
+					rgOpResults[i] = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, op.getOp (), rgOpResults[i]));
+					
+					if (i == nUnrollFactor - 1)
+						il.addInstructions (op.getInstrPost ());
+				}
+				else
+				{
+					rgOpResults[i] = op.getOp ();
+
+					// the pre- and post-instructions will be the same for each node access
+					// (since in the unrolling direction only the displacement changes), but
+					// we need to add the additional instructions only once
+					
+					if (i == 0)
+					{
+						il.addInstructions (op.getInstrPre ());
+						if (op.getInstrPost () != null)
+							m_quInstructionsToAdd.add (op.getInstrPost ());
+					}
 				}
 			}
 		}

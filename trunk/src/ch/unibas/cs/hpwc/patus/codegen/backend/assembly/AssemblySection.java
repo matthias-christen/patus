@@ -347,6 +347,9 @@ public class AssemblySection
 				nRegistersCount--;
 		}
 		
+		if (type.equals (TypeRegisterType.GPR))
+			nRegistersCount -= getInputsCount () + 2;
+		
 		return nRegistersCount;
 	}
 
@@ -496,13 +499,14 @@ public class AssemblySection
 			}
 		}
 		
+		// inputs
 		for (AssemblySectionInput asi : m_listInputs)
 		{
 			if (!asi.getType ().equals (EAssemblySectionInputType.VAR_POINTER))
-			{
 				asi.getOperand ().setIndex (nIdx);
-				nIdx++;
-			}
+			
+			// note: we have to count all the inputs, also already counted VAR_POINTERs
+			nIdx++;
 		}
 	}
 		

@@ -68,11 +68,17 @@ public class StencilLoopUnrollingConfiguration
 	 * @param rgUnrolling
 	 * @param rgMaxUnrollings
 	 */
-	public StencilLoopUnrollingConfiguration (int[] rgUnrolling, int[] rgMaxUnrollings)
+	public StencilLoopUnrollingConfiguration (int nDimensions, int[] rgUnrolling, int[] rgMaxUnrollings)
 	{
 		this ();
-		for (int i = 0; i < rgUnrolling.length; i++)
-			setUnrollingForDimension (i, rgUnrolling[i], i < rgMaxUnrollings.length ? rgMaxUnrollings[i] : StencilLoopUnrollingConfiguration.NO_UNROLLING_LIMIT);
+		for (int i = 0; i < nDimensions; i++)
+		{
+			setUnrollingForDimension (
+				i,
+				i < rgUnrolling.length ? rgUnrolling[i] : 1,
+				i < rgMaxUnrollings.length ? rgMaxUnrollings[i] : StencilLoopUnrollingConfiguration.NO_UNROLLING_LIMIT
+			);
+		}
 	}
 
 	/**

@@ -30,6 +30,7 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperan
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.LoadStoreMover;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.MultipleMemoryLoadRemover;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.SimpleUnneededAddressLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.UnneededAddressLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
@@ -134,8 +135,10 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				new MultipleMemoryLoadRemover (m_data.getArchitectureDescription (), false),
 				//new LoadStoreMover ()
 			};
+			
 			m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] {
-				new UnneededAddressLoadRemover (m_data.getArchitectureDescription ())
+				new SimpleUnneededAddressLoadRemover ()
+				//new UnneededAddressLoadRemover (m_data.getArchitectureDescription ())
 			};			
 		}
 		
@@ -438,15 +441,18 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		private void assignConstantRegisters (InstructionList il)
 		{
 			m_mapConstantsAndParams = new HashMap<> ();
-			if (m_assemblySection.getConstantsAndParamsCount () < MAX_REGISTERS_FOR_CONSTANTS)
-			{
-				for (Expression exprConstOrParam : m_assemblySection.getConstantsAndParams ())
-				{
-					IOperand.IRegisterOperand op = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
-					m_mapConstantsAndParams.put (exprConstOrParam, op);
-					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, m_assemblySection.getConstantOrParamAddress (exprConstOrParam), op));
-				}
-			}
+			
+			// note: this is now done implicitly in StencilAssemblySection (by loading a constant/parameter -- if it is reused -- into a pseudo register)
+			
+//			if (m_assemblySection.getConstantsAndParamsCount () < MAX_REGISTERS_FOR_CONSTANTS)
+//			{
+//				for (Expression exprConstOrParam : m_assemblySection.getConstantsAndParams ())
+//				{
+//					IOperand.IRegisterOperand op = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
+//					m_mapConstantsAndParams.put (exprConstOrParam, op);
+//					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, m_assemblySection.getConstantOrParamAddress (exprConstOrParam), op));
+//				}
+//			}
 		}
 		
 		protected CodeGeneratorRuntimeOptions getRuntimeOptions ()

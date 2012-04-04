@@ -23,6 +23,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.StencilAssemblySection.OperandWithInstructions;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -458,7 +459,13 @@ public class AssemblyExpressionCodeGenerator
 		// find the register the constant is saved in or load the constant into a register (if too many registers)
 		IOperand op = m_mapConstantsAndParams.get (exprConstantOrIdentifier);
 		if (op == null)
-			op = m_assemblySection.getConstantOrParamAddress (exprConstantOrIdentifier);
+		{
+			OperandWithInstructions owi = m_assemblySection.getConstantOrParamAddress (exprConstantOrIdentifier);
+			op = owi.getOp ();
+			il.addInstructions (owi.getInstrPre ());
+			if (owi.getInstrPost () != null)
+				m_quInstructionsToAdd.add (owi.getInstrPost ());
+		}
 		
 		if (op == null)
 			throw new RuntimeException (StringUtil.concat ("Could not find or resolve ", exprConstantOrIdentifier.toString ()));

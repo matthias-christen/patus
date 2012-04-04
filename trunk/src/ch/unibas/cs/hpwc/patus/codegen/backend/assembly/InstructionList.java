@@ -170,13 +170,22 @@ public class InstructionList implements Iterable<IInstruction>
 		if (regtype.equals (TypeRegisterType.GPR))
 		{
 			// TODO: currently only implemented for reloading grid addresses
-			addGPRReloadGridAddressInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, listIndexOffsets);
+			addReloadFromAddressInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, listIndexOffsets);
 		}
 		else if (regtype.equals (TypeRegisterType.SIMD))
 		{
-			addSIMDSpillInstruction (as, analysis, nNoAccessInstrIdx + 1, nNoAccessRegIdx, true, listIndexOffsets);
-			addSIMDSpillInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, false, listIndexOffsets);
-			m_nSpillArrayIndex++;
+			// check whether the register holds a constant
+			if ((as instanceof StencilAssemblySection) && ((StencilAssemblySection) as).isConstantOrParam (analysis.getPseudoRegisters ()[nNoAccessRegIdx]))
+			{
+				// if it holds a constant, we don't need to spill out to memory, just reload the next time we use it
+				addReloadFromAddressInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, listIndexOffsets);
+			}
+			else
+			{
+				addSIMDSpillInstruction (as, analysis, nNoAccessInstrIdx + 1, nNoAccessRegIdx, true, listIndexOffsets);
+				addSIMDSpillInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, false, listIndexOffsets);
+				m_nSpillArrayIndex++;
+			}
 		}
 		
 		// modify the analysis matrix
@@ -185,7 +194,7 @@ public class InstructionList implements Iterable<IInstruction>
 			rgData[nInstrIdx][nNoAccessRegIdx] = LiveAnalysis.STATE_DEAD;
 	}
 	
-	private void addGPRReloadGridAddressInstruction (AssemblySection as, LiveAnalysis analysis, int nInstrIdx, int nNoAccessRegIdx, List<Integer> listIndexOffsets)
+	private void addReloadFromAddressInstruction (AssemblySection as, LiveAnalysis analysis, int nInstrIdx, int nNoAccessRegIdx, List<Integer> listIndexOffsets)
 	{
 		// find the first load instruction
 		Instruction instrLoad = null;

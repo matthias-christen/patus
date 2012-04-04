@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
+
 import cetus.hir.ArrayAccess;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
@@ -28,13 +30,13 @@ import cetus.hir.UserSpecifier;
 import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.arch.ArchitectureDescriptionManager;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.MemoryObject;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.FindStencilNodeBaseVectors;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
@@ -53,6 +55,8 @@ public class StencilAssemblySection extends AssemblySection
 {
 	///////////////////////////////////////////////////////////////////
 	// Constants
+	
+	private final static Logger LOGGER = Logger.getLogger (StencilAssemblySection.class);
 	
 	public final static String INPUT_GRIDS_ARRAYPTR = "_grids_";
 	public final static String INPUT_STRIDE_ARRAYPTR = "_strides_";
@@ -165,6 +169,8 @@ public class StencilAssemblySection extends AssemblySection
 	private FindStencilNodeBaseVectors m_baseVectors;
 	
 	private Map<Expression, Integer> m_mapConstantsAndParams;
+	private Map<Expression, IOperand.IRegisterOperand> m_mapReusedConstantsAndParams;
+	private Set<IOperand.IRegisterOperand> m_setConstantsAndParamsRegisters;
 
 	/**
 	 * The data type of the stencil calculation. Only one data type is supported, i.e.,
@@ -198,6 +204,8 @@ public class StencilAssemblySection extends AssemblySection
 		m_mapStrideExpressions = new HashMap<> ();
 		
 		m_mapConstantsAndParams = new HashMap<> ();
+		m_mapReusedConstantsAndParams = new HashMap<> ();
+		m_setConstantsAndParamsRegisters = new HashSet<> ();
 
 		m_bUseNegOnStrides = false;
 		m_bUseGridPointers = false;
@@ -578,6 +586,15 @@ public class StencilAssemblySection extends AssemblySection
 				if (m_data.getStencilCalculation ().isParameter (((NameID) obj).getName ()))
 					addToConstantsAndParamsMap ((NameID) obj);
 			}
+			else if (obj instanceof StencilNode)
+			{
+				// if the stencil node is contained in the m_mapConstantsAndParams, it has to be
+				// a constant (output) node, and since it is already in the map, we know when we
+				// get here again that it is reused
+				
+				if (m_mapConstantsAndParams.containsKey (obj))
+					m_mapReusedConstantsAndParams.put ((Expression) obj, null);
+			}
 		}
 	}
 
@@ -731,6 +748,9 @@ public class StencilAssemblySection extends AssemblySection
 	 */
 	public OperandWithInstructions getGrid (StencilNode node, int nElementsShift)
 	{
+		if (LOGGER.isDebugEnabled ())
+			LOGGER.debug (StringUtil.concat ("Requesting operand for stencil node ", node.toString ()));
+
 		StencilNode nodeLocal = node;
 		int nElementsShiftLocal = nElementsShift;
 		
@@ -816,7 +836,18 @@ public class StencilAssemblySection extends AssemblySection
 	protected void addToConstantsAndParamsMap (Expression expr)
 	{
 		if (!m_mapConstantsAndParams.containsKey (expr))
+		{
+			// if the constant or param hasn't been registered yet, add it and give it an ID (an index)
 			m_mapConstantsAndParams.put (expr, m_mapConstantsAndParams.size ());
+		}
+		else
+		{
+			// if the constant or param has already been registered, mark it for reuse
+			// (don't allocate any pseudo register yet into which it will be loaded; that way we can detect
+			// while generating the code whether the load instruction has already been generated)
+			
+			m_mapReusedConstantsAndParams.put (expr, null);
+		}
 	}
 
 	/**
@@ -869,38 +900,67 @@ public class StencilAssemblySection extends AssemblySection
 	 *            a stencil parameter) for which to retrieve its address
 	 * @return The address operand for <code>exprConstantOrParam</code>
 	 */
-	public IOperand getConstantOrParamAddress (Expression exprConstantOrParam)
+	public OperandWithInstructions getConstantOrParamAddress (Expression exprConstantOrParam)
 	{
+		if (LOGGER.isDebugEnabled ())
+			LOGGER.debug (StringUtil.concat ("Requesting operand for constant/param ", exprConstantOrParam.toString ()));
+		
+		IOperand.IRegisterOperand op = null;
+		if (m_mapReusedConstantsAndParams.containsKey (exprConstantOrParam))
+		{
+			op = m_mapReusedConstantsAndParams.get (exprConstantOrParam);
+			if (op != null)
+				return new OperandWithInstructions (op);
+			
+			op = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
+			m_mapReusedConstantsAndParams.put (exprConstantOrParam, op);
+			m_setConstantsAndParamsRegisters.add (op);
+		}
+		
 		int nConstParamIdx = getConstantOrParamIndex (exprConstantOrParam);
 		if (nConstParamIdx == -1)
 			throw new RuntimeException (StringUtil.concat ("No index for the constant of parameter ", exprConstantOrParam.toString ()));
 		
-		return new IOperand.Address (
+		IOperand opAddr = new IOperand.Address (
 			getInput (AssemblySection.INPUT_CONSTANTS_ARRAYPTR),
 			nConstParamIdx * m_data.getArchitectureDescription ().getSIMDVectorLengthInBytes ());
+		
+		IInstruction[] rgInstrMove = null;
+		if (op != null)
+		{
+			// reuse a constant or param: load the value into a pseudo register
+			rgInstrMove = new IInstruction[] { new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, opAddr, op) };
+		}
+		
+		return new OperandWithInstructions (rgInstrMove, op == null ? opAddr : op, null);
 	}
 
-	/**
-	 * Returns the operand corresponding to the constant or parameter
-	 * <code>exprConstantOrParam</code>.
-	 * 
-	 * @param exprConstantOrParam
-	 *            The constant or stencil parameter
-	 * @param specDatatype
-	 *            The datatype
-	 * @return The operand corresponding to <code>exprConstantOrParam</code>
-	 */
-	public IOperand getConstantOrParam (Expression exprConstantOrParam, Specifier specDatatype)
+	public boolean isConstantOrParam (IOperand.PseudoRegister reg)
 	{
-		IOperand regBase = getInput (AssemblySection.INPUT_CONSTANTS_ARRAYPTR);
-		if (regBase == null)
-			return null;
-		
-		return new IOperand.Address (
-			(IRegisterOperand) regBase,
-			m_mapConstantsAndParams.get (exprConstantOrParam) * ArchitectureDescriptionManager.getTypeSize (specDatatype)
-		);
+		return m_setConstantsAndParamsRegisters.contains (reg);
 	}
+
+//	/**
+//	 * Returns the operand corresponding to the constant or parameter
+//	 * <code>exprConstantOrParam</code>.
+//	 * 
+//	 * @param exprConstantOrParam
+//	 *            The constant or stencil parameter
+//	 * @param specDatatype
+//	 *            The datatype
+//	 * @return The operand corresponding to <code>exprConstantOrParam</code>
+//	 */
+//	public IOperand getConstantOrParam (Expression exprConstantOrParam, Specifier specDatatype)
+//	{
+//		IOperand regBase = getInput (AssemblySection.INPUT_CONSTANTS_ARRAYPTR);
+//		if (regBase == null)
+//			return null;
+//		
+//		return new IOperand.Address (
+//			(IRegisterOperand) regBase,
+//			m_mapConstantsAndParams.get (exprConstantOrParam) * ArchitectureDescriptionManager.getTypeSize (specDatatype)
+//		);
+//	}
 	
 	/**
 	 * Returns the auxiliary statements generated for the assembly section.

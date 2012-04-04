@@ -60,8 +60,6 @@ public class AssemblyExpressionCodeGenerator
 	
 	private Map<StencilNode, IOperand.IRegisterOperand> m_mapReuseNodesToRegisters;
 	
-	private Map<Expression, IOperand.IRegisterOperand> m_mapConstantsAndParams;
-	
 	private Map<NameID, IOperand.IRegisterOperand[]> m_mapTempoararies;
 		
 	private RegisterAllocator m_allocator;
@@ -72,13 +70,11 @@ public class AssemblyExpressionCodeGenerator
 
 	public AssemblyExpressionCodeGenerator (StencilAssemblySection as, CodeGeneratorSharedObjects data,
 		Map<StencilNode, IOperand.IRegisterOperand> mapReuseNodesToRegisters,
-		Map<Expression, IOperand.IRegisterOperand> mapConstantsAndParams,
 		Map<NameID, IOperand.IRegisterOperand[]> mapTemporaries)
 	{
 		m_data = data;
 		m_assemblySection = as;
 		m_mapReuseNodesToRegisters = mapReuseNodesToRegisters;
-		m_mapConstantsAndParams = mapConstantsAndParams;
 		m_mapTempoararies = mapTemporaries;
 		
 		m_quInstructionsToAdd = new LinkedList<> ();
@@ -457,15 +453,11 @@ public class AssemblyExpressionCodeGenerator
 		}		
 		
 		// find the register the constant is saved in or load the constant into a register (if too many registers)
-		IOperand op = m_mapConstantsAndParams.get (exprConstantOrIdentifier);
-		if (op == null)
-		{
-			OperandWithInstructions owi = m_assemblySection.getConstantOrParamAddress (exprConstantOrIdentifier);
-			op = owi.getOp ();
-			il.addInstructions (owi.getInstrPre ());
-			if (owi.getInstrPost () != null)
-				m_quInstructionsToAdd.add (owi.getInstrPost ());
-		}
+		OperandWithInstructions owi = m_assemblySection.getConstantOrParam (exprConstantOrIdentifier);
+		IOperand op = owi.getOp ();
+		il.addInstructions (owi.getInstrPre ());
+		if (owi.getInstrPost () != null)
+			m_quInstructionsToAdd.add (owi.getInstrPost ());
 		
 		if (op == null)
 			throw new RuntimeException (StringUtil.concat ("Could not find or resolve ", exprConstantOrIdentifier.toString ()));

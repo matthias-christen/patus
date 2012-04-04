@@ -92,7 +92,113 @@ public class AssemblySection
 			return m_nNumber;
 		}
 	}
+	
+	public static class AssemblySectionState
+	{
+		/**
+		 * The set of registers which got clobbered during the inline assembly section
+		 */
+		private Set<IOperand.Register> m_setClobberedRegisters;
+		
+		/**
+		 * Flag indicating whether the memory is clobbered in the inline assembly section.
+		 * The flag needs to be set using {@link AssemblySection#setMemoryClobbered(boolean)}.
+		 */
+		private boolean m_bIsMemoryClobbered;
+		
+		private boolean m_bIsConditionCodesClobbered;
 
+		/**
+		 * Data structure identifying which registers are currently in use
+		 */
+		private Map<IOperand.Register, Boolean> m_mapRegisterUsage;
+
+		private int m_nSpillMemoryPlacesCount;
+		
+		
+		public AssemblySectionState ()
+		{
+			m_setClobberedRegisters = new TreeSet<> (new Comparator<IOperand.Register> ()
+			{
+				@Override
+				public int compare (Register r1, Register r2)
+				{
+					return r1.getBaseName ().compareTo (r2.getBaseName ());
+				}
+			});
+			
+			m_mapRegisterUsage = new HashMap<> ();
+
+			m_nSpillMemoryPlacesCount = 0;
+		}
+
+		public Iterable<IOperand.Register> getUsedRegisters ()
+		{
+			List<IOperand.Register> listUsedRegisters = new ArrayList<> (m_mapRegisterUsage.size ());
+			for (IOperand.Register op : m_mapRegisterUsage.keySet ())
+				if (m_mapRegisterUsage.get (op))
+					listUsedRegisters.add (op);
+			return listUsedRegisters;
+		}
+		
+		public Iterable<IOperand.Register> getClobberedRegisters ()
+		{
+			List<IOperand.Register> listClobberedRegisters = new ArrayList<> (m_setClobberedRegisters.size ());
+			listClobberedRegisters.addAll (m_setClobberedRegisters);
+			return m_setClobberedRegisters;
+		}
+
+		/**
+		 *
+		 */
+		public void restoreUsedRegisters (Iterable<IOperand.Register> itUsedRegisters)
+		{
+			m_mapRegisterUsage.clear ();
+			for (IOperand.Register op : itUsedRegisters)
+				m_mapRegisterUsage.put (op, true);
+		}
+		
+		public void restoreClobberedRegisters (Iterable<IOperand.Register> itClobberedRegisters)
+		{
+			m_setClobberedRegisters.clear ();
+			for (IOperand.Register op : itClobberedRegisters)
+				m_setClobberedRegisters.add (op);
+		}
+
+		public void restore (AssemblySectionState state)
+		{
+			m_bIsConditionCodesClobbered = state.m_bIsConditionCodesClobbered;
+			m_bIsMemoryClobbered = state.m_bIsMemoryClobbered;
+			m_nSpillMemoryPlacesCount = state.m_nSpillMemoryPlacesCount;
+			
+			m_mapRegisterUsage.clear ();
+			for (IOperand.Register reg : state.m_mapRegisterUsage.keySet ())
+				m_mapRegisterUsage.put (reg, state.m_mapRegisterUsage.get (reg));
+			
+			m_setClobberedRegisters.clear ();
+			m_setClobberedRegisters.addAll (state.m_setClobberedRegisters);
+		}
+		
+		public AssemblySectionState clone ()
+		{
+			AssemblySectionState state = new AssemblySectionState ();
+			
+			state.m_bIsConditionCodesClobbered = m_bIsConditionCodesClobbered;
+			state.m_bIsMemoryClobbered = m_bIsMemoryClobbered;
+			state.m_nSpillMemoryPlacesCount = m_nSpillMemoryPlacesCount; 
+			
+			for (IOperand.Register reg : m_mapRegisterUsage.keySet ())
+				state.m_mapRegisterUsage.put (reg, m_mapRegisterUsage.get (reg));
+			
+			state.m_setClobberedRegisters.addAll (m_setClobberedRegisters);
+			
+			return state;
+		}
+	}
+
+
+	///////////////////////////////////////////////////////////////////
+	// Constants
 
 	public static final String INPUT_CONSTANTS_ARRAYPTR = "_constants_";
 	
@@ -104,29 +210,12 @@ public class AssemblySection
 
 	protected CodeGeneratorSharedObjects m_data;
 
-	/**
-	 * The set of registers which got clobbered during the inline assembly section
-	 */
-	private Set<IOperand.Register> m_setClobberedRegisters;
-	
-	/**
-	 * Flag indicating whether the memory is clobbered in the inline assembly section.
-	 * The flag needs to be set using {@link AssemblySection#setMemoryClobbered(boolean)}.
-	 */
-	private boolean m_bIsMemoryClobbered;
-	
-	private boolean m_bIsConditionCodesClobbered;
-
-	/**
-	 * Data structure identifying which registers are currently in use
-	 */
-	private Map<IOperand.Register, Boolean> m_mapRegisterUsage;
+	protected AssemblySectionState m_state;
 
 	/**
 	 * The list of inputs to the assembly section
 	 */
 	private List<AssemblySectionInput> m_listInputs;
-
 
 	protected TypeRegisterClass m_clsDefaultGPRClass;
 
@@ -137,17 +226,8 @@ public class AssemblySection
 	public AssemblySection (CodeGeneratorSharedObjects data)
 	{
 		m_data = data;
+		m_state = new AssemblySectionState ();
 
-		m_setClobberedRegisters = new TreeSet<> (new Comparator<IOperand.Register> ()
-		{
-			@Override
-			public int compare (Register r1, Register r2)
-			{
-				return r1.getBaseName ().compareTo (r2.getBaseName ());
-			}
-		});
-		
-		m_mapRegisterUsage = new HashMap<> ();
 		m_listInputs = new ArrayList<> ();
 
 		m_clsDefaultGPRClass = m_data.getArchitectureDescription ().getDefaultRegisterClass (TypeRegisterType.GPR);
@@ -237,9 +317,9 @@ public class AssemblySection
 			m_data.getArchitectureDescription (), ilTmp, specDatatype);
 
 		// allocate registers
-		Iterable<IOperand.Register> itUsedRegs = getUsedRegisters ();
+		Iterable<IOperand.Register> itUsedRegs = m_state.getUsedRegisters ();
 		ilTmp = ilTmp.allocateRegisters (this);
-		restoreUsedRegisters (itUsedRegs);
+		m_state.restoreUsedRegisters (itUsedRegs);
 		
 		// apply peep hole optimizations
 		for (IInstructionListOptimizer optimizer : rgPostTranslateOptimizers)
@@ -263,11 +343,11 @@ public class AssemblySection
 				continue;
 
 			IOperand.Register register = new IOperand.Register (reg);
-			Boolean bIsRegUsed = m_mapRegisterUsage.get (register);
+			Boolean bIsRegUsed = m_state.m_mapRegisterUsage.get (register);
 			if (bIsRegUsed == null || bIsRegUsed == false)
 			{
-				m_mapRegisterUsage.put (register, true);
-				m_setClobberedRegisters.add (register);
+				m_state.m_mapRegisterUsage.put (register, true);
+				m_state.m_setClobberedRegisters.add (register);
 				return register;
 			}
 		}
@@ -284,37 +364,18 @@ public class AssemblySection
 	 */
 	public void killRegister (IOperand.Register register)
 	{
-		m_mapRegisterUsage.put (register, false);
+		m_state.m_mapRegisterUsage.put (register, false);
 	}
 
 	public void killRegisters (Iterable<IOperand.Register> itRegisters)
 	{
 		for (IOperand.Register op : itRegisters)
-			m_mapRegisterUsage.put (op, false);
+			m_state.m_mapRegisterUsage.put (op, false);
 	}
 	
 	public void killAllRegisters ()
 	{
-		m_mapRegisterUsage.clear ();
-	}
-
-	public Iterable<IOperand.Register> getUsedRegisters ()
-	{
-		List<IOperand.Register> listUsedRegisters = new ArrayList<> (m_mapRegisterUsage.size ());
-		for (IOperand.Register op : m_mapRegisterUsage.keySet ())
-			if (m_mapRegisterUsage.get (op))
-				listUsedRegisters.add (op);
-		return listUsedRegisters;
-	}
-
-	/**
-	 *
-	 */
-	public void restoreUsedRegisters (Iterable<IOperand.Register> itUsedRegisters)
-	{
-		m_mapRegisterUsage.clear ();
-		for (IOperand.Register op : itUsedRegisters)
-			m_mapRegisterUsage.put (op, true);
+		m_state.m_mapRegisterUsage.clear ();
 	}
 	
 	/**
@@ -341,9 +402,9 @@ public class AssemblySection
 	{
 		int nRegistersCount = getRegistersCount (type);
 		
-		for (Register reg : m_mapRegisterUsage.keySet ())
+		for (Register reg : m_state.m_mapRegisterUsage.keySet ())
 		{
-			if (m_mapRegisterUsage.get (reg) && (((TypeRegisterClass) reg.getRegister ().getClazz ()).getType ().equals (type)))
+			if (m_state.m_mapRegisterUsage.get (reg) && (((TypeRegisterClass) reg.getRegister ().getClazz ()).getType ().equals (type)))
 				nRegistersCount--;
 		}
 		
@@ -363,12 +424,12 @@ public class AssemblySection
 	 */
 	public void setMemoryClobbered (boolean bMemoryClobbered)
 	{
-		m_bIsMemoryClobbered = bMemoryClobbered;
+		m_state.m_bIsMemoryClobbered = bMemoryClobbered;
 	}
 	
 	public void setConditionCodesClobbered (boolean bConditionCodesClobbered)
 	{
-		m_bIsConditionCodesClobbered = bConditionCodesClobbered;
+		m_state.m_bIsConditionCodesClobbered = bConditionCodesClobbered;
 	}
 	
 	private String getOutputsAsString (List<Traversable> listChildren)
@@ -454,7 +515,7 @@ public class AssemblySection
 	{
 		// create the clobbered registers string
 		StringBuilder sbClobberedRegisters = new StringBuilder ();
-		for (IOperand.Register reg : m_setClobberedRegisters)
+		for (IOperand.Register reg : m_state.m_setClobberedRegisters)
 		{
 			if (sbClobberedRegisters.length () > 0)
 				sbClobberedRegisters.append (", ");
@@ -476,10 +537,10 @@ public class AssemblySection
 			sbClobberedRegisters.append ('"');
 		}
 		
-		if (m_bIsMemoryClobbered)
+		if (m_state.m_bIsMemoryClobbered)
 			sbClobberedRegisters.append (", \"memory\"");
 		
-		if (m_bIsConditionCodesClobbered)
+		if (m_state.m_bIsConditionCodesClobbered)
 			sbClobberedRegisters.append (", \"cc\"");
 
 		return sbClobberedRegisters.toString ();
@@ -581,5 +642,17 @@ public class AssemblySection
 		int nCount = nMemoryPlacesCount * m_data.getArchitectureDescription ().getSIMDVectorLength (specDatatype);
 		for (int i = 0; i < nCount; i++)
 			initializer.getChildren ().add (ExpressionUtil.createFloatLiteral (0, specDatatype));
+		
+		m_state.m_nSpillMemoryPlacesCount = nMemoryPlacesCount;
+	}
+	
+	public AssemblySectionState getAssemblySectionState ()
+	{
+		return m_state.clone ();
+	}
+	
+	public void restoreAssemblySectionState (AssemblySectionState state)
+	{
+		m_state.restore (state);
 	}
 }

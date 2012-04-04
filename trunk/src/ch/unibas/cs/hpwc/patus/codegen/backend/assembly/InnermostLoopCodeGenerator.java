@@ -8,15 +8,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import cetus.hir.Expression;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.analysis.ReuseNodesCollector;
 import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.ArchitectureDescriptionManager;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
@@ -28,10 +27,8 @@ import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.AssemblySection.EAssemblySectionInputType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.LoadStoreMover;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.MultipleMemoryLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.SimpleUnneededAddressLoadRemover;
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.UnneededAddressLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -58,14 +55,31 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	 */
 	public final static int MIN_REUSE_SET_SIZE = 3;
 	
-	/**
-	 * The maximum number of registers to be reserved for constants
-	 */
-	public final static int MAX_REGISTERS_FOR_CONSTANTS = 3; 
-	
 
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
+	
+	private static class InstructionListWithAssemblySectionState
+	{
+		private InstructionList m_il;
+		private AssemblySection.AssemblySectionState m_as;
+		
+		public InstructionListWithAssemblySectionState (InstructionList il, AssemblySection as)
+		{
+			m_il = il;
+			m_as = as.getAssemblySectionState ();
+		}
+		
+		public InstructionList getInstructionList ()
+		{
+			return m_il;
+		}
+		
+		public AssemblySection.AssemblySectionState getAssemblySectionState ()
+		{
+			return m_as;
+		}
+	}
 	
 	protected abstract class CodeGenerator
 	{
@@ -97,12 +111,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		private Map<String, Map<StencilNode, IOperand.IRegisterOperand>> m_mapReuseNodesToRegisters;
 		private Map<IOperand.IRegisterOperand, StencilNode> m_mapRegistersToReuseNodes;
 		private List<List<IOperand.IRegisterOperand>> m_listReuseRegisterSets;
-		
-		/**
-		 * Maps constant values to registers, in which the constants are stored during the computation
-		 */
-		private Map<Expression, IOperand.IRegisterOperand> m_mapConstantsAndParams;
-		
+				
 		private Map<NameID, IOperand.IRegisterOperand[]> m_mapTemporaries;
 		
 		private IInstructionListOptimizer[] m_rgPreTranslateOptimizers;
@@ -161,6 +170,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		
 		/**
 		 * Generates the inline assembly code for an innermost loop.
+		 * 
 		 * @return The generated statement list bundle
 		 */
 		public StatementListBundle generate ()
@@ -170,7 +180,6 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			Specifier specType = m_assemblySection.getDatatype ();
 
 			// assign registers to the stencil nodes, which are to be reused in unit stride direction
-			assignConstantRegisters (il);
 			assignReuseRegisters (il);
 			il = m_assemblySection.translate (il, specType);
 			
@@ -180,27 +189,16 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			Map<StencilNode, IOperand.IRegisterOperand> mapReuse = createReuseMap ();
 										
 			// generate the instructions for the computation
-			InstructionList ilComputationTempUnrolled = generateComputation (mapReuse, m_options);
+			InstructionList ilComputationUnrolled = generateComputation (mapReuse, m_options);
 			
 			// create a non-unrolled version for prologue and epilogue loops
-			InstructionList ilComputationTempNotUnrolled = ilComputationTempUnrolled;
+			InstructionList ilComputationNotUnrolled = ilComputationUnrolled;
 			int nUnrollingFactor = m_options.getIntValue (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR);
 			if (nUnrollingFactor != 1)
 			{
 				CodeGeneratorRuntimeOptions optNoUnroll = m_options.clone ();
 				optNoUnroll.setOption (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR, 1);
-				ilComputationTempNotUnrolled = generateComputation (mapReuse, optNoUnroll);
-			}
-				
-			// translate the generic instruction list to the architecture-specific one
-			InstructionList ilComputationUnrolled = m_assemblySection.translate (
-				ilComputationTempUnrolled, specType, m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
-			
-			InstructionList ilComputationNotUnrolled = ilComputationUnrolled;
-			if (nUnrollingFactor != 1)
-			{
-				ilComputationNotUnrolled = m_assemblySection.translate (
-					ilComputationTempNotUnrolled, specType, m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
+				ilComputationNotUnrolled = generateComputation (mapReuse, optNoUnroll);
 			}
 							
 			// generate the loop
@@ -264,11 +262,33 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			return mapReuse;
 		}
 		
+		/**
+		 * Generates the instruction list doing the actual computation and
+		 * immediately translates it to
+		 * the architecture specific format.
+		 * 
+		 * @param mapReuse
+		 *            The map containing the stencil node reuse registers
+		 * @param options
+		 *            Code generation options
+		 * @return The translated instruction list implementing the computation
+		 */
 		private InstructionList generateComputation (Map<StencilNode, IRegisterOperand> mapReuse, CodeGeneratorRuntimeOptions options)
 		{
+			Map<Integer, InstructionListWithAssemblySectionState> map = m_mapCachedCodes.get (m_sdit);
+			if (map == null)
+				m_mapCachedCodes.put (m_sdit, map = new HashMap<> ());
+			
+			InstructionListWithAssemblySectionState cached = map.get (m_nUnrollFactor);
+			if (cached != null)
+			{
+				m_assemblySection.restoreAssemblySectionState (cached.getAssemblySectionState ());
+				return cached.getInstructionList ();
+			}
+			
 			m_assemblySection.reset ();
 			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (
-				m_assemblySection, m_data, mapReuse, m_mapConstantsAndParams, m_mapTemporaries);
+				m_assemblySection, m_data, mapReuse, m_mapTemporaries);
 
 			InstructionList il = new InstructionList ();
 			for (Stencil stencil : m_data.getStencilCalculation ().getStencilBundle ())
@@ -280,6 +300,10 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				}
 			}
 			
+			// translate the generic instruction list to the architecture-specific one
+			il = m_assemblySection.translate (il, m_assemblySection.getDatatype (), m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
+			
+			map.put (m_nUnrollFactor, new InstructionListWithAssemblySectionState (il, m_assemblySection));
 			return il;
 		}
 		
@@ -365,10 +389,6 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			// estimate the registers used
 			int nAvailableRegisters = m_data.getArchitectureDescription ().getRegistersCount (TypeRegisterType.SIMD);
 			
-			// subtract the registers used to store constants
-			if (m_assemblySection.getConstantsAndParamsCount () <= MAX_REGISTERS_FOR_CONSTANTS)
-				nAvailableRegisters -= m_assemblySection.getConstantsAndParamsCount ();
-			
 			// subtract the registers used for the calculations
 			RegisterAllocator regcnt = new RegisterAllocator (m_data, m_assemblySection, null);
 			int nRegsForCalculations = 0;
@@ -433,26 +453,6 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 //				il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, m_assemblySection.getGrid (m_mapRegistersToReuseNodes.get (opPrev), 0), opPrev));
 				// <--
 			}
-		}
-		
-		/**
-		 * Assigns constants to SIMD registers.
-		 */
-		private void assignConstantRegisters (InstructionList il)
-		{
-			m_mapConstantsAndParams = new HashMap<> ();
-			
-			// note: this is now done implicitly in StencilAssemblySection (by loading a constant/parameter -- if it is reused -- into a pseudo register)
-			
-//			if (m_assemblySection.getConstantsAndParamsCount () < MAX_REGISTERS_FOR_CONSTANTS)
-//			{
-//				for (Expression exprConstOrParam : m_assemblySection.getConstantsAndParams ())
-//				{
-//					IOperand.IRegisterOperand op = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
-//					m_mapConstantsAndParams.put (exprConstOrParam, op);
-//					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, m_assemblySection.getConstantOrParamAddress (exprConstOrParam), op));
-//				}
-//			}
 		}
 		
 		protected CodeGeneratorRuntimeOptions getRuntimeOptions ()
@@ -555,7 +555,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	 */
 	private boolean m_bArchSupportsUnalignedMoves;
 
-	private Map<Traversable, Map<Integer, StatementListBundle>> m_mapCachedCodes;
+	private Map<Traversable, Map<Integer, InstructionListWithAssemblySectionState>> m_mapCachedCodes;
 	
 	
 
@@ -579,23 +579,6 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	public StatementListBundle generate (Traversable sdit, CodeGeneratorRuntimeOptions options)
 	{
 		return newCodeGenerator ((SubdomainIterator) sdit, options).generate ();
-		
-		/*
-		Map<Integer, StatementListBundle> map = m_mapCachedCodes.get (sdit);
-		if (map == null)
-			m_mapCachedCodes.put (sdit, map = new HashMap<> ());
-		
-		StatementListBundle slb = map.get (options.getIntValue (OPTION_INLINEASM_UNROLLFACTOR));
-		if (slb == null)
-		{
-			map.put (
-				options.getIntValue (OPTION_INLINEASM_UNROLLFACTOR),
-				slb = newCodeGenerator ((SubdomainIterator) sdit, options).generate ()
-			);
-		}
-
-		return slb;
-		*/
 	}
 	
 	/**

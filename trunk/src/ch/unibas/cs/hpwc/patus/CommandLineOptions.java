@@ -108,10 +108,10 @@ public class CommandLineOptions
 			else if ("unroll".equals (strOption))
 			{
 				String[] rgFactorStrings = strValue.split (",");
-				int[] rgUnrollingFactors = new int[rgFactorStrings.length];
+				UnrollConfig[] rgConfigs = new UnrollConfig[rgFactorStrings.length];
 				for (int i = 0; i < rgFactorStrings.length; i++)
-					rgUnrollingFactors[i] = Integer.parseInt (rgFactorStrings[i]);
-				m_options.setUnrollingFactors (rgUnrollingFactors);
+					rgConfigs[i] = new UnrollConfig (rgFactorStrings[i]);
+				m_options.setUnrollingConfigs (rgConfigs);
 			}
 			else if ("use-native-simd-datatypes".equals (strOption))
 				m_options.setUseNativeSIMDDatatypes (strValue.equals ("yes"));
@@ -189,9 +189,18 @@ public class CommandLineOptions
 		System.out.println ("              Defaults to 'C'.");
 		System.out.println ("              Ignored if the (only) <Target> is 'benchmark'.");
 		System.out.println ();
-		System.out.println ("--unroll=<UnrollFactor1,UnrollFactor2,...>");
+		System.out.println ("--unroll=<UnrollFactors1,UnrollFactors2,...>");
 		System.out.println ("              A list of unrolling factors applied to the inner most loop nest");
 		System.out.println ("              containing the stencil computation.");
+		System.out.println ("              UnrollFactorsI can be either an integer, in which case the unrolling");
+		System.out.println ("              factor is applied to each dimension, or it can be a list of integers");
+		System.out.println ("              separated by colons, in which case a single, specific unrolling");
+		System.out.println ("              configuration for this UnrollFactorsI is created. E.g.,");
+		System.out.println ("                  2:1:4");
+		System.out.println ("              will unroll twice in the x dimension, apply no unrolling to the");
+		System.out.println ("              y dimension, and unroll four times in the z dimension. Should the");
+		System.out.println ("              stencil have more than 3 dimensions, no unrolling will be applied in");
+		System.out.println ("              any of the other dimensions.");
 		System.out.println ();
 		System.out.println ("--use-native-simd-datatypes={yes|no}]");
 		System.out.println ("              Specify whether the native SSE datatype is to be used in the kernel");

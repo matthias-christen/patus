@@ -17,7 +17,10 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 
+import ch.unibas.cs.hpwc.patus.UnrollConfig;
+import ch.unibas.cs.hpwc.patus.codegen.options.StencilLoopUnrollingConfiguration;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
+import ch.unibas.cs.hpwc.patus.util.DomainPointEnumerator;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -113,7 +116,7 @@ public class CodeGenerationOptions
 	/**
 	 * The unrolling factors to be used in the inner most loops containing the stencil computations
 	 */
-	private int[] m_rgUnrollingFactors;
+	private UnrollConfig[] m_rgUnrollingConfigs;
 
 	/**
 	 * Flag indicating whether it is assumed that the native SSE datatypes are used.
@@ -143,7 +146,7 @@ public class CodeGenerationOptions
 	{
 		// set default options
 		m_compatibility = ECompatibility.C;
-		m_rgUnrollingFactors = new int[] { 1, 2 };
+		m_rgUnrollingConfigs = new UnrollConfig[] { new UnrollConfig (1), new UnrollConfig (2) };
 		m_bUseNativeSIMDDatatypes = false;
 		m_bBalanceBinaryExpressions = true;
 		m_setDebugOptions = new HashSet<> ();
@@ -162,7 +165,7 @@ public class CodeGenerationOptions
 	public void set (CodeGenerationOptions options)
 	{
 		setCompatibility (options.getCompatibility ());
-		setUnrollingFactors (options.getUnrollingFactors ());
+		setUnrollingConfigs (options.getUnrollingConfigs ());
 		setUseNativeSIMDDatatypes (options.useNativeSIMDDatatypes ());
 		setBalanceBinaryExpressions (options.getBalanceBinaryExpressions ());
 		m_setDebugOptions.addAll (options.m_setDebugOptions);
@@ -196,21 +199,75 @@ public class CodeGenerationOptions
 		return m_compatibility;
 	}
 
-	public void setUnrollingFactors (int... nUnrollingFactor)
+	public void setUnrollingConfigs (UnrollConfig... config)
 	{
-		if (nUnrollingFactor == null)
+		if (config == null)
 		{
-			m_rgUnrollingFactors = new int[] { 1 };
+			m_rgUnrollingConfigs = new UnrollConfig[] { new UnrollConfig (1) };
 			return;
 		}
 
-		m_rgUnrollingFactors = new int[nUnrollingFactor.length];
-		System.arraycopy (nUnrollingFactor, 0, m_rgUnrollingFactors, 0, nUnrollingFactor.length);
+		m_rgUnrollingConfigs = new UnrollConfig[config.length];
+		for (int i = 0; i < config.length; i++)
+			m_rgUnrollingConfigs[i] = config[i].clone ();
+	}
+	
+	public UnrollConfig[] getUnrollingConfigs ()
+	{
+		return m_rgUnrollingConfigs;
 	}
 
-	public int[] getUnrollingFactors ()
+	public Set<StencilLoopUnrollingConfiguration> getStencilLoopUnrollingConfigurations (
+		int nDimensionality, int[] rgMaxUnrollingFactorPerDimension, boolean bIsEligibleForStencilLoopUnrolling)
 	{
-		return m_rgUnrollingFactors;
+		Set<StencilLoopUnrollingConfiguration> setUnrollingConfigs = new HashSet<> ();
+		if (bIsEligibleForStencilLoopUnrolling)
+		{
+			// create the single-unrolling configurations and count the multi-unrollings
+			int nMultiUnrollingsCount = 0;
+			for (UnrollConfig config : m_rgUnrollingConfigs)
+			{
+				if (config.isMultiConfig ())
+					nMultiUnrollingsCount++;
+				else
+				{
+					setUnrollingConfigs.add (new StencilLoopUnrollingConfiguration (
+						nDimensionality, config.getUnrollings (), rgMaxUnrollingFactorPerDimension));
+				}
+			}
+
+			// create the multi-unrolling configurations
+			DomainPointEnumerator dpe = new DomainPointEnumerator ();
+			for (int i = 0; i < nDimensionality; i++)
+				dpe.addDimension (0, nMultiUnrollingsCount - 1);
+			
+			UnrollConfig[] rgMultiUnrollConfigs = new UnrollConfig[nMultiUnrollingsCount];
+			int i = 0;
+			for (UnrollConfig config : m_rgUnrollingConfigs)
+				if (config.isMultiConfig ())
+					rgMultiUnrollConfigs[i++] = config;
+
+			for (int[] rgUnrollingIndices : dpe)
+			{
+				StencilLoopUnrollingConfiguration config = new StencilLoopUnrollingConfiguration ();
+				for (i = 0; i < rgUnrollingIndices.length; i++)
+				{
+					config.setUnrollingForDimension (
+						i,
+						rgMultiUnrollConfigs[rgUnrollingIndices[i]].getUnrollingInDimension (0),
+						rgMaxUnrollingFactorPerDimension[i]);
+				}
+
+				setUnrollingConfigs.add (config);
+			}			
+		}
+		else
+		{
+			// loop is not eligible for unrolling: add a non-unroll configuration
+			setUnrollingConfigs.add (new StencilLoopUnrollingConfiguration ());
+		}
+
+		return setUnrollingConfigs;
 	}
 
 	public void setUseNativeSIMDDatatypes (boolean bUseNativeSIMDDatatypes)

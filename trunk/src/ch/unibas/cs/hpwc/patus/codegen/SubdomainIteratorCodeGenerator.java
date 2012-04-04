@@ -185,42 +185,11 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		 */
 		private StatementListBundle generateInner (int nStartDim, StatementListBundle slbGeneratedParent)
 		{
-			///
-			//m_data.getCodeGenerators ().getConstantGeneratedIdentifiers ().clearIdentifier (SIMDScalarGeneratedIdentifiers.SPLATNAME_ARRAY);
-			///
-
-			Set<StencilLoopUnrollingConfiguration> setUnrollingConfigs = new HashSet<> ();
-			if (m_bIsEligibleForStencilLoopUnrolling)
-			{
-				// create the unrolling configurations
-				DomainPointEnumerator dpe = new DomainPointEnumerator ();
-				for (int i = 0; i < nStartDim; i++)
-					dpe.addDimension (0, m_data.getOptions ().getUnrollingFactors ().length - 1);
-
-				for (int[] rgUnrollingIndices : dpe)
-				{
-					StencilLoopUnrollingConfiguration config = new StencilLoopUnrollingConfiguration ();
-					for (int i = 0; i < rgUnrollingIndices.length; i++)
-					{
-						config.setUnrollingForDimension (
-							i,
-							m_data.getOptions ().getUnrollingFactors ()[rgUnrollingIndices[i]],
-							m_rgMaxUnrollingFactorPerDimension[i]);
-					}
-
-					setUnrollingConfigs.add (config);
-				}
-			}
-			else
-			{
-				// loop is not eligible for unrolling: add a non-unroll configuration
-				setUnrollingConfigs.add (new StencilLoopUnrollingConfiguration ());
-			}
-
 			Parameter param = new Parameter (StringUtil.concat ("_unroll_", m_sdIterator.getIterator ().getName ()));
 
 			// create a code branch for each unrolling configuration
-			for (StencilLoopUnrollingConfiguration config : setUnrollingConfigs)
+			for (StencilLoopUnrollingConfiguration config :	m_data.getOptions ().getStencilLoopUnrollingConfigurations (
+				nStartDim, m_rgMaxUnrollingFactorPerDimension, m_bIsEligibleForStencilLoopUnrolling))
 			{
 				// generate the code for the loop nest
 				StatementListBundle slbLoopNest = new StatementListBundle ();

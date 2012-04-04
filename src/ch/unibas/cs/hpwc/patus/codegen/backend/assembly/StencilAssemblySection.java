@@ -900,7 +900,7 @@ public class StencilAssemblySection extends AssemblySection
 	 *            a stencil parameter) for which to retrieve its address
 	 * @return The address operand for <code>exprConstantOrParam</code>
 	 */
-	public OperandWithInstructions getConstantOrParamAddress (Expression exprConstantOrParam)
+	public OperandWithInstructions getConstantOrParam (Expression exprConstantOrParam)
 	{
 		if (LOGGER.isDebugEnabled ())
 			LOGGER.debug (StringUtil.concat ("Requesting operand for constant/param ", exprConstantOrParam.toString ()));
@@ -940,28 +940,6 @@ public class StencilAssemblySection extends AssemblySection
 		return m_setConstantsAndParamsRegisters.contains (reg);
 	}
 
-//	/**
-//	 * Returns the operand corresponding to the constant or parameter
-//	 * <code>exprConstantOrParam</code>.
-//	 * 
-//	 * @param exprConstantOrParam
-//	 *            The constant or stencil parameter
-//	 * @param specDatatype
-//	 *            The datatype
-//	 * @return The operand corresponding to <code>exprConstantOrParam</code>
-//	 */
-//	public IOperand getConstantOrParam (Expression exprConstantOrParam, Specifier specDatatype)
-//	{
-//		IOperand regBase = getInput (AssemblySection.INPUT_CONSTANTS_ARRAYPTR);
-//		if (regBase == null)
-//			return null;
-//		
-//		return new IOperand.Address (
-//			(IRegisterOperand) regBase,
-//			m_mapConstantsAndParams.get (exprConstantOrParam) * ArchitectureDescriptionManager.getTypeSize (specDatatype)
-//		);
-//	}
-	
 	/**
 	 * Returns the auxiliary statements generated for the assembly section.
 	 * 

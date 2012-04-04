@@ -194,7 +194,10 @@ public class ArchitectureDescriptionManager
 		@Override
 		public boolean useSIMD ()
 		{
-			return Math.max (getSIMDVectorLength (Specifier.FLOAT), getSIMDVectorLength (Specifier.DOUBLE)) > 1;
+			int nMaxSIMDVecLen = 0;
+			for (Specifier specType : Globals.BASE_DATATYPES)
+				nMaxSIMDVecLen = Math.max (getSIMDVectorLength (specType), nMaxSIMDVecLen);
+			return nMaxSIMDVecLen > 1;
 		}
 
 		@Override
@@ -212,7 +215,7 @@ public class ArchitectureDescriptionManager
 		@Override
 		public int getSIMDVectorLengthInBytes ()
 		{
-			Specifier spec = Specifier.FLOAT;
+			Specifier spec = Globals.BASE_DATATYPES[0];
 			return getSIMDVectorLength (spec) * getTypeSize (spec);
 		}
 

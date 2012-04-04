@@ -297,9 +297,8 @@ public class InstructionListTranslator
 				
 				if (nVectorLength == -1)
 				{
-					nVectorLength =
-						arch.getSIMDVectorLength (specDatatype == null ? Specifier.FLOAT : specDatatype) *
-						ArchitectureDescriptionManager.getTypeSize (specDatatype == null ? Specifier.FLOAT : specDatatype);
+					Specifier specType = specDatatype == null ? Globals.BASE_DATATYPES[0] : specDatatype;
+					nVectorLength =	arch.getSIMDVectorLength (specType) * ArchitectureDescriptionManager.getTypeSize (specType);
 				}
 				
 				if ((((IOperand.Address) op).getDisplacement () % nVectorLength) != 0)

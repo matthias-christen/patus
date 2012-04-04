@@ -11,6 +11,7 @@ import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -137,7 +138,7 @@ public class InstructionList implements Iterable<IInstruction>
 		
 		as.addSpillMemorySpace (
 			m_nSpillArrayIndex - as.getConstantsAndParamsCount (),
-			as instanceof StencilAssemblySection ? ((StencilAssemblySection) as).getDatatype () : Specifier.FLOAT
+			as instanceof StencilAssemblySection ? ((StencilAssemblySection) as).getDatatype () : Globals.BASE_DATATYPES[0]
 		);
 		
 		// replace the pseudo registers by allocated registers
@@ -186,15 +187,17 @@ public class InstructionList implements Iterable<IInstruction>
 	
 	private void addGPRReloadGridAddressInstruction (AssemblySection as, LiveAnalysis analysis, int nInstrIdx, int nNoAccessRegIdx, List<Integer> listIndexOffsets)
 	{
-		int nIdxLoad = nInstrIdx;
-		while (analysis.getLivePseudoRegisters ()[nIdxLoad - 1][nNoAccessRegIdx] != LiveAnalysis.STATE_DEAD)
-		{
-			nIdxLoad--;
-			if (nIdxLoad == 0)
+		// find the first load instruction
+		Instruction instrLoad = null;
+		for (int i = 0; i < nInstrIdx; i++)
+			if (analysis.getLivePseudoRegisters ()[i][nNoAccessRegIdx] != LiveAnalysis.STATE_DEAD)
+			{
+				instrLoad = (Instruction) analysis.getInstruction (i);
 				break;
-		}
+			}
 		
-		Instruction instrLoad = (Instruction) analysis.getInstruction (nIdxLoad);
+		if (instrLoad == null)
+			throw new RuntimeException ("No load instruction found");
 		
 		m_listInstructions.add (
 			InstructionList.getOffsetIndex (nInstrIdx, listIndexOffsets),

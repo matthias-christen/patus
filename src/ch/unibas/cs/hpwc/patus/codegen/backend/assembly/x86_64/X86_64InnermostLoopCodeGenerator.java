@@ -133,7 +133,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			
 			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (getBaseTypeSize ())), regCounter));
 			for (IOperand opGridAddrRegister : as.getGrids ())
-				l.addInstruction (new Instruction ("add", regCounter, opGridAddrRegister));
+				l.addInstruction (new Instruction ("addq", regCounter, opGridAddrRegister));
 			
 			return l;
 		}
@@ -184,7 +184,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			
 			// increment pointers
 			for (IOperand opGridAddrRegister : as.getGrids ())
-				l.addInstruction (new Instruction ("add", opIncrement, opGridAddrRegister));
+				l.addInstruction (new Instruction ("addq", opIncrement, opGridAddrRegister));
 			
 			// rotate reuse registers
 			rotateReuseRegisters (l);

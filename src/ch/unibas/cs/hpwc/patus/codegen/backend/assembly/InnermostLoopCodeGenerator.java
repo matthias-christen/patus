@@ -22,6 +22,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.IInnermostLoopCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.AssemblySection.EAssemblySectionInputType;
@@ -134,7 +135,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				//new LoadStoreMover ()
 			};
 			m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] {
-				new UnneededAddressLoadRemover ()
+				new UnneededAddressLoadRemover (m_data.getArchitectureDescription ())
 			};			
 		}
 		
@@ -559,10 +560,11 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	{
 		m_data = data;
 	
-		m_bArchSupportsSIMD = m_data.getArchitectureDescription ().getSIMDVectorLength (Specifier.FLOAT) > 1;
+		Specifier specType = Globals.BASE_DATATYPES[0];
+		m_bArchSupportsSIMD = m_data.getArchitectureDescription ().getSIMDVectorLength (specType) > 1;
 		m_bArchSupportsUnalignedMoves = true;
 		if (m_bArchSupportsSIMD)
-			m_bArchSupportsUnalignedMoves = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), Specifier.FLOAT) != null;
+			m_bArchSupportsUnalignedMoves = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), specType) != null;
 		
 		m_mapCachedCodes = new HashMap<> ();
 	}

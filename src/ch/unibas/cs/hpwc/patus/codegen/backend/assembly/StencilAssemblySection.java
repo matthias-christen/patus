@@ -270,7 +270,7 @@ public class StencilAssemblySection extends AssemblySection
 	{
 		// set to 0, 1, 2, 3, or 4 to manually select a code generation path (see below) for debugging purposes.
 		// set to -1 for default behavior.
-		int nDebugSelectVariant = -1;
+		final int nDebugSelectVariant = -1;
 
 		int nInitialFreeRegisters = getFreeRegistersCount (TypeRegisterType.GPR) - 2;
 		int nNumInputs = getInputsCount ();

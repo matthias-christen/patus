@@ -36,6 +36,13 @@ public class UnneededAddressLoadRemover implements IInstructionListOptimizer
 	@Override
 	public InstructionList optimize (InstructionList il)
 	{
+		if (true)
+			throw new RuntimeException ("Not implemented");
+		
+		// -------------------------------------------------------------------------------
+		// the implementation is not complete and will lead to bugs in the generated code
+		// -------------------------------------------------------------------------------
+		
 		InstructionList ilOut = new InstructionList ();
 		
 		Map<IOperand.Register, Instruction> mapLastMoveInstructionPerRegister = new HashMap<> ();
@@ -61,6 +68,7 @@ public class UnneededAddressLoadRemover implements IInstructionListOptimizer
 						{
 							
 							// CHECK if contains address whether addr regs have changed!
+							// =~~> dependence analysis...
 							
 							if (instrLastMove.equals (instr))
 								bIsInstructionNeeded = false;

@@ -571,7 +571,7 @@ public class CodeGenerator
 			for (Iterator<Specifier> it = listSpecifiers.iterator (); it.hasNext (); i++)
 			{
 				Specifier spec = it.next ();
-				if (spec.equals (Specifier.FLOAT) || spec.equals (Specifier.DOUBLE))
+				if (Globals.isBaseDatatype (spec))
 				{
 					it.remove ();
 					specType = spec;

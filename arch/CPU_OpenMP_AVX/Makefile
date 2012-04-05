@@ -6,7 +6,7 @@
 #
 
 CC = gcc
-CFLAGS = -O0 -g -mavx -fopenmp -I.
+CFLAGS = -O3 -g -mavx -fopenmp -I.
 
 bench: kernel.o driver.o $(PATUS_RUNTIME_OBJECT_FILES)
 	$(CC) $(CFLAGS) -o $@ $+

@@ -953,5 +953,8 @@ public class StencilAssemblySection extends AssemblySection
 	public void reset ()
 	{
 		m_mapGridLoaded.clear ();
+		
+		for (Expression expr : m_mapConstantsAndParams.keySet ())
+			m_mapReusedConstantsAndParams.put (expr, null);
 	}
 }

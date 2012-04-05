@@ -254,6 +254,9 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 					///
 					
 					IOperand[] rgOps = ((Instruction) instruction).getOperands ();
+					if (rgOps.length == 0)
+						continue;
+					
 					for (int i = 0; i < rgOps.length - 1; i++)
 					{
 						if (rgOps[i] instanceof IOperand.Address)

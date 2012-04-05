@@ -327,8 +327,42 @@ public class InstructionListTranslator
 	 * @return
 	 */
 	private static IOperand[] compatibilizeCommutatives (Intrinsic intrinsic,
-		IOperand[] rgSourceOps, Argument[] rgDestArgs, int[] rgPermSourceToDest, int[] rgPermDestToSource)
+		IOperand[] rgSourceOps, Argument[] rgDestArgs, int[] rgPermSourceToDest, int[] rgPermDestToSource,
+		int nOutputArgDestIndex, boolean bIntrinsicHasSharedResult)
 	{
+		if (bIntrinsicHasSharedResult)
+		{
+			// if there is an input argument that is the same as the output argument
+			// try to permute it to the "shared" position
+			
+			IOperand opShared = rgSourceOps[rgPermDestToSource[nOutputArgDestIndex]];
+			int nCommonInOutIdx = InstructionListTranslator.getIndexOfNonSharedInputArgsResult (rgSourceOps, opShared);
+			if (nCommonInOutIdx != -1)
+			{
+				int nOldPos = nCommonInOutIdx;
+				int nNewPos = rgPermDestToSource[nOutputArgDestIndex];
+				
+				if (Globals.canSwapIntrinsicArguments (intrinsic.getBaseName (), nOldPos, nNewPos) &&
+					InstructionListTranslator.isCompatible (rgSourceOps[nOldPos], rgDestArgs[rgPermSourceToDest[nNewPos]]) &&
+					InstructionListTranslator.isCompatible (rgSourceOps[nNewPos], rgDestArgs[rgPermSourceToDest[nOldPos]]))
+				{
+					// do the swap
+					IOperand[] rgSourceOpsSwapped = new IOperand[rgSourceOps.length];
+					for (int k = 0; k < rgSourceOpsSwapped.length; k++)
+					{
+						if (k == nOldPos)
+							rgSourceOpsSwapped[k] = rgSourceOps[nNewPos];
+						else if (k == nNewPos)
+							rgSourceOpsSwapped[k] = rgSourceOps[nOldPos];
+						else
+							rgSourceOpsSwapped[k] = rgSourceOps[k];
+					}
+					
+					return rgSourceOpsSwapped;
+				}
+			}
+		}
+		
 		for (int i = 0; i < rgSourceOps.length; i++)
 		{
 			if (rgPermSourceToDest[i] != UNDEFINED)
@@ -346,7 +380,8 @@ public class InstructionListTranslator
 						if (Globals.canSwapIntrinsicArguments (intrinsic.getBaseName (), i, j))
 						{
 							if (rgPermSourceToDest[j] != UNDEFINED &&
-								isCompatible (rgSourceOps[i], rgDestArgs[rgPermSourceToDest[j]]) && isCompatible (rgSourceOps[j], rgDestArgs[rgPermSourceToDest[i]]))
+								InstructionListTranslator.isCompatible (rgSourceOps[i], rgDestArgs[rgPermSourceToDest[j]]) &&
+								InstructionListTranslator.isCompatible (rgSourceOps[j], rgDestArgs[rgPermSourceToDest[i]]))
 							{
 								// assume that only one swap is to be done, i.e., there are only
 								// two arguments that can be interchanged
@@ -420,7 +455,8 @@ public class InstructionListTranslator
 			if (!opSourceOutput.equals (opShared))
 			{
 				IOperand opOut = opSourceOutput;
-				if (!(opSourceOutput instanceof IOperand.IRegisterOperand))
+				boolean bIsOneOfNonSharedInputArgsResult = InstructionListTranslator.getIndexOfNonSharedInputArgsResult (rgSourceOps, opShared) != -1;
+				if (!(opSourceOutput instanceof IOperand.IRegisterOperand) || bIsOneOfNonSharedInputArgsResult)
 				{
 					bHasNonCompatibleResultOperand = true;
 					opTmpResultOperand = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
@@ -430,7 +466,8 @@ public class InstructionListTranslator
 				// opOut can replace both opShared (the input operand, which in the architecture-specific intrinsic
 				// is also an output argument) and opOut (the operand, to which the result is written)
 				mapSubstitutions.put (opShared, opOut);
-				mapSubstitutions.put (opSourceOutput, opOut);
+				if (!bIsOneOfNonSharedInputArgsResult)
+					mapSubstitutions.put (opSourceOutput, opOut);
 				
 				translateInstruction (new Instruction (getMovFpr (opShared), opShared, opOut));
 			}
@@ -497,6 +534,23 @@ public class InstructionListTranslator
 		}
 	}
 	
+	private static int getIndexOfNonSharedInputArgsResult (IOperand[] rgSourceOps, IOperand opShared)
+	{
+		if (rgSourceOps.length == 0)
+			return -1;
+		
+		IOperand opOutput = rgSourceOps[rgSourceOps.length - 1];
+		for (int i = 0; i < rgSourceOps.length - 1; i++)
+		{
+			if (rgSourceOps[i] == opShared)
+				continue;
+			if (rgSourceOps[i].equals (opOutput))
+				return i;
+		}
+
+		return -1;
+	}
+
 	private static Argument[] createGenericArguments (int nArgsCount)
 	{
 		Argument[] rgRes = new Argument[nArgsCount];
@@ -523,7 +577,7 @@ public class InstructionListTranslator
 		}
 		
 		// get the source operands, i.e., the instruction arguments
-		IOperand[] rgSourceOps = instruction.getOperands ();		
+		IOperand[] rgSourceOps = instruction.getOperands ();
 		IOperand opSourceOutput = rgSourceOps[rgSourceOps.length - 1];
 	
 		// get the destination operands, i.e., the arguments of the architecture-specific intrinsic
@@ -559,7 +613,7 @@ public class InstructionListTranslator
 			
 			// if possible, swap commutative operands if that helps saving MOVs
 			rgSourceOps = InstructionListTranslator.compatibilizeCommutatives (
-				intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource);
+				intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource, nOutputArgDestIndex, bIntrinsicHasSharedResult);
 		}
 		else
 		{
@@ -577,7 +631,7 @@ public class InstructionListTranslator
 				{
 					// if possible, swap commutative operands if that helps saving MOVs
 					rgSourceOps = InstructionListTranslator.compatibilizeCommutatives (
-						intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource);
+						intrinsic, rgSourceOps, rgDestArgs, rgPermSourceToDest, rgPermDestToSource, nOutputArgDestIndex, bIntrinsicHasSharedResult);
 				}
 			}
 		}
@@ -604,9 +658,11 @@ public class InstructionListTranslator
 	 */
 	private InstructionList run ()
 	{
-		final boolean bUseRegisterRemover = true;
+		final boolean bUseRegisterRemover = true && m_architecture.hasNonDestructiveOperations ();
 		
-		InstructionList ilIn = bUseRegisterRemover ? new UnneededPseudoRegistersRemover ().optimize (m_ilIn) : m_ilIn;
+		InstructionList ilIn = bUseRegisterRemover ?
+			new UnneededPseudoRegistersRemover (m_architecture, InstructionList.EInstructionListType.GENERIC).optimize (m_ilIn) :
+			m_ilIn;
 		
 		for (IInstruction instruction : ilIn)
 			translateInstruction (instruction);

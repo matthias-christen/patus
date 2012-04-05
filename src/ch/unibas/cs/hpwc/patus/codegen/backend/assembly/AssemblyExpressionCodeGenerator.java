@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Queue;
 
 import cetus.hir.BinaryExpression;
+import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.FunctionCall;
 import cetus.hir.IDExpression;
@@ -243,11 +244,14 @@ public class AssemblyExpressionCodeGenerator
 				rgResult = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
 			else
 			{
+				boolean bIsAddition = addsub.getOperator ().equals (BinaryOperator.ADD);
+				IOperand[] op1 = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
+				
 				rgResult = addInstruction (il, nUnrollFactor,
 					addsub.getBaseIntrinsic (),
 					i == 1 ? null : rgResult,
-					rgResult,
-					traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il)
+					bIsAddition ? op1 : rgResult,	// swap the operands if this is an addition (which is commutative...)
+					bIsAddition ? rgResult : op1
 				);
 			}
 			

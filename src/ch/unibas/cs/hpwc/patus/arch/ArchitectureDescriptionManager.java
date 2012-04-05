@@ -42,6 +42,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level.Barrier;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Arguments;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class ArchitectureDescriptionManager
@@ -59,6 +60,8 @@ public class ArchitectureDescriptionManager
 		private Map<TypeDeclspec, Declspec> m_mapDeclspecs;
 		private Map<String, Datatype> m_mapDataTypesFromBase;
 		private Map<String, List<Intrinsic>> m_mapIntrinsics;
+		
+		private boolean m_bHasNonDestructiveOperations;
 
 
 		public HardwareDescription (File file, TypeArchitectureType type)
@@ -84,6 +87,7 @@ public class ArchitectureDescriptionManager
 					m_mapDataTypesFromBase.put (datatype.getBasetype ().value (), datatype);
 				}
 
+			m_bHasNonDestructiveOperations = true;
 			m_mapIntrinsics = new HashMap<> ();
 			if (m_type.getIntrinsics () != null)
 				for (Intrinsic intrinsic : m_type.getIntrinsics ().getIntrinsic ())
@@ -92,6 +96,16 @@ public class ArchitectureDescriptionManager
 					if (listIntrinsics == null)
 						m_mapIntrinsics.put (intrinsic.getBaseName (), listIntrinsics = new ArrayList<> ());
 					listIntrinsics.add (intrinsic);
+					
+					if (m_bHasNonDestructiveOperations && (
+						intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.PLUS.value ()) ||
+						intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.MINUS.value ()) ||
+						intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.MULTIPLY.value ()) ||
+						intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.DIVIDE.value ())))
+					{
+						if (intrinsic != null && intrinsic.getArguments () != null && Arguments.parseArguments (intrinsic.getArguments ()).length != 3)
+							m_bHasNonDestructiveOperations = false;
+					}
 				}
 		}
 
@@ -334,6 +348,14 @@ public class ArchitectureDescriptionManager
 		public Assembly getAssemblySpec ()
 		{
 			return m_type.getAssembly ();
+		}
+		
+		@Override
+		public boolean hasNonDestructiveOperations ()
+		{
+			if (getAssemblySpec () == null)
+				return true;
+			return m_bHasNonDestructiveOperations;
 		}
 		
 		@Override

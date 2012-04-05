@@ -3,6 +3,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 import java.util.Map;
 import java.util.Set;
 
+import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 
 public class InstructionListAnalyzer
@@ -12,6 +13,8 @@ public class InstructionListAnalyzer
 	 * in the instruction list <code>il</code> contains the last read of the
 	 * SIMD pseudo register <code>reg</code>. It is assumed that pseudo
 	 * registers are written to only once.
+	 * 
+	 * <p><b>Assumes that operations are non-destructive and that the result operand is the last operand</b></p>
 	 * 
 	 * @param il
 	 *            The instruction list to examine
@@ -24,11 +27,15 @@ public class InstructionListAnalyzer
 	 *         read anymore beyond the instruction with index
 	 *         <code>nCurrentInstrIdx</code>
 	 */
-	public static boolean isLastRead (InstructionList il, IOperand.PseudoRegister reg, int nCurrentInstrIdx,
+	public static boolean isLastRead (IArchitectureDescription arch,
+		InstructionList il, InstructionList.EInstructionListType iltype,
+		IOperand.PseudoRegister reg, int nCurrentInstrIdx,
 		Map<IOperand.PseudoRegister, Set<IOperand.PseudoRegister>> mapSubstitutes)
 	{
 		if (!reg.getRegisterType ().equals (TypeRegisterType.SIMD))
 			throw new RuntimeException ("Only implemented for SIMD registers");
+		if (!arch.hasNonDestructiveOperations () && iltype.equals (InstructionList.EInstructionListType.SPECIFIC))
+			throw new RuntimeException ("Not implemented for operations with destructive operands");
 		
 		Set<IOperand.PseudoRegister> setSubstitutes = mapSubstitutes == null ? null : mapSubstitutes.get (reg);
 		
@@ -90,7 +97,11 @@ public class InstructionListAnalyzer
 		if (!(instr2 instanceof Instruction))
 			return false;
 		
-		IOperand opOut = ((Instruction) instr1).getOperands ()[((Instruction) instr1).getOperands ().length - 1];
+		int nOperandsCount = ((Instruction) instr1).getOperands ().length;
+		if (nOperandsCount == 0)
+			return false;
+		
+		IOperand opOut = ((Instruction) instr1).getOperands ()[nOperandsCount - 1];
 		for (int i = 0; i < ((Instruction) instr2).getOperands ().length - 1; i++)
 			if (((Instruction) instr2).getOperands ()[i].equals (opOut))
 				return true;
@@ -110,8 +121,16 @@ public class InstructionListAnalyzer
 		if (!(instr2 instanceof Instruction))
 			return false;
 		
-		IOperand opOut1 = ((Instruction) instr1).getOperands ()[((Instruction) instr1).getOperands ().length - 1];
-		IOperand opOut2 = ((Instruction) instr2).getOperands ()[((Instruction) instr2).getOperands ().length - 1];
+		int nOpsCount1 = ((Instruction) instr1).getOperands ().length;
+		if (nOpsCount1 == 0)
+			return false;
+		
+		int nOpsCount2 = ((Instruction) instr2).getOperands ().length;
+		if (nOpsCount2 == 0)
+			return false;
+
+		IOperand opOut1 = ((Instruction) instr1).getOperands ()[nOpsCount1 - 1];
+		IOperand opOut2 = ((Instruction) instr2).getOperands ()[nOpsCount2 - 1];
 		
 		return opOut1.equals (opOut2);
 	}

@@ -37,6 +37,11 @@ class AddSub
 		return Globals.getIntrinsicBase (m_op).value ();
 	}
 	
+	public BinaryOperator getOperator ()
+	{
+		return m_op;
+	}
+	
 	@Override
 	public String toString ()
 	{

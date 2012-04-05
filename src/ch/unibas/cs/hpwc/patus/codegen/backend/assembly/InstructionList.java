@@ -21,6 +21,16 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
 public class InstructionList implements Iterable<IInstruction>
 {
 	///////////////////////////////////////////////////////////////////
+	// Inner Types
+	
+	public enum EInstructionListType
+	{
+		GENERIC,
+		SPECIFIC
+	}
+	
+	
+	///////////////////////////////////////////////////////////////////
 	// Constants
 	
 	private final static Logger LOGGER = Logger.getLogger (InstructionList.class);
@@ -106,7 +116,7 @@ public class InstructionList implements Iterable<IInstruction>
 		LOGGER.info ("Performing live analysis and allocating registers...");
 				
 		// do a live analysis
-		LiveAnalysis analysis = new LiveAnalysis (this);
+		LiveAnalysis analysis = new LiveAnalysis (as.getArchitectureDescription (), this);
 		Map<TypeRegisterType, LAGraph> mapGraphs = analysis.run ();
 		
 		List<Integer> listOffsets = new ArrayList<> ();
@@ -166,6 +176,9 @@ public class InstructionList implements Iterable<IInstruction>
 			" to memory at instruction ", nNoAccessInstrIdx, "; loading back at instruction ", nNoAccessInstrIdx + nMaxNoAccess,
 			" (", nMaxNoAccess, " instructions)"));
 		
+		if (nMaxNoAccess == 0)
+			throw new RuntimeException ("Register allocation failed.");
+		
 		// add memory operations to save and restore the register
 		if (regtype.equals (TypeRegisterType.GPR))
 		{
@@ -206,7 +219,12 @@ public class InstructionList implements Iterable<IInstruction>
 			}
 		
 		if (instrLoad == null)
+		{
+			LOGGER.error (StringUtil.concat ("Looking for load instruction of register ",
+				analysis.getPseudoRegisters ()[nNoAccessRegIdx].toString (), ", but none found:"));
+			System.out.println (analysis.toString ());
 			throw new RuntimeException ("No load instruction found");
+		}
 		
 		m_listInstructions.add (
 			InstructionList.getOffsetIndex (nInstrIdx, listIndexOffsets),

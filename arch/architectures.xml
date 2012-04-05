@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <architectureTypes xsi:noNamespaceSchemaLocation="../src/ch/unibas/cs/hpwc/patus/arch/arch-config.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-	<!-- Intel x86_64 architecture with SSE, OpenMP parallelization -->
-	<architectureType name="Intel x86_64">
+	<!-- x86_64 architecture with SSE, OpenMP parallelization -->
+	<architectureType name="x86_64">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
 			<level number="1" has-explicit-local-datacopy="false" async-IO="false">
@@ -19,12 +19,12 @@
 		<build compiler-command="make" harness-template-dir="CPU_OpenMP"/>
 	</architectureType>
 
-	<architectureType name="Intel x86_64 PAPI" inherits-from="Intel x86_64">
+	<architectureType name="x86_64 PAPI" inherits-from="x86_64">
 		<build compiler-command="make" harness-template-dir="CPU_OpenMP_PAPI"/>
 	</architectureType>
 
-	<!-- Intel x86_64 architecture with SSE, OpenMP parallelization -->
-	<architectureType name="Intel x86_64 SSE">
+	<!-- x86_64 architecture with SSE, OpenMP parallelization -->
+	<architectureType name="x86_64 SSE">
 		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
 		<parallelism>
 			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
@@ -102,9 +102,131 @@
 		<build compiler-command="make" harness-template-dir="CPU_OpenMP"/>
 	</architectureType>
 
-	<!-- Intel x86_64 architecture with SSE, OpenMP parallelization -->
-	<architectureType name="Intel x86_64 SSE PAPI" inherits-from="Intel x86_64 SSE">
+	<!-- x86_64 architecture with SSE, OpenMP parallelization -->
+	<architectureType name="x86_64 SSE PAPI" inherits-from="x86_64 SSE">
 		<build compiler-command="make" harness-template-dir="CPU_OpenMP_PAPI"/>
+	</architectureType>
+	
+	<!-- x86_64 architecture with SSE, OpenMP parallelization, inline assembly -->
+	<architectureType name="x86_64 SSE asm" inherits-from="x86_64 SSE">
+		<codegenerator src-suffix="c" backend="OpenMP" innermost-loop-cg="x86_64" use-function-pointers="true"/>
+		<datatypes>
+			<!-- declare SSE datatypes -->
+			<!-- restrict alignment to 16 bytes -->
+			<datatype basetype="float" name="__m128" simd-vector-length="4" width="128" alignment="16"/>
+			<datatype basetype="double" name="__m128d" simd-vector-length="2" width="128" alignment="16"/>
+		</datatypes>
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			
+			<!-- scalar operations -->
+			<intrinsic base-name="plus" name="addsd" datatype="double" arguments="reg,=reg"/>
+			<intrinsic base-name="minus" name="subsd" datatype="double" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="multiply" name="mulsd" datatype="double" arguments="reg,=reg"/>
+			<intrinsic base-name="divide" name="divsd" datatype="double" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="move-fpr" name="movsd" datatype="double"/>
+
+			<!-- vector operations -->
+			<intrinsic base-name="unary_minus" name="xorpd" datatype="__m128d" arguments="reg,=imm:{0x00000000 0x80000000 0x00000000 0x80000000}"/>
+			<intrinsic base-name="plus" name="addpd" datatype="__m128d" arguments="reg,=reg"/>
+			<intrinsic base-name="minus" name="subpd" datatype="__m128d" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="multiply" name="mulpd" datatype="__m128d" arguments="reg,=reg"/>
+			<intrinsic base-name="divide" name="divpd" datatype="__m128d" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="move-fpr" name="movapd" datatype="__m128d"/>
+			<intrinsic base-name="move-fpr-unaligned" name="movupd" datatype="__m128d"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			
+			<!-- scalar operations -->
+			<intrinsic base-name="plus" name="addss" datatype="float" arguments="reg,=reg"/>
+			<intrinsic base-name="minus" name="subss" datatype="float" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="multiply" name="mulss" datatype="float" arguments="reg,=reg"/>
+			<intrinsic base-name="divide" name="divss" datatype="float" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="move-fpr" name="movss" datatype="float"/>
+			
+			<!-- vector operations -->
+			<intrinsic base-name="unary_minus" name="xorps" datatype="__m128" arguments="reg,=imm:{0x80000000 0x80000000 0x80000000 0x80000000}"/>
+			<intrinsic base-name="plus" name="addps" datatype="__m128" arguments="reg,=reg"/>
+			<intrinsic base-name="minus" name="subps" datatype="__m128" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="multiply" name="mulps" datatype="__m128" arguments="reg,=reg"/>
+			<intrinsic base-name="divide" name="divps" datatype="__m128" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="move-fpr" name="movaps" datatype="__m128"/>
+			<intrinsic base-name="move-fpr-unaligned" name="movups" datatype="__m128"/>
+		</intrinsics>
+		<assembly>
+			<register-classes>
+				<register-class name="gpr64" type="gpr" width="64" datatype="int64_t"/>
+				<register-class name="gpr32" type="gpr" width="32" bitrange="0..31" datatype="int32_t" subregister-of="gpr64"/>
+				<register-class name="xmm" type="simd" width="128" bitrange="0..127" datatype="__m128"/>
+			</register-classes>
+			<registers>
+				<register name="rax" class="gpr64">
+					<subregister name="eax" class="gpr32"/>
+				</register>
+				<register name="rbx" class="gpr64">
+					<subregister name="ebx" class="gpr32"/>
+				</register>
+				<register name="rcx" class="gpr64">
+					<subregister name="ecx" class="gpr32"/>
+				</register>
+				<register name="rdx" class="gpr64">
+					<subregister name="edx" class="gpr32"/>
+				</register>
+				<register name="r8" class="gpr64">
+					<subregister name="r8d" class="gpr32"/>
+				</register>				
+				<register name="r9" class="gpr64">
+					<subregister name="r9d" class="gpr32"/>
+				</register>				
+				<register name="r10" class="gpr64">
+					<subregister name="r10d" class="gpr32"/>
+				</register>				
+				<register name="r11" class="gpr64">
+					<subregister name="r11d" class="gpr32"/>
+				</register>				
+				<register name="r12" class="gpr64">
+					<subregister name="r12d" class="gpr32"/>
+				</register>				
+				<register name="r13" class="gpr64">
+					<subregister name="r13d" class="gpr32"/>
+				</register>				
+				<register name="r14" class="gpr64">
+					<subregister name="r14d" class="gpr32"/>
+				</register>				
+				<register name="r15" class="gpr64">
+					<subregister name="r15d" class="gpr32"/>
+				</register>				
+				<register name="rsi" class="gpr64">
+					<subregister name="esi" class="gpr32"/>
+				</register>
+				<register name="rdi" class="gpr64">
+					<subregister name="edi" class="gpr32"/>
+				</register>
+				<register name="rbp" class="gpr64">
+					<subregister name="ebp" class="gpr32"/>
+				</register>
+				<register name="rsp" class="gpr64">
+					<subregister name="esp" class="gpr32"/>
+				</register>
+				
+				<register name="xmm0" class="xmm"/>
+				<register name="xmm1" class="xmm"/>
+				<register name="xmm2" class="xmm"/>
+				<register name="xmm3" class="xmm"/>
+				<register name="xmm4" class="xmm"/>
+				<register name="xmm5" class="xmm"/>
+				<register name="xmm6" class="xmm"/>
+				<register name="xmm7" class="xmm"/>
+				<register name="xmm8" class="xmm"/>
+				<register name="xmm9" class="xmm"/>
+				<register name="xmm10" class="xmm"/>
+				<register name="xmm11" class="xmm"/>
+				<register name="xmm12" class="xmm"/>
+				<register name="xmm13" class="xmm"/>
+				<register name="xmm14" class="xmm"/>
+				<register name="xmm15" class="xmm"/>
+			</registers>
+		</assembly>
 	</architectureType>
 	
 	<!-- Architecture with AVX, OpenMP parallelization -->

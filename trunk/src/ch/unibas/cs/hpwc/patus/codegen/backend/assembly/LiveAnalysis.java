@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -28,6 +29,8 @@ public class LiveAnalysis
 	
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
+	
+	private IArchitectureDescription m_arch;
 
 	/**
 	 * The array of instructions to analyze
@@ -55,8 +58,10 @@ public class LiveAnalysis
 	 * @param il
 	 *            The instruction list to analyze
 	 */
-	public LiveAnalysis (InstructionList il)
+	public LiveAnalysis (IArchitectureDescription arch, InstructionList il)
 	{
+		m_arch = arch;
+		
 		m_rgInstructions = new IInstruction[il.size ()];
 		int j = 0;
 		for (IInstruction instr : il)
@@ -189,6 +194,8 @@ public class LiveAnalysis
 			if (instr instanceof Instruction)
 			{
 				IOperand[] rgOps = ((Instruction) instr).getOperands ();
+				if (rgOps.length == 0)
+					continue;
 				
 				// - the last operand is the output operand
 				// - a register becomes live if it is written to (it is the output operand)
@@ -299,16 +306,20 @@ public class LiveAnalysis
 	 *         there is none
 	 */
 	private int getNextRead (IOperand.PseudoRegister reg, int nCurrentInstrIdx)
-	{
+	{		
 		for (int i = nCurrentInstrIdx + 1; i < m_rgInstructions.length; i++)
 		{
 			IInstruction instr = m_rgInstructions[i];
 			if (instr instanceof Instruction)
 			{
 				IOperand[] rgOps = ((Instruction) instr).getOperands ();
+				if (rgOps.length == 0)
+					continue;
 								
+				final int nInputOperandsCount = m_arch.hasNonDestructiveOperations () ? rgOps.length - 1 : rgOps.length;
+
 				// check input operands (i.e., all operands except the last)
-				for (int j = 0; j < rgOps.length - 1; j++)
+				for (int j = 0; j < nInputOperandsCount; j++)
 				{
 					if (reg.equals (rgOps[j]))
 					{
@@ -338,6 +349,14 @@ public class LiveAnalysis
 		return NO_NEXT_READ;
 	}
 	
+	/**
+	 * Creates an ASCII visualization of the analysis.
+	 * 
+	 * @param setRegTypesToShow
+	 *            A set of register types to show in the visualization &mdash;
+	 *            or <code>null</code> if all the registers are to be shown
+	 * @return A string containing an ASCII visualization of the analysis
+	 */
 	public String visualize (Set<TypeRegisterType> setRegTypesToShow)
 	{
 		StringBuilder sb = new StringBuilder ();

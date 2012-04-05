@@ -116,7 +116,7 @@ public class AssemblySection
 		private int m_nSpillMemoryPlacesCount;
 		
 		
-		public AssemblySectionState ()
+		private AssemblySectionState ()
 		{
 			m_setClobberedRegisters = new TreeSet<> (new Comparator<IOperand.Register> ()
 			{
@@ -132,7 +132,7 @@ public class AssemblySection
 			m_nSpillMemoryPlacesCount = 0;
 		}
 
-		public Iterable<IOperand.Register> getUsedRegisters ()
+		private Iterable<IOperand.Register> getUsedRegisters ()
 		{
 			List<IOperand.Register> listUsedRegisters = new ArrayList<> (m_mapRegisterUsage.size ());
 			for (IOperand.Register op : m_mapRegisterUsage.keySet ())
@@ -141,7 +141,7 @@ public class AssemblySection
 			return listUsedRegisters;
 		}
 		
-		public Iterable<IOperand.Register> getClobberedRegisters ()
+		private Iterable<IOperand.Register> getClobberedRegisters ()
 		{
 			List<IOperand.Register> listClobberedRegisters = new ArrayList<> (m_setClobberedRegisters.size ());
 			listClobberedRegisters.addAll (m_setClobberedRegisters);
@@ -151,21 +151,21 @@ public class AssemblySection
 		/**
 		 *
 		 */
-		public void restoreUsedRegisters (Iterable<IOperand.Register> itUsedRegisters)
+		private void restoreUsedRegisters (Iterable<IOperand.Register> itUsedRegisters)
 		{
 			m_mapRegisterUsage.clear ();
 			for (IOperand.Register op : itUsedRegisters)
 				m_mapRegisterUsage.put (op, true);
 		}
 		
-		public void restoreClobberedRegisters (Iterable<IOperand.Register> itClobberedRegisters)
+		private void restoreClobberedRegisters (Iterable<IOperand.Register> itClobberedRegisters)
 		{
 			m_setClobberedRegisters.clear ();
 			for (IOperand.Register op : itClobberedRegisters)
 				m_setClobberedRegisters.add (op);
 		}
 
-		public void restore (AssemblySectionState state)
+		private void restore (AssemblySectionState state)
 		{
 			m_bIsConditionCodesClobbered = state.m_bIsConditionCodesClobbered;
 			m_bIsMemoryClobbered = state.m_bIsMemoryClobbered;
@@ -177,6 +177,18 @@ public class AssemblySection
 			
 			m_setClobberedRegisters.clear ();
 			m_setClobberedRegisters.addAll (state.m_setClobberedRegisters);
+		}
+		
+		private void merge (AssemblySectionState state)
+		{
+			m_bIsConditionCodesClobbered = m_bIsConditionCodesClobbered || state.m_bIsConditionCodesClobbered;
+			m_bIsMemoryClobbered = m_bIsMemoryClobbered || state.m_bIsMemoryClobbered;
+			m_nSpillMemoryPlacesCount = Math.max (m_nSpillMemoryPlacesCount, state.m_nSpillMemoryPlacesCount);
+			
+			for (IOperand.Register reg : state.m_mapRegisterUsage.keySet ())
+				m_mapRegisterUsage.put (reg, state.m_mapRegisterUsage.get (reg));
+			
+			m_setClobberedRegisters.addAll (state.m_setClobberedRegisters);			
 		}
 		
 		public AssemblySectionState clone ()
@@ -619,6 +631,7 @@ public class AssemblySection
 		));
 	}
 
+	@SuppressWarnings("static-method")
 	public int getConstantsAndParamsCount ()
 	{
 		return 0;
@@ -646,13 +659,59 @@ public class AssemblySection
 		m_state.m_nSpillMemoryPlacesCount = nMemoryPlacesCount;
 	}
 	
+	/**
+	 * Returns a copy of the current assembly section state.
+	 * 
+	 * @return A copy of the current assembly section state
+	 */
 	public AssemblySectionState getAssemblySectionState ()
 	{
 		return m_state.clone ();
 	}
 	
+	/**
+	 * Restores the assembly section state to <code>state</code>.
+	 * 
+	 * @param state
+	 *            The assembly section state to restore
+	 */
 	public void restoreAssemblySectionState (AssemblySectionState state)
 	{
 		m_state.restore (state);
+	}
+	
+	/**
+	 * Merges the assembly section state with another assembly section state,
+	 * <code>state</code>.
+	 * 
+	 * @param state
+	 *            The state which to merge into the own assembly section state
+	 */
+	public void mergeAssemblySectionState (AssemblySectionState state)
+	{
+		m_state.merge (state);
+	}
+
+	public Iterable<IOperand.Register> getUsedRegisters ()
+	{
+		return m_state.getUsedRegisters ();
+	}
+	
+	public Iterable<IOperand.Register> getClobberedRegisters ()
+	{
+		return m_state.getClobberedRegisters ();
+	}
+
+	/**
+	 *
+	 */
+	public void restoreUsedRegisters (Iterable<IOperand.Register> itUsedRegisters)
+	{
+		m_state.restoreUsedRegisters (itUsedRegisters);
+	}
+	
+	public void restoreClobberedRegisters (Iterable<IOperand.Register> itClobberedRegisters)
+	{
+		m_state.restoreClobberedRegisters (itClobberedRegisters);
 	}
 }

@@ -28,6 +28,9 @@ public class SimpleUnneededAddressLoadRemover implements IInstructionListOptimiz
 			if (instruction instanceof Instruction)
 			{
 				Instruction instr = (Instruction) instruction;
+				if (instr.getOperands ().length == 0)
+					continue;
+				
 				boolean bIsInstructionNeeded = true;
 				
 				// check for "mov" instructions

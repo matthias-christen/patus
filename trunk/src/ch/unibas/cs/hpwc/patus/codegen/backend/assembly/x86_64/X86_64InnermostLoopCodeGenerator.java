@@ -167,6 +167,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
 			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (nLoopUnrollingFactor > 1 ? LABEL_SIMPLEMAINHDR : LABEL_EPILOGHDR)));
 			l.addInstruction (Label.getLabel (LABEL_UNROLLEDMAINHDR_STARTCOMPUTATION));
+			l.addInstruction (new Instruction (".align 4"));
 			
 			return l;
 		}
@@ -236,6 +237,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			l.addInstruction (new Instruction ("or",  regCounter, regCounter));
 			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_EPILOGHDR)));
 			l.addInstruction (Label.getLabel (LABEL_SIMPLEMAINHDR_STARTCOMPUTATION));		
+			l.addInstruction (new Instruction (".align 4"));
 
 			return l;
 		}

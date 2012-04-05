@@ -349,7 +349,7 @@ public class RegisterAllocator
 	{
 		Map<IOperand.PseudoRegister, IOperand.IRegisterOperand> mapRegisters = new HashMap<> ();
 		
-		Iterable<IOperand.Register> itUsedRegisters = as.getAssemblySectionState ().getUsedRegisters ();
+		Iterable<IOperand.Register> itUsedRegisters = as.getUsedRegisters ();
 		
 		// color the graphs
 		for (TypeRegisterType regtype : mapGraphs.keySet ())
@@ -359,12 +359,14 @@ public class RegisterAllocator
 				continue;
 			
 			int nColorsCount = GraphColoringGreedy.run (graph);
-			LOGGER.info (StringUtil.concat ("Allocation attempt requires ", nColorsCount, " ", regtype.toString (), " registers"));
-			
 			int nFreeRegisters = as.getFreeRegistersCount (regtype);
+
+			LOGGER.info (StringUtil.concat ("Allocation attempt requires ", nColorsCount, " ", regtype.toString (), " registers. ",
+				nFreeRegisters, " free registers."));
+			
 			if (nColorsCount > nFreeRegisters)
 			{
-				as.getAssemblySectionState ().restoreUsedRegisters (itUsedRegisters);
+				as.restoreUsedRegisters (itUsedRegisters);
 				throw new TooFewRegistersException (regtype, nColorsCount - nFreeRegisters);
 			}
 			

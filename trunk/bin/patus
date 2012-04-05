@@ -1,5 +1,5 @@
 #!/bin/bash
-PATUS_HOME=/home/christen/workspace/Patus-GoogleCode
+PATUS_HOME=/home/christen/Workspace/Patus
 
 if [ $# -eq 0 ]
 then

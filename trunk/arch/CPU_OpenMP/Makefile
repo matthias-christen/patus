@@ -5,8 +5,8 @@
 # required runtime files by Patus.
 #
 
-CC = icc
-CFLAGS = -O3 -openmp -I.
+CC = gcc
+CFLAGS = -O3 -fopenmp -I.
 
 bench: kernel.o driver.o ssemathlib.o $(PATUS_RUNTIME_OBJECT_FILES)
 	$(CC) $(CFLAGS) -o $@ $+

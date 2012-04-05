@@ -279,12 +279,17 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			if (map == null)
 				m_mapCachedCodes.put (m_sdit, map = new HashMap<> ());
 			
-			InstructionListWithAssemblySectionState cached = map.get (m_nUnrollFactor);
-			if (cached != null)
-			{
-				m_assemblySection.restoreAssemblySectionState (cached.getAssemblySectionState ());
-				return cached.getInstructionList ();
-			}
+			int nUnroll = options.getIntValue (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR, 1);
+			InstructionListWithAssemblySectionState cached = map.get (nUnroll);
+			
+// TODO: sometimes code generation goes wrong if codes are cached. why?
+// e.g.: allq_xyz.stc
+// hypothesis: unrolling (x2) generates wrong code; caching should be OK
+//			if (cached != null)
+//			{
+//				m_assemblySection.mergeAssemblySectionState (cached.getAssemblySectionState ());
+//				return cached.getInstructionList ();
+//			}
 			
 			m_assemblySection.reset ();
 			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (
@@ -303,7 +308,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			// translate the generic instruction list to the architecture-specific one
 			il = m_assemblySection.translate (il, m_assemblySection.getDatatype (), m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
 			
-			map.put (m_nUnrollFactor, new InstructionListWithAssemblySectionState (il, m_assemblySection));
+			map.put (nUnroll, new InstructionListWithAssemblySectionState (il, m_assemblySection));
 			return il;
 		}
 		
@@ -321,6 +326,9 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			m_mapReuseNodesToRegisters = new HashMap<> ();
 			m_mapRegistersToReuseNodes = new HashMap<> ();
 			m_listReuseRegisterSets = new LinkedList<> ();
+			
+			// TODO: debug...
+			if (true) return;
 			
 			for (StencilNodeSet set : findReuseStencilNodeSets ())
 			{
@@ -370,7 +378,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 
 					// load the value into the register
 					StencilAssemblySection.OperandWithInstructions opGrid = m_assemblySection.getGrid (node, 0);
-					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, (IOperand.IRegisterOperand) opGrid, opReg), opGrid);
+					if (true) throw new RuntimeException ("Handle pre and post instructions");
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, opGrid.getOp (), opReg), opGrid);
 					
 					nPrevCoord = node.getSpaceIndex ()[0];
 				}

@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
@@ -28,12 +29,18 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionListAnalyzer;
  * This means, that, by replaceing <code>{pseudoreg-j}</code> by <code>{pseudoreg-k}</code>
  * one pseudo register is saved.
  * 
+ * <p><b>Assumes that operations are non-destructive and that the result operand is the last operand</b></p>
+ * 
  * @author Matthias-M. Christen
  */
 public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 {
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
+	
+	private IArchitectureDescription m_arch;
+	
+	private InstructionList.EInstructionListType m_iltype;
 
 	/**	
 	 * A map containing the pseudo registers (values) by which a particular
@@ -51,8 +58,11 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	public UnneededPseudoRegistersRemover ()
+	public UnneededPseudoRegistersRemover (IArchitectureDescription arch, InstructionList.EInstructionListType iltype)
 	{
+		m_arch = arch;
+		m_iltype = iltype;
+		
 		m_mapSubstitute = new HashMap<> ();
 		m_mapSubsitutedRegisters = new HashMap<> ();
 	}
@@ -122,7 +132,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 		
 		for (IInstruction instruction : il)
 		{
-			if (instruction instanceof Instruction)
+			if (instruction instanceof Instruction && ((Instruction) instruction).getOperands ().length > 0)
 			{
 				Instruction instr = (Instruction) instruction;
 				IOperand[] rgOps = instr.getOperands ();
@@ -150,7 +160,8 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 							if (rgOpsNew[i].equals (rgOps[rgOps.length - 1]))
 								break;
 							
-							if (InstructionListAnalyzer.isLastRead (il, (IOperand.PseudoRegister) rgOpsNew[i], nCurrentInstructionIdx, m_mapSubsitutedRegisters))
+							if (InstructionListAnalyzer.isLastRead (
+								m_arch, il, m_iltype, (IOperand.PseudoRegister) rgOpsNew[i], nCurrentInstructionIdx, m_mapSubsitutedRegisters))
 							{
 								regNewResult = (IOperand.PseudoRegister) rgOpsNew[i];
 								break;

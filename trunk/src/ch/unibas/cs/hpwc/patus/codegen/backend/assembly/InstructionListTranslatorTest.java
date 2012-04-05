@@ -227,6 +227,13 @@ public class InstructionListTranslatorTest
 		{
 			return new ArchDescProto (m_strBinaryOpArgs);
 		}
+		
+		@Override
+		public boolean hasNonDestructiveOperations ()
+		{
+			// TODO Auto-generated method stub
+			return false;
+		}
 	}
 	
 

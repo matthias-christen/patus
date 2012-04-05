@@ -1,8 +1,6 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import cetus.hir.Specifier;
@@ -12,7 +10,6 @@ import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.Register;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 
@@ -52,6 +49,9 @@ public class UnneededAddressLoadRemover implements IInstructionListOptimizer
 			if (instruction instanceof Instruction)
 			{
 				Instruction instr = (Instruction) instruction;
+				if (instr.getOperands ().length == 0)
+					continue;
+				
 				boolean bIsInstructionNeeded = true;
 				
 				// check for "mov" instructions

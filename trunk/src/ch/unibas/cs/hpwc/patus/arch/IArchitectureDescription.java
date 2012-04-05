@@ -214,12 +214,15 @@ public interface IArchitectureDescription
 	public abstract int getRegistersCount (TypeRegisterType type);
 	
 	/**
-	 * Returns an iterable over all the register classes for the register type <code>type</code>.
-	 * The iterable will iterate over the register classes in descending order of the register widths.
+	 * Returns an iterable over all the register classes for the register type
+	 * <code>type</code>.
+	 * The iterable will iterate over the register classes in descending order
+	 * of the register widths.
 	 * 
 	 * @param type
 	 *            The register type for which to find the register classes
-	 * @return An iterable iterating in descending order of register width over all the register classes
+	 * @return An iterable iterating in descending order of register width over
+	 *         all the register classes
 	 *         of type <code>type</code>
 	 */
 	public abstract Iterable<TypeRegisterClass> getRegisterClasses (TypeRegisterType type);
@@ -258,9 +261,21 @@ public interface IArchitectureDescription
 	public abstract IArchitectureDescription clone ();
 
 	/**
-	 * Returns the file from which the hardware description was loaded or <code>null</code> if it wasn't loaded from file.
+	 * Returns the file from which the hardware description was loaded or
+	 * <code>null</code> if it wasn't loaded from file.
 	 * 
-	 * @return The file from which the hardware description was loaded or <code>null</code> if it wasn't loaded from file
+	 * @return The file from which the hardware description was loaded or
+	 *         <code>null</code> if it wasn't loaded from file
 	 */
 	public abstract File getFile ();
+
+	/**
+	 * Returns <code>true</code> iff the intrinsics described in the
+	 * architecture description are non-destructive operations, i.e., if the
+	 * input operands are not overwritten with the output.
+	 * 
+	 * @return <code>true</code> iff the operations have non-destructive
+	 *         operands
+	 */
+	public abstract boolean hasNonDestructiveOperations ();
 }

@@ -3,6 +3,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -325,12 +326,12 @@ public class AssemblySection
 			ilTmp = optimizer.optimize (ilTmp);
 
 		// translate the generic instruction list to the architecture-specific one
-		ilTmp = InstructionListTranslator.translate (
-			m_data.getArchitectureDescription (), ilTmp, specDatatype);
+		Set<IOperand.PseudoRegister> setReusedRegisters = new HashSet<> ();
+		ilTmp = InstructionListTranslator.translate (m_data, ilTmp, specDatatype, setReusedRegisters);
 
 		// allocate registers
 		Iterable<IOperand.Register> itUsedRegs = m_state.getUsedRegisters ();
-		ilTmp = ilTmp.allocateRegisters (this);
+		ilTmp = ilTmp.allocateRegisters (this, setReusedRegisters);
 		m_state.restoreUsedRegisters (itUsedRegs);
 		
 		// apply peep hole optimizations

@@ -58,11 +58,14 @@ public class CodeGeneratorSharedObjects
 		m_hardwareDescription = hardwareDescription;
 		m_options = options;
 
-		m_data = new CodeGeneratorData (this);
-		m_generators = new CodeGenerators (this);
-
-		m_data.initialize ();
-		m_generators.initialize ();
+		if (stencil != null && strategy != null)
+		{
+			m_data = new CodeGeneratorData (this);
+			m_generators = new CodeGenerators (this);
+	
+			m_data.initialize ();
+			m_generators.initialize ();
+		}
 	}
 
 	/**

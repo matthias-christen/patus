@@ -3,6 +3,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -12,6 +13,7 @@ import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.UnneededPseudoRegistersRemover;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -120,26 +122,35 @@ public class InstructionListTranslator
 	
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
+	
+	private CodeGeneratorSharedObjects m_data;
 
 	private InstructionList m_ilIn;
 	private InstructionList m_ilOut;
 	
-	private IArchitectureDescription m_architecture;
 	private Specifier m_specDatatype;
 //	private Map<String, int[]> m_mapIntrinsicArgsPermutation;
 //	private Map<ArgSets, int[]> m_mapArgsPermutation;
+	
+	/**
+	 * Contains the registers which got reused as output registers by the {@link UnneededPseudoRegistersRemover}.
+	 * This is a pass-through data structure.
+	 */
+	private Set<IOperand.PseudoRegister> m_setReusedRegisters;
 	
 	
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	private InstructionListTranslator (IArchitectureDescription arch, InstructionList ilIn, Specifier specDatatype)
+	private InstructionListTranslator (CodeGeneratorSharedObjects data, InstructionList ilIn, Specifier specDatatype, Set<IOperand.PseudoRegister> setReusedRegisters)
 	{
-		m_architecture = arch;
+		m_data = data;
 		m_ilIn = ilIn;
 		m_ilOut = new InstructionList ();
 		
 		m_specDatatype = specDatatype;
+		m_setReusedRegisters = setReusedRegisters;
+		
 //		m_mapIntrinsicArgsPermutation = new HashMap<String, int[]> ();
 //		m_mapArgsPermutation = new HashMap<InstructionListTranslator.ArgSets, int[]> ();
 	}
@@ -153,7 +164,7 @@ public class InstructionListTranslator
 	 */
 	private Intrinsic getIntrinsicForInstruction (Instruction instruction)
 	{
-		return m_architecture.getIntrinsic (instruction.getIntrinsicBaseName (), m_specDatatype);
+		return m_data.getArchitectureDescription ().getIntrinsic (instruction.getIntrinsicBaseName (), m_specDatatype);
 	}
 	
 	/**
@@ -262,7 +273,7 @@ public class InstructionListTranslator
 	
 	private String getMovFpr (IOperand... op)
 	{
-		return InstructionListTranslator.getMovFpr (m_architecture, m_specDatatype, op);
+		return InstructionListTranslator.getMovFpr (m_data, m_specDatatype, op);
 	}
 	
 	/**
@@ -283,8 +294,11 @@ public class InstructionListTranslator
 	 * @return The name of the move instruction to use to move the operands
 	 *         <code>rgOperands</code>
 	 */
-	public static String getMovFpr (IArchitectureDescription arch, Specifier specDatatype, IOperand... rgOperands)
+	public static String getMovFpr (CodeGeneratorSharedObjects data, Specifier specDatatype, IOperand... rgOperands)
 	{
+		if (data.getOptions ().isAlwaysUseNonalignedMoves ())
+			return TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ();
+		
 		int nVectorLength = -1;
 		
 		for (IOperand op : rgOperands)
@@ -298,7 +312,7 @@ public class InstructionListTranslator
 				if (nVectorLength == -1)
 				{
 					Specifier specType = specDatatype == null ? Globals.BASE_DATATYPES[0] : specDatatype;
-					nVectorLength =	arch.getSIMDVectorLength (specType) * ArchitectureDescriptionManager.getTypeSize (specType);
+					nVectorLength =	data.getArchitectureDescription ().getSIMDVectorLength (specType) * ArchitectureDescriptionManager.getTypeSize (specType);
 				}
 				
 				if ((((IOperand.Address) op).getDisplacement () % nVectorLength) != 0)
@@ -524,7 +538,15 @@ public class InstructionListTranslator
 //}
 //else
 ////
-		m_ilOut.addInstruction (new Instruction (intrinsic.getName (), rgDestOps));
+		String strInstruction = intrinsic.getName ();
+		if (intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.MOVE_FPR.value ()))
+		{
+			Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (getMovFpr (rgDestOps), m_specDatatype);
+			if (i != null)
+				strInstruction = i.getName ();
+		}
+		
+		m_ilOut.addInstruction (new Instruction (strInstruction, rgDestOps));
 		
 		// add a move-result instruction if needed
 		if (bHasNonCompatibleResultOperand)
@@ -658,14 +680,17 @@ public class InstructionListTranslator
 	 */
 	private InstructionList run ()
 	{
-		final boolean bUseRegisterRemover = true && m_architecture.hasNonDestructiveOperations ();
+		IArchitectureDescription arch = m_data.getArchitectureDescription ();
+		
+		final boolean bUseRegisterRemover = true && arch.hasNonDestructiveOperations ();
 		
 		InstructionList ilIn = bUseRegisterRemover ?
-			new UnneededPseudoRegistersRemover (m_architecture, InstructionList.EInstructionListType.GENERIC).optimize (m_ilIn) :
+			new UnneededPseudoRegistersRemover (arch, InstructionList.EInstructionListType.GENERIC, m_setReusedRegisters).optimize (m_ilIn) :
 			m_ilIn;
 		
 		for (IInstruction instruction : ilIn)
 			translateInstruction (instruction);
+		
 		return m_ilOut;
 	}
 	
@@ -684,16 +709,16 @@ public class InstructionListTranslator
 	 *         list <code>ilIn</code> to the architecture-specific one, for which the translation units are
 	 *         provided by the architecture description <code>arch</code>
 	 */
-	public static InstructionList translate (IArchitectureDescription arch, InstructionList ilIn, Specifier specDatatype)
+	public static InstructionList translate (CodeGeneratorSharedObjects data, InstructionList ilIn, Specifier specDatatype, Set<IOperand.PseudoRegister> setReusedRegisters)
 	{
-		InstructionListTranslator translator = new InstructionListTranslator (arch, ilIn, specDatatype);
+		InstructionListTranslator translator = new InstructionListTranslator (data, ilIn, specDatatype, setReusedRegisters);
 		return translator.run ();
 	}
 	
-	public static InstructionList translate (IArchitectureDescription arch, IInstruction instruction, Specifier specDatatype)
+	public static InstructionList translate (CodeGeneratorSharedObjects data, IInstruction instruction, Specifier specDatatype)
 	{
 		InstructionList ilIn = new InstructionList ();
 		ilIn.addInstruction (instruction);
-		return InstructionListTranslator.translate (arch, ilIn, specDatatype);
+		return InstructionListTranslator.translate (data, ilIn, specDatatype, null);
 	}
 }

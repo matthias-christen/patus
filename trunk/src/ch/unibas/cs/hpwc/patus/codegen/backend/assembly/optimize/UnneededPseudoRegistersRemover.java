@@ -41,6 +41,8 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 	private IArchitectureDescription m_arch;
 	
 	private InstructionList.EInstructionListType m_iltype;
+	
+	private Set<IOperand.PseudoRegister> m_setReusedRegisters;
 
 	/**	
 	 * A map containing the pseudo registers (values) by which a particular
@@ -58,10 +60,13 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	public UnneededPseudoRegistersRemover (IArchitectureDescription arch, InstructionList.EInstructionListType iltype)
+	public UnneededPseudoRegistersRemover (IArchitectureDescription arch, InstructionList.EInstructionListType iltype,
+		Set<IOperand.PseudoRegister> setReusedRegisters)
 	{
 		m_arch = arch;
 		m_iltype = iltype;
+		
+		m_setReusedRegisters = setReusedRegisters;
 		
 		m_mapSubstitute = new HashMap<> ();
 		m_mapSubsitutedRegisters = new HashMap<> ();
@@ -122,6 +127,9 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 		if (set == null)
 			m_mapSubsitutedRegisters.put (regNew, set = new HashSet<> ());
 		set.add (regOld);
+		
+		if (m_setReusedRegisters != null)
+			m_setReusedRegisters.add (regNew);
 	}	
 	
 	@Override
@@ -173,7 +181,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 					if (regNewResult != null)
 					{
 						rgOpsNew[rgOpsNew.length - 1] = regNewResult;
-						addSubstitute ((IOperand.PseudoRegister) rgOps[rgOps.length - 1], regNewResult);						
+						addSubstitute ((IOperand.PseudoRegister) rgOps[rgOps.length - 1], regNewResult);
 					}
 				}
 				

@@ -22,6 +22,8 @@ import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -29,6 +31,14 @@ public class InstructionListTranslatorTest
 {
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
+	
+	private static class DummyCGSO extends CodeGeneratorSharedObjects
+	{
+		public DummyCGSO (IArchitectureDescription arch)
+		{
+			super (null, null, arch, new CodeGenerationOptions ());
+		}	
+	}
 	
 	private static class ArchDescProto implements IArchitectureDescription
 	{
@@ -106,35 +116,35 @@ public class InstructionListTranslatorTest
 		public boolean useSIMD ()
 		{
 			// TODO Auto-generated method stub
-			return false;
+			return true;
 		}
 
 		@Override
 		public int getSIMDVectorLength (Specifier specType)
 		{
 			// TODO Auto-generated method stub
-			return 0;
+			return 4;
 		}
 		
 		@Override
 		public int getSIMDVectorLengthInBytes ()
 		{
 			// TODO Auto-generated method stub
-			return 0;
+			return 16;
 		}
 
 		@Override
 		public int getAlignmentRestriction (Specifier specType)
 		{
 			// TODO Auto-generated method stub
-			return 0;
+			return 16;
 		}
 
 		@Override
 		public boolean supportsUnalignedSIMD ()
 		{
 			// TODO Auto-generated method stub
-			return false;
+			return true;
 		}
 
 		@Override
@@ -316,7 +326,7 @@ public class InstructionListTranslatorTest
 	public void testTranslate_1 ()
 	{		
 		IOperand.PseudoRegister.reset ();
-		InstructionList ilResult = InstructionListTranslator.translate (m_arch1, m_il, Specifier.FLOAT);
+		InstructionList ilResult = InstructionListTranslator.translate (new DummyCGSO (m_arch1), m_il, Specifier.FLOAT, null);
 		System.out.println (new Throwable ().getStackTrace ()[0].toString () + ":");
 		System.out.println (ilResult.toString ());
 		
@@ -329,22 +339,22 @@ public class InstructionListTranslatorTest
 			
 			"_plus_ (%%rax), %%ymm0, %%ymm2\\n\\t\n" +
 			
-			"_plus_ %%ymm0, %%ymm1, {pseudoreg-0}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-0}, (%%rbx)\\n\\t\n" +
+			"_plus_ %%ymm0, %%ymm1, {pseudoreg-0:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-0:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_plus_ (%%rax), %%ymm1, {pseudoreg-1}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-1}, (%%rbx)\\n\\t\n" +
+			"_plus_ (%%rax), %%ymm1, {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-1:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ (%%rbx), {pseudoreg-2}\\n\\t\n" +
-			"_plus_ (%%rax), {pseudoreg-2}, {pseudoreg-3}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-3}, (%%rcx)\\n\\t\n" +
+			"_move-fpr_ (%%rbx), {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_plus_ (%%rax), {pseudoreg-2:SIMD}, {pseudoreg-3:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-3:SIMD}, (%%rcx)\\n\\t\n" +
 
 			"_minus_ %%ymm0, %%ymm1, %%ymm2\\n\\t\n" +
 				
 			"_minus_ (%%rax), %%ymm1, %%ymm2\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-4}\\n\\t\n" +
-			"_minus_ %%ymm0, {pseudoreg-4}, %%ymm2\\n\\t\n",
+			"_move-fpr_ (%%rax), {pseudoreg-4:SIMD}\\n\\t\n" +
+			"_minus_ %%ymm0, {pseudoreg-4:SIMD}, %%ymm2\\n\\t\n",
 
 			ilResult.toString ());
 	}
@@ -353,7 +363,7 @@ public class InstructionListTranslatorTest
 	public void testTranslate_2 ()
 	{
 		IOperand.PseudoRegister.reset ();
-		InstructionList ilResult = InstructionListTranslator.translate (m_arch2, m_il, Specifier.FLOAT);
+		InstructionList ilResult = InstructionListTranslator.translate (new DummyCGSO (m_arch2), m_il, Specifier.FLOAT, null);
 		System.out.println (new Throwable ().getStackTrace ()[0].toString () + ":");
 		System.out.println (ilResult.toString ());
 		
@@ -366,20 +376,20 @@ public class InstructionListTranslatorTest
 			
 			"_plus_ %%ymm0, (%%rax), %%ymm2\\n\\t\n" +
 			
-			"_plus_ %%ymm0, %%ymm1, {pseudoreg-0}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-0}, (%%rbx)\\n\\t\n" +
+			"_plus_ %%ymm0, %%ymm1, {pseudoreg-0:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-0:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_plus_ %%ymm1, (%%rax), {pseudoreg-1}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-1}, (%%rbx)\\n\\t\n" +
+			"_plus_ %%ymm1, (%%rax), {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-1:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-2}\\n\\t\n" +
-			"_plus_ {pseudoreg-2}, (%%rbx), {pseudoreg-3}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-3}, (%%rcx)\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-2:SIMD}, (%%rbx), {pseudoreg-3:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-3:SIMD}, (%%rcx)\\n\\t\n" +
 
 			"_minus_ %%ymm0, %%ymm1, %%ymm2\\n\\t\n" +
 				
-			"_move-fpr_ (%%rax), {pseudoreg-4}\\n\\t\n" +
-			"_minus_ {pseudoreg-4}, %%ymm1, %%ymm2\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-4:SIMD}\\n\\t\n" +
+			"_minus_ {pseudoreg-4:SIMD}, %%ymm1, %%ymm2\\n\\t\n" +
 			
 			"_minus_ %%ymm0, (%%rax), %%ymm2\\n\\t\n",
 
@@ -390,7 +400,7 @@ public class InstructionListTranslatorTest
 	public void testTranslate_3 ()
 	{		
 		IOperand.PseudoRegister.reset ();
-		InstructionList ilResult = InstructionListTranslator.translate (m_arch3, m_il, Specifier.FLOAT);
+		InstructionList ilResult = InstructionListTranslator.translate (new DummyCGSO (m_arch3), m_il, Specifier.FLOAT, null);
 		System.out.println (new Throwable ().getStackTrace ()[0].toString () + ":");
 		System.out.println (ilResult.toString ());
 		
@@ -399,31 +409,31 @@ public class InstructionListTranslatorTest
 		
 			"_plus_ %%ymm0, %%ymm1, %%ymm2\\n\\t\n" +
 		
-			"_move-fpr_ (%%rax), {pseudoreg-0}\\n\\t\n" +
-			"_plus_ {pseudoreg-0}, %%ymm1, %%ymm2\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-0:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-0:SIMD}, %%ymm1, %%ymm2\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-1}\\n\\t\n" +
-			"_plus_ %%ymm0, {pseudoreg-1}, %%ymm2\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_plus_ %%ymm0, {pseudoreg-1:SIMD}, %%ymm2\\n\\t\n" +
 			
-			"_plus_ %%ymm0, %%ymm1, {pseudoreg-2}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-2}, (%%rbx)\\n\\t\n" +
+			"_plus_ %%ymm0, %%ymm1, {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-2:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-3}\\n\\t\n" +
-			"_plus_ {pseudoreg-3}, %%ymm1, {pseudoreg-4}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-4}, (%%rbx)\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-3:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-3:SIMD}, %%ymm1, {pseudoreg-4:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-4:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-5}\\n\\t\n" +
-			"_move-fpr_ (%%rbx), {pseudoreg-6}\\n\\t\n" +
-			"_plus_ {pseudoreg-5}, {pseudoreg-6}, {pseudoreg-7}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-7}, (%%rcx)\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-5:SIMD}\\n\\t\n" +
+			"_move-fpr_ (%%rbx), {pseudoreg-6:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-5:SIMD}, {pseudoreg-6:SIMD}, {pseudoreg-7:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-7:SIMD}, (%%rcx)\\n\\t\n" +
 
 			"_minus_ %%ymm0, %%ymm1, %%ymm2\\n\\t\n" +
 				
-			"_move-fpr_ (%%rax), {pseudoreg-8}\\n\\t\n" +
-			"_minus_ {pseudoreg-8}, %%ymm1, %%ymm2\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-8:SIMD}\\n\\t\n" +
+			"_minus_ {pseudoreg-8:SIMD}, %%ymm1, %%ymm2\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-9}\\n\\t\n" +
-			"_minus_ %%ymm0, {pseudoreg-9}, %%ymm2\\n\\t\n",
+			"_move-fpr_ (%%rax), {pseudoreg-9:SIMD}\\n\\t\n" +
+			"_minus_ %%ymm0, {pseudoreg-9:SIMD}, %%ymm2\\n\\t\n",
 
 			ilResult.toString ());
 	}
@@ -432,7 +442,7 @@ public class InstructionListTranslatorTest
 	public void testTranslate_4 ()
 	{		
 		IOperand.PseudoRegister.reset ();
-		InstructionList ilResult = InstructionListTranslator.translate (m_arch4, m_il, Specifier.FLOAT);
+		InstructionList ilResult = InstructionListTranslator.translate (new DummyCGSO (m_arch4), m_il, Specifier.FLOAT, null);
 		System.out.println (new Throwable ().getStackTrace ()[0].toString () + ":");
 		System.out.println (ilResult.toString ());
 		
@@ -441,28 +451,28 @@ public class InstructionListTranslatorTest
 		
 			"_plus_ %%ymm0, %%ymm1, %%ymm2\\n\\t\n" +
 		
-			"_move-fpr_ (%%rax), {pseudoreg-0}\\n\\t\n" +
-			"_plus_ {pseudoreg-0}, %%ymm1, %%ymm2\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-0:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-0:SIMD}, %%ymm1, %%ymm2\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-1}\\n\\t\n" +
-			"_plus_ %%ymm0, {pseudoreg-1}, %%ymm2\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_plus_ %%ymm0, {pseudoreg-1:SIMD}, %%ymm2\\n\\t\n" +
 			
 			"_plus_ %%ymm0, %%ymm1, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-2}\\n\\t\n" +
-			"_plus_ {pseudoreg-2}, %%ymm1, (%%rbx)\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-2:SIMD}, %%ymm1, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-3}\\n\\t\n" +
-			"_move-fpr_ (%%rbx), {pseudoreg-4}\\n\\t\n" +
-			"_plus_ {pseudoreg-3}, {pseudoreg-4}, (%%rcx)\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-3:SIMD}\\n\\t\n" +
+			"_move-fpr_ (%%rbx), {pseudoreg-4:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-3:SIMD}, {pseudoreg-4:SIMD}, (%%rcx)\\n\\t\n" +
 
 			"_minus_ %%ymm0, %%ymm1, %%ymm2\\n\\t\n" +
 				
-			"_move-fpr_ (%%rax), {pseudoreg-5}\\n\\t\n" +
-			"_minus_ {pseudoreg-5}, %%ymm1, %%ymm2\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-5:SIMD}\\n\\t\n" +
+			"_minus_ {pseudoreg-5:SIMD}, %%ymm1, %%ymm2\\n\\t\n" +
 			
-			"_move-fpr_ (%%rax), {pseudoreg-6}\\n\\t\n" +
-			"_minus_ %%ymm0, {pseudoreg-6}, %%ymm2\\n\\t\n",
+			"_move-fpr_ (%%rax), {pseudoreg-6:SIMD}\\n\\t\n" +
+			"_minus_ %%ymm0, {pseudoreg-6:SIMD}, %%ymm2\\n\\t\n",
 
 			ilResult.toString ());
 	}
@@ -471,7 +481,7 @@ public class InstructionListTranslatorTest
 	public void testTranslate_5 ()
 	{		
 		IOperand.PseudoRegister.reset ();
-		InstructionList ilResult = InstructionListTranslator.translate (m_arch5, m_il, Specifier.FLOAT);
+		InstructionList ilResult = InstructionListTranslator.translate (new DummyCGSO (m_arch5), m_il, Specifier.FLOAT, null);
 		System.out.println (new Throwable ().getStackTrace ()[0].toString () + ":");
 		System.out.println (ilResult.toString ());
 		
@@ -487,17 +497,17 @@ public class InstructionListTranslatorTest
 			"_move-fpr_ (%%rax), %%ymm2\\n\\t\n" +
 			"_plus_ %%ymm0, %%ymm2\\n\\t\n" +
 			
-			"_move-fpr_ %%ymm1, {pseudoreg-0}\\n\\t\n" +
-			"_plus_ %%ymm0, {pseudoreg-0}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-0}, (%%rbx)\\n\\t\n" +
+			"_move-fpr_ %%ymm1, {pseudoreg-0:SIMD}\\n\\t\n" +
+			"_plus_ %%ymm0, {pseudoreg-0:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-0:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ %%ymm1, {pseudoreg-1}\\n\\t\n" +
-			"_plus_ (%%rax), {pseudoreg-1}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-1}, (%%rbx)\\n\\t\n" +
+			"_move-fpr_ %%ymm1, {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_plus_ (%%rax), {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-1:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ (%%rbx), {pseudoreg-2}\\n\\t\n" +
-			"_plus_ (%%rax), {pseudoreg-2}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-2}, (%%rcx)\\n\\t\n" +
+			"_move-fpr_ (%%rbx), {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_plus_ (%%rax), {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-2:SIMD}, (%%rcx)\\n\\t\n" +
 
 			"_move-fpr_ %%ymm1, %%ymm2\\n\\t\n" +
 			"_minus_ %%ymm0, %%ymm2\\n\\t\n" +
@@ -515,7 +525,7 @@ public class InstructionListTranslatorTest
 	public void testTranslate_6 ()
 	{		
 		IOperand.PseudoRegister.reset ();
-		InstructionList ilResult = InstructionListTranslator.translate (m_arch6, m_il, Specifier.FLOAT);
+		InstructionList ilResult = InstructionListTranslator.translate (new DummyCGSO (m_arch6), m_il, Specifier.FLOAT, null);
 		System.out.println (new Throwable ().getStackTrace ()[0].toString () + ":");
 		System.out.println (ilResult.toString ());
 		
@@ -533,17 +543,17 @@ public class InstructionListTranslatorTest
 			"_move-fpr_ %%ymm0, %%ymm2\\n\\t\n" +		// is OK, too
 			"_plus_ (%%rax), %%ymm2\\n\\t\n" +
 			
-			"_move-fpr_ %%ymm1, {pseudoreg-0}\\n\\t\n" +
-			"_plus_ %%ymm0, {pseudoreg-0}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-0}, (%%rbx)\\n\\t\n" +
+			"_move-fpr_ %%ymm1, {pseudoreg-0:SIMD}\\n\\t\n" +
+			"_plus_ %%ymm0, {pseudoreg-0:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-0:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ %%ymm1, {pseudoreg-1}\\n\\t\n" +
-			"_plus_ (%%rax), {pseudoreg-1}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-1}, (%%rbx)\\n\\t\n" +
+			"_move-fpr_ %%ymm1, {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_plus_ (%%rax), {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-1:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ (%%rbx), {pseudoreg-2}\\n\\t\n" +
-			"_plus_ (%%rax), {pseudoreg-2}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-2}, (%%rcx)\\n\\t\n" +
+			"_move-fpr_ (%%rbx), {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_plus_ (%%rax), {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-2:SIMD}, (%%rcx)\\n\\t\n" +
 
 			"_move-fpr_ %%ymm1, %%ymm2\\n\\t\n" +
 			"_minus_ %%ymm0, %%ymm2\\n\\t\n" +
@@ -561,7 +571,7 @@ public class InstructionListTranslatorTest
 	public void testTranslate_7 ()
 	{		
 		IOperand.PseudoRegister.reset ();
-		InstructionList ilResult = InstructionListTranslator.translate (m_arch7, m_il, Specifier.FLOAT);
+		InstructionList ilResult = InstructionListTranslator.translate (new DummyCGSO (m_arch7), m_il, Specifier.FLOAT, null);
 		System.out.println (new Throwable ().getStackTrace ()[0].toString () + ":");
 		System.out.println (ilResult.toString ());
 		
@@ -572,32 +582,32 @@ public class InstructionListTranslatorTest
 			"_plus_ %%ymm0, %%ymm2\\n\\t\n" +
 		
 			"_move-fpr_ %%ymm1, %%ymm2\\n\\t\n" +
-			"_move-fpr_ (%%rax), {pseudoreg-0}\\n\\t\n" +
-			"_plus_ {pseudoreg-0}, %%ymm2\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-0:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-0:SIMD}, %%ymm2\\n\\t\n" +
 			
 			"_move-fpr_ (%%rax), %%ymm2\\n\\t\n" +
 			"_plus_ %%ymm0, %%ymm2\\n\\t\n" +
 			
-			"_move-fpr_ %%ymm1, {pseudoreg-1}\\n\\t\n" +
-			"_plus_ %%ymm0, {pseudoreg-1}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-1}, (%%rbx)\\n\\t\n" +
+			"_move-fpr_ %%ymm1, {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_plus_ %%ymm0, {pseudoreg-1:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-1:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ %%ymm1, {pseudoreg-2}\\n\\t\n" +
-			"_move-fpr_ (%%rax), {pseudoreg-3}\\n\\t\n" +
-			"_plus_ {pseudoreg-3}, {pseudoreg-2}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-2}, (%%rbx)\\n\\t\n" +
+			"_move-fpr_ %%ymm1, {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-3:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-3:SIMD}, {pseudoreg-2:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-2:SIMD}, (%%rbx)\\n\\t\n" +
 			
-			"_move-fpr_ (%%rbx), {pseudoreg-4}\\n\\t\n" +
-			"_move-fpr_ (%%rax), {pseudoreg-5}\\n\\t\n" +
-			"_plus_ {pseudoreg-5}, {pseudoreg-4}\\n\\t\n" +
-			"_move-fpr_ {pseudoreg-4}, (%%rcx)\\n\\t\n" +
+			"_move-fpr_ (%%rbx), {pseudoreg-4:SIMD}\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-5:SIMD}\\n\\t\n" +
+			"_plus_ {pseudoreg-5:SIMD}, {pseudoreg-4:SIMD}\\n\\t\n" +
+			"_move-fpr_ {pseudoreg-4:SIMD}, (%%rcx)\\n\\t\n" +
 
 			"_move-fpr_ %%ymm1, %%ymm2\\n\\t\n" +
 			"_minus_ %%ymm0, %%ymm2\\n\\t\n" +
 				
 			"_move-fpr_ %%ymm1, %%ymm2\\n\\t\n" +
-			"_move-fpr_ (%%rax), {pseudoreg-6}\\n\\t\n" +
-			"_minus_ {pseudoreg-6}, %%ymm2\\n\\t\n" +
+			"_move-fpr_ (%%rax), {pseudoreg-6:SIMD}\\n\\t\n" +
+			"_minus_ {pseudoreg-6:SIMD}, %%ymm2\\n\\t\n" +
 			
 			"_move-fpr_ (%%rax), %%ymm2\\n\\t\n" +
 			"_minus_ %%ymm0, %%ymm2\\n\\t\n",

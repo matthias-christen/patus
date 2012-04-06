@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -44,7 +45,9 @@ public class InstructionList implements Iterable<IInstruction>
 	 */
 	private List<IInstruction> m_listInstructions;
 
-
+	/**
+	 * The current array index of the array into which register values are spilled
+	 */
 	private int m_nSpillArrayIndex;
 		
 	
@@ -111,7 +114,7 @@ public class InstructionList implements Iterable<IInstruction>
 	 * @param as
 	 * @return
 	 */
-	public InstructionList allocateRegisters (AssemblySection as)
+	public InstructionList allocateRegisters (AssemblySection as, Set<IOperand.PseudoRegister> setReusedRegisters)
 	{
 		LOGGER.info ("Performing live analysis and allocating registers...");
 				
@@ -138,7 +141,7 @@ public class InstructionList implements Iterable<IInstruction>
 				if (e.getRegisterType ().equals (TypeRegisterType.SIMD) || e.getRegisterType ().equals (TypeRegisterType.GPR))
 				{
 					for (int i = 0; i < e.getExcessRegisterRequirement (); i++)
-						spillRegisters (as, analysis, listOffsets, e.getRegisterType ());
+						spillRegisters (as, analysis, listOffsets, e.getRegisterType (), setReusedRegisters);
 					analysis.createLAGraphEdges (mapGraphs);
 				}
 				else
@@ -155,7 +158,7 @@ public class InstructionList implements Iterable<IInstruction>
 		return replacePseudoRegisters (map);
 	}
 	
-	private void spillRegisters (AssemblySection as, LiveAnalysis analysis, List<Integer> listIndexOffsets, TypeRegisterType regtype)
+	private void spillRegisters (AssemblySection as, LiveAnalysis analysis, List<Integer> listIndexOffsets, TypeRegisterType regtype, Set<IOperand.PseudoRegister> setReusedRegisters)
 	{
 		// find the point and the register at which the corresponding register
 		// is not accessed for the largest amount of time
@@ -188,7 +191,8 @@ public class InstructionList implements Iterable<IInstruction>
 		else if (regtype.equals (TypeRegisterType.SIMD))
 		{
 			// check whether the register holds a constant
-			if ((as instanceof StencilAssemblySection) && ((StencilAssemblySection) as).isConstantOrParam (analysis.getPseudoRegisters ()[nNoAccessRegIdx]))
+			IOperand.PseudoRegister opReg = analysis.getPseudoRegisters ()[nNoAccessRegIdx];
+			if ((as instanceof StencilAssemblySection) && ((StencilAssemblySection) as).isConstantOrParam (opReg) && (setReusedRegisters == null || !setReusedRegisters.contains (opReg)))
 			{
 				// if it holds a constant, we don't need to spill out to memory, just reload the next time we use it
 				addReloadFromAddressInstruction (as, analysis, nNoAccessInstrIdx + nMaxNoAccess, nNoAccessRegIdx, listIndexOffsets);

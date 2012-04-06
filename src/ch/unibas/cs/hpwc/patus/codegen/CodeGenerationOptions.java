@@ -124,6 +124,8 @@ public class CodeGenerationOptions
 	 */
 	private boolean m_bUseNativeSIMDDatatypes;
 	
+	private boolean m_bAlwaysUseNonalignedMoves;
+	
 	private boolean m_bBalanceBinaryExpressions;
 
 	private Set<EDebugOption> m_setDebugOptions;
@@ -148,6 +150,7 @@ public class CodeGenerationOptions
 		m_compatibility = ECompatibility.C;
 		m_rgUnrollingConfigs = new UnrollConfig[] { new UnrollConfig (1), new UnrollConfig (2) };
 		m_bUseNativeSIMDDatatypes = false;
+		m_bAlwaysUseNonalignedMoves = false;
 		m_bBalanceBinaryExpressions = true;
 		m_setDebugOptions = new HashSet<> ();
 		m_listTargets = new ArrayList<> (1);
@@ -167,6 +170,7 @@ public class CodeGenerationOptions
 		setCompatibility (options.getCompatibility ());
 		setUnrollingConfigs (options.getUnrollingConfigs ());
 		setUseNativeSIMDDatatypes (options.useNativeSIMDDatatypes ());
+		setAlwaysUseNonalignedMoves (options.isAlwaysUseNonalignedMoves ());
 		setBalanceBinaryExpressions (options.getBalanceBinaryExpressions ());
 		m_setDebugOptions.addAll (options.m_setDebugOptions);
 		for (ETarget target : options.getTargets ())
@@ -278,6 +282,16 @@ public class CodeGenerationOptions
 	public boolean useNativeSIMDDatatypes ()
 	{
 		return m_bUseNativeSIMDDatatypes;
+	}
+	
+	public void setAlwaysUseNonalignedMoves (boolean bAlwaysUseNonalignedMoves)
+	{
+		m_bAlwaysUseNonalignedMoves = bAlwaysUseNonalignedMoves;
+	}
+	
+	public boolean isAlwaysUseNonalignedMoves ()
+	{
+		return m_bAlwaysUseNonalignedMoves;
 	}
 	
 	public void setBalanceBinaryExpressions (boolean bBalanceBinaryExpressions)

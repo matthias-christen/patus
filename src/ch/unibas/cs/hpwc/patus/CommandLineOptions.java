@@ -115,6 +115,8 @@ public class CommandLineOptions
 			}
 			else if ("use-native-simd-datatypes".equals (strOption))
 				m_options.setUseNativeSIMDDatatypes (strValue.equals ("yes"));
+			else if ("always-use-nonaligned-moves".equals (strOption))
+				m_options.setAlwaysUseNonalignedMoves (strValue.equals ("yes"));
 			else if ("balance-binary-expressions".equals (strOption))
 				m_options.setBalanceBinaryExpressions (!strValue.equals ("no"));
 			else if ("create-initialization".equals (strOption))
@@ -149,6 +151,7 @@ public class CommandLineOptions
 		System.out.println ("    [--kernel-file=<Kernel Output File Name>] [--compatibility={C|Fortran}]");
 		System.out.println ("    [--unroll=<UnrollFactor1,UnrollFactor2,...>]");
 		System.out.println ("    [--use-native-simd-datatypes={yes|no}]");
+		System.out.println ("    [--always-use-nonaligned-moves={yes|no}]");
 		System.out.println ("    [--create-validation={yes|no}] [--validation-tolerance=<Tolerance>]");
 		System.out.println ("    [--debug=<Debug Option 1>,[<Debug Option 2>,[...,[<Debug Option N>]...]]");
 		System.out.println ();
@@ -202,10 +205,20 @@ public class CommandLineOptions
 		System.out.println ("              stencil have more than 3 dimensions, no unrolling will be applied in");
 		System.out.println ("              any of the other dimensions.");
 		System.out.println ();
-		System.out.println ("--use-native-simd-datatypes={yes|no}]");
-		System.out.println ("              Specify whether the native SSE datatype is to be used in the kernel");
+		System.out.println ("--use-native-simd-datatypes={yes|no}");
+		System.out.println ("              Specifies whether the native SSE datatype is to be used in the kernel");
 		System.out.println ("              signature. This also requires that the fields are padded correctly");
 		System.out.println ("              in unit stride direction. Defaults to 'no'.");
+		System.out.println ();
+		System.out.println ("--always-use-nonaligned-moves={yes|no}");
+		System.out.println ("              Specifies whether always non-aligned instructions to transfer data");
+		System.out.println ("              from/to memory to/from a SIMD register are to be used.");
+		System.out.println ("              If set to 'no', it must be guaranteed that the domain size in the unit");
+		System.out.println ("              stride direction, including the boundary region, is divisible by the");
+		System.out.println ("              SIMD vector length. This can be achieved by array padding.");
+		System.out.println ("              Padding the unit stride direction to multiples of the SIMD vector length");
+		System.out.println ("              might result in increased performance.");
+		System.out.println ("              Defaults to 'no'.");
 		System.out.println ();
 		System.out.println ("--create-initialization={yes|no}");
 		System.out.println ("              Specifies whether to create initialization code.");

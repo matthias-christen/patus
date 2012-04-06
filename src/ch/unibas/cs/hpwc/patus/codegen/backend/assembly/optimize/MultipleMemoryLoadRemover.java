@@ -11,8 +11,8 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import cetus.hir.Specifier;
-import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
@@ -136,7 +136,7 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 		 */
 		private void createMovInstruction (IOperand opSrc, IOperand opDest)
 		{
-			Instruction instr = new Instruction (InstructionListTranslator.getMovFpr (m_arch, null, opSrc), opSrc, opDest);
+			Instruction instr = new Instruction (InstructionListTranslator.getMovFpr (m_data, null, opSrc), opSrc, opDest);
 			
 			if (LOGGER.isDebugEnabled ())
 				LOGGER.debug (StringUtil.concat ("Created MOV: ", instr.toString ()));
@@ -144,7 +144,7 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 			if (!m_bTranslateGenerated)
 				m_ilOutput.addInstruction (instr);
 			else
-				m_ilOutput.addInstructions (InstructionListTranslator.translate (m_arch, instr, Specifier.FLOAT));
+				m_ilOutput.addInstructions (InstructionListTranslator.translate (m_data, instr, Specifier.FLOAT));
 		}
 			
 		/**
@@ -321,7 +321,7 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
-	private IArchitectureDescription m_arch;
+	private CodeGeneratorSharedObjects m_data;
 	
 	/**
 	 * Flag specifying whether instructions generated in this optimizer have to be translated
@@ -332,9 +332,9 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	public MultipleMemoryLoadRemover (IArchitectureDescription arch, boolean bTranslateGenerated)
+	public MultipleMemoryLoadRemover (CodeGeneratorSharedObjects data, boolean bTranslateGenerated)
 	{
-		m_arch = arch;
+		m_data = data;
 		m_bTranslateGenerated = bTranslateGenerated;
 	}
 	

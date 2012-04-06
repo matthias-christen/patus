@@ -141,7 +141,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			// initialize the optimizers to execute before/after the translation of the
 			// computation instruction list
 			m_rgPreTranslateOptimizers = new IInstructionListOptimizer[] {
-				new MultipleMemoryLoadRemover (m_data.getArchitectureDescription (), false),
+				new MultipleMemoryLoadRemover (m_data, false),
 				//new LoadStoreMover ()
 			};
 			
@@ -306,6 +306,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			}
 			
 			// translate the generic instruction list to the architecture-specific one
+			// this also performs register allocation
 			il = m_assemblySection.translate (il, m_assemblySection.getDatatype (), m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
 			
 			map.put (nUnroll, new InstructionListWithAssemblySectionState (il, m_assemblySection));

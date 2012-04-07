@@ -282,14 +282,11 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			int nUnroll = options.getIntValue (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR, 1);
 			InstructionListWithAssemblySectionState cached = map.get (nUnroll);
 			
-// TODO: sometimes code generation goes wrong if codes are cached. why?
-// e.g.: allq_xyz.stc
-// hypothesis: unrolling (x2) generates wrong code; caching should be OK
-//			if (cached != null)
-//			{
-//				m_assemblySection.mergeAssemblySectionState (cached.getAssemblySectionState ());
-//				return cached.getInstructionList ();
-//			}
+			if (cached != null)
+			{
+				m_assemblySection.mergeAssemblySectionState (cached.getAssemblySectionState ());
+				return cached.getInstructionList ();
+			}
 			
 			m_assemblySection.reset ();
 			AssemblyExpressionCodeGenerator cgExpr = new AssemblyExpressionCodeGenerator (

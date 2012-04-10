@@ -280,7 +280,7 @@ public class StencilAssemblySection extends AssemblySection
 		// set to -1 for default behavior.
 		final int nDebugSelectVariant = -1;
 
-		int nInitialFreeRegisters = getFreeRegistersCount (TypeRegisterType.GPR) - 2;
+		int nInitialFreeRegisters = getFreeRegistersCount (TypeRegisterType.GPR) - 1;
 		int nNumInputs = getInputsCount ();
 		int nNumRegistersForGrids = getNumRegistersForGrids ();
 		int nNumRegistersForStrides = countStrides ();

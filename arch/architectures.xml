@@ -297,6 +297,7 @@
 			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
 			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>
 			<intrinsic base-name="fma" name="_mm256_macc_pd" datatype="__m256d" arguments="factor1,factor2,summand"/>
+			<intrinsic base-name="fms" name="_mm256_msub_pd" datatype="__m256d" arguments="factor1,factor2,summand"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
 			<intrinsic base-name="unary_minus" name="neg_ps" datatype="__m256"/>
@@ -308,7 +309,137 @@
 			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
 			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>
 			<intrinsic base-name="fma" name="_mm256_macc_ps" datatype="__m256" arguments="factor1,factor2,summand"/>
+			<intrinsic base-name="fms" name="_mm256_msub_ps" datatype="__m256" arguments="factor1,factor2,summand"/>
 		</intrinsics>
+	</architectureType>
+
+	<architectureType name="x86_64 AVX128 asm" inherits-from="x86_64 AVX">
+		<codegenerator src-suffix="c" backend="OpenMP_AVX_Asm" innermost-loop-cg="x86_64" use-function-pointers="true"/>
+		<datatypes>
+			<!-- declare SSE datatypes -->
+			<!-- restrict alignment to 32 bytes -->
+			<datatype basetype="float" name="__m128" simd-vector-length="4" width="128" alignment="16"/>
+			<datatype basetype="double" name="__m128d" simd-vector-length="2" width="128" alignment="16"/>
+		</datatypes>
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			
+			<!-- scalar operations -->
+			<intrinsic base-name="plus" name="vaddsd" datatype="double" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="multiply" name="vmulsd" datatype="double" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="fma" name="vfmaddsd" datatype="double" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="fms" name="vfmsubsd" datatype="double" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="move-fpr" name="vmovsd" datatype="double"/>
+
+			<!-- vector operations -->
+			<intrinsic base-name="unary_minus" name="vxorpd" datatype="__m128d" arguments="reg/mem,imm:{0x00000000 0x80000000 0x00000000 0x80000000},=reg"/>
+			<intrinsic base-name="plus" name="vaddpd" datatype="__m128d" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubpd" datatype="__m128d" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="multiply" name="vmulpd" datatype="__m128d" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivpd" datatype="__m128d" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="fma" name="vfmaddpd" datatype="__m128d" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="fms" name="vfmsubpd" datatype="__m128d" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="move-fpr" name="vmovapd" datatype="__m128d"/>
+			<intrinsic base-name="move-fpr-unaligned" name="vmovupd" datatype="__m128d"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			
+			<!-- scalar operations -->
+			<intrinsic base-name="plus" name="vaddss" datatype="float" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="multiply" name="vmulss" datatype="float" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="fma" name="vfmaddss" datatype="float" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="fms" name="vfmsubss" datatype="float" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="move-fpr" name="vmovss" datatype="float"/>
+			
+			<!-- vector operations -->
+			<intrinsic base-name="unary_minus" name="vxorps" datatype="__m128" arguments="reg/mem,imm:{0x80000000 0x80000000 0x80000000 0x80000000},=reg"/>
+			<intrinsic base-name="plus" name="vaddps" datatype="__m128" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubps" datatype="__m128" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="multiply" name="vmulps" datatype="__m128" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivps" datatype="__m128" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="fma" name="vfmaddps" datatype="__m128" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="fms" name="vfmsubps" datatype="__m128" arguments="reg/mem:summand,reg:factor1,reg:factor2,=reg"/>
+			<intrinsic base-name="move-fpr" name="vmovaps" datatype="__m128"/>
+			<intrinsic base-name="move-fpr-unaligned" name="vmovups" datatype="__m128"/>
+		</intrinsics>
+		<assembly>
+			<register-classes>
+				<register-class name="gpr64" type="gpr" width="64" datatype="int64_t"/>
+				<register-class name="gpr32" type="gpr" width="32" bitrange="0..31" datatype="int32_t" subregister-of="gpr64"/>
+				<register-class name="xmm" type="simd" width="128" bitrange="0..127" datatype="__m128"/>
+			</register-classes>
+			<registers>
+				<register name="rax" class="gpr64">
+					<subregister name="eax" class="gpr32"/>
+				</register>
+				<register name="rbx" class="gpr64">
+					<subregister name="ebx" class="gpr32"/>
+				</register>
+				<register name="rcx" class="gpr64">
+					<subregister name="ecx" class="gpr32"/>
+				</register>
+				<register name="rdx" class="gpr64">
+					<subregister name="edx" class="gpr32"/>
+				</register>
+				<register name="r8" class="gpr64">
+					<subregister name="r8d" class="gpr32"/>
+				</register>				
+				<register name="r9" class="gpr64">
+					<subregister name="r9d" class="gpr32"/>
+				</register>				
+				<register name="r10" class="gpr64">
+					<subregister name="r10d" class="gpr32"/>
+				</register>				
+				<register name="r11" class="gpr64">
+					<subregister name="r11d" class="gpr32"/>
+				</register>				
+				<register name="r12" class="gpr64">
+					<subregister name="r12d" class="gpr32"/>
+				</register>				
+				<register name="r13" class="gpr64">
+					<subregister name="r13d" class="gpr32"/>
+				</register>				
+				<register name="r14" class="gpr64">
+					<subregister name="r14d" class="gpr32"/>
+				</register>				
+				<register name="r15" class="gpr64">
+					<subregister name="r15d" class="gpr32"/>
+				</register>				
+				<register name="rsi" class="gpr64">
+					<subregister name="esi" class="gpr32"/>
+				</register>
+				<register name="rdi" class="gpr64">
+					<subregister name="edi" class="gpr32"/>
+				</register>
+				<register name="rbp" class="gpr64">
+					<subregister name="ebp" class="gpr32"/>
+				</register>
+				<register name="rsp" class="gpr64">
+					<subregister name="esp" class="gpr32"/>
+				</register>
+				
+				<register name="xmm0" class="xmm"/>
+				<register name="xmm1" class="xmm"/>
+				<register name="xmm2" class="xmm"/>
+				<register name="xmm3" class="xmm"/>
+				<register name="xmm4" class="xmm"/>
+				<register name="xmm5" class="xmm"/>
+				<register name="xmm6" class="xmm"/>
+				<register name="xmm7" class="xmm"/>
+				<register name="xmm8" class="xmm"/>
+				<register name="xmm9" class="xmm"/>
+				<register name="xmm10" class="xmm"/>
+				<register name="xmm11" class="xmm"/>
+				<register name="xmm12" class="xmm"/>
+				<register name="xmm13" class="xmm"/>
+				<register name="xmm14" class="xmm"/>
+				<register name="xmm15" class="xmm"/>
+			</registers>
+		</assembly>
 	</architectureType>
 	
 	<architectureType name="x86_64 AVX asm" inherits-from="x86_64 AVX">

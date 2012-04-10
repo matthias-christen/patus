@@ -88,6 +88,8 @@ public class Argument
 			m_bIsMemory = "mem".equals (m.group (4));
 			m_strName = m.group (6);
 		}
+		else
+			m_strName = strArgDescriptor;
 	}
 	
 	/**

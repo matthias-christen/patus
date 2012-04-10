@@ -178,16 +178,17 @@ public class FuseMultiplyAddCodeGenerator
 									exprNew = exprFMA;
 								else
 									bexprTop.swapWith (exprFMA);
+
+								bFMAFound = true;
+								break;
 							}
-							
-							bFMAFound = true;
-							break;
 						}
 					}
 
 					// if we come here, the left branch wasn't a multiply
 					// check whether the right one is
-					if (bexprTop.getRHS () instanceof BinaryExpression)
+					// note that this version only works for addition
+					if ((bexprTop.getRHS () instanceof BinaryExpression) && bIsAdd)
 					{
 						BinaryExpression bexprRight = (BinaryExpression) bexprTop.getRHS ();
 						if (BinaryOperator.MULTIPLY.equals (bexprRight.getOperator ()))
@@ -200,10 +201,10 @@ public class FuseMultiplyAddCodeGenerator
 									exprNew = exprFMA;
 								else
 									bexprTop.swapWith (exprFMA);
-							}
-							
-							bFMAFound = true;
-							break;
+
+								bFMAFound = true;
+								break;
+							}							
 						}
 					}
 				}

@@ -421,23 +421,25 @@ public class StandaloneAutotuner
 		IRunExecutable run = new HybridRunExecutable (m_strFilename, m_listParamSets, m_listConstraints);
 		optMain.optimize (run);
 
-		// print the result to stdout
-		for (int nParam : run.getParameters (optMain.getResultParameters ()))
-		{
-			System.out.print (nParam);
-			System.out.print (' ');
-		}
-		System.out.println ();
-		System.out.println (optMain.getResultTiming ());
-
-		System.out.println ("\nProgram output of the optimal run:");
-		System.out.println (optMain.getProgramOutput ());
-
 		if (run instanceof AbstractRunExecutable)
 		{
 			System.out.println ("\n\n\nHistogram:\n\n");
 			((AbstractRunExecutable) run).createHistogram ().print ();
 		}
+
+		// print the result to stdout
+		System.out.println ("\n\nOptimal parameter configuration found:");
+		for (int nParam : run.getParameters (optMain.getResultParameters ()))
+		{
+			System.out.print (nParam);
+			System.out.print (' ');
+		}
+
+		System.out.println ("\n\nTiming information for the optimal run:");
+		System.out.println (optMain.getResultTiming ());
+
+		System.out.println ("\nProgram output of the optimal run:");
+		System.out.println (optMain.getProgramOutput ());
 	}
 
 	public static void printEnvironment ()

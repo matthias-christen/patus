@@ -49,6 +49,9 @@ public class AssemblyExpressionCodeGenerator
 		}
 	};
 
+
+	private static final boolean BREAK_ADDSUB_CHAINS = false;
+
 	
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
@@ -235,30 +238,76 @@ public class AssemblyExpressionCodeGenerator
 	 */
 	private IOperand[] processAddSubSubtree (Expression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
-		IOperand[] rgResult = null;
-		
-		int i = 0;
-		for (AddSub addsub : RegisterAllocator.linearizeAddSubSubtree (expr))
+		if (!BREAK_ADDSUB_CHAINS)
 		{
-			if (i == 0)
-				rgResult = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
-			else
+			IOperand[] rgResult = null;
+			
+			int i = 0;
+			for (AddSub addsub : RegisterAllocator.linearizeAddSubSubtree (expr))
 			{
-				boolean bIsAddition = addsub.getOperator ().equals (BinaryOperator.ADD);
-				IOperand[] op1 = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
+				if (i == 0)
+					rgResult = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
+				else
+				{
+					boolean bIsAddition = addsub.getOperator ().equals (BinaryOperator.ADD);
+					IOperand[] op1 = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
+					
+					rgResult = addInstruction (il, nUnrollFactor,
+						addsub.getBaseIntrinsic (),
+						i == 1 ? null : rgResult,
+						bIsAddition ? op1 : rgResult,	// swap the operands if this is an addition (which is commutative...)
+						bIsAddition ? rgResult : op1
+					);
+				}
 				
-				rgResult = addInstruction (il, nUnrollFactor,
-					addsub.getBaseIntrinsic (),
-					i == 1 ? null : rgResult,
-					bIsAddition ? op1 : rgResult,	// swap the operands if this is an addition (which is commutative...)
-					bIsAddition ? rgResult : op1
-				);
+				i++;
 			}
 			
-			i++;
+			return rgResult;
 		}
-		
-		return rgResult;
+		else
+		{
+			IOperand[] rgResult0 = null;
+			IOperand[] rgResult1 = null;
+			AddSub addsub1 = null;
+			
+			int i = 0;
+			for (AddSub addsub : RegisterAllocator.linearizeAddSubSubtree (expr))
+			{
+				if (i == 0)
+					rgResult0 = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
+				else if (i == 1)
+				{
+					addsub1 = addsub;
+					rgResult1 = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
+				}
+				else
+				{
+					boolean bIsAddition = addsub.getOperator ().equals (BinaryOperator.ADD);
+					IOperand[] op1 = traverse (addsub.getExpression (), specDatatype, nUnrollFactor, il);
+					
+					IOperand[] rgResult = ((i % 2) == 0) ? rgResult0 : rgResult1;
+					
+					rgResult = addInstruction (il, nUnrollFactor,
+						addsub.getBaseIntrinsic (),
+						i == 2 || i == 3 ? null : rgResult,
+						bIsAddition ? op1 : rgResult,	// swap the operands if this is an addition (which is commutative...)
+						bIsAddition ? rgResult : op1
+					);
+					
+					if ((i % 2) == 0)
+						rgResult0 = rgResult;
+					else
+						rgResult1 = rgResult;
+				}
+				
+				i++;
+			}
+	
+			if (rgResult1 == null)
+				return rgResult0;
+			return addInstruction (il, nUnrollFactor, addsub1.getBaseIntrinsic (), rgResult0, rgResult0, rgResult1);
+		}
 	}
 	
 	/**

@@ -1,5 +1,5 @@
 #!/bin/bash
-PATUS_HOME=/home/christen/Workspace/Patus
+PATUS_HOME=$HOME/Patus
 
 if [ $# -eq 0 ]
 then
@@ -15,7 +15,7 @@ then
 fi
 
 OUTDIR=`pwd`
-ARCH_NAME="Intel x86_64 SSE"
+ARCH_NAME="x86_64 SSE"
 
 if [ $# -gt 1 ]
 then

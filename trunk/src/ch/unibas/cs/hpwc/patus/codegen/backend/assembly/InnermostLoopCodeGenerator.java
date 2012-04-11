@@ -27,6 +27,7 @@ import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.AssemblySection.EAssemblySectionInputType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.IInstructionListOptimizer;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.LoadStoreMover;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.MultipleMemoryLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.optimize.SimpleUnneededAddressLoadRemover;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
@@ -115,6 +116,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		private Map<NameID, IOperand.IRegisterOperand[]> m_mapTemporaries;
 		
 		private IInstructionListOptimizer[] m_rgPreTranslateOptimizers;
+		private IInstructionListOptimizer[] m_rgPreRegAllocOptimizers;
 		private IInstructionListOptimizer[] m_rgPostTranslateOptimizers;
 
 		
@@ -142,7 +144,10 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			// computation instruction list
 			m_rgPreTranslateOptimizers = new IInstructionListOptimizer[] {
 				new MultipleMemoryLoadRemover (m_data, false),
-				//new LoadStoreMover ()
+			};
+			
+			m_rgPreRegAllocOptimizers = new IInstructionListOptimizer[] {
+				new LoadStoreMover (m_data.getArchitectureDescription ())
 			};
 			
 			m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] {
@@ -304,7 +309,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			
 			// translate the generic instruction list to the architecture-specific one
 			// this also performs register allocation
-			il = m_assemblySection.translate (il, m_assemblySection.getDatatype (), m_rgPreTranslateOptimizers, m_rgPostTranslateOptimizers);
+			il = m_assemblySection.translate (il, m_assemblySection.getDatatype (), m_rgPreTranslateOptimizers, m_rgPreRegAllocOptimizers, m_rgPostTranslateOptimizers);
 			
 			map.put (nUnroll, new InstructionListWithAssemblySectionState (il, m_assemblySection));
 			return il;

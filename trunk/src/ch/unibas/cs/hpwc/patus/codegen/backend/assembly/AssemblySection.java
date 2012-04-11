@@ -303,7 +303,8 @@ public class AssemblySection
 	
 	public InstructionList translate (InstructionList ilInstructions, Specifier specDatatype)
 	{
-		return translate (ilInstructions, specDatatype, new IInstructionListOptimizer[] { }, new IInstructionListOptimizer[] { });
+		return translate (ilInstructions, specDatatype,
+			new IInstructionListOptimizer[] { }, new IInstructionListOptimizer[] { }, new IInstructionListOptimizer[] { });
 	}
 
 	/**
@@ -314,6 +315,7 @@ public class AssemblySection
 	 */
 	public InstructionList translate (InstructionList ilInstructions, Specifier specDatatype,
 		IInstructionListOptimizer[] rgPreTranslateOptimizers,
+		IInstructionListOptimizer[] rgPreRegAllocOptimizers,
 		IInstructionListOptimizer[] rgPostTranslateOptimizers)
 	{
 		if (ilInstructions.isEmpty ())
@@ -328,6 +330,9 @@ public class AssemblySection
 		// translate the generic instruction list to the architecture-specific one
 		Set<IOperand.PseudoRegister> setReusedRegisters = new HashSet<> ();
 		ilTmp = InstructionListTranslator.translate (m_data, ilTmp, specDatatype, setReusedRegisters);
+		
+		for (IInstructionListOptimizer optimizer : rgPreRegAllocOptimizers)
+			ilTmp = optimizer.optimize (ilTmp);
 
 		// allocate registers
 		Iterable<IOperand.Register> itUsedRegs = m_state.getUsedRegisters ();

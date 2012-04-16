@@ -20,9 +20,9 @@ import cetus.hir.ArrayAccess;
 import cetus.hir.ArraySpecifier;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
-import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
+import cetus.hir.FunctionCall;
 import cetus.hir.IDExpression;
 import cetus.hir.Identifier;
 import cetus.hir.Initializer;
@@ -30,6 +30,7 @@ import cetus.hir.IntegerLiteral;
 import cetus.hir.Literal;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
+import cetus.hir.Symbol;
 import cetus.hir.Traversable;
 import cetus.hir.ValueInitializer;
 import cetus.hir.VariableDeclaration;
@@ -266,11 +267,50 @@ public class ConstantGeneratedIdentifiers
 	 */
 	private boolean containsNonParamIdentifier (Expression expr)
 	{
-		for (DepthFirstIterator it = new DepthFirstIterator (expr); it.hasNext (); )
+//		for (DepthFirstIterator it = new DepthFirstIterator (expr); it.hasNext (); )
+//		{
+//			Object obj = it.next ();
+//			if (obj instanceof IDExpression)
+//				if (!isLiteralOrParam ((IDExpression) obj))
+//					return true;
+//		}
+//		
+//		return false;
+		
+		return containsNonParamIdentifierRecursive (expr);
+	}
+	
+	private boolean containsNonParamIdentifierRecursive (Traversable trvParent)
+	{
+		if (trvParent instanceof FunctionCall)
 		{
-			Object obj = it.next ();
-			if (obj instanceof IDExpression)
-				if (!isLiteralOrParam ((IDExpression) obj))
+			for (Object objArg : ((FunctionCall) trvParent).getArguments ())
+				if (containsNonParamIdentifierRecursive ((Traversable) objArg))
+					return true;
+		}
+		else if (trvParent instanceof IDExpression)
+		{
+			if (!isLiteralOrParam ((IDExpression) trvParent))
+			{
+				if (trvParent instanceof Identifier)
+				{
+					Symbol decl = ((Identifier) trvParent).getSymbol ();
+					if (decl != null && (decl instanceof VariableDeclarator))
+					{
+						if (containsNonParamIdentifierRecursive (((VariableDeclarator) decl).getInitializer ()))
+							return true;
+					}
+					else
+						return true;
+				}
+				else
+					return true;
+			}
+		}
+		else
+		{
+			for (Traversable trv : trvParent.getChildren ())
+				if (containsNonParamIdentifierRecursive (trv))
 					return true;
 		}
 		
@@ -296,15 +336,14 @@ public class ConstantGeneratedIdentifiers
 				throw new RuntimeException ("Unknown initializer");
 		}
 		
-			
 		// more than one constants...
-
 		
 		// TODO: nicer: some other way to find out whether to vectorize
 		int nSIMDVecLen = calc instanceof SIMDScalarGeneratedIdentifiers ? getSIMDVectorLength (specDatatype, options) : 1;
 		
 		// create a values array holding the initializer values
-		List<Expression> listValues = new ArrayList<> (rgConstantCalculations.length * nSIMDVecLen);
+//		List<Traversable> listValues = new ArrayList<> (rgConstantCalculations.length * nSIMDVecLen);
+		List<Traversable> listValues = new ArrayList<> (rgConstantCalculations.length);
 		
 		for (int i = 0; i < rgConstantCalculations.length; i++)
 		{
@@ -315,8 +354,15 @@ public class ConstantGeneratedIdentifiers
 				else
 				{
 					// add dummy values to the values array
+//					for (int j = 0; j < nSIMDVecLen; j++)
+//						listValues.add (ExpressionUtil.createFloatLiteral (0, specDatatype));
+					
+					///
+					List<Expression> listDummyValues = new ArrayList<> (nSIMDVecLen);
 					for (int j = 0; j < nSIMDVecLen; j++)
-						listValues.add (ExpressionUtil.createFloatLiteral (0, specDatatype));
+						listDummyValues.add (ExpressionUtil.createFloatLiteral (0, specDatatype));
+					listValues.add (new Initializer (listDummyValues));
+					///
 	
 					// initialize the array element in the code
 					slbGeneratedCode.addStatement (new ExpressionStatement (new AssignmentExpression (
@@ -329,8 +375,12 @@ public class ConstantGeneratedIdentifiers
 			else if (rgConstantCalculations[i] instanceof Initializer)
 			{
 				// if the entry is an initializer, extract the values and add them to the values array
-				for (Traversable trvVal : rgConstantCalculations[i].getChildren ())
-					listValues.add ((Expression) trvVal);
+//				for (Traversable trvVal : rgConstantCalculations[i].getChildren ())
+//					listValues.add ((Expression) trvVal);
+
+				///
+				listValues.add (rgConstantCalculations[i]);
+				///
 			}
 			else
 				throw new RuntimeException ("Unknown initializer");

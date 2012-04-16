@@ -57,6 +57,8 @@ public class OpenMPCodeGenerator extends AbstractBackend
 	///////////////////////////////////////////////////////////////////
 	// Constants
 
+	private static final boolean USE_STRUCT_INITIALIZER = true;
+
 	private static final IIndexing.IIndexingLevel INDEXING_LEVEL = new IIndexingLevel ()
 	{
 		@Override
@@ -277,6 +279,36 @@ public class OpenMPCodeGenerator extends AbstractBackend
 			listValues.add (expr.clone ());
 		return new Initializer (listValues);		
 	}
+	
+	protected Expression createLoadInitializer (Specifier specDatatype, Expression expr)
+	{
+		String strFunction = getVecLoadFunctionName (specDatatype);
+		if (strFunction == null)
+			throw new RuntimeException ("Unknown data type");
+
+		Expression exprArg = expr.clone ();
+		if (hasVecLoadFunctionPointerArg ())
+		{
+			if (!(exprArg instanceof IDExpression))
+			{
+				// create a temporary variable
+				exprArg = new Identifier (createTemporary (specDatatype, exprArg));
+			}
+			
+			exprArg = new UnaryExpression (UnaryOperator.ADDRESS_OF, exprArg);
+		}
+		
+		return new FunctionCall (new NameID (strFunction), CodeGeneratorUtil.expressions (exprArg));
+	}
+	
+	private VariableDeclarator createTemporary (Specifier specDatatype, Expression expr)
+	{
+		VariableDeclarator decl = new VariableDeclarator (CodeGeneratorUtil.createNameID ("const", m_nConstSuffix++));
+		m_data.getData ().addDeclaration (new VariableDeclaration (specDatatype, decl));
+		decl.setInitializer (new ValueInitializer (expr.clone ()));
+		
+		return decl;
+	}
 
 	@Override
 	public Traversable splat (Expression expr, Specifier specDatatype)
@@ -286,32 +318,27 @@ public class OpenMPCodeGenerator extends AbstractBackend
 			return expr;
 
 		if (expr instanceof Literal)
-			return createExpressionInitializer (expr, nSIMDVectorLength);
+		{
+			if (USE_STRUCT_INITIALIZER)
+				return createExpressionInitializer (expr, nSIMDVectorLength);
+			
+			return createLoadInitializer (specDatatype, expr);
+		}
 		else if (expr instanceof IDExpression)
 		{
 			// initialize stencil parameter constants as we would initialize literals
-			if (m_data.getStencilCalculation ().isArgument (((IDExpression) expr).getName ()))
+			if (m_data.getStencilCalculation ().isArgument (((IDExpression) expr).getName ()) && USE_STRUCT_INITIALIZER)
 				return createExpressionInitializer (expr, nSIMDVectorLength);
 			
 			// _mm_load1_p{s|d} (*p)
-
-			String strFunction = getVecLoadFunctionName (specDatatype);
-			if (strFunction == null)
-				throw new RuntimeException ("Unknown data type");
-
-			Expression exprArg = expr.clone ();
-			if (hasVecLoadFunctionPointerArg ())
-				exprArg = new UnaryExpression (UnaryOperator.ADDRESS_OF, exprArg);
-			
-			return new FunctionCall (new NameID (strFunction), CodeGeneratorUtil.expressions (exprArg));
+			return createLoadInitializer (specDatatype, expr);
 		}
 		else
 		{
-			VariableDeclarator decl = new VariableDeclarator (CodeGeneratorUtil.createNameID ("const", m_nConstSuffix++));
-			m_data.getData ().addDeclaration (new VariableDeclaration (specDatatype, decl));
-			decl.setInitializer (new ValueInitializer (expr.clone ()));
-			
-			return createExpressionInitializer (new Identifier (decl), nSIMDVectorLength);
+			VariableDeclarator decl = createTemporary (specDatatype, expr);			
+			return USE_STRUCT_INITIALIZER ?
+				createExpressionInitializer (new Identifier (decl), nSIMDVectorLength) :
+				createLoadInitializer (specDatatype, new Identifier (decl));
 		}
 	}
 	

@@ -658,9 +658,28 @@ public class AssemblySection
 		VariableDeclaration decl = (VariableDeclaration) ((Identifier) asi.getValue ()).getSymbol ().getDeclaration ();
 		Initializer initializer = ((VariableDeclarator) decl.getDeclarator (0)).getInitializer ();
 
-		int nCount = nMemoryPlacesCount * m_data.getArchitectureDescription ().getSIMDVectorLength (specDatatype);
+		int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (specDatatype);
+		int nCount = nMemoryPlacesCount;
 		for (int i = 0; i < nCount; i++)
-			initializer.getChildren ().add (ExpressionUtil.createFloatLiteral (0, specDatatype));
+		{
+			Traversable trvElt = null;
+			if (nSIMDVectorLength == 1)
+				trvElt = ExpressionUtil.createFloatLiteral (0, specDatatype);
+			else
+			{
+				List<Expression> listDummies = new ArrayList<> (nSIMDVectorLength);
+				for (int j = 0; j < nSIMDVectorLength; j++)
+					listDummies.add (ExpressionUtil.createFloatLiteral (0, specDatatype));
+				
+				trvElt = new Initializer (listDummies);
+			}
+			
+			if (trvElt != null)
+			{
+				trvElt.setParent (initializer);
+				initializer.getChildren ().add (trvElt);
+			}
+		}
 		
 		m_state.m_nSpillMemoryPlacesCount = nMemoryPlacesCount;
 	}

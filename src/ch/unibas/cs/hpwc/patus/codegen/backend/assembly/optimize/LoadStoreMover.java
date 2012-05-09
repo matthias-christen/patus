@@ -28,6 +28,10 @@ public class LoadStoreMover implements IInstructionListOptimizer
 	@Override
 	public InstructionList optimize (InstructionList il)
 	{
+		// TODO: this doesn't work reliably yet...
+		if (true)
+			return il;
+		
 		IInstruction[] rgInstrBuffer = new IInstruction[il.size ()];
 		int i = 0;
 		for (IInstruction instruction : il)
@@ -94,7 +98,7 @@ public class LoadStoreMover implements IInstructionListOptimizer
 	 * @param instruction
 	 * @return
 	 */
-	private boolean isNeg (IInstruction instruction)
+	private static boolean isNeg (IInstruction instruction)
 	{
 		if (!(instruction instanceof Instruction))
 			return false;
@@ -106,7 +110,7 @@ public class LoadStoreMover implements IInstructionListOptimizer
 	private int getAddressLoadBlockSize (IInstruction[] rgInstrs, int nIdx)
 	{
 		int i = nIdx;
-		boolean bIsNegStart = isNeg (rgInstrs[i]);
+		boolean bIsNegStart = LoadStoreMover.isNeg (rgInstrs[i]);
 		if (bIsNegStart)
 			i++;
 		
@@ -120,7 +124,7 @@ public class LoadStoreMover implements IInstructionListOptimizer
 		if (!bAddrLoadFound)
 			return 0;
 		
-		if (bIsNegStart && isNeg (rgInstrs[i]))
+		if (bIsNegStart && LoadStoreMover.isNeg (rgInstrs[i]))
 			i++;
 		
 		return i - nIdx;

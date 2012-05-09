@@ -140,20 +140,35 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			// request a register to be used as loop counter
 			m_regCounter = m_assemblySection.getFreeRegister (TypeRegisterType.GPR);	
 			
-			// initialize the optimizers to execute before/after the translation of the
-			// computation instruction list
-			m_rgPreTranslateOptimizers = new IInstructionListOptimizer[] {
-				new MultipleMemoryLoadRemover (m_data, false),
-			};
-			
-			m_rgPreRegAllocOptimizers = new IInstructionListOptimizer[] {
-				new LoadStoreMover (m_data.getArchitectureDescription ())
-			};
-			
-			m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] {
-				new SimpleUnneededAddressLoadRemover ()
-				//new UnneededAddressLoadRemover (m_data.getArchitectureDescription ())
-			};			
+			initializeOptimizers (true);
+		}
+		
+		/**
+		 * initialize the optimizers to execute before/after the translation of the
+		 * computation instruction list.
+		 */
+		protected void initializeOptimizers (boolean bPerformOptimizations)
+		{
+			if (bPerformOptimizations)
+			{
+				m_rgPreTranslateOptimizers = new IInstructionListOptimizer[] {
+					new MultipleMemoryLoadRemover (m_data, false),
+				};
+				
+				m_rgPreRegAllocOptimizers = new IInstructionListOptimizer[] {
+					new LoadStoreMover (m_data.getArchitectureDescription ())
+				};
+				
+				m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] {
+					new SimpleUnneededAddressLoadRemover ()		//new UnneededAddressLoadRemover (m_data.getArchitectureDescription ())
+				};
+			}
+			else
+			{
+				m_rgPreTranslateOptimizers = new IInstructionListOptimizer[] { };
+				m_rgPreRegAllocOptimizers = new IInstructionListOptimizer[] { };
+				m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] { };
+			}
 		}
 		
 		protected void initialize ()

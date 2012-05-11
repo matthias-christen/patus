@@ -22,6 +22,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.LAGraph;
 import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphColoringGreedy;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;

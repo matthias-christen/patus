@@ -1,4 +1,4 @@
-package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
+package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze;
 
 import java.text.DecimalFormat;
 import java.util.Arrays;
@@ -8,6 +8,10 @@ import java.util.Set;
 
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**

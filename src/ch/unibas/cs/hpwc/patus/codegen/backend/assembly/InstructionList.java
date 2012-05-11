@@ -13,6 +13,8 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.LAGraph;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.LiveAnalysis;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**

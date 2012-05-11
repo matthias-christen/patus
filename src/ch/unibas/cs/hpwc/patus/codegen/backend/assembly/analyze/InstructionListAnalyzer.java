@@ -1,10 +1,14 @@
-package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
+package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze;
 
 import java.util.Map;
 import java.util.Set;
 
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 
 public class InstructionListAnalyzer
 {
@@ -102,8 +106,17 @@ public class InstructionListAnalyzer
 			return false;
 		
 		IOperand opOut = ((Instruction) instr1).getOperands ()[nOperandsCount - 1];
-		for (int i = 0; i < ((Instruction) instr2).getOperands ().length - 1; i++)
+		
+		// check input operands
+		int nOperandsCount2 = ((Instruction) instr2).getOperands ().length;
+		for (int i = 0; i < nOperandsCount2 - 1; i++)
 			if (((Instruction) instr2).getOperands ()[i].equals (opOut))
+				return true;
+		
+		// check output operand if it is an address
+		IOperand opOut2 = ((Instruction) instr2).getOperands ()[nOperandsCount2 - 1];
+		if (opOut2 instanceof IOperand.Address)
+			if (((IOperand.Address) opOut2).getRegBase ().equals (opOut) || ((IOperand.Address) opOut2).getRegIndex ().equals (opOut))
 				return true;
 		
 		return false;

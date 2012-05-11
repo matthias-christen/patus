@@ -10,9 +10,9 @@ import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.InstructionListAnalyzer;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
-import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionListAnalyzer;
 
 /**
  * Replaces instructions of the form

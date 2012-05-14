@@ -90,6 +90,7 @@ public class ArchitectureDescriptionManager
 			m_bHasNonDestructiveOperations = true;
 			m_mapIntrinsics = new HashMap<> ();
 			if (m_type.getIntrinsics () != null)
+			{
 				for (Intrinsic intrinsic : m_type.getIntrinsics ().getIntrinsic ())
 				{
 					List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (intrinsic.getBaseName ());
@@ -103,10 +104,11 @@ public class ArchitectureDescriptionManager
 						intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.MULTIPLY.value ()) ||
 						intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.DIVIDE.value ())))
 					{
-						if (intrinsic != null && intrinsic.getArguments () != null && Arguments.parseArguments (intrinsic.getArguments ()).length != 3)
+						if (intrinsic.getArguments () != null && Arguments.parseArguments (intrinsic.getArguments ()).length != 3)
 							m_bHasNonDestructiveOperations = false;
 					}
 				}
+			}
 		}
 
 		@Override

@@ -140,4 +140,9 @@ public class MathUtil
 			j++;
 		return j;
 	}
+
+	public static int divCeil (int nNumerator, int nDenominator)
+	{
+		return (nNumerator + nDenominator - 1) / nDenominator;
+	}
 }

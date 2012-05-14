@@ -12,7 +12,7 @@ import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphUtil.EDegree;
 
 public class GraphUtilTest
 {
-	private static class Vertex implements IVertex
+	public static class Vertex implements IVertex
 	{
 		private String m_strLabel;
 		
@@ -56,12 +56,12 @@ public class GraphUtilTest
 		}
 	}
 	
-	private static class Edge implements IEdge<Vertex>
+	public static class Edge implements IEdge<Vertex>
 	{
 		private Vertex m_vHead;
 		private Vertex m_vTail;
 		
-		public Edge (Vertex vHead, Vertex vTail)
+		public Edge (Vertex vTail, Vertex vHead)
 		{
 			m_vHead = vHead;
 			m_vTail = vTail;
@@ -83,9 +83,9 @@ public class GraphUtilTest
 		public String toString ()
 		{
 			StringBuilder sb = new StringBuilder ("Edge[ ");
-			sb.append (m_vHead.getLabel ());
-			sb.append (" -> ");
 			sb.append (m_vTail.getLabel ());
+			sb.append (" -> ");
+			sb.append (m_vHead.getLabel ());
 			sb.append (" ]");
 			return sb.toString ();
 		}

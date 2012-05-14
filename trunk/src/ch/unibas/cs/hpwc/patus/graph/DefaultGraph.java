@@ -111,7 +111,7 @@ public class DefaultGraph<V extends IVertex, E extends IEdge<V>> implements IGra
 			sb.append ("  --->  { ");
 
 			boolean bFirst = true;
-			for (V v1 : GraphUtil.getNeighborsDirected (this, v))
+			for (V v1 : GraphUtil.getSuccessors (this, v))
 			{
 				if (!bFirst)
 					sb.append (", ");

@@ -1,6 +1,7 @@
 package ch.unibas.cs.hpwc.patus.graph.algorithm;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -84,6 +85,30 @@ public class GraphUtil
 	///////////////////////////////////////////////////////////////////
 	// Implementation
 	
+	public static <V extends IVertex, E extends IEdge<V>> Collection<V> getRootVertices (IGraph<V, E> graph)
+	{
+		Set<V> setRoots = new HashSet<> ();
+		
+		for (V vertex : graph.getVertices ())
+			setRoots.add (vertex);
+		for (E edge : graph.getEdges ())
+			setRoots.remove (edge.getHeadVertex ());			
+		
+		return setRoots;
+	}
+	
+	public static <V extends IVertex, E extends IEdge<V>> Collection<V> getLeafVertices (IGraph<V, E> graph)
+	{
+		Set<V> setLeaves = new HashSet<> ();
+		
+		for (V vertex : graph.getVertices ())
+			setLeaves.add (vertex);
+		for (E edge : graph.getEdges ())
+			setLeaves.remove (edge.getTailVertex ());			
+		
+		return setLeaves;
+	}
+	
 	/**
 	 * Finds the neighboring vertices of the vertex <code>vertex</code> in the
 	 * directed graph <code>graph</code>.
@@ -95,18 +120,30 @@ public class GraphUtil
 	 *            The vertex whose neighbors to find
 	 * @return An iterable over neighbors of <code>vertex</code>
 	 */
-	public static <V extends IVertex, E extends IEdge<V>> Iterable<V> getNeighborsDirected (IGraph<V, E> graph, V vertex)
+	public static <V extends IVertex, E extends IEdge<V>> Collection<V> getSuccessors (IGraph<V, E> graph, V vertex)
 	{
-		Set<V> setNeighbors = new HashSet<> ();
+		Set<V> setSuccessors = new HashSet<> ();
 		for (E edge : graph.getEdges ())
 		{
 			if (edge.getTailVertex ().equals (vertex))
-				setNeighbors.add (edge.getHeadVertex ());
+				setSuccessors.add (edge.getHeadVertex ());
 		}
 		
-		return setNeighbors;
+		return setSuccessors;
 	}
-
+	
+	public static <V extends IVertex, E extends IEdge<V>> Collection<V> getPredecessors (IGraph<V, E> graph, V vertex)
+	{
+		Set<V> setPredecessors = new HashSet<> ();
+		for (E edge : graph.getEdges ())
+		{
+			if (edge.getHeadVertex ().equals (vertex))
+				setPredecessors.add (edge.getTailVertex ());
+		}
+		
+		return setPredecessors;
+	}
+	
 	/**
 	 * Finds the neighboring vertices of the vertex <code>vertex</code> in the
 	 * undirected graph <code>graph</code>.
@@ -118,7 +155,7 @@ public class GraphUtil
 	 *            The vertex whose neighbors to find
 	 * @return An iterable over neighbors of <code>vertex</code>
 	 */
-	public static <V extends IVertex, E extends IEdge<V>> Iterable<V> getNeighborsUndirected (IGraph<V, E> graph, V vertex)
+	public static <V extends IVertex, E extends IEdge<V>> Collection<V> getNeighbors (IGraph<V, E> graph, V vertex)
 	{
 		Set<V> setNeighbors = new HashSet<> ();
 		for (E edge : graph.getEdges ())
@@ -146,7 +183,7 @@ public class GraphUtil
 	{
 		int nDegree = 0;
 		for (E edge : graph.getEdges ())
-			if ((mode.isInDegree () && edge.getTailVertex ().equals (vertex)) || (mode.isOutDegree () && edge.getHeadVertex ().equals (vertex)))
+			if ((mode.isInDegree () && edge.getHeadVertex ().equals (vertex)) || (mode.isOutDegree () && edge.getTailVertex ().equals (vertex)))
 				nDegree++;
 		return nDegree;
 	}
@@ -219,11 +256,7 @@ public class GraphUtil
 		IVertex[] rgVertices = new IVertex[graph.getVerticesCount ()];
 		
 		// find vertices with no outgoing edges
-		Set<V> setNoOutgoing = new HashSet<> ();
-		for (V vertex : graph.getVertices ())
-			setNoOutgoing.add (vertex);
-		for (E edge : graph.getEdges ())
-			setNoOutgoing.remove (edge.getHeadVertex ());
+		Iterable<V> setNoOutgoing = getLeafVertices (graph);
 		
 		// depth-first search
 		Map<V, Boolean> map = new HashMap<> ();
@@ -263,8 +296,8 @@ public class GraphUtil
 			
 			// visit recursively (each vertex v with an edge from v to vertex)
 			for (E edge : graph.getEdges ())
-				if (edge.getTailVertex ().equals (vertex))
-					GraphUtil.getTopologicalSortVisit (graph, edge.getHeadVertex (), mapVisited, rgList, nListIdx);
+				if (edge.getHeadVertex ().equals (vertex))
+					GraphUtil.getTopologicalSortVisit (graph, edge.getTailVertex (), mapVisited, rgList, nListIdx);
 
 			rgList[nListIdx.getValue ()] = vertex;
 			nListIdx.increment ();

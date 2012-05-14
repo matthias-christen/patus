@@ -1,6 +1,5 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze;
 
-import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 
@@ -13,7 +12,7 @@ public class DependenceAnalysis
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 	
-	private IArchitectureDescription m_arch;
+	//private IArchitectureDescription m_arch;
 
 	/**
 	 * The array of instructions to analyze

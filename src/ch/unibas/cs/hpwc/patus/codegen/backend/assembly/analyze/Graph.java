@@ -4,7 +4,7 @@ import ch.unibas.cs.hpwc.patus.graph.DefaultGraph;
 import ch.unibas.cs.hpwc.patus.graph.IEdge;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
 
-public abstract class Graph<V extends IVertex> extends DefaultGraph<V, Graph<V>.Edge>
+public abstract class Graph<V extends IVertex, E extends IEdge<V>> extends DefaultGraph<V, E>
 {
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
@@ -12,15 +12,15 @@ public abstract class Graph<V extends IVertex> extends DefaultGraph<V, Graph<V>.
 	/**
 	 * An edge in the analysis graph. 
 	 */
-	public class Edge implements IEdge<V>
+	public static class Edge<V extends IVertex> implements IEdge<V>
 	{
 		private V m_vertex1;
 		private V m_vertex2;
 		
-		public Edge (V v1, V v2)
+		public Edge (Graph<V, ? extends Edge<V>> graph, V v1, V v2)
 		{
-			m_vertex1 = findVertex (v1);
-			m_vertex2 = findVertex (v2);
+			m_vertex1 = graph.findVertex (v1);
+			m_vertex2 = graph.findVertex (v2);
 		}
 		
 		@Override
@@ -56,7 +56,7 @@ public abstract class Graph<V extends IVertex> extends DefaultGraph<V, Graph<V>.
 				return false;
 			
 			@SuppressWarnings("unchecked")
-			Edge other = (Edge) obj;
+			Edge<V> other = (Edge<V>) obj;
 			if (m_vertex1 == null)
 			{
 				if (other.m_vertex1 != null)
@@ -101,5 +101,5 @@ public abstract class Graph<V extends IVertex> extends DefaultGraph<V, Graph<V>.
 		addEdge (createEdge (v1, v2));
 	}
 	
-	protected abstract Edge createEdge (V v1, V v2);	
+	protected abstract E createEdge (V v1, V v2);	
 }

@@ -8,7 +8,7 @@ package ch.unibas.cs.hpwc.patus.graph;
  * @param <V> The vertex type
  * @param <E> The edge type
  */
-public interface IGraph<V extends IVertex, E extends IEdge<V>>
+public interface IGraph<V, E>
 {
 	/**
 	 * Adds a new vertex to the graph.

@@ -9,7 +9,7 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.graph.IParametrizedEdge;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
 
-public class DAGraph extends Graph<DAGraph.Vertex>
+public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 {
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
@@ -21,6 +21,10 @@ public class DAGraph extends Graph<DAGraph.Vertex>
 	{
 		private IInstruction m_instruction;
 		
+		private int m_nLowerScheduleBound;
+		private int m_nUpperScheduleBound;
+		
+		
 		public Vertex (IInstruction instr)
 		{
 			m_instruction = instr;
@@ -29,6 +33,22 @@ public class DAGraph extends Graph<DAGraph.Vertex>
 		public IInstruction getInstruction ()
 		{
 			return m_instruction;
+		}
+		
+		public void setScheduleBounds (int nLowerBound, int nUpperBound)
+		{
+			m_nLowerScheduleBound = nLowerBound;
+			m_nUpperScheduleBound = nUpperBound;
+		}
+		
+		public int getLowerScheduleBound ()
+		{
+			return m_nLowerScheduleBound;
+		}
+		
+		public int getUpperScheduleBound ()
+		{
+			return m_nUpperScheduleBound;
 		}
 
 		@Override
@@ -56,29 +76,15 @@ public class DAGraph extends Graph<DAGraph.Vertex>
 		}
 	}
 	
-	@SuppressWarnings("rawtypes")
-	public class Edge extends Graph.Edge implements IParametrizedEdge<DAGraph.Vertex, Integer>
+	public class Edge extends Graph.Edge<DAGraph.Vertex> implements IParametrizedEdge<DAGraph.Vertex, Integer>
 	{
 		private int m_nLatency;
 		
-		@SuppressWarnings("unchecked")
 		public Edge (DAGraph.Vertex v1, DAGraph.Vertex v2)
 		{
-			super (v1, v2);
+			super (DAGraph.this, v1, v2);
 		}
-		
-		@Override
-		public DAGraph.Vertex getHeadVertex ()
-		{
-			return (DAGraph.Vertex) super.getHeadVertex ();
-		}
-		
-		@Override
-		public DAGraph.Vertex getTailVertex ()
-		{
-			return (DAGraph.Vertex) super.getTailVertex ();
-		}
-		
+				
 		public void setLatency (int nLatency)
 		{
 			m_nLatency = nLatency;
@@ -117,9 +123,8 @@ public class DAGraph extends Graph<DAGraph.Vertex>
 		m_mapOutgoingEdges = new HashMap<> ();
 	}
 
-	@SuppressWarnings("rawtypes")
 	@Override
-	protected Graph.Edge createEdge (DAGraph.Vertex vertexHead, DAGraph.Vertex vertexTail)
+	protected DAGraph.Edge createEdge (DAGraph.Vertex vertexHead, DAGraph.Vertex vertexTail)
 	{
 		DAGraph.Edge edge = new DAGraph.Edge (vertexHead, vertexTail);
 		

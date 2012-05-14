@@ -7,7 +7,7 @@ import ch.unibas.cs.hpwc.patus.graph.IParametrizedVertex;
  * The graph resulting from the live analysis.
  * @author Matthias-M. Christen
  */
-public class LAGraph extends Graph<LAGraph.Vertex>
+public class LAGraph extends Graph<LAGraph.Vertex, Graph.Edge<LAGraph.Vertex>>
 {
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
@@ -86,8 +86,8 @@ public class LAGraph extends Graph<LAGraph.Vertex>
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
-	protected Graph<LAGraph.Vertex>.Edge createEdge (LAGraph.Vertex v1, LAGraph.Vertex v2)
+	protected Graph.Edge createEdge (LAGraph.Vertex v1, LAGraph.Vertex v2)
 	{
-		return new Graph.Edge (v1, v2);
+		return new Graph.Edge (this, v1, v2);
 	}
 }

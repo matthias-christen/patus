@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
+import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
 import ch.unibas.cs.hpwc.patus.graph.algorithm.CriticalPathLengthCalculator;
@@ -30,6 +31,7 @@ public class InstructionScheduler
 		@Override
 		public void issue (StringBuilder sbResult)
 		{
+			// empty instruction: nothing to do
 		}		
 	}
 
@@ -42,6 +44,8 @@ public class InstructionScheduler
 	 */
 	private DAGraph m_graph;
 	
+	private IArchitectureDescription m_arch;
+	
 	private int m_nIssueRate;
 	
 	private int m_nLowerScheduleLengthBound;
@@ -52,12 +56,12 @@ public class InstructionScheduler
 	// Implementation
 
 	
-	public InstructionScheduler (DAGraph graph)
+	public InstructionScheduler (DAGraph graph, IArchitectureDescription arch)
 	{
 		m_graph = graph;
+		m_arch = arch;
 		
-		// TODO: issue rate from arch spec
-		m_nIssueRate = 1;
+		m_nIssueRate = m_arch.getIssueRate ();
 
 		m_nLowerScheduleLengthBound = 0;
 		m_nUpperScheduleLengthBound = 0;
@@ -68,21 +72,17 @@ public class InstructionScheduler
 		InstructionList il = new InstructionList ();
 		
 		computeScheduleLengthBounds ();
-		createStandardForm ();
-		for (DAGraph subgraph : partitionGraph (m_graph))
+		if (m_nLowerScheduleLengthBound == m_nUpperScheduleLengthBound)
 		{
-			// simplify the subgraph before solving the linear program
-			CriticalPathLengthCalculator<DAGraph.Vertex, DAGraph.Edge, Integer> cpcalc = new CriticalPathLengthCalculator<> (subgraph, Integer.class);
-			removeRedundantEdges (subgraph, cpcalc);
-			linearizeRegions (subgraph);
-
-			computeInitialScheduleBounds (subgraph, cpcalc);
-			for (int nCurrentScheduleLength = m_nUpperScheduleLengthBound; nCurrentScheduleLength >= m_nLowerScheduleLengthBound; nCurrentScheduleLength--)
-			{
-				if (!solveILP (subgraph))
-					break;
-				reduceCurrentScheduleLength (subgraph);
-			}
+			// the schedule is already optimal; no further actions necessary
+			return il;//buildInstructionList ();
+		}
+		
+		createStandardForm ();
+		for (DAGraph subgraph : partitionGraph ())
+		{
+			InstructionRegionScheduler sched = new InstructionRegionScheduler (subgraph, m_arch);
+			sched.schedule ();
 		}
 		
 		return il;
@@ -137,11 +137,10 @@ public class InstructionScheduler
 		}
 	}
 	
-	@SuppressWarnings("static-method")
-	protected List<DAGraph> partitionGraph (DAGraph graph)
+	protected List<DAGraph> partitionGraph ()
 	{
 		List<DAGraph> listGraphs = new LinkedList<> ();
-		IVertex[] rgVerticesInTopologicalOrder = GraphUtil.getTopologicalSort (graph);
+		IVertex[] rgVerticesInTopologicalOrder = GraphUtil.getTopologicalSort (m_graph);
 				
 		// determine partition nodes and build subgraphs
 		int nVertLatestIdx = 0;
@@ -161,11 +160,12 @@ public class InstructionScheduler
 				graphCurrent.addVertex (v);
 			}
 			
-			for (DAGraph.Vertex w : GraphUtil.getSuccessors (graph, v))
+			//for (DAGraph.Vertex w : GraphUtil.getSuccessors (m_graph, v))
+			for (DAGraph.Edge edge : m_graph.getOutgoingEdges (v))
 			{
 				// check whether w is later in the topological order than "latest"
 				for (int j = i; j < rgVerticesInTopologicalOrder.length; j++)
-					if (rgVerticesInTopologicalOrder[j] == w && j > nVertLatestIdx)
+					if (rgVerticesInTopologicalOrder[j] == /*w*/ edge.getHeadVertex () && j > nVertLatestIdx)
 						nVertLatestIdx = j;
 			}
 		}
@@ -173,86 +173,10 @@ public class InstructionScheduler
 		// add edges to the subgraphs
 		for (DAGraph subgraph : listGraphs)
 			for (DAGraph.Vertex v : subgraph.getVertices ())
-				for (DAGraph.Vertex w : GraphUtil.getSuccessors (graph, v))
-					subgraph.addEdge (v, w);
+				//for (DAGraph.Vertex w : GraphUtil.getSuccessors (m_graph, v))
+				for (DAGraph.Edge edge : m_graph.getOutgoingEdges (v))
+					subgraph.addEdge (v, /*w*/ edge.getHeadVertex ());
 		
 		return listGraphs;
-	}
-		
-	@SuppressWarnings("static-method")
-	protected void removeRedundantEdges (DAGraph graph, CriticalPathLengthCalculator<DAGraph.Vertex, DAGraph.Edge, Integer> cpcalc)
-	{
-		IVertex[] rgVerticesInTopologicalOrder = GraphUtil.getTopologicalSort (graph);
-		
-		for (int i = 0; i < rgVerticesInTopologicalOrder.length; i++)
-		{
-			Iterable<DAGraph.Vertex> itNeighbors = GraphUtil.getSuccessors (graph, (DAGraph.Vertex) rgVerticesInTopologicalOrder[i]);
-			for (DAGraph.Vertex v : itNeighbors)
-			{
-				for (DAGraph.Vertex w : itNeighbors)
-				{
-					if (v != w)
-					{
-						DAGraph.Edge edgeIV = graph.getEdge ((DAGraph.Vertex) rgVerticesInTopologicalOrder[i], v);
-						DAGraph.Edge edgeIW = graph.getEdge ((DAGraph.Vertex) rgVerticesInTopologicalOrder[i], w);
-						if (edgeIW.getLatency () + cpcalc.getCriticalPathDistance (w, v) >= edgeIV.getLatency ())
-							graph.removeEdge (edgeIV);
-					}
-				}
-			}
-		}
-	}
-
-	protected void linearizeRegions (DAGraph graph)
-	{
-		// TODO
-	}
-
-	protected void computeInitialScheduleBounds (DAGraph graph, CriticalPathLengthCalculator<DAGraph.Vertex, DAGraph.Edge, Integer> cpcalc)
-	{
-		Iterable<DAGraph.Vertex> itRoots = GraphUtil.getRootVertices (graph);
-		Iterable<DAGraph.Vertex> itLeaves = GraphUtil.getLeafVertices (graph);
-		
-		for (DAGraph.Vertex v : graph.getVertices ())
-		{
-			int nCritPathDistFromRoots = 0;
-			for (DAGraph.Vertex vertRoot : itRoots)
-				nCritPathDistFromRoots = Math.max (nCritPathDistFromRoots, cpcalc.getCriticalPathDistance (vertRoot, v));
-			
-			int nCritPathDistToLeaves = 0;
-			for (DAGraph.Vertex vertLeaf : itLeaves)
-				nCritPathDistToLeaves = Math.max (nCritPathDistToLeaves, cpcalc.getCriticalPathDistance (v, vertLeaf));
-			
-			int nPredecessorsCount = GraphUtil.getPredecessors (graph, v).size ();
-			int nSuccessorsCount = GraphUtil.getSuccessors (graph, v).size ();
-			
-			v.setScheduleBounds (
-				1 + Math.max (nCritPathDistFromRoots, MathUtil.divCeil (1 + nPredecessorsCount, m_nIssueRate) - 1),
-				m_nUpperScheduleLengthBound - Math.max (nCritPathDistToLeaves, MathUtil.divCeil (1 + nSuccessorsCount, m_nIssueRate) - 1)
-			);
-		}
-	}
-	
-	@SuppressWarnings("static-method")
-	protected void reduceCurrentScheduleLength (DAGraph graph)
-	{
-		for (DAGraph.Vertex v : graph.getVertices ())
-			v.setScheduleBounds (v.getLowerScheduleBound (), v.getUpperScheduleBound () - 1);
-	}
-
-	/**
-	 * Builds the ILP formulation from the graph and tries to solve the ILP.
-	 * 
-	 * @param graph
-	 *            The (simplified) dependence analysis graph for which to build
-	 *            the ILP
-	 * @return <code>true</code> if the solver was able to solve the ILP,
-	 *         <code>false</code> if no solution was found or the problem is
-	 *         infeasible
-	 */
-	@SuppressWarnings("static-method")
-	protected boolean solveILP (DAGraph graph)
-	{
-		return false;
-	}
+	}		
 }

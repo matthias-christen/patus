@@ -278,4 +278,13 @@ public interface IArchitectureDescription
 	 *         operands
 	 */
 	public abstract boolean hasNonDestructiveOperations ();
+	
+	/**
+	 * Returns the number of instructions the processor can issue simultaneously
+	 * in one clock cycle.
+	 * 
+	 * @return The number of instructions the processor can issue per clock
+	 *         cycle
+	 */
+	public abstract int getIssueRate ();
 }

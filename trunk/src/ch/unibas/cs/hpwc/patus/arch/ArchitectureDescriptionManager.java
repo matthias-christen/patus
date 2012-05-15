@@ -411,6 +411,13 @@ public class ArchitectureDescriptionManager
 		}
 		
 		@Override
+		public int getIssueRate ()
+		{
+			// TODO Auto-generated method stub
+			return 1;
+		}
+		
+		@Override
 		public List<String> getIncludeFiles ()
 		{
 			List<String> listIncludes = new ArrayList<> ();

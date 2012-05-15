@@ -244,6 +244,13 @@ public class InstructionListTranslatorTest
 			// TODO Auto-generated method stub
 			return false;
 		}
+		
+		@Override
+		public int getIssueRate ()
+		{
+			// TODO Auto-generated method stub
+			return 0;
+		}
 	}
 	
 

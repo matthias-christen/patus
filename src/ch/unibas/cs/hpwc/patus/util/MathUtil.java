@@ -145,4 +145,20 @@ public class MathUtil
 	{
 		return (nNumerator + nDenominator - 1) / nDenominator;
 	}
+	
+	public static int max (int... a)
+	{
+		int nMax = Integer.MIN_VALUE;
+		for (int n : a)
+			nMax = (nMax < n) ? n : nMax;
+		return nMax;
+	}
+	
+	public static int min (int... a)
+	{
+		int nMin = Integer.MAX_VALUE;
+		for (int n : a)
+			nMin = (nMin > n) ? n : nMin;
+		return nMin;		
+	}
 }

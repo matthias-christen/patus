@@ -8,22 +8,13 @@ import java.util.Set;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
-import ch.unibas.cs.hpwc.patus.graph.algorithm.CriticalPathLengthCalculator;
 import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphUtil;
 import ch.unibas.cs.hpwc.patus.util.MathUtil;
 
-public class InstructionRegionScheduler
+public class InstructionRegionScheduler extends AbstractInstructionScheduler
 {
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
-	
-	private DAGraph m_graph;
-	private CriticalPathLengthCalculator<DAGraph.Vertex, DAGraph.Edge, Integer> m_cpcalc;
-	
-	private int m_nIssueRate;
-	
-	private int m_nLowerScheduleLengthBound;
-	private int m_nUpperScheduleLengthBound;
 	
 	
 	///////////////////////////////////////////////////////////////////
@@ -31,20 +22,18 @@ public class InstructionRegionScheduler
 
 	public InstructionRegionScheduler (DAGraph graph, IArchitectureDescription arch)
 	{
-		m_graph = graph;
-		m_cpcalc = new CriticalPathLengthCalculator<> (m_graph, Integer.class);
-		
-		m_nIssueRate = arch.getIssueRate ();
+		super (graph, arch);
 	}
 	
-	public void schedule ()
+	@Override
+	protected int doSchedule (InstructionList ilOut)
 	{
 		// simplify the subgraph before solving the linear program
 		removeRedundantEdges ();
 		linearizeRegions ();
 
 		computeInitialScheduleBounds ();
-		for (int nCurrentScheduleLength = m_nUpperScheduleLengthBound; nCurrentScheduleLength >= m_nLowerScheduleLengthBound; nCurrentScheduleLength--)
+		for (int nCurrentScheduleLength = getUpperScheduleLengthBound () - 1; nCurrentScheduleLength >= getLowerScheduleLengthBound (); nCurrentScheduleLength--)
 		{
 			if (!tightenScheduleBoundsIteratively ())
 				break;
@@ -58,6 +47,54 @@ public class InstructionRegionScheduler
 			
 			reduceCurrentScheduleLength ();
 		}
+		
+		return 0;
+	}
+
+	/**
+	 * Compute the lower and upper scheduling bounds for each vertex in the graph based on the critical path analysis.
+	 */
+	protected void computeInitialScheduleBounds ()
+	{
+		DAGraph graph = getGraph ();
+		Iterable<DAGraph.Vertex> itRoots = GraphUtil.getRootVertices (graph);
+		Iterable<DAGraph.Vertex> itLeaves = GraphUtil.getLeafVertices (graph);
+		
+		for (DAGraph.Vertex v : graph.getVertices ())
+		{
+			// get the critical path distance from the roots to v
+			int nCritPathDistFromRoots = 0;
+			for (DAGraph.Vertex vertRoot : itRoots)
+				nCritPathDistFromRoots = MathUtil.max (nCritPathDistFromRoots, getCriticalPathLengthCalculator ().getCriticalPathDistance (vertRoot, v));
+			
+			// get the critical path distance from v to the leaves
+			int nCritPathDistToLeaves = 0;
+			for (DAGraph.Vertex vertLeaf : itLeaves)
+				nCritPathDistToLeaves = MathUtil.max (nCritPathDistToLeaves, getCriticalPathLengthCalculator ().getCriticalPathDistance (v, vertLeaf));
+			
+			// count predecessors and successors and get the minimum latencies from/to the predecessors/successors
+			int nPredecessorsCount = graph.getIncomingEdges (v).size ();
+			int nSuccessorsCount = graph.getOutgoingEdges (v).size ();
+			
+			int nPredMinLatency = Integer.MAX_VALUE;
+			for (DAGraph.Edge edge : graph.getIncomingEdges (v))
+				nPredMinLatency = nPredMinLatency > edge.getLatency () ? edge.getLatency () : nPredMinLatency;
+			
+			int nSuccMinLatency = Integer.MAX_VALUE;
+			for (DAGraph.Edge edge : graph.getOutgoingEdges (v))
+				nSuccMinLatency = nSuccMinLatency > edge.getLatency () ? edge.getLatency () : nSuccMinLatency;
+						
+			v.setInitialScheduleBounds (
+				1 + MathUtil.max (
+					nCritPathDistFromRoots,
+					MathUtil.divCeil (1 + nPredecessorsCount, getIssueRate ()) - 1,
+					nPredecessorsCount / getIssueRate () + nPredMinLatency),
+				getUpperScheduleLengthBound () - MathUtil.max (
+					nCritPathDistToLeaves,
+					MathUtil.divCeil (1 + nSuccessorsCount, getIssueRate ()) - 1,
+					nSuccessorsCount / getIssueRate () + nSuccMinLatency)
+			);
+		}
 	}
 
 	/**
@@ -65,14 +102,15 @@ public class InstructionRegionScheduler
 	 */
 	protected void removeRedundantEdges ()
 	{
-		IVertex[] rgVerticesInTopologicalOrder = GraphUtil.getTopologicalSort (m_graph);
+		DAGraph graph = getGraph ();
+		IVertex[] rgVerticesInTopologicalOrder = GraphUtil.getTopologicalSort (graph);
 		
 		for (int i = 0; i < rgVerticesInTopologicalOrder.length; i++)
-			for (DAGraph.Edge edgeIV : m_graph.getOutgoingEdges ((DAGraph.Vertex) rgVerticesInTopologicalOrder[i]))
-				for (DAGraph.Edge edgeIW : m_graph.getOutgoingEdges ((DAGraph.Vertex) rgVerticesInTopologicalOrder[i]))
+			for (DAGraph.Edge edgeIV : graph.getOutgoingEdges ((DAGraph.Vertex) rgVerticesInTopologicalOrder[i]))
+				for (DAGraph.Edge edgeIW : graph.getOutgoingEdges ((DAGraph.Vertex) rgVerticesInTopologicalOrder[i]))
 					if (edgeIV != edgeIW)
-						if (edgeIW.getLatency () + m_cpcalc.getCriticalPathDistance (edgeIW.getHeadVertex (), edgeIV.getHeadVertex ()) >= edgeIV.getLatency ())
-							m_graph.removeEdge (edgeIV);
+						if (edgeIW.getLatency () + getCriticalPathLengthCalculator ().getCriticalPathDistance (edgeIW.getHeadVertex (), edgeIV.getHeadVertex ()) >= edgeIV.getLatency ())
+							graph.removeEdge (edgeIV);
 	}
 
 	/**
@@ -81,51 +119,6 @@ public class InstructionRegionScheduler
 	protected void linearizeRegions ()
 	{
 		// TODO
-	}
-
-	/**
-	 * 
-	 */
-	protected void computeInitialScheduleBounds ()
-	{
-		Iterable<DAGraph.Vertex> itRoots = GraphUtil.getRootVertices (m_graph);
-		Iterable<DAGraph.Vertex> itLeaves = GraphUtil.getLeafVertices (m_graph);
-		
-		for (DAGraph.Vertex v : m_graph.getVertices ())
-		{
-			// get the critical path distance from the roots to v
-			int nCritPathDistFromRoots = 0;
-			for (DAGraph.Vertex vertRoot : itRoots)
-				nCritPathDistFromRoots = MathUtil.max (nCritPathDistFromRoots, m_cpcalc.getCriticalPathDistance (vertRoot, v));
-			
-			// get the critical path distance from v to the leaves
-			int nCritPathDistToLeaves = 0;
-			for (DAGraph.Vertex vertLeaf : itLeaves)
-				nCritPathDistToLeaves = MathUtil.max (nCritPathDistToLeaves, m_cpcalc.getCriticalPathDistance (v, vertLeaf));
-			
-			// count predecessors and successors and get the minimum latencies from/to the predecessors/successors
-			int nPredecessorsCount = m_graph.getIncomingEdges (v).size ();
-			int nSuccessorsCount = m_graph.getOutgoingEdges (v).size ();
-			
-			int nPredMinLatency = Integer.MAX_VALUE;
-			for (DAGraph.Edge edge : m_graph.getIncomingEdges (v))
-				nPredMinLatency = nPredMinLatency > edge.getLatency () ? edge.getLatency () : nPredMinLatency;
-			
-			int nSuccMinLatency = Integer.MAX_VALUE;
-			for (DAGraph.Edge edge : m_graph.getOutgoingEdges (v))
-				nSuccMinLatency = nSuccMinLatency > edge.getLatency () ? edge.getLatency () : nSuccMinLatency;
-						
-			v.setInitialScheduleBounds (
-				1 + MathUtil.max (
-					nCritPathDistFromRoots,
-					MathUtil.divCeil (1 + nPredecessorsCount, m_nIssueRate) - 1,
-					nPredecessorsCount / m_nIssueRate + nPredMinLatency),
-				m_nUpperScheduleLengthBound - MathUtil.max (
-					nCritPathDistToLeaves,
-					MathUtil.divCeil (1 + nSuccessorsCount, m_nIssueRate) - 1,
-					nSuccessorsCount / m_nIssueRate + nSuccMinLatency)
-			);
-		}
 	}
 	
 	/**
@@ -137,6 +130,7 @@ public class InstructionRegionScheduler
 	 */
 	protected boolean tightenScheduleBoundsIteratively ()
 	{
+		DAGraph graph = getGraph ();
 		Map<Integer, Integer> mapScheduleAt = new HashMap<> ();
 	
 		boolean bTighteningApplied = false;
@@ -146,7 +140,7 @@ public class InstructionRegionScheduler
 			mapScheduleAt.clear ();
 		
 			// count the number of instructions which have to be scheduled at a specific cycle
-			for (DAGraph.Vertex v : m_graph.getVertices ())
+			for (DAGraph.Vertex v : graph.getVertices ())
 			{
 				if (v.getLowerScheduleBound () > v.getUpperScheduleBound ())
 				{
@@ -166,19 +160,19 @@ public class InstructionRegionScheduler
 			{
 				int nInstructionsCount = mapScheduleAt.get (nCycleNum);
 				
-				if (nInstructionsCount > m_nIssueRate)
+				if (nInstructionsCount > getIssueRate ())
 				{
 					// not all of the required instructions can be scheduled in this cycle:
 					// infeasible scheduling
 					return false;
 				}
 				
-				if (nInstructionsCount == m_nIssueRate)
+				if (nInstructionsCount == getIssueRate ())
 				{
 					// no more instructions can be scheduled in this cycle:
 					// adjust the bounds if of non-single schedule range vertices
 					
-					for (DAGraph.Vertex v : m_graph.getVertices ())
+					for (DAGraph.Vertex v : graph.getVertices ())
 					{
 						if (v.getLowerScheduleBound () != v.getUpperScheduleBound ())
 						{
@@ -213,15 +207,16 @@ public class InstructionRegionScheduler
 	 */
 	protected boolean adjustBounds (DAGraph.Vertex v)
 	{
+		DAGraph graph = getGraph ();
 		Set<DAGraph.Vertex> setTightened = new HashSet<> ();
 		
 		// tighten predecessors
-		for (DAGraph.Edge edge : m_graph.getIncomingEdges (v))
+		for (DAGraph.Edge edge : graph.getIncomingEdges (v))
 		{
 			DAGraph.Vertex vPred = edge.getTailVertex ();
 			
 			int nMinUpperBnd = vPred.getUpperScheduleBound ();
-			for (DAGraph.Edge edgeSucc : m_graph.getOutgoingEdges (vPred))
+			for (DAGraph.Edge edgeSucc : graph.getOutgoingEdges (vPred))
 				nMinUpperBnd = Math.min (nMinUpperBnd, edgeSucc.getHeadVertex ().getUpperScheduleBound () - edgeSucc.getLatency ());
 			
 			if (nMinUpperBnd != vPred.getUpperScheduleBound ())
@@ -236,12 +231,12 @@ public class InstructionRegionScheduler
 		}
 		
 		// tighten successors
-		for (DAGraph.Edge edge : m_graph.getOutgoingEdges (v))
+		for (DAGraph.Edge edge : graph.getOutgoingEdges (v))
 		{
 			DAGraph.Vertex vSucc = edge.getHeadVertex ();
 			
 			int nMaxLowerBnd = vSucc.getLowerScheduleBound ();
-			for (DAGraph.Edge edgePred : m_graph.getIncomingEdges (vSucc))
+			for (DAGraph.Edge edgePred : graph.getIncomingEdges (vSucc))
 				nMaxLowerBnd = Math.max (nMaxLowerBnd, edgePred.getTailVertex ().getLowerScheduleBound () + edgePred.getLatency ());
 			
 			if (nMaxLowerBnd != vSucc.getLowerScheduleBound ())
@@ -269,31 +264,58 @@ public class InstructionRegionScheduler
 	 */
 	protected boolean probeInstructions ()
 	{
-		for (DAGraph.Vertex v : m_graph.getVertices ())
+		boolean bBoundsModified = false;
+		boolean bNewBoundsCommitted = false;
+		
+		do
 		{
-			// temporarily fix the upper bound to the lower bound and check whether the problem becomes infeasible
-			int nPrevLower = v.getLowerScheduleBound ();
-			int nPrevUpper = v.getUpperScheduleBound ();
+			bBoundsModified = false;
 			
-			v.setScheduleBounds (nPrevLower, nPrevLower);
-			if (!tightenScheduleBoundsIteratively ())
+			for (DAGraph.Vertex v : getGraph ().getVertices ())
 			{
-				v.setScheduleBounds (nPrevLower + 1, nPrevUpper);
-				if (!tightenScheduleBoundsIteratively ())
-					return false;
-				commitBounds ();
+				// temporarily fix the upper bound to the lower bound and check whether the problem becomes infeasible
+				int nPrevLower = 0;
+				int nPrevUpper = v.getUpperScheduleBound ();
+	
+				do
+				{
+					bNewBoundsCommitted = false;
+					nPrevLower = v.getLowerScheduleBound ();			
+					v.setScheduleBounds (nPrevLower, nPrevLower);
+					
+					if (!tightenScheduleBoundsIteratively ())
+					{
+						discardBounds ();
+						v.setScheduleBounds (nPrevLower + 1, nPrevUpper);
+						if (!tightenScheduleBoundsIteratively ())
+							return false;
+						commitBounds ();
+						bNewBoundsCommitted = true;
+						bBoundsModified = true;
+					}
+				} while (bNewBoundsCommitted);
+				
+				// fix the lower bound to the upper bound to tighten the upper bounds
+				nPrevLower = v.getLowerScheduleBound ();
+				do
+				{
+					bNewBoundsCommitted = false;
+					nPrevUpper = v.getUpperScheduleBound ();
+					v.setScheduleBounds (nPrevUpper, nPrevUpper);
+					
+					if (!tightenScheduleBoundsIteratively ())
+					{
+						discardBounds ();
+						v.setScheduleBounds (nPrevLower, nPrevUpper - 1);
+						if (!tightenScheduleBoundsIteratively ())
+							return false;
+						commitBounds ();
+						bNewBoundsCommitted = true;
+						bBoundsModified = true;
+					}
+				} while (bNewBoundsCommitted);
 			}
-			
-			nPrevLower = v.getLowerScheduleBound ();
-			v.setScheduleBounds (nPrevUpper, nPrevUpper);
-			if (!tightenScheduleBoundsIteratively ())
-			{
-				v.setScheduleBounds (nPrevLower, nPrevUpper - 1);
-				if (!tightenScheduleBoundsIteratively ())
-					return false;
-				commitBounds ();
-			}
-		}
+		} while (bBoundsModified);
 		
 		return true;
 	}
@@ -303,19 +325,19 @@ public class InstructionRegionScheduler
 	 */
 	protected void reduceCurrentScheduleLength ()
 	{
-		for (DAGraph.Vertex v : m_graph.getVertices ())
+		for (DAGraph.Vertex v : getGraph ().getVertices ())
 			v.setInitialScheduleBounds (v.getInitialLowerScheduleBound (), v.getInitialUpperScheduleBound () - 1);
 	}
 	
 	protected void commitBounds ()
 	{
-		for (DAGraph.Vertex v : m_graph.getVertices ())
+		for (DAGraph.Vertex v : getGraph ().getVertices ())
 			v.commitBounds ();
 	}
 	
 	protected void discardBounds ()
 	{
-		for (DAGraph.Vertex v : m_graph.getVertices ())
+		for (DAGraph.Vertex v : getGraph ().getVertices ())
 			v.discardBounds ();
 	}
 

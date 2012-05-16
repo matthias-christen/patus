@@ -3,6 +3,8 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 import java.util.HashMap;
 import java.util.Map;
 
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
+
 public class Label implements IInstruction
 {
 	///////////////////////////////////////////////////////////////////
@@ -90,5 +92,11 @@ public class Label implements IInstruction
 		StringBuilder sb = new StringBuilder ();
 		issue (sb);
 		return sb.toString ();
+	}
+	
+	@Override
+	public String toJavaCode (Map<IOperand, String> mapOperands)
+	{
+		return StringUtil.concat ("Label.getLabel (\"lbl", m_nLabelIdx, "\");");
 	}
 }

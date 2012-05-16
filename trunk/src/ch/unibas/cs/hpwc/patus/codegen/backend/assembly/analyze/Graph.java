@@ -14,33 +14,33 @@ public abstract class Graph<V extends IVertex, E extends IEdge<V>> extends Defau
 	 */
 	public static class Edge<V extends IVertex> implements IEdge<V>
 	{
-		private V m_vertex1;
-		private V m_vertex2;
+		private V m_vertexTail;
+		private V m_vertexHead;
 		
-		public Edge (Graph<V, ? extends Edge<V>> graph, V v1, V v2)
+		public Edge (Graph<V, ? extends Edge<V>> graph, V vertexTail, V vertexHead)
 		{
-			m_vertex1 = graph.findVertex (v1);
-			m_vertex2 = graph.findVertex (v2);
+			m_vertexTail = graph.findVertex (vertexTail);
+			m_vertexHead = graph.findVertex (vertexHead);
 		}
 		
 		@Override
 		public V getHeadVertex ()
 		{
-			return m_vertex1;
+			return m_vertexHead;
 		}
 		
 		@Override
 		public V getTailVertex ()
 		{
-			return m_vertex2;
+			return m_vertexTail;
 		}
 
 		@Override
 		public int hashCode ()
 		{
 			final int nPrime = 31;
-			int nResult = nPrime + ((m_vertex1 == null) ? 0 : m_vertex1.hashCode ());
-			nResult = nPrime * nResult + ((m_vertex2 == null) ? 0 : m_vertex2.hashCode ());
+			int nResult = nPrime + ((m_vertexHead == null) ? 0 : m_vertexHead.hashCode ());
+			nResult = nPrime * nResult + ((m_vertexTail == null) ? 0 : m_vertexTail.hashCode ());
 			return nResult;
 		}
 
@@ -57,19 +57,19 @@ public abstract class Graph<V extends IVertex, E extends IEdge<V>> extends Defau
 			
 			@SuppressWarnings("unchecked")
 			Edge<V> other = (Edge<V>) obj;
-			if (m_vertex1 == null)
+			if (m_vertexTail == null)
 			{
-				if (other.m_vertex1 != null)
+				if (other.m_vertexTail != null)
 					return false;
 			}
-			else if (!m_vertex1.equals (other.m_vertex1))
+			else if (!m_vertexTail.equals (other.m_vertexTail))
 				return false;
-			if (m_vertex2 == null)
+			if (m_vertexHead == null)
 			{
-				if (other.m_vertex2 != null)
+				if (other.m_vertexHead != null)
 					return false;
 			}
-			else if (!m_vertex2.equals (other.m_vertex2))
+			else if (!m_vertexHead.equals (other.m_vertexHead))
 				return false;
 			
 			return true;
@@ -79,9 +79,9 @@ public abstract class Graph<V extends IVertex, E extends IEdge<V>> extends Defau
 		public String toString ()
 		{
 			StringBuilder sb = new StringBuilder ("Edge: ");
-			sb.append (m_vertex1.toString ());
+			sb.append (m_vertexTail.toString ());
 			sb.append (" --> ");
-			sb.append (m_vertex2.toString ());
+			sb.append (m_vertexHead.toString ());
 
 			return sb.toString ();
 		}
@@ -96,10 +96,10 @@ public abstract class Graph<V extends IVertex, E extends IEdge<V>> extends Defau
 		super ();
 	}
 		
-	public void addEdge (V v1, V v2)
+	public void addEdge (V vertexTail, V vertexHead)
 	{
-		addEdge (createEdge (v1, v2));
+		addEdge (createEdge (vertexTail, vertexHead));
 	}
 	
-	protected abstract E createEdge (V v1, V v2);	
+	protected abstract E createEdge (V vertexTail, V vertexHead);	
 }

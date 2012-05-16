@@ -1,6 +1,7 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -395,6 +396,20 @@ public class InstructionList implements Iterable<IInstruction>
 		{
 			sb.append (i.toString ());
 			sb.append ("\n");
+		}
+		
+		return sb.toString ();
+	}
+	
+	public String toJavaCode ()
+	{
+		Map<IOperand, String> mapOperands = new HashMap<> ();
+		StringBuilder sb = new StringBuilder ();
+		
+		for (IInstruction i : this)
+		{
+			sb.append (i.toJavaCode (mapOperands));
+			sb.append ('\n');
 		}
 		
 		return sb.toString ();

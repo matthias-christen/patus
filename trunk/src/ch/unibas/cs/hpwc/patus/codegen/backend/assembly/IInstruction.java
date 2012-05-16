@@ -1,5 +1,7 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import java.util.Map;
+
 
 /**
  * 
@@ -15,4 +17,10 @@ public interface IInstruction
 	 *            The string builder to which the result is added
 	 */
 	public abstract void issue (StringBuilder sbResult);
+	
+	/**
+	 * Returns the Java code to create this instruction.
+	 * @return
+	 */
+	public abstract String toJavaCode (Map<IOperand, String> mapOperands);
 }

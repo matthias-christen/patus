@@ -1,8 +1,10 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.Arrays;
+import java.util.Map;
 
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  * This class encapsulates a single inline assembly instruction (mnemonic + operands).
@@ -100,5 +102,48 @@ public class Instruction implements IInstruction
 			return false;
 		
 		return true;
+	}
+	
+	@Override
+	public String toJavaCode (Map<IOperand, String> mapOperands)
+	{
+		StringBuilder sb = new StringBuilder ();
+		StringBuilder sbInstr = new StringBuilder ("il.addInstruction (new Instruction (\"");
+		sbInstr.append (m_strIntrinsicBaseName);
+		sbInstr.append ('"');
+		
+		for (IOperand op : m_rgOperands)
+		{
+			String strOp = mapOperands.get (op);
+			if (strOp == null)
+			{
+				strOp = op.toJavaCode ();
+				String[] strParts = strOp.split (" ");
+				
+				if (strParts[0].equals ("new"))
+				{
+					String strOperand = StringUtil.concat ("op", mapOperands.size ());
+					
+					sb.append (strParts[1]);
+					sb.append (' ');
+					sb.append (strOperand);
+					sb.append (" = ");
+					sb.append (strOp);
+					sb.append (";\n");
+					
+					strOp = strOperand;
+				}
+				
+				mapOperands.put (op, strOp);
+			}
+			
+			sbInstr.append (", ");
+			sbInstr.append (strOp);
+		}
+		
+		sbInstr.append ("));");
+		sb.append (sbInstr);
+		
+		return sb.toString ();
 	}
 }

@@ -1,8 +1,6 @@
-package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
+package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.test;
 
-import java.io.File;
 import java.math.BigInteger;
-import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -11,20 +9,20 @@ import org.junit.Test;
 import cetus.hir.BinaryOperator;
 import cetus.hir.FunctionCall;
 import cetus.hir.Specifier;
-import cetus.hir.Statement;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Assembly;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
-import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionListTranslator;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class InstructionListTranslatorTest
@@ -40,76 +38,13 @@ public class InstructionListTranslatorTest
 		}	
 	}
 	
-	private static class ArchDescProto implements IArchitectureDescription
+	private static class ArchDescProto extends DummyArchitectureDescription
 	{
 		private String m_strBinaryOpArgs;
 		
 		public ArchDescProto (String strBinaryOpArgs)
 		{
 			m_strBinaryOpArgs = strBinaryOpArgs;
-		}
-		
-		@Override
-		public String getBackend ()
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public String getInnermostLoopCodeGenerator ()
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public String getGeneratedFileSuffix ()
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public boolean useFunctionPointers ()
-		{
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-		@Override
-		public int getNumberOfParallelLevels ()
-		{
-			// TODO Auto-generated method stub
-			return 0;
-		}
-
-		@Override
-		public boolean hasExplicitLocalDataCopies (int nParallelismLevel)
-		{
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-		@Override
-		public boolean supportsAsynchronousIO (int nParallelismLevel)
-		{
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-		@Override
-		public Statement getBarrier (int nParallelismLevel)
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public List<Specifier> getType (Specifier specType)
-		{
-			// TODO Auto-generated method stub
-			return null;
 		}
 
 		@Override
@@ -148,13 +83,6 @@ public class InstructionListTranslatorTest
 		}
 
 		@Override
-		public List<Specifier> getDeclspecs (TypeDeclspec type)
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
 		public Intrinsic getIntrinsic (UnaryOperator op, Specifier specType)
 		{
 			return getIntrinsic (Globals.getIntrinsicBase (op).value (), specType);
@@ -182,55 +110,6 @@ public class InstructionListTranslatorTest
 			
 			return null;
 		}
-
-		@Override
-		public Assembly getAssemblySpec ()
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public int getRegistersCount (TypeRegisterType nType)
-		{
-			// TODO Auto-generated method stub
-			return 0;
-		}
-
-		@Override
-		public Iterable<TypeRegisterClass> getRegisterClasses (TypeRegisterType nType)
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-		
-		@Override
-		public TypeRegisterClass getDefaultRegisterClass (TypeRegisterType nType)
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-		
-		@Override
-		public List<String> getIncludeFiles ()
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public Build getBuild ()
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public File getFile ()
-		{
-			// TODO Auto-generated method stub
-			return null;
-		}
 		
 		@Override
 		public IArchitectureDescription clone ()
@@ -243,13 +122,6 @@ public class InstructionListTranslatorTest
 		{
 			// TODO Auto-generated method stub
 			return false;
-		}
-		
-		@Override
-		public int getIssueRate ()
-		{
-			// TODO Auto-generated method stub
-			return 0;
 		}
 	}
 	

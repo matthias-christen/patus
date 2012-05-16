@@ -1,5 +1,6 @@
 package ch.unibas.cs.hpwc.patus.graph;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -104,23 +105,36 @@ public class DefaultGraph<V extends IVertex, E extends IEdge<V>> implements IGra
 		StringBuilder sb = new StringBuilder (getClass ().getSimpleName ());
 		sb.append (" {\n");
 		
-		for (V v : m_mapVertices.keySet ())
+		try
 		{
-			sb.append ('\t');
-			sb.append (v.toString ());
-			sb.append ("  --->  { ");
-
-			boolean bFirst = true;
-			for (V v1 : GraphUtil.getSuccessors (this, v))
+			for (V v : m_mapVertices.keySet ())
 			{
-				if (!bFirst)
-					sb.append (", ");
-				sb.append (v1.toString ());
-				bFirst = false;
+				sb.append ('\t');
+				sb.append (v.toString ());
+				sb.append ("  --->  { ");
+	
+				boolean bFirst = true;
+				for (V v1 : GraphUtil.getSuccessors (this, v))
+				{
+					if (!bFirst)
+						sb.append (", ");
+					
+					Method m = v1.getClass ().getMethod ("toShortString");
+					if (m != null)
+						sb.append (m.invoke (v1));
+					else				
+						sb.append (v1.toString ());
+					
+					bFirst = false;
+				}
+				
+				sb.append (" }\n");
 			}
-			
-			sb.append (" }\n");
 		}
+		catch (Exception e)
+		{			
+		}
+		
 		sb.append ('}');
 
 		return sb.toString ();

@@ -1,5 +1,6 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -14,12 +15,16 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 {
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
+	
+	private static int m_nVertexIndex = 0; 
+	
 
 	/**
 	 * A vertex in the live analysis graph. 
 	 */
 	public static class Vertex implements IVertex
 	{
+		private int m_nIndex;
 		private IInstruction m_instruction;
 
 		private int m_nInitialLowerScheduleBound;
@@ -34,6 +39,7 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 		
 		public Vertex (IInstruction instr)
 		{
+			m_nIndex = m_nVertexIndex++;
 			m_instruction = instr;
 		}
 		
@@ -105,21 +111,28 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 		@Override
 		public String toString ()
 		{
-			StringBuilder sb = new StringBuilder ("Vertex { instr=");
+			StringBuilder sb = new StringBuilder ("Vertex V");
+			sb.append (m_nIndex);
+			sb.append (" { ");
 			sb.append (m_instruction.toString ());
 			sb.append (" }");
 			
 			return sb.toString ();
 		}
+		
+		public String toShortString ()
+		{
+			return "V" + m_nIndex;
+		}		
 	}
 	
 	public class Edge extends Graph.Edge<DAGraph.Vertex> implements IParametrizedEdge<DAGraph.Vertex, Integer>
 	{
 		private int m_nLatency;
 		
-		public Edge (DAGraph.Vertex v1, DAGraph.Vertex v2)
+		public Edge (DAGraph.Vertex vertTail, DAGraph.Vertex vertHead)
 		{
-			super (DAGraph.this, v1, v2);
+			super (DAGraph.this, vertTail, vertHead);
 		}
 				
 		public void setLatency (int nLatency)
@@ -149,6 +162,8 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 	
+	private final static Collection<DAGraph.Edge> EMPTY_COLLECTION = new ArrayList<> (0);
+	
 	private Map<DAGraph.Vertex, List<DAGraph.Edge>> m_mapOutgoingEdges;
 	private Map<DAGraph.Vertex, List<DAGraph.Edge>> m_mapIncomingEdges;
 
@@ -163,9 +178,9 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 	}
 
 	@Override
-	protected DAGraph.Edge createEdge (DAGraph.Vertex vertexHead, DAGraph.Vertex vertexTail)
+	protected DAGraph.Edge createEdge (DAGraph.Vertex vertexTail, DAGraph.Vertex vertexHead)
 	{
-		DAGraph.Edge edge = new DAGraph.Edge (vertexHead, vertexTail);
+		DAGraph.Edge edge = new DAGraph.Edge (vertexTail, vertexHead);
 		
 		List<DAGraph.Edge> listOutgoing = m_mapOutgoingEdges.get (vertexTail);
 		if (listOutgoing == null)
@@ -180,7 +195,7 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 		return edge;
 	}
 	
-	public DAGraph.Edge getEdge (DAGraph.Vertex vertHead, DAGraph.Vertex vertexTail)
+	public DAGraph.Edge getEdge (DAGraph.Vertex vertexTail, DAGraph.Vertex vertHead)
 	{
 		Iterable<DAGraph.Edge> itEdges = m_mapOutgoingEdges.get (vertHead);
 		if (itEdges == null)
@@ -202,7 +217,8 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 	 */
 	public Collection<DAGraph.Edge> getOutgoingEdges (DAGraph.Vertex v)
 	{
-		return m_mapOutgoingEdges.get (v);
+		Collection<DAGraph.Edge> coll = m_mapOutgoingEdges.get (v);
+		return coll == null ? EMPTY_COLLECTION : coll;
 	}
 
 	/**
@@ -214,7 +230,8 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 	 */
 	public Collection<DAGraph.Edge> getIncomingEdges (DAGraph.Vertex v)
 	{
-		return m_mapIncomingEdges.get (v);
+		Collection<DAGraph.Edge> coll = m_mapIncomingEdges.get (v);
+		return coll == null ? EMPTY_COLLECTION : coll;
 	}
 	
 	@Override

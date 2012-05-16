@@ -86,8 +86,8 @@ public class LAGraph extends Graph<LAGraph.Vertex, Graph.Edge<LAGraph.Vertex>>
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
-	protected Graph.Edge createEdge (LAGraph.Vertex v1, LAGraph.Vertex v2)
+	protected Graph.Edge createEdge (LAGraph.Vertex vertexTail, LAGraph.Vertex vertexHead)
 	{
-		return new Graph.Edge (this, v1, v2);
+		return new Graph.Edge (this, vertexTail, vertexHead);
 	}
 }

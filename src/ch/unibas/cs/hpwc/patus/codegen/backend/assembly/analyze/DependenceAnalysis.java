@@ -42,10 +42,11 @@ public class DependenceAnalysis
 		for (int i = 0; i < m_rgInstructions.length; i++)
 		{
 			graph.addVertex (rgVertices[i] = new DAGraph.Vertex (m_rgInstructions[i]));
-			for (int j = 0; j < i; i++)
+			for (int j = 0; j < i; j++)
 			{
-				if (InstructionListAnalyzer.isDependent (m_rgInstructions[i], m_rgInstructions[j]))
-					graph.addEdge (rgVertices[i], rgVertices[j]);
+				// does the current instruction (i) depend on a previous one (j)?
+				if (InstructionListAnalyzer.isFlowDependent (m_rgInstructions[j], m_rgInstructions[i]))
+					graph.addEdge (rgVertices[j], rgVertices[i]);
 			}
 		}
 		

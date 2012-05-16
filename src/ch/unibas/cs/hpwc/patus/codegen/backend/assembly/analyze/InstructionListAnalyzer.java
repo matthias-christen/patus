@@ -71,6 +71,12 @@ public class InstructionListAnalyzer
 		return true;
 	}
 	
+	/**
+	 * Determines whether <code>instr2</code> depends on <code>instr1</code>.
+	 * @param instr1
+	 * @param instr2
+	 * @return
+	 */
 	public static boolean isDependent (IInstruction instr1, IInstruction instr2)
 	{
 		// check for flow dependences:
@@ -94,6 +100,16 @@ public class InstructionListAnalyzer
 		return false;
 	}
 
+	/**
+	 * Determines whether there is a flow dependence from <code>instr1</code> to
+	 * <code>instr2</code>, i.e. <code>instr2</code> is flow dependent on
+	 * <code>instr1</code> (<code>instr1</code> &delta;<sup>f</sup>
+	 * <code>instr2</code>)
+	 * 
+	 * @param instr1
+	 * @param instr2
+	 * @return
+	 */
 	public static boolean isFlowDependent (IInstruction instr1, IInstruction instr2)
 	{
 		if (!(instr1 instanceof Instruction))
@@ -116,7 +132,7 @@ public class InstructionListAnalyzer
 		// check output operand if it is an address
 		IOperand opOut2 = ((Instruction) instr2).getOperands ()[nOperandsCount2 - 1];
 		if (opOut2 instanceof IOperand.Address)
-			if (((IOperand.Address) opOut2).getRegBase ().equals (opOut) || ((IOperand.Address) opOut2).getRegIndex ().equals (opOut))
+			if (((IOperand.Address) opOut2).getRegBase ().equals (opOut) || ((((IOperand.Address) opOut2).getRegIndex () != null) && ((IOperand.Address) opOut2).getRegIndex ().equals (opOut)))
 				return true;
 		
 		return false;

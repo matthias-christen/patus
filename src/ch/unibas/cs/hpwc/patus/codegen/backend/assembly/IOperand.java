@@ -73,7 +73,13 @@ public interface IOperand
 		public String getAsString ()
 		{
 			return StringUtil.concat ("%%", m_register.getName ());
-		}		
+		}
+		
+		@Override
+		public String toJavaCode ()
+		{
+			return StringUtil.concat ("new Register (new TypeRegister ())");
+		}
 	}
 	
 	public static class InputRef extends AbstractOperand implements IRegisterOperand
@@ -131,6 +137,12 @@ public interface IOperand
 				return false;
 			
 			return true;
+		}
+		
+		@Override
+		public String toJavaCode ()
+		{
+			return StringUtil.concat ("new InputRef (\"", m_strRef, "\")");
 		}
 	}
 	
@@ -191,6 +203,12 @@ public interface IOperand
 		{
 			return m_nNumber;
 		}
+		
+		@Override
+		public String toJavaCode ()
+		{
+			return StringUtil.concat ("new PseudoRegister (TypeRegisterType.", m_regtype.name (), ")");
+		}
 	}
 	
 	public static class Immediate extends AbstractOperand
@@ -211,6 +229,12 @@ public interface IOperand
 		public String getAsString ()
 		{
 			return StringUtil.concat ("$", m_nValue);
+		}
+		
+		@Override
+		public String toJavaCode ()
+		{
+			return StringUtil.concat ("new Immediate (", m_nValue, ")");
 		}
 	}
 	
@@ -297,6 +321,16 @@ public interface IOperand
 			
 			return sb.toString ();
 		}
+		
+		@Override
+		public String toJavaCode ()
+		{
+			return StringUtil.concat ("new Address (",
+				m_regBase == null ? "null" : m_regBase.toJavaCode (), ", ",
+				m_regIndex == null ? "null" : m_regIndex.toJavaCode (), ", ",
+				m_nScale, ", ", m_nDisplacement, ")"
+			);
+		}
 	}
 	
 	public enum EJumpDirection
@@ -316,6 +350,15 @@ public interface IOperand
 		{
 			return String.valueOf (m_chDir);
 		}
+		
+		public static EJumpDirection fromString (String s)
+		{
+			if (Character.toString (FORWARD.m_chDir).equals (s))
+				return FORWARD;
+			if (Character.toString (BACKWARD.m_chDir).equals (s))
+				return BACKWARD;
+			return null;
+		}
 	}
 	
 	public static class LabelOperand extends AbstractOperand
@@ -332,6 +375,12 @@ public interface IOperand
 		{
 			return m_strLabelIdentifier;
 		}
+		
+		@Override
+		public String toJavaCode ()
+		{
+			return StringUtil.concat ("new LabelOperand (", Integer.parseInt (m_strLabelIdentifier.substring (0, m_strLabelIdentifier.length () - 1)), "EJumpDirection.", ")");
+		}
 	}
 	
 
@@ -345,6 +394,8 @@ public interface IOperand
 	 * @return The assembly string representation
 	 */
 	public abstract String getAsString ();
+	
+	public abstract String toJavaCode ();
 	
 	@Override
 	public boolean equals (Object obj);

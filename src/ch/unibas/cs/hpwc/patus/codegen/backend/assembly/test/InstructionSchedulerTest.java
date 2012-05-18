@@ -1,15 +1,21 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.test;
 
+import java.math.BigInteger;
+
 import org.junit.Before;
 import org.junit.Test;
 
+import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.Address;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.InputRef;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionRegionScheduler;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionScheduler;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DependenceAnalysis;
 
 public class InstructionSchedulerTest
@@ -20,6 +26,29 @@ public class InstructionSchedulerTest
 		public int getIssueRate ()
 		{
 			return 4;
+		}
+		
+		@Override
+		public Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName)
+		{
+			Intrinsic intrinsic = new Intrinsic ();
+			
+			intrinsic.setBaseName (strIntrinsicName);
+			intrinsic.setName (strIntrinsicName);
+			intrinsic.setDatatype ("float");
+			
+			if (strIntrinsicName.indexOf ("mov") >= 0)
+				intrinsic.setLatency (new BigInteger ("1"));
+			else if (strIntrinsicName.indexOf ("add") >= 0 || strIntrinsicName.indexOf ("sub") >= 0)
+				intrinsic.setLatency (new BigInteger ("3"));
+			else if (strIntrinsicName.indexOf ("mul") >= 0)
+				intrinsic.setLatency (new BigInteger ("5"));
+			else if (strIntrinsicName.indexOf ("div") >= 0)
+				intrinsic.setLatency (new BigInteger ("29"));
+			else
+				intrinsic.setLatency (new BigInteger ("1"));
+			
+			return intrinsic;
 		}
 	}
 	
@@ -84,7 +113,11 @@ public class InstructionSchedulerTest
 	@Test
 	public void testSchedule ()
 	{
-		InstructionScheduler is = new InstructionScheduler (new DependenceAnalysis (m_il).run (), new ArchDesc ());
+		InstructionRegionScheduler.DEBUG = true;
+		IArchitectureDescription arch = new ArchDesc ();
+		DAGraph graph = new DependenceAnalysis (m_il, arch).run ();
+		graph.graphviz ();
+		InstructionScheduler is = new InstructionScheduler (graph, arch);
 		System.out.println (is.schedule ());
 	}
 }

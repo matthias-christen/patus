@@ -2,8 +2,13 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import lpsolve.LpSolve;
+import lpsolve.LpSolveException;
 
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
@@ -15,6 +20,8 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 {
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
+	
+	public static boolean DEBUG = false;
 	
 	
 	///////////////////////////////////////////////////////////////////
@@ -42,7 +49,10 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 			if (!probeInstructions ())
 				break;
 			
-			if (!solveILP ())
+			if (DEBUG)
+				getGraph ().graphviz ();
+			
+			if (!solveILP (nCurrentScheduleLength))
 				break;
 			
 			reduceCurrentScheduleLength ();
@@ -79,20 +89,24 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 			int nPredMinLatency = Integer.MAX_VALUE;
 			for (DAGraph.Edge edge : graph.getIncomingEdges (v))
 				nPredMinLatency = nPredMinLatency > edge.getLatency () ? edge.getLatency () : nPredMinLatency;
+			if (nPredMinLatency == Integer.MAX_VALUE)
+				nPredMinLatency = 0;
 			
 			int nSuccMinLatency = Integer.MAX_VALUE;
 			for (DAGraph.Edge edge : graph.getOutgoingEdges (v))
 				nSuccMinLatency = nSuccMinLatency > edge.getLatency () ? edge.getLatency () : nSuccMinLatency;
+			if (nSuccMinLatency == Integer.MAX_VALUE)
+				nSuccMinLatency = 1;
 						
 			v.setInitialScheduleBounds (
-				1 + MathUtil.max (
+				/*1 +*/ MathUtil.max (
 					nCritPathDistFromRoots,
 					MathUtil.divCeil (1 + nPredecessorsCount, getIssueRate ()) - 1,
 					nPredecessorsCount / getIssueRate () + nPredMinLatency),
 				getUpperScheduleLengthBound () - MathUtil.max (
 					nCritPathDistToLeaves,
 					MathUtil.divCeil (1 + nSuccessorsCount, getIssueRate ()) - 1,
-					nSuccessorsCount / getIssueRate () + nSuccMinLatency)
+					nSuccessorsCount / getIssueRate () + nSuccMinLatency) /**/ -1
 			);
 		}
 	}
@@ -106,11 +120,18 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 		IVertex[] rgVerticesInTopologicalOrder = GraphUtil.getTopologicalSort (graph);
 		
 		for (int i = 0; i < rgVerticesInTopologicalOrder.length; i++)
+		{
+			List<DAGraph.Edge> listEdgesToRemove = new LinkedList<> ();
+			
 			for (DAGraph.Edge edgeIV : graph.getOutgoingEdges ((DAGraph.Vertex) rgVerticesInTopologicalOrder[i]))
 				for (DAGraph.Edge edgeIW : graph.getOutgoingEdges ((DAGraph.Vertex) rgVerticesInTopologicalOrder[i]))
 					if (edgeIV != edgeIW)
 						if (edgeIW.getLatency () + getCriticalPathLengthCalculator ().getCriticalPathDistance (edgeIW.getHeadVertex (), edgeIV.getHeadVertex ()) >= edgeIV.getLatency ())
-							graph.removeEdge (edgeIV);
+							listEdgesToRemove.add (edgeIV);
+			
+			for (DAGraph.Edge e : listEdgesToRemove)
+				graph.removeEdge (e);
+		}
 	}
 
 	/**
@@ -287,6 +308,8 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 					{
 						discardBounds ();
 						v.setScheduleBounds (nPrevLower + 1, nPrevUpper);
+						if (!adjustBounds (v))
+							return false;
 						if (!tightenScheduleBoundsIteratively ())
 							return false;
 						commitBounds ();
@@ -307,6 +330,8 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 					{
 						discardBounds ();
 						v.setScheduleBounds (nPrevLower, nPrevUpper - 1);
+						if (!adjustBounds (v))
+							return false;
 						if (!tightenScheduleBoundsIteratively ())
 							return false;
 						commitBounds ();
@@ -352,8 +377,70 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 	 *         infeasible
 	 */
 	@SuppressWarnings("static-method")
-	protected boolean solveILP ()
+	protected boolean solveILP (int nUpperSchedulingLengthBound)
 	{
-		return false;
+		int nVarsCount = 1 + getGraph ().getVerticesCount () * nUpperSchedulingLengthBound;
+		int nConstraintsCount = 2 * getGraph ().getVerticesCount () + nUpperSchedulingLengthBound;
+		
+		try
+		{
+			LpSolve solver = LpSolve.makeLp (nConstraintsCount, nVarsCount);
+			
+			// set variable bounds
+			for (int k = 1; k < nVarsCount; k++)
+			{
+				solver.setLowbo (k, 0);
+				solver.setUpbo (k, 1);
+			}
+			
+			// add constraints
+			
+			// must-schedule constraints
+			for (int i = 0; i < getGraph ().getVerticesCount (); i++)
+			{
+				double[] rgCoeffs = new double[nVarsCount];
+				for (int j = 0; j < nUpperSchedulingLengthBound; j++)
+					rgCoeffs[1 + i + j * nUpperSchedulingLengthBound] = 1;
+				solver.addConstraint (null, LpSolve.EQ, 1);
+			}
+			
+			// issue constraints
+			for (int j = 0; j < nUpperSchedulingLengthBound; j++)
+			{
+				double[] rgCoeffs = new double[nVarsCount];
+				for (int i = 0; i < getGraph ().getVerticesCount (); i++)
+					rgCoeffs[1 + i + j * nUpperSchedulingLengthBound] = 1;
+				solver.addConstraint (null, LpSolve.LE, getIssueRate ());
+			}
+			
+			// dependence constraints
+			
+			// time constraints
+			for (int i = 0; i < getGraph ().getVerticesCount (); i++)
+			{
+				double[] rgCoeffs = new double[nVarsCount];
+				for (int j = 0; j < nUpperSchedulingLengthBound; j++)
+					rgCoeffs[1 + i + j * nUpperSchedulingLengthBound] = j + 1;
+				solver.addConstraint (null, LpSolve.LE, 0);
+			}
+			
+			// set objective
+			double[] rgObj = new double[nVarsCount];
+			rgObj[0] = 1;
+			solver.setObjFn (rgObj);
+			
+			solver.solve ();
+			
+			// get solution
+			solver.getPtrVariables ();
+			
+			solver.deleteLp ();
+		}
+		catch (LpSolveException e)
+		{
+			e.printStackTrace();
+		}
+		
+		return true;
 	}
 }

@@ -17,6 +17,6 @@ public class InstructionScheduleOptimizer implements IInstructionListOptimizer
 	@Override
 	public InstructionList optimize (InstructionList il)
 	{
-		return new InstructionScheduler (new DependenceAnalysis (il).run (), m_arch).schedule ();
+		return new InstructionScheduler (new DependenceAnalysis (il, m_arch).run (), m_arch).schedule ();
 	}
 }

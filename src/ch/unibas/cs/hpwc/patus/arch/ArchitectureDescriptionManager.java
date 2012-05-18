@@ -59,7 +59,8 @@ public class ArchitectureDescriptionManager
 		private Map<String, Datatype> m_mapDataTypes;
 		private Map<TypeDeclspec, Declspec> m_mapDeclspecs;
 		private Map<String, Datatype> m_mapDataTypesFromBase;
-		private Map<String, List<Intrinsic>> m_mapIntrinsics;
+		private Map<String, List<Intrinsic>> m_mapOperationsToIntrinsics;
+		private Map<String, Intrinsic> m_mapIntrinsicNamesToIntrinsics;
 		
 		private boolean m_bHasNonDestructiveOperations;
 
@@ -88,15 +89,19 @@ public class ArchitectureDescriptionManager
 				}
 
 			m_bHasNonDestructiveOperations = true;
-			m_mapIntrinsics = new HashMap<> ();
+			
+			m_mapOperationsToIntrinsics = new HashMap<> ();
+			m_mapIntrinsicNamesToIntrinsics = new HashMap<> ();
 			if (m_type.getIntrinsics () != null)
 			{
 				for (Intrinsic intrinsic : m_type.getIntrinsics ().getIntrinsic ())
 				{
-					List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (intrinsic.getBaseName ());
+					List<Intrinsic> listIntrinsics = m_mapOperationsToIntrinsics.get (intrinsic.getBaseName ());
 					if (listIntrinsics == null)
-						m_mapIntrinsics.put (intrinsic.getBaseName (), listIntrinsics = new ArrayList<> ());
+						m_mapOperationsToIntrinsics.put (intrinsic.getBaseName (), listIntrinsics = new ArrayList<> ());
 					listIntrinsics.add (intrinsic);
+					
+					m_mapIntrinsicNamesToIntrinsics.put (intrinsic.getName (), intrinsic);
 					
 					if (m_bHasNonDestructiveOperations && (
 						intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.PLUS.value ()) ||
@@ -250,7 +255,7 @@ public class ArchitectureDescriptionManager
 		@Override
 		public boolean supportsUnalignedSIMD ()
 		{
-			return m_mapIntrinsics.containsKey (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ());
+			return m_mapOperationsToIntrinsics.containsKey (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ());
 		}
 
 		@Override
@@ -276,7 +281,7 @@ public class ArchitectureDescriptionManager
 			Datatype datatype = m_mapDataTypesFromBase.get (specType.toString ());
 
 			// get the list of intrinsics for the function base name
-			List<Intrinsic> listIntrinsics = m_mapIntrinsics.get (strIntrinsicName);
+			List<Intrinsic> listIntrinsics = m_mapOperationsToIntrinsics.get (strIntrinsicName);
 			if (listIntrinsics == null || listIntrinsics.size () == 0)
 				return null;
 
@@ -347,6 +352,12 @@ public class ArchitectureDescriptionManager
 		}
 		
 		@Override
+		public Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName)
+		{
+			return m_mapIntrinsicNamesToIntrinsics.get (strIntrinsicName);
+		}
+		
+		@Override
 		public Assembly getAssemblySpec ()
 		{
 			return m_type.getAssembly ();
@@ -413,8 +424,12 @@ public class ArchitectureDescriptionManager
 		@Override
 		public int getIssueRate ()
 		{
-			// TODO Auto-generated method stub
-			return 1;
+			if (m_type.getAssembly () == null)
+				return 1;
+			if (m_type.getAssembly ().getProcessorIssueRate () == null)
+				return 1;
+			
+			return m_type.getAssembly ().getProcessorIssueRate ().intValue ();
 		}
 		
 		@Override

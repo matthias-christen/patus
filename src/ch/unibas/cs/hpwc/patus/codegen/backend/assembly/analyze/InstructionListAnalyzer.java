@@ -163,4 +163,24 @@ public class InstructionListAnalyzer
 		
 		return opOut1.equals (opOut2);
 	}
+
+	/**
+	 * Determines whether the instruction <code>instr</code> moves data from/to
+	 * memory.
+	 * 
+	 * @param instr
+	 *            The instruction to examine
+	 * @return <code>true</code> iff <code>instr</code> moves data from/to
+	 *         memory
+	 */
+	public static boolean movesDataBetweenMemory (IInstruction instr)
+	{
+		if (!(instr instanceof Instruction))
+			return false;
+		
+		for (IOperand op : ((Instruction) instr).getOperands ())
+			if (op instanceof IOperand.Address)
+				return true;
+		return false;
+	}
 }

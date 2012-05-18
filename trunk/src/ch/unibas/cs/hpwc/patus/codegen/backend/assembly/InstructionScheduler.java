@@ -105,7 +105,7 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 			graph.addVertex (vertRootNew);
 			
 			for (DAGraph.Vertex vertRootOld : collRoots)
-				graph.addEdge (vertRootNew, vertRootOld);
+				graph.addEdge (vertRootNew, vertRootOld).setLatency (1);
 		}
 		
 		// if there is more than one root nodes, create an artificial root nodes
@@ -117,7 +117,7 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 			graph.addVertex (vertLeafNew);
 			
 			for (DAGraph.Vertex vertLeafOld : collLeaves)
-				graph.addEdge (vertLeafOld, vertLeafNew);
+				graph.addEdge (vertLeafOld, vertLeafNew).setLatency (1);
 		}
 	}
 	
@@ -165,7 +165,10 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 			{
 				for (DAGraph.Vertex v : subgraph.getVertices ())
 					for (DAGraph.Edge edge : graph.getOutgoingEdges (v))
-						subgraph.addEdge (v, edge.getHeadVertex ());
+					{
+						DAGraph.Edge edgeNew = subgraph.addEdge (v, edge.getHeadVertex ());
+						edgeNew.setLatency (edge.getLatency ());
+					}
 			}
 		}
 		

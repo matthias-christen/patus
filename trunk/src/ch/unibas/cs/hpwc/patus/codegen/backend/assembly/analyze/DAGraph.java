@@ -10,6 +10,7 @@ import java.util.Map;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.graph.IParametrizedEdge;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 {
@@ -41,6 +42,13 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 		{
 			m_nIndex = m_nVertexIndex++;
 			m_instruction = instr;
+			
+			m_nInitialLowerScheduleBound = -1;
+			m_nInitialUpperScheduleBound = -1;
+			m_nLowerScheduleBound = -1;
+			m_nUpperScheduleBound = -1;
+			m_nTemporaryLowerScheduleBound = -1;
+			m_nTemporaryUpperScheduleBound = -1;
 		}
 		
 		public IInstruction getInstruction ()
@@ -122,6 +130,8 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 		
 		public String toShortString ()
 		{
+			if (m_nLowerScheduleBound > -1 && m_nUpperScheduleBound > -1)
+				return StringUtil.concat ("V", m_nIndex, " [", m_nLowerScheduleBound, ",", m_nUpperScheduleBound, "]");
 			return "V" + m_nIndex;
 		}		
 	}

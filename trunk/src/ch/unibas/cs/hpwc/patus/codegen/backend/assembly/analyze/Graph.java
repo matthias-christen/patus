@@ -96,9 +96,11 @@ public abstract class Graph<V extends IVertex, E extends IEdge<V>> extends Defau
 		super ();
 	}
 		
-	public void addEdge (V vertexTail, V vertexHead)
+	public E addEdge (V vertexTail, V vertexHead)
 	{
-		addEdge (createEdge (vertexTail, vertexHead));
+		E edge = createEdge (vertexTail, vertexHead);
+		addEdge (edge);
+		return edge;
 	}
 	
 	protected abstract E createEdge (V vertexTail, V vertexHead);	

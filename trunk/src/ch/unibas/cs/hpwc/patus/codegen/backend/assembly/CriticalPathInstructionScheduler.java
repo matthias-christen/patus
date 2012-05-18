@@ -3,12 +3,10 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.Set;
 
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
@@ -50,7 +48,6 @@ public class CriticalPathInstructionScheduler extends AbstractInstructionSchedul
 		
 		List<DAGraph.Vertex> listActive = new LinkedList<> ();
 		List<DAGraph.Vertex> listToRemoveFromActive = new LinkedList<> ();
-		Set<DAGraph.Vertex> setCompleted = new HashSet<> ();
 		Map<DAGraph.Vertex, Integer> mapInstructionStartCycles = new HashMap<> ();
 		
 		final Collection<DAGraph.Vertex> collLeaves = GraphUtil.getLeafVertices (getGraph ());
@@ -81,7 +78,7 @@ public class CriticalPathInstructionScheduler extends AbstractInstructionSchedul
 		});
 		
 		// add leaves to the priority queue
-		quReady.addAll (collLeaves);
+		quReady.addAll (GraphUtil.getRootVertices (getGraph ()));
 		
 		while (listActive.size () + quReady.size () > 0)
 		{
@@ -91,6 +88,7 @@ public class CriticalPathInstructionScheduler extends AbstractInstructionSchedul
 			{
 				listActive.add (v);
 				mapInstructionStartCycles.put (v, nCyclesCount);
+				ilOut.addInstruction (v.getInstruction ());
 			}
 		
 			// add successors of any instruction that has completed to the priority queue
@@ -100,12 +98,10 @@ public class CriticalPathInstructionScheduler extends AbstractInstructionSchedul
 				if (isCompleted (w, nCyclesCount, mapInstructionStartCycles))
 				{
 					listToRemoveFromActive.add (w);
-					setCompleted.add (w);
-				}
-				
-				for (DAGraph.Edge edge : getGraph ().getOutgoingEdges (w))
-					if (setCompleted.contains (edge.getHeadVertex ()))
+					
+					for (DAGraph.Edge edge : getGraph ().getOutgoingEdges (w))
 						quReady.offer (edge.getHeadVertex ());
+				}
 			}
 			
 			// remove completed instructions from the list of active instructions
@@ -136,7 +132,7 @@ public class CriticalPathInstructionScheduler extends AbstractInstructionSchedul
 		if (nStartCycle == null)
 			return false;
 		
-		return nStartCycle + getMaximumLatency (v) >= nCurrentCycle;
+		return nCurrentCycle >= nStartCycle + getMaximumLatency (v);
 	}
 	
 	private int getMaximumLatency (DAGraph.Vertex v)

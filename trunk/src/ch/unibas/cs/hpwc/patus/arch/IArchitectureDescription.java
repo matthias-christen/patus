@@ -196,6 +196,8 @@ public interface IArchitectureDescription
 	 * @return
 	 */
 	public abstract Intrinsic getIntrinsic (FunctionCall fnx, Specifier specType);
+	
+	public abstract Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName);
 
 	/**
 	 * Returns the assembly specification (registers, ...)

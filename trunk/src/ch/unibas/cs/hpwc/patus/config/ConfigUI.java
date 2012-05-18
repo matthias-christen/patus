@@ -76,6 +76,7 @@ public class ConfigUI //extends JDialog
 		 * Creates a UI component corresponding to the property.
 		 * @return The UI component
 		 */
+		@SuppressWarnings("unchecked")
 		public JComponent createComponent ()
 		{
 			JComponent cmp = null;
@@ -135,8 +136,8 @@ public class ConfigUI //extends JDialog
 			case LIST:
 				Object[] rgValues = new Object[m_property.getValues ().size ()];
 				m_property.getValues ().toArray (rgValues);
-				m_component = new JComboBox (rgValues);
-				((JComboBox) m_component).setSelectedItem (m_property.getDisplayValue ());
+				m_component = new JComboBox<> (rgValues);
+				((JComboBox<String>) m_component).setSelectedItem (m_property.getDisplayValue ());
 				cmp = m_component;
 				break;
 
@@ -175,6 +176,7 @@ public class ConfigUI //extends JDialog
 		/**
 		 * Saves the value in the UI component into the <code>Properties</code> object.
 		 */
+		@SuppressWarnings("unchecked")
 		public void save ()
 		{
 			if (m_component instanceof JTextField)
@@ -182,7 +184,7 @@ public class ConfigUI //extends JDialog
 			else if (m_component instanceof JSpinner)
 				m_property.setValue (((JSpinner) m_component).getValue ().toString ());
 			else if (m_component instanceof JComboBox)
-				m_property.setValue (((JComboBox) m_component).getSelectedItem ().toString ());
+				m_property.setValue (((JComboBox<String>) m_component).getSelectedItem ().toString ());
 		}
 	}
 
@@ -190,6 +192,7 @@ public class ConfigUI //extends JDialog
 	///////////////////////////////////////////////////////////////////
 	// Constants
 
+	@SuppressWarnings("unused")
 	private static final long serialVersionUID = 1L;
 
 	private static final int VERTICAL_GAP = 4;
@@ -216,7 +219,7 @@ public class ConfigUI //extends JDialog
 
 	public ConfigUI (Map<String, ConfigurationProperty> mapProperties)
 	{
-		m_listProperties = new LinkedList<PropertyUI> ();
+		m_listProperties = new LinkedList<> ();
 		m_mapProperties = mapProperties;
 	}
 
@@ -240,7 +243,7 @@ public class ConfigUI //extends JDialog
 	private JTabbedPane createTabs ()
 	{
 		// build a map of property lists
-		Map<String, List<PropertyUI>> mapTabs = new TreeMap<String, List<PropertyUI>> ();
+		Map<String, List<PropertyUI>> mapTabs = new TreeMap<> ();
 		for (ConfigurationProperty cp : m_mapProperties.values ())
 		{
 			// create a property object
@@ -250,7 +253,7 @@ public class ConfigUI //extends JDialog
 			// add the property to the list of the category it belongs to
 			List<PropertyUI> list = mapTabs.get (cp.getCategory ());
 			if (list == null)
-				mapTabs.put (cp.getCategory (), list = new LinkedList<PropertyUI> ());
+				mapTabs.put (cp.getCategory (), list = new LinkedList<> ());
 			list.add (p);
 		}
 

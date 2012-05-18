@@ -150,6 +150,13 @@ public class DummyArchitectureDescription implements IArchitectureDescription
 		// TODO Auto-generated method stub
 		return null;
 	}
+	
+	@Override
+	public Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 	@Override
 	public Assembly getAssemblySpec ()

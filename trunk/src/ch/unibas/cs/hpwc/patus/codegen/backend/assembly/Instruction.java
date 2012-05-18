@@ -67,7 +67,7 @@ public class Instruction implements IInstruction
 	{
 		StringBuilder sb = new StringBuilder ();
 		issue (sb);
-		return sb.toString ();
+		return sb.substring (0, sb.length () - 4);
 	}
 
 	@Override

@@ -454,44 +454,44 @@
 			<!-- intrinsics for double precision arithmetic operations -->
 			
 			<!-- scalar operations -->
-			<intrinsic base-name="plus" name="vaddsd" datatype="double" arguments="reg/mem,reg,=reg"/>
-			<intrinsic base-name="minus" name="vsubsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg"/>
-			<intrinsic base-name="multiply" name="vmulsd" datatype="double" arguments="reg/mem,reg,=reg"/>
-			<intrinsic base-name="divide" name="vdivsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg"/>
-			<intrinsic base-name="move-fpr" name="vmovsd" datatype="double"/>
+			<intrinsic base-name="plus" name="vaddsd" datatype="double" arguments="reg/mem,reg,=reg" latency="3"/>
+			<intrinsic base-name="minus" name="vsubsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg" latency="3"/>
+			<intrinsic base-name="multiply" name="vmulsd" datatype="double" arguments="reg/mem,reg,=reg" latency="5"/>
+			<intrinsic base-name="divide" name="vdivsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg" latency="45"/>
+			<intrinsic base-name="move-fpr" name="vmovsd" datatype="double" latency="1"/>
 
 			<!-- vector operations -->
-			<intrinsic base-name="unary_minus" name="vxorpd" datatype="__m256d" arguments="reg/mem,imm:{0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000},=reg"/>
-			<intrinsic base-name="plus" name="vaddpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
-			<intrinsic base-name="minus" name="vsubpd" datatype="__m256d" arguments="reg/mem:rhs,reg:lhs,=reg"/>
-			<intrinsic base-name="multiply" name="vmulpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
-			<intrinsic base-name="divide" name="vdivpd" datatype="__m256d" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="unary_minus" name="vxorpd" datatype="__m256d" arguments="reg/mem,imm:{0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000},=reg" latency="1"/>
+			<intrinsic base-name="plus" name="vaddpd" datatype="__m256d" arguments="reg/mem,reg,=reg" latency="3"/>
+			<intrinsic base-name="minus" name="vsubpd" datatype="__m256d" arguments="reg/mem:rhs,reg:lhs,=reg" latency="3"/>
+			<intrinsic base-name="multiply" name="vmulpd" datatype="__m256d" arguments="reg/mem,reg,=reg" latency="5"/>
+			<intrinsic base-name="divide" name="vdivpd" datatype="__m256d" arguments="reg/mem:rhs,reg:lhs,=reg" latency="45"/>
 			<!--<intrinsic base-name="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
 			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
 			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>-->
-			<intrinsic base-name="move-fpr" name="vmovapd" datatype="__m256d"/>
-			<intrinsic base-name="move-fpr-unaligned" name="vmovupd" datatype="__m256d"/>
+			<intrinsic base-name="move-fpr" name="vmovapd" datatype="__m256d" latency="1"/>
+			<intrinsic base-name="move-fpr-unaligned" name="vmovupd" datatype="__m256d" latency="4"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
 			
 			<!-- scalar operations -->
-			<intrinsic base-name="plus" name="vaddss" datatype="float" arguments="reg/mem,reg,=reg"/>
-			<intrinsic base-name="minus" name="vsubss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg"/>
-			<intrinsic base-name="multiply" name="vmulss" datatype="float" arguments="reg/mem,reg,=reg"/>
-			<intrinsic base-name="divide" name="vdivss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg"/>
-			<intrinsic base-name="move-fpr" name="vmovss" datatype="float"/>
+			<intrinsic base-name="plus" name="vaddss" datatype="float" arguments="reg/mem,reg,=reg" latency="3"/>
+			<intrinsic base-name="minus" name="vsubss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg" latency="3"/>
+			<intrinsic base-name="multiply" name="vmulss" datatype="float" arguments="reg/mem,reg,=reg" latency="5"/>
+			<intrinsic base-name="divide" name="vdivss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg" latency="5"/>
+			<intrinsic base-name="move-fpr" name="vmovss" datatype="float" latency="1"/>
 			
 			<!-- vector operations -->
-			<intrinsic base-name="unary_minus" name="vxorps" datatype="__m256" arguments="reg/mem,imm:{0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000},=reg"/>
-			<intrinsic base-name="plus" name="vaddps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
-			<intrinsic base-name="minus" name="vsubps" datatype="__m256" arguments="reg/mem:rhs,reg:lhs,=reg"/>
-			<intrinsic base-name="multiply" name="vmulps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
-			<intrinsic base-name="divide" name="vdivps" datatype="__m256" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="unary_minus" name="vxorps" datatype="__m256" arguments="reg/mem,imm:{0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000},=reg" latency="1"/>
+			<intrinsic base-name="plus" name="vaddps" datatype="__m256" arguments="reg/mem,reg,=reg" latency="3"/>
+			<intrinsic base-name="minus" name="vsubps" datatype="__m256" arguments="reg/mem:rhs,reg:lhs,=reg" latency="3"/>
+			<intrinsic base-name="multiply" name="vmulps" datatype="__m256" arguments="reg/mem,reg,=reg" latency="5"/>
+			<intrinsic base-name="divide" name="vdivps" datatype="__m256" arguments="reg/mem:rhs,reg:lhs,=reg" latency="29"/>
 			<!--<intrinsic base-name="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
 			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
 			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>-->
-			<intrinsic base-name="move-fpr" name="vmovaps" datatype="__m256"/>
-			<intrinsic base-name="move-fpr-unaligned" name="vmovups" datatype="__m256"/>
+			<intrinsic base-name="move-fpr" name="vmovaps" datatype="__m256" latency="1"/>
+			<intrinsic base-name="move-fpr-unaligned" name="vmovups" datatype="__m256" latency="4"/>
 		</intrinsics>
 		<assembly>
 			<register-classes>

@@ -131,7 +131,7 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 		public String toShortString ()
 		{
 			if (m_nLowerScheduleBound > -1 && m_nUpperScheduleBound > -1)
-				return StringUtil.concat ("V", m_nIndex, " [", m_nLowerScheduleBound, ",", m_nUpperScheduleBound, "]");
+				return StringUtil.concat ("V", m_nIndex, " [", getLowerScheduleBound (), ",", getUpperScheduleBound (), "]");
 			return "V" + m_nIndex;
 		}		
 	}

@@ -40,7 +40,37 @@ public class AVXSelectGenerator
 			return new IntegerLiteral (rgConfig[0] | (rgConfig[1] << 2) | (rgConfig[2] << 4) | (rgConfig[3] << 6));
 		}
 	}
-	
+
+	private static class MMShufflePD_ForPS extends Operator
+	{
+		public MMShufflePD_ForPS ()
+		{
+			// 2 operands, 8 elements wide vector,
+			// _mm256_shuffle_pd ((0 .. 7), (8 .. 15)) = (s1(0,2), s1(1,3), s2(8,10), s2(9,11), s3(4,6), s3(5,7), s4(12,14), s4(13,15))
+			super ("_mm256_shuffle_pd", 2, 8, new Selector[] {
+				new Selector (1, new int[] { 0, 2 }),
+				new Selector (1, new int[] { 1, 3 }),
+				new Selector (2, new int[] { 8, 10 }),
+				new Selector (2, new int[] { 9, 11 }),
+				new Selector (3, new int[] { 4, 6 }),
+				new Selector (3, new int[] { 5, 7 }),
+				new Selector (4, new int[] { 12, 14 }),
+				new Selector (4, new int[] { 13, 15 })
+			});
+		}
+		
+		@Override
+		public Expression getControlExpression (int[] rgConfig)
+		{
+			// cf. _MM_SHUFFLE macro
+			
+			// number of config elements corresponds to the number of distinct selectors,
+			// shift typically corresponds to how many indices a selector can choose from (here: 4 indices => 2 bits per index)
+			
+			return new IntegerLiteral (rgConfig[0] | (rgConfig[1] << 1) | (rgConfig[2] << 2) | (rgConfig[3] << 3));
+		}
+	}
+
 	private static class MMPermutePS extends Operator
 	{
 		public MMPermutePS ()
@@ -236,7 +266,7 @@ public class AVXSelectGenerator
 	public static void main (String[] args)
 	{
 		// single precision ("_ps")
-		new AVXSelectGenerator (8, 7, new Operator[] { new MMShufflePS (), new MMPermutePS (), new MMPermuteF128PS (), new MMBlendPS () }, "expr1", "expr2");
+		new AVXSelectGenerator (8, 1, new Operator[] { new MMShufflePS (), new MMShufflePD_ForPS (), new MMPermutePS (), new MMPermuteF128PS (), new MMBlendPS () }, "expr1", "expr2");
 		
 		// double precision ("_pd")
 //		new AVXSelectGenerator (4, 3, new Operator[] { new MMShufflePD (), new MMPermutePD (), new MMPermuteF128PD (), new MMBlendPD () }, "expr1", "expr2");

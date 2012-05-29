@@ -435,7 +435,11 @@ public class PermutatorGenetic
 		{
 			Operand opResult = findOneSequence ();
 			if (opResult.equals (m_opResult))
-				return opResult;
+			{
+				//System.out.println (StringUtil.concat ("[", opResult.getOperatorEvaluationsCount (), "]: ", opResult.getExpression ().toString ()));
+				//if (opResult.getOperatorEvaluationsCount () <= 3)
+					return opResult;
+			}
 		}
 	}
 	

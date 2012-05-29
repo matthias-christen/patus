@@ -8,6 +8,8 @@ import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.PointerSpecifier;
 import cetus.hir.Specifier;
+import cetus.hir.Typecast;
+import cetus.hir.UserSpecifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.util.ASTUtil;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
@@ -95,13 +97,16 @@ public class OpenMPAVXCodeGenerator extends OpenMPCodeGenerator
 		else
 		{		
 			// the code below was generated using AVXSelectGenerator / PermutatorGenetic
+			UserSpecifier specVecFloat = new UserSpecifier (new NameID ("__m256"));
+			UserSpecifier specVecDouble = new UserSpecifier (new NameID ("__m256d"));
 			
 			if (specDatatype.equals (Specifier.FLOAT))
 			{
 				switch (nOffset)
 				{
 				case 1:
-					return _mm256_shuffle_ps (_mm256_permute_ps (expr1, 122), _mm256_shuffle_ps (_mm256_permute2f128_ps (expr1, expr2, 33), expr1, 248), 35);
+					return _mm256_shuffle_pd (new Typecast (CodeGeneratorUtil.specifiers (specVecDouble), expr1), new Typecast (CodeGeneratorUtil.specifiers (specVecDouble), _mm256_permute2f128_ps (expr1, expr2, 33)), 5);
+					//return _mm256_shuffle_ps (_mm256_permute_ps (expr1, 122), _mm256_shuffle_ps (_mm256_permute2f128_ps (expr1, expr2, 33), expr1, 248), 35);
 				case 2:
 					return _mm256_shuffle_ps (_mm256_shuffle_ps (expr1, expr1, 110), _mm256_permute_ps (_mm256_permute2f128_ps (expr2, expr1, 3), 205), 36);
 				case 3:
@@ -111,7 +116,8 @@ public class OpenMPAVXCodeGenerator extends OpenMPCodeGenerator
 				case 5:
 					return _mm256_blend_ps (_mm256_permute_ps (_mm256_permute2f128_ps (expr2, expr1, 3), 185), _mm256_permute_ps (expr2, 32), 136);
 				case 6:
-					return _mm256_shuffle_ps (_mm256_permute_ps (_mm256_permute2f128_ps (expr2, expr1, 3), 190), _mm256_shuffle_ps (expr2, expr2, 64), 199);
+					return _mm256_shuffle_pd (new Typecast (CodeGeneratorUtil.specifiers (specVecDouble), _mm256_permute2f128_pd (expr2, expr1, 3)), new Typecast (CodeGeneratorUtil.specifiers (specVecDouble), expr2), 5);
+					//return _mm256_shuffle_ps (_mm256_permute_ps (_mm256_permute2f128_ps (expr2, expr1, 3), 190), _mm256_shuffle_ps (expr2, expr2, 64), 199);
 				case 7:
 					return _mm256_blend_ps (_mm256_shuffle_ps (_mm256_permute2f128_ps (expr2, expr1, 3), expr2, 159), _mm256_shuffle_ps (expr2, expr2, 146), 238);
 				default:

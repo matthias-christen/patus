@@ -120,6 +120,11 @@ public abstract class AbstractInstructionScheduler
 		return m_cpsched.getScheduleLength ();
 	}
 	
+	public void getCriticalPathSchedule (InstructionList ilOut)
+	{
+		ilOut.addInstructions (m_cpsched.getSchedule ());
+	}
+	
 	public IArchitectureDescription getArchitectureDescription ()
 	{
 		return m_arch;
@@ -162,6 +167,11 @@ public abstract class AbstractInstructionScheduler
 			m_nScheduleLength = doSchedule (m_ilScheduled);
 		}
 		
+		return m_ilScheduled;
+	}
+	
+	public InstructionList getSchedule ()
+	{
 		return m_ilScheduled;
 	}
 	

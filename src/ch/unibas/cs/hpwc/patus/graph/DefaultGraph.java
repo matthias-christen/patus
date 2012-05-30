@@ -55,6 +55,11 @@ public class DefaultGraph<V extends IVertex, E extends IEdge<V>> implements IGra
 			m_mapVertices.put (v, v);
 	}
 	
+	public boolean containsVertex (V v)
+	{
+		return m_mapVertices.containsKey (v);
+	}
+	
 	public V findVertex (V v)
 	{
 		V vRes = m_mapVertices.get (v);

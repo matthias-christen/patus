@@ -682,7 +682,8 @@ public class InstructionListTranslator
 	{
 		IArchitectureDescription arch = m_data.getArchitectureDescription ();
 		
-		final boolean bUseRegisterRemover = true && arch.hasNonDestructiveOperations ();
+		// don't use register reusing for now (screws up the instruction scheduler)
+		final boolean bUseRegisterRemover = /*true*/ false && arch.hasNonDestructiveOperations ();
 		
 		InstructionList ilIn = bUseRegisterRemover ?
 			new UnneededPseudoRegistersRemover (arch, InstructionList.EInstructionListType.GENERIC, m_setReusedRegisters).optimize (m_ilIn) :

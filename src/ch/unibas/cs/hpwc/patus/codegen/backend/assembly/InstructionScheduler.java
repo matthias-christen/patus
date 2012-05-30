@@ -6,10 +6,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
 import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphUtil;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  * <p>Reorders the instructions, which are given as a dependence graph,
@@ -23,6 +26,12 @@ import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphUtil;
  */
 public class InstructionScheduler extends AbstractInstructionScheduler
 {
+	///////////////////////////////////////////////////////////////////
+	// Constants
+	
+	private final static Logger LOGGER = Logger.getLogger (InstructionScheduler.class);
+	
+
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
 	
@@ -46,10 +55,6 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 			return "new NopInstruction ();";
 		}		
 	}
-
-	
-	///////////////////////////////////////////////////////////////////
-	// Member Variables
 			
 
 	///////////////////////////////////////////////////////////////////
@@ -63,6 +68,8 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 	@Override
 	protected int doSchedule (InstructionList ilOut)
 	{
+		LOGGER.info (StringUtil.concat ("Scheduling instructions (DAG has ", getGraph ().getVerticesCount (), " vertices and ", getGraph ().getEdgesCount (), " edges)."));
+		
 		boolean bIsFirst = true;
 		int nScheduleLength = 0;
 		
@@ -166,8 +173,11 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 				for (DAGraph.Vertex v : subgraph.getVertices ())
 					for (DAGraph.Edge edge : graph.getOutgoingEdges (v))
 					{
-						DAGraph.Edge edgeNew = subgraph.addEdge (v, edge.getHeadVertex ());
-						edgeNew.setLatency (edge.getLatency ());
+						if (subgraph.containsVertex (edge.getHeadVertex ()))
+						{
+							DAGraph.Edge edgeNew = subgraph.addEdge (v, edge.getHeadVertex ());
+							edgeNew.setLatency (edge.getLatency ());
+						}
 					}
 			}
 		}

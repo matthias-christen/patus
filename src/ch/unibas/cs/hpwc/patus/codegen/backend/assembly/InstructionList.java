@@ -387,6 +387,11 @@ public class InstructionList implements Iterable<IInstruction>
 	{
 		return m_listInstructions.isEmpty ();
 	}
+	
+	public void clear ()
+	{
+		m_listInstructions.clear ();
+	}
 
 	@Override
 	public String toString ()

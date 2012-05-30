@@ -24,6 +24,7 @@ public class DependenceAnalysis
 	 * The array of instructions to analyze
 	 */
 	private IInstruction[] m_rgInstructions;
+	private int m_nInstructionsCount;
 		
 	
 	///////////////////////////////////////////////////////////////////
@@ -37,17 +38,21 @@ public class DependenceAnalysis
 		int j = 0;
 		for (IInstruction instr : il)
 		{
-			m_rgInstructions[j] = instr;
-			j++;
+			if (instr instanceof Instruction)
+			{
+				m_rgInstructions[j] = instr;
+				j++;
+			}
 		}
+		m_nInstructionsCount = j;
 	}
 	
 	public DAGraph run ()
 	{
 		DAGraph graph = new DAGraph ();
-		DAGraph.Vertex[] rgVertices = new DAGraph.Vertex[m_rgInstructions.length];
+		DAGraph.Vertex[] rgVertices = new DAGraph.Vertex[m_nInstructionsCount];
 		
-		for (int i = 0; i < m_rgInstructions.length; i++)
+		for (int i = 0; i < m_nInstructionsCount; i++)
 		{
 			graph.addVertex (rgVertices[i] = new DAGraph.Vertex (m_rgInstructions[i]));
 			for (int j = 0; j < i; j++)

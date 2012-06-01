@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
+
 import lpsolve.LpSolve;
 import lpsolve.LpSolveException;
 
@@ -20,13 +22,24 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph.Vertex;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
 import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphUtil;
 import ch.unibas.cs.hpwc.patus.util.MathUtil;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class InstructionRegionScheduler extends AbstractInstructionScheduler
 {
 	///////////////////////////////////////////////////////////////////
+	// Constants
+	
+	private Logger LOGGER = Logger.getLogger (InstructionRegionScheduler.class);
+
+	
+	///////////////////////////////////////////////////////////////////
 	// Member Variables
 	
 	public static boolean DEBUG = false;
+	
+	private Map<DAGraph.Vertex, Integer> m_mapVertexToILPIdx;
+	private DAGraph.Vertex[] m_rgILPIdxToVertex;
+
 	
 	
 	///////////////////////////////////////////////////////////////////
@@ -35,6 +48,16 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 	public InstructionRegionScheduler (DAGraph graph, IArchitectureDescription arch)
 	{
 		super (graph, arch);
+		
+		m_mapVertexToILPIdx = new HashMap<> ();
+		m_rgILPIdxToVertex = new DAGraph.Vertex[graph.getVerticesCount () + 1];
+		int i = 1;
+		for (DAGraph.Vertex v : graph.getVertices ())
+		{
+			m_mapVertexToILPIdx.put (v, i);
+			m_rgILPIdxToVertex[i] = v;
+			i++;
+		}
 	}
 	
 	@Override
@@ -51,11 +74,14 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 		
 		// iteratively reduce the schedule length until the lower bound is reached or the scheduling
 		// becomes infeasible
-		int nCurrentScheduleLength = getUpperScheduleLengthBound ();// - 1;
-solveILP (nCurrentScheduleLength, ilOut);		
+		int nCurrentScheduleLength = getUpperScheduleLengthBound () - 1;
+//solveILP (nCurrentScheduleLength, ilOut);
+solveILP (/*getLowerScheduleLengthBound () - 1*/29, ilOut);
 		
 		for ( ; nCurrentScheduleLength >= getLowerScheduleLengthBound (); nCurrentScheduleLength--)
 		{
+			LOGGER.info (StringUtil.concat ("Trying to find schedule of length ", nCurrentScheduleLength, " (lower bound is ", getLowerScheduleLengthBound (), ")"));
+			
 			bAllOneCycleBounds = false;
 			
 			if (!tightenScheduleBoundsIteratively ())
@@ -101,6 +127,12 @@ solveILP (nCurrentScheduleLength, ilOut);
 		return nCurrentScheduleLength;
 	}
 	
+	/**
+	 * Determines whether the schedule bounds of all vertices are one-cycle
+	 * bounds (i.e., if lower bound = upper bound for each vertex in the graph).
+	 * 
+	 * @return <code>true</code> iff all vertices have one-cycle schedule bounds
+	 */
 	protected boolean allOneCycleBounds ()
 	{
 		for (DAGraph.Vertex v : getGraph ().getVertices ())
@@ -270,9 +302,13 @@ solveILP (nCurrentScheduleLength, ilOut);
 	}
 	
 	/**
+	 * Makes the lower and upper schedule bounds consistent throughout the
+	 * graph.
 	 * 
 	 * @param v
-	 * @return
+	 *            The vertex whose bounds were modified
+	 * @return <code>false</code> iff the schedule turns out to be infeasible
+	 *         after making the bounds consistent
 	 */
 	protected boolean adjustBounds (DAGraph.Vertex v)
 	{
@@ -328,20 +364,32 @@ solveILP (nCurrentScheduleLength, ilOut);
 	}
 	
 	/**
-	 * Performs instruction probing.
-	 * @return <code>false</code> iff instruction probing shows that the scheduling is infeasible
+	 * <p>Performs instruction probing:</p>
+	 * <p>For each vertex in the graph, the lower and upper instruction bounds are
+	 * temporarily set to the same value to simulate scheduling of the
+	 * instruction at (a) the lower and (b) the upper bound. If the resulting
+	 * schedule turns out to be infeasible, the corresponding bound is discarded
+	 * and, if the bounds were set to the lower bound, the lower bound is
+	 * incremented (since the original lower bound results in an infeasible
+	 * schedule), and, vice versa, if the bounds were set to the upper bound,
+	 * the upper bound is decremented.</p>
+	 * 
+	 * @return <code>false</code> iff instruction probing shows that the
+	 *         scheduling is infeasible
 	 */
 	protected boolean probeInstructions ()
 	{
 		boolean bBoundsModified = false;
 		boolean bNewBoundsCommitted = false;
-		
+				
 		do
 		{
 			bBoundsModified = false;
 			
 			for (DAGraph.Vertex v : getGraph ().getVertices ())
 			{
+				LOGGER.info (StringUtil.concat ("Probing instructions for ", v.toString (), "..."));
+				
 				// temporarily fix the upper bound to the lower bound and check whether the problem becomes infeasible
 				int nPrevLower = 0;
 				int nPrevUpper = v.getUpperScheduleBound ();
@@ -398,7 +446,8 @@ solveILP (nCurrentScheduleLength, ilOut);
 	}
 	
 	/**
-	 * 
+	 * Decrements the initial upper schedule bounds of all the vertices in the
+	 * graph.
 	 */
 	protected void reduceCurrentScheduleLength ()
 	{
@@ -406,12 +455,20 @@ solveILP (nCurrentScheduleLength, ilOut);
 			v.setInitialScheduleBounds (v.getInitialLowerScheduleBound (), v.getInitialUpperScheduleBound () - 1);
 	}
 	
+	/**
+	 * Commits all the temporarily set bounds, i.e., calls
+	 * {@link Vertex#commitBounds()} for each vertex in the graph.
+	 */
 	protected void commitBounds ()
 	{
 		for (DAGraph.Vertex v : getGraph ().getVertices ())
 			v.commitBounds ();
 	}
 	
+	/**
+	 * Discards all the temporarily set bounds, i.e., calls
+	 * {@link Vertex#discardBounds()} for each vertex in the graph.
+	 */
 	protected void discardBounds ()
 	{
 		for (DAGraph.Vertex v : getGraph ().getVertices ())
@@ -419,11 +476,54 @@ solveILP (nCurrentScheduleLength, ilOut);
 	}
 	
 	/**
-	 * Builds the ILP formulation from the graph and tries to solve the ILP.
+	 * <p>Builds the ILP formulation from the graph and tries to solve the ILP.</p>
 	 * 
-	 * @param graph
-	 *            The (simplified) dependence analysis graph for which to build
-	 *            the ILP
+	 * <p>The problem:</p>
+	 * 		min <i>T</i>  (schedule time)<br/>
+	 * 		such that
+	 * <ul>
+	 * 	<li>&sum;<sub>j=1</sub><sup>m</sup> j x<sub>i</sub><sup>j</sup>  &le;  T  for all i   ("time" constraint)</li>
+	 *	<li>&sum;<sub>j=1</sub><sup>m</sup> x<sub>i</sub><sup>j</sup>  =  1     for all i   ("must schedule" constraint)</li>
+	 *	<li>&sum;<sub>i=1</sub><sup>n</sup>  &le;  r          for all j   ("issue" constraint, r is issue rate)</li>
+	 *	<li>&sum;<sub>j=1</sub><sup>m</sup> j x<sub>k</sub><sup>j</sup> + L<sub>ki</sub>  &le;  &sum;<sub>j=1</sub><sup>m</sup> j x<sub>i</sub><sup>j</sup>   for all  edges (i,k)   ("dependence" constraint)</li>
+	 * </ul>
+	 * where
+	 * <ul>
+	 * 	<li>m is the number of cycles</li>
+	 * 	<li>n is the number of instructions</li>
+	 * 	<li>the decision variable x<sub>i</sub><sup>j</sup> is 1 if the instruction i is scheduled in cycle j, and 0 otherwise
+	 * 	<li>&sum;<sub>j=1</sub><sup>m</sup> j x<sub>i</sub><sup>j</sup> is the cycle in which instruction i is scheduled.</li>
+	 * </ul>
+	 * The variables of the model are:
+	 * <ul>
+	 * 	<li>T (the schedule time)</li>
+	 * 	<li>x<sub>i</sub><sup>j</sup>  (for 1 &le; i &le; n, 1 &le; j &le; m);
+	 * 		<ul>
+	 * 			<li>i: instruction index</li>
+	 * 			<li>j: cycle index</li>
+	 * 			<li>memory layout:
+	 * 				x<sub>1</sub><sup>1</sup> x<sub>1</sub><sup>2</sup> ... x<sub>1</sub><sup>m</sup> &nbsp;&nbsp;
+	 * 				x<sub>2</sub><sup>1</sup> x<sub>2</sub><sup>2</sup> ... x<sub>2</sub><sup>m</sup> &nbsp;&nbsp; ... &nbsp;&nbsp;
+	 * 				x<sub>n</sub><sup>1</sup> x<sub>n</sub><sup>2</sup> ... x<sub>n</sub><sup>m</sup><br/>
+	 * 				(first cycles, then instructions)
+	 *			</li>
+	 * 		</ul>
+	 * 	</li>
+	 * </ul>
+	 * The constraints of the model are:
+	 * <ul>
+	 * 	<li>n time constraints</li>
+	 * 	<li>n must schedule constraints</li>
+	 * 	<li>m issue constraints</li>
+	 * 	<li>#edges dependence constraints</li>
+	 * </ul>
+	 * 
+	 * @param nCyclesCount
+	 * 			The number of cycles for which to build a schedule
+	 * 
+	 * @param ilOut
+	 * 			The instruction list to which the instructions of the generated schedule will be added
+	 * 
 	 * @return <code>true</code> if the solver was able to solve the ILP,
 	 *         <code>false</code> if no solution was found or the problem is
 	 *         infeasible
@@ -459,6 +559,9 @@ solveILP (nCurrentScheduleLength, ilOut);
 		
 		int nResult = -1;
 		
+		// solve the full ILP or only do an infeasibility test?
+		final boolean bSolveFull = true;
+		
 		final int nVerticesCount = getGraph ().getVerticesCount ();
 		int nVarsCount = 1 + nVerticesCount * nCyclesCount;
 //		int nConstraintsCount = 2 * nVerticesCount + nCyclesCount + getGraph ().getEdgesCount ();
@@ -475,15 +578,15 @@ solveILP (nCurrentScheduleLength, ilOut);
 		
 		
 		// make indexing easier...
-		class X
+		class IndexingHelper
 		{
 			public int idx (int i, int j)
 			{
 				return 1 + (j - 1) + (i - 1) * nCyclesCount + 1;
 			}
 		}
-		X x = new X ();
-
+		IndexingHelper x = new IndexingHelper ();
+		
 		try
 		{
 			LpSolve solver = LpSolve.makeLp (0, nVarsCount);
@@ -491,13 +594,16 @@ solveILP (nCurrentScheduleLength, ilOut);
 			// add constraints
 			
 			// time constraints
-			for (int i = 1; i <= nVerticesCount; i++)
+			if (bSolveFull)
 			{
-				double[] rgCoeffs = new double[nVarsCount + 1];
-				rgCoeffs[1] = -1;
-				for (int j = 1; j <= nCyclesCount; j++)
-					rgCoeffs[x.idx (i, j)] = j;
-				solver.addConstraint (rgCoeffs, LpSolve.LE, 0);
+				for (int i = 1; i <= nVerticesCount; i++)
+				{
+					double[] rgCoeffs = new double[nVarsCount + 1];
+					rgCoeffs[1] = -1;
+					for (int j = 1; j <= nCyclesCount; j++)
+						rgCoeffs[x.idx (i, j)] = j;
+					solver.addConstraint (rgCoeffs, LpSolve.LE, 0);
+				}
 			}
 			
 			// must-schedule constraints
@@ -505,7 +611,7 @@ solveILP (nCurrentScheduleLength, ilOut);
 			for (DAGraph.Vertex v : getGraph ().getVertices ())
 			{
 				// the constraint is redundant if the instruction has a one-cycle scheduling range
-				//if (v.getLowerScheduleBound () != v.getUpperScheduleBound ())
+				if (bSolveFull || v.getLowerScheduleBound () != v.getUpperScheduleBound ())
 				{
 					double[] rgCoeffs = new double[nVarsCount + 1];
 					for (int j = 1; j <= nCyclesCount; j++)
@@ -513,6 +619,9 @@ solveILP (nCurrentScheduleLength, ilOut);
 					solver.addConstraint (rgCoeffs, LpSolve.EQ, 1);
 				}
 				i++;
+				
+				// TODO: omitting must-schedule constraints can only be done if we only want to check whether the model is feasible...
+				// TODO: can we account for one-cycle scheduling ranges somehow?
 			}
 			
 			// issue constraints
@@ -532,33 +641,43 @@ solveILP (nCurrentScheduleLength, ilOut);
 				final int L = e.getLatency ();
 				
 				// the dependence constraint between instructions j,k is redundant if L_{jk} + ubnd(j) <= lbnd(k)
-				if (L + b > c)
+				if (!bSolveFull)
 				{
-					final int M = b + L - c;
-					
-					// find the indices of the tail and head vertices
-					int k = -1;
-					i = -1;
-					int j = 1;
-					for (DAGraph.Vertex v : getGraph ().getVertices ())
+					if (L + b > c)
 					{
-						if (v == e.getTailVertex ())
-							k = j;
-						if (v == e.getHeadVertex ())
-							i = j;
-						if (k > -1 && i > -1)
-							break;
-						j++;
+						final int M = b + L - c;
+						
+						// find the indices of the tail and head vertices
+						int k = m_mapVertexToILPIdx.get (e.getTailVertex ());
+						i = m_mapVertexToILPIdx.get (e.getHeadVertex ());
+						
+						if (DEBUG)
+							System.out.println (StringUtil.concat ("Dep Constr between ", e.getTailVertex ().toString (), " [Idx ", k, "] and ", e.getHeadVertex ().toString (), " [Idx ", i, "]"));
+	
+						// fill in the coefficients
+						double[] rgCoeffs = new double[nVarsCount + 1];
+						for (int j = c - L + 1; j <= b; j++)
+							rgCoeffs[x.idx (k, j)] = j + L - c;
+						for (int j = c; j <= b + L - 1; j++)
+							rgCoeffs[x.idx (i, j)] = M - j + c;
+						
+						solver.addConstraint (rgCoeffs, LpSolve.LE, M);
 					}
-
-					// fill in the coefficients
+					else if (DEBUG)
+						System.out.println (StringUtil.concat ("Omitted Dep Constr between ", e.getTailVertex ().toString (), " and ", e.getHeadVertex ().toString ()));
+				
+					// TODO: the above only works if we only want to check whether there is a scheduling (i.e., whether the model is feasible)
+					// TODO: can the model be simplified?
+				}
+				else
+				{
 					double[] rgCoeffs = new double[nVarsCount + 1];
-					for (j = c - L + 1; j <= b; j++)
-						rgCoeffs[x.idx (k, j)] = j + L - c;
-					for (j = c; j <= b + L - 1; j++)
-						rgCoeffs[x.idx (i, j)] = M - j + c;
-					
-					solver.addConstraint (rgCoeffs, LpSolve.LE, M);
+					for (int j = 1; j <= nCyclesCount; j++)
+					{
+						rgCoeffs[x.idx (m_mapVertexToILPIdx.get (e.getTailVertex ()), j)] = j;
+						rgCoeffs[x.idx (m_mapVertexToILPIdx.get (e.getHeadVertex ()), j)] = -j;
+					}
+					solver.addConstraint (rgCoeffs, LpSolve.LE, -e.getLatency ());
 				}
 			}
 			
@@ -576,17 +695,28 @@ solveILP (nCurrentScheduleLength, ilOut);
 			solver.setObjFn (rgObj);
 			
 			// print the matrix
-			if (DEBUG)
+			if (DEBUG && true)
 			{
 				for (int $y = 1; $y <= solver.getNrows (); $y++)
 				{
-					for (int $x = 1; $x <= solver.getNcolumns (); $x++)
-						System.out.printf ("%.0f ", solver.getMat ($y, $x));
+					System.out.printf ("%.0f   ", solver.getMat ($y, 1));
+					int $x = 2;
+					for (int $xv = 1; $xv <= nVerticesCount; $xv++)
+					{
+						for (int $xc = 1; $xc <= nCyclesCount; $xc++)
+						{
+							System.out.printf ("%.0f ", solver.getMat ($y, $x));
+							$x++;
+						}
+						System.out.print ("  ");
+					}
+						
 					System.out.println ();
 				}
 			}
 			
 			// solve the ILP
+			LOGGER.info (StringUtil.concat ("Solving ILP (has ", solver.getNcolumns (), " variables and ", solver.getNrows (), " constraints)..."));
 			nResult = solver.solve ();
 			
 			// get solution
@@ -595,24 +725,24 @@ solveILP (nCurrentScheduleLength, ilOut);
 			{
 				solver.printObjective ();
 				System.out.println (Arrays.toString (y));
+				
+				System.out.println ("Decision variables != 0:");
+				for (i = 1; i <= nVerticesCount; i++)
+					for (int j = 1; j <= nCyclesCount; j++)
+						if (y[x.idx (i, j) - 1] > 0)
+							System.out.println (StringUtil.concat ("x[instr=", i, ", cycle=", j, "] :: ", m_rgILPIdxToVertex[i]));
 			}
 			
-			i = 1;
-			for (DAGraph.Vertex v : getGraph ().getVertices ())
-			{
-				int nCycle = 0;
-				for (int j = 1; i <= nCyclesCount; j++)
-					if (y[x.idx (i, j)] > 0)
-					{
-						nCycle = j;
-						break;
-					}
-				v.setScheduleBounds (nCycle, nCycle);
-				i++;
-			}
+			// build the schedule from the solution of the ILP
+			for (i = 1; i <= nVerticesCount; i++)
+				for (int j = 1; j <= nCyclesCount; j++)
+					if (y[x.idx (i, j) - 1] > 0)
+						m_rgILPIdxToVertex[i].setScheduleBounds (j, j);
+						
 			reconstructInstructionList (ilOut);
 			discardBounds ();
 			
+			// clean up
 			solver.deleteLp ();
 		}
 		catch (LpSolveException e)
@@ -624,9 +754,11 @@ solveILP (nCurrentScheduleLength, ilOut);
 	}
 
 	/**
-	 * Reconstruct the instruction list from the DAG if all instructions
-	 * have one-cycle schedule bounds.
-	 * @param ilOut The output instruction list
+	 * Reconstruct the instruction list from the DAG if all instructions have
+	 * one-cycle schedule bounds.
+	 * 
+	 * @param ilOut
+	 *            The output instruction list
 	 */
 	private void reconstructInstructionList (InstructionList ilOut)
 	{

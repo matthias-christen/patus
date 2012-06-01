@@ -13,6 +13,12 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 
+/**
+ * Moves loads up and stores down to remove latencies between value loads and use of the values.
+ * Superseded by instruction scheduling.
+ * @author Matthias-M. Christen
+ */
+@Deprecated
 public class LoadStoreMover implements IInstructionListOptimizer
 {
 	private final static int INSTRUCTIONS_SKIP = 2;

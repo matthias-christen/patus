@@ -157,7 +157,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				
 				m_rgPreRegAllocOptimizers = new IInstructionListOptimizer[] {
 					//new LoadStoreMover (m_data.getArchitectureDescription ())
-					new InstructionScheduleOptimizer (m_data.getArchitectureDescription ())
+					//new InstructionScheduleOptimizer (m_data.getArchitectureDescription ())
 				};
 				
 				m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] {

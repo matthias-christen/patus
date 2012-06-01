@@ -1,3 +1,11 @@
+InlineAsm:
+	AssemblyExpressionGenerator: worthwhile breaking add-sub dependence chains? (balanced trees?)
+		(=> trade off between instruction level parallelism and register pressure)
+		make tunable?
+		
+How to optimize large kernels?
+
+
 Implement boundary conditions, e.g.,
 	boundaries (float grid u)
 	{

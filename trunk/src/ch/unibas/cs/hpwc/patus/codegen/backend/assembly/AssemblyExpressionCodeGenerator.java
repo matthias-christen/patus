@@ -50,6 +50,11 @@ public class AssemblyExpressionCodeGenerator
 	};
 
 
+	/**
+	 * TODO: check correctness if add-sub chains are broken
+	 * TODO: make into code-gen option / expose to auto-tuner
+	 * TODO: test whether balanced trees give better performance
+	 */
 	private static final boolean BREAK_ADDSUB_CHAINS = false;
 
 	

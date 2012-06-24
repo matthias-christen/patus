@@ -1143,7 +1143,7 @@ public class MemoryObjectManager
 		}
 
 		// no memory objects found; return the root memory objects
-		return m_mapMemoryObjects.get (m_data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid ());
+		return m_mapMemoryObjects.get (m_data.getCodeGenerators ().getStrategyAnalyzer ().getRootSubdomain ());
 	}
 
 	/**
@@ -1666,7 +1666,7 @@ public class MemoryObjectManager
 				slb.addStatement (new ExpressionStatement (new AssignmentExpression (
 					exprGrid,
 					AssignmentOperator.NORMAL,
-					getMemoryObjectExpression (analyzer.getRootGrid (), node, null, false, false, false, slb, options))));
+					getMemoryObjectExpression (analyzer.getRootSubdomain (), node, null, false, false, false, slb, options))));
 			}
 		}
 	}

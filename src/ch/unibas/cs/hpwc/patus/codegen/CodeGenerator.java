@@ -357,7 +357,7 @@ public class CodeGenerator
 		if (mom.canUsePointerSwapping (analyzer.getOuterMostSubdomainIterator ()))
 			return;
 
-		SubdomainIdentifier sdidBase = analyzer.getRootGrid ();
+		SubdomainIdentifier sdidBase = analyzer.getRootSubdomain ();
 		boolean bAreBaseMemoryObjectsReferenced = mom.areMemoryObjectsReferenced (sdidBase);
 		if (bAreBaseMemoryObjectsReferenced)
 		{

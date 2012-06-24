@@ -235,7 +235,7 @@ public class GlobalGeneratedIdentifiers
 	private static Size getGridMemoryBox (VariableDeclaration decl, String strArgumentName, CodeGeneratorSharedObjects data)
 	{
 		MemoryObject mo = data.getData ().getMemoryObjectManager ().getMemoryObject (
-			data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid (),
+			data.getCodeGenerators ().getStrategyAnalyzer ().getRootSubdomain (),
 			data.getStencilCalculation ().getReferenceStencilNode (strArgumentName),
 			false);
 		return mo.getSize ();
@@ -244,7 +244,7 @@ public class GlobalGeneratedIdentifiers
 	private static Expression getGridMemorySize (VariableDeclaration decl, String strArgumentName, CodeGeneratorSharedObjects data)
 	{
 		MemoryObject mo = data.getData ().getMemoryObjectManager ().getMemoryObject (
-			data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid (),
+			data.getCodeGenerators ().getStrategyAnalyzer ().getRootSubdomain (),
 			data.getStencilCalculation ().getReferenceStencilNode (strArgumentName),
 			false);
 

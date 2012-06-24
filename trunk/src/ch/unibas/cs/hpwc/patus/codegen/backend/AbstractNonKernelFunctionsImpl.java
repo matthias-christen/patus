@@ -818,7 +818,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	{
 		Expression exprTotalBytes = null;
 
-		SubdomainIdentifier sdidRoot = m_data.getCodeGenerators ().getStrategyAnalyzer ().getRootGrid ();
+		SubdomainIdentifier sdidRoot = m_data.getCodeGenerators ().getStrategyAnalyzer ().getRootSubdomain ();
 		Map<MemoryObject, StencilNode> mapMemoryObjects = new HashMap<> ();
 
 		for (StencilNode node : nodes)

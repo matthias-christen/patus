@@ -45,8 +45,19 @@ public class BenchmarkHarness
 
 	private final static Logger LOGGER = Logger.getLogger (BenchmarkHarness.class);
 
+	/**
+	 * Pattern for &quot;#pragma patus&quot; pragmas in C files
+	 */
 	private final static Pattern PATTERN_PRAGMA = Pattern.compile ("\\s*#pragma\\s+patus\\s+([A-Za-z0-9_]+)\\s*");
+	
+	/**
+	 * Pattern for &quot;PATUS_*&quot; variables in C files
+	 */
 	private final static Pattern PATTERN_CVAR = Pattern.compile ("PATUS_([A-Za-z0-9_]+)");
+	
+	/**
+	 * Pattern for &quot;PATUS_*&quot; variables in Makefiles
+	 */
 	private final static Pattern PATTERN_MAKEVAR = Pattern.compile ("\\$\\(PATUS_([A-Za-z0-9_]+)\\)");
 
 

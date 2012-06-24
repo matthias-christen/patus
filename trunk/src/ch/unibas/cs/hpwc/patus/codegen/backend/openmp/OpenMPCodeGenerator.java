@@ -233,7 +233,7 @@ public class OpenMPCodeGenerator extends AbstractBackend
 			}
 
 		default:
-			throw new RuntimeException (StringUtil.concat ("shuffle has not been implemented for SIMD vector length", nSIMDVectorLength));
+			throw new RuntimeException (StringUtil.concat ("shuffle has not been implemented for SIMD vector length ", nSIMDVectorLength));
 		}
 	}
 

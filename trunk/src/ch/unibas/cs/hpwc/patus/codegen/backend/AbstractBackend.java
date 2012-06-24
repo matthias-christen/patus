@@ -216,7 +216,7 @@ public abstract class AbstractBackend implements IBackend
 	}
 
 	@Override
-	public StatementList declareGrids()
+	public StatementList declareGrids ()
 	{
 		return m_mixinNonKernelFunctions.declareGrids ();
 	}
@@ -228,7 +228,7 @@ public abstract class AbstractBackend implements IBackend
 	}
 
 	@Override
-	public StatementList initializeGrids()
+	public StatementList initializeGrids ()
 	{
 		return m_mixinNonKernelFunctions.initializeGrids ();
 	}
@@ -246,7 +246,7 @@ public abstract class AbstractBackend implements IBackend
 	}
 
 	@Override
-	public StatementList computeStencil()
+	public StatementList computeStencil ()
 	{
 		return m_mixinNonKernelFunctions.computeStencil ();
 	}

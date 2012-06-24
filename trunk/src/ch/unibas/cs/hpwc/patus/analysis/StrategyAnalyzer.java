@@ -303,7 +303,7 @@ public class StrategyAnalyzer
 	 * 
 	 * @return The root subdomain
 	 */
-	public SubdomainIdentifier getRootGrid ()
+	public SubdomainIdentifier getRootSubdomain ()
 	{
 		return m_nodeGridHierarchyRoot == null ? null : m_nodeGridHierarchyRoot.getIdentifier ();
 	}

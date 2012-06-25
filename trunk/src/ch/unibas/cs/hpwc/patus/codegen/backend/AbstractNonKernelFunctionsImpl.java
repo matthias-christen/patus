@@ -454,7 +454,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 				int nAlignRestrictForType = m_data.getArchitectureDescription ().getAlignmentRestriction (specType);
 				nAlignRestrict = nAlignRestrict == 1 ? nAlignRestrictForType : MathUtil.getLCM (nAlignRestrict, nAlignRestrictForType);
 				
-				if (nSIMDVectorLength > 1)
+				if (nSIMDVectorLength > 1 && nAlignRestrict > 1)
 				{
 					Expression exprUnitStrideSize = varGrid.getBoxSize ().getCoord (0);
 
@@ -464,7 +464,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 						new NameID ("printf"),
 						CodeGeneratorUtil.expressions (
 							new StringLiteral (StringUtil.concat (
-								"Non-native SIMD type mode requires that ", exprUnitStrideSize.toString (),
+								"Non-native, aligned SIMD type mode requires that ", exprUnitStrideSize.toString (),
 								" is divisible by ", nSIMDVectorLength, " [", exprUnitStrideSize.toString (), " = %d].\\n")),
 							exprUnitStrideSize.clone ())
 						)

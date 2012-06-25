@@ -39,27 +39,75 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 	private final static String LABEL_EPILOGHDR_ENDCOMPUTATION = "ehdr_endcomp";
 
 	
-	protected class CodeGenerator extends InnermostLoopCodeGenerator.CodeGenerator
+	protected abstract class AbstractCodeGenerator extends InnermostLoopCodeGenerator.CodeGenerator
+	{
+		///////////////////////////////////////////////////////////////////
+		// Implementation
+
+		public AbstractCodeGenerator (SubdomainIterator sdit, CodeGeneratorRuntimeOptions options)
+		{
+			super (sdit, options);
+			initialize ();
+		}		
+
+		/**
+		 * Increments the addresses and decrements the loop counter.
+		 */
+		protected InstructionList generateMainFooter (String strHeadLabel, int nLoopUnrollingFactor)
+		{
+			StencilAssemblySection as = getAssemblySection ();
+			InstructionList l = new InstructionList ();
+			
+			int nSIMDVectorLengthInBytes = getSIMDVectorLength () * getBaseTypeSize ();
+			IOperand.Immediate opIncrement = new IOperand.Immediate (nSIMDVectorLengthInBytes * nLoopUnrollingFactor);
+			
+			// increment pointers
+			for (IOperand opGridAddrRegister : as.getGrids ())
+				l.addInstruction (new Instruction ("addq", opIncrement, opGridAddrRegister));
+			
+			// rotate reuse registers
+			rotateReuseRegisters (l);
+
+			decrementMainLoopCounterAndJump (l, strHeadLabel, nLoopUnrollingFactor);
+
+			return l;
+		}
+
+		/**
+		 * Decrement the loop counter and jump to the loop head if there are
+		 * more iterations to be performed.
+		 * 
+		 * @param il
+		 *            The instruction list to which to add the generated
+		 *            instructions
+		 */
+		protected abstract void decrementMainLoopCounterAndJump (InstructionList il, String strHeadLabel, int nLoopUnrollingFactor);
+	}
+	
+	
+	/**
+	 * Code generator for aligned vector accesses.
+	 */
+	protected class CodeGeneratorAligned extends AbstractCodeGenerator
 	{
 		///////////////////////////////////////////////////////////////////
 		// Member Variables
 
+		protected IOperand m_regMainItersCount;
 		private IOperand m_regPrologLength;
-		private IOperand m_regMainItersCount;
 		
 		
 		///////////////////////////////////////////////////////////////////
 		// Implementation
 
-		public CodeGenerator (SubdomainIterator sdit, CodeGeneratorRuntimeOptions options)
+		public CodeGeneratorAligned (SubdomainIterator sdit, CodeGeneratorRuntimeOptions options)
 		{
 			super (sdit, options);
 			
 			// find a free register to save the initial value of the counter
 			m_regPrologLength = getAssemblySection ().getFreeRegister (TypeRegisterType.GPR);
+
 			m_regMainItersCount = getAssemblySection ().getFreeRegister (TypeRegisterType.GPR);
-			
-			initialize ();
 		}
 		
 		private StencilNode getOutputStencilNode ()
@@ -172,32 +220,6 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			return l;
 		}
 		
-		/**
-		 * Increments the addresses and decrements the loop counter.
-		 */
-		private InstructionList generateMainFooter (String strHeadLabel, int nLoopUnrollingFactor)
-		{
-			StencilAssemblySection as = getAssemblySection ();
-			InstructionList l = new InstructionList ();
-			
-			int nSIMDVectorLengthInBytes = getSIMDVectorLength () * getBaseTypeSize ();
-			IOperand.Immediate opIncrement = new IOperand.Immediate (nSIMDVectorLengthInBytes * nLoopUnrollingFactor);
-			
-			// increment pointers
-			for (IOperand opGridAddrRegister : as.getGrids ())
-				l.addInstruction (new Instruction ("addq", opIncrement, opGridAddrRegister));
-			
-			// rotate reuse registers
-			rotateReuseRegisters (l);
-			
-			// loop: decrement the loop counter and jump to the loop head if not zero
-			//l.addInstruction (new Instruction ("dec", getCounterRegister ()));
-			l.addInstruction (new Instruction ("sub", new IOperand.Immediate (1), getCounterRegister ()));
-			l.addInstruction (new Instruction ("jnz", Label.getLabelOperand (strHeadLabel)));
-
-			return l;
-		}
-
 		@Override
 		public InstructionList generateUnrolledMainFooter ()
 		{
@@ -246,6 +268,15 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 		public InstructionList generateSimpleMainFooter ()
 		{
 			return generateMainFooter (LABEL_SIMPLEMAINHDR_STARTCOMPUTATION, 1);
+		}
+		
+		@Override
+		protected void decrementMainLoopCounterAndJump (InstructionList l, String strHeadLabel, int nLoopUnrollingFactor)
+		{
+			// loop: decrement the loop counter and jump to the loop head if not zero
+			//l.addInstruction (new Instruction ("dec", getCounterRegister ()));
+			l.addInstruction (new Instruction ("sub", new IOperand.Immediate (1), getCounterRegister ()));
+			l.addInstruction (new Instruction ("jnz", Label.getLabelOperand (strHeadLabel)));
 		}
 
 		@Override
@@ -299,6 +330,144 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 	}
 
 
+	/**
+	 * Code generator used for unaligned vector accesses (all accesses in the main loop are
+	 * unaligned; no prolog loop needed) 
+	 */
+	protected class CodeGeneratorUnaligned extends AbstractCodeGenerator
+	{
+		///////////////////////////////////////////////////////////////////
+		// Implementation
+		
+		public CodeGeneratorUnaligned (SubdomainIterator sdit,	CodeGeneratorRuntimeOptions options)
+		{
+			super (sdit, options);
+		}
+
+		@Override
+		public InstructionList generatePrologHeader ()
+		{
+			// no prolog needed
+			return null;
+		}
+
+		@Override
+		public InstructionList generatePrologFooter ()
+		{
+			// no prolog needed
+			return null;
+		}
+
+		@Override
+		public InstructionList generateUnrolledMainHeader ()
+		{
+			AssemblySection as = getAssemblySection ();
+			InstructionList l = new InstructionList ();
+			
+			IOperand.IRegisterOperand regCounter = getCounterRegister ();
+			int nSIMDVectorLength = getSIMDVectorLength ();
+			int nLoopUnrollingFactor = getRuntimeOptions ().getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1);
+			
+			// compute the number of main loop iterations
+
+			// restore the loop counter
+			l.addInstruction (new Instruction ("mov", as.getInput (InnermostLoopCodeGenerator.INPUT_LOOPTRIPCOUNT), regCounter));
+			l.addInstruction (Label.getLabel (LABEL_UNROLLEDMAINHDR));
+						
+			// check whether there is work to do; if not, jump to the cleanup
+			l.addInstruction (new Instruction ("cmp", new IOperand.Immediate (nSIMDVectorLength * nLoopUnrollingFactor), regCounter));
+			l.addInstruction (new Instruction ("jl",  Label.getLabelOperand (nLoopUnrollingFactor > 1 ? LABEL_SIMPLEMAINHDR : LABEL_EPILOGHDR)));
+			l.addInstruction (Label.getLabel (LABEL_UNROLLEDMAINHDR_STARTCOMPUTATION));
+			l.addInstruction (new Instruction (".align 4"));
+			
+			return l;
+		}
+
+		@Override
+		public InstructionList generateUnrolledMainFooter ()
+		{
+			return generateMainFooter (
+				LABEL_UNROLLEDMAINHDR_STARTCOMPUTATION,
+				getRuntimeOptions ().getIntValue (OPTION_INLINEASM_UNROLLFACTOR, 1)
+			);
+		}
+		
+		@Override
+		public InstructionList generateSimpleMainHeader ()
+		{
+			InstructionList l = new InstructionList ();
+			
+			IOperand.IRegisterOperand regCounter = getCounterRegister ();
+			
+			l.addInstruction (Label.getLabel (LABEL_SIMPLEMAINHDR));
+			
+			// check whether there is any work to do
+			l.addInstruction (new Instruction ("or", regCounter, regCounter));
+			l.addInstruction (new Instruction ("jz", Label.getLabelOperand (LABEL_EPILOGHDR)));
+						
+			l.addInstruction (Label.getLabel (LABEL_SIMPLEMAINHDR_STARTCOMPUTATION));
+			//l.addInstruction (new Instruction (".align 4"));
+
+			return l;
+		}
+		
+		@Override
+		public InstructionList generateSimpleMainFooter ()
+		{
+			return generateMainFooter (LABEL_SIMPLEMAINHDR_STARTCOMPUTATION, 1);
+		}
+
+		@Override
+		protected void decrementMainLoopCounterAndJump (InstructionList l, String strHeadLabel, int nLoopUnrollingFactor)
+		{
+			IOperand.IRegisterOperand regCounter = getCounterRegister ();
+			int nSIMDVectorLength = getSIMDVectorLength ();
+
+			l.addInstruction (new Instruction ("sub", new IOperand.Immediate (nSIMDVectorLength * nLoopUnrollingFactor), regCounter));
+			l.addInstruction (new Instruction ("cmp", new IOperand.Immediate (nSIMDVectorLength * nLoopUnrollingFactor), regCounter));
+			l.addInstruction (new Instruction ("jg", Label.getLabelOperand (strHeadLabel)));
+		}
+		
+		@Override
+		public InstructionList generateEpilogHeader ()
+		{
+			StencilAssemblySection as = getAssemblySection ();
+			IOperand.IRegisterOperand regCounter = getCounterRegister ();
+
+			InstructionList l = new InstructionList ();
+			
+			l.addInstruction (Label.getLabel (LABEL_EPILOGHDR));
+
+			// check whether there is any work to do
+			// if there is, adjust the pointers such that the vectors are aligned at the end of the compute domain
+			// in the unit stride direction:
+			// regCounter contains the number of vector elements that are left to compute =>
+			// shift the pointers by -(vec_len - regCounter) = regCounter - vec_len
+			l.addInstruction (new Instruction ("or", regCounter, regCounter));
+			l.addInstruction (new Instruction ("jle", Label.getLabelOperand (LABEL_EPILOGHDR_ENDCOMPUTATION)));
+			
+			// adjust the pointers
+			l.addInstruction (new Instruction ("sub", new IOperand.Immediate (getSIMDVectorLength ()), regCounter));
+			
+			for (IOperand opGridAddrRegister : as.getGrids ())
+				l.addInstruction (new Instruction ("add", regCounter, opGridAddrRegister));			
+
+			return l;
+		}
+
+		@Override
+		public InstructionList generateEpilogFooter ()
+		{
+			InstructionList l = new InstructionList ();
+
+			// end of computation label
+			l.addInstruction (Label.getLabel (LABEL_EPILOGHDR_ENDCOMPUTATION));
+			
+			return l;		
+		}		
+	}
+	
+
 	public X86_64InnermostLoopCodeGenerator (CodeGeneratorSharedObjects data)
 	{
 		super (data);
@@ -307,6 +476,8 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 	@Override
 	protected InnermostLoopCodeGenerator.CodeGenerator newCodeGenerator (SubdomainIterator sdit, CodeGeneratorRuntimeOptions options)
 	{
-		return new X86_64InnermostLoopCodeGenerator.CodeGenerator (sdit, options);
+		return hasAlignmentRestrictions () ?
+			new X86_64InnermostLoopCodeGenerator.CodeGeneratorAligned (sdit, options) :
+			new X86_64InnermostLoopCodeGenerator.CodeGeneratorUnaligned (sdit, options);
 	}
 }

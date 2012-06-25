@@ -249,6 +249,9 @@ public class ArchitectureDescriptionManager
 			if (type == null)
 				return 1;
 
+			if (type.getAlignment () == null)
+				return 1;
+			
 			return type.getAlignment ();
 		}
 		

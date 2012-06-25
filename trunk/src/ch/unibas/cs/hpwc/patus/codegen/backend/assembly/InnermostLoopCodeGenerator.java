@@ -157,7 +157,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				
 				m_rgPreRegAllocOptimizers = new IInstructionListOptimizer[] {
 					//new LoadStoreMover (m_data.getArchitectureDescription ())
-					//new InstructionScheduleOptimizer (m_data.getArchitectureDescription ())
+					new InstructionScheduleOptimizer (m_data.getArchitectureDescription ())
 				};
 				
 				m_rgPostTranslateOptimizers = new IInstructionListOptimizer[] {
@@ -231,15 +231,23 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			InstructionList ilComputationNotUnrolledUnaligned = ilComputationNotUnrolled.replaceInstructions (mapUnalignedMoves);
 						
 			// unaligned prologue
-			il.addInstruction (new Comment ("unaligned prolog"));
-			il.addInstructions (m_assemblySection.translate (generatePrologHeader (), specType));
-			il.addInstructions (ilComputationNotUnrolledUnaligned);
-			il.addInstructions (m_assemblySection.translate (generatePrologFooter (), specType));
+			if (hasAlignmentRestrictions ())
+			{
+				il.addInstruction (new Comment ("unaligned prolog"));
+				il.addInstructions (m_assemblySection.translate (generatePrologHeader (), specType));
+				il.addInstructions (ilComputationNotUnrolledUnaligned);
+				il.addInstructions (m_assemblySection.translate (generatePrologFooter (), specType));
+			}
 			
 			// unrolled main loop
-			il.addInstruction (new Comment ("(unrolled) aligned main loop"));
+			il.addInstruction (new Comment (hasAlignmentRestrictions () ? "unrolled aligned main loop" : "unrolled main loop"));
 			il.addInstructions (m_assemblySection.translate (generateUnrolledMainHeader (), specType));
-			il.addInstructions (ilComputationUnrolled);
+			
+			if (hasAlignmentRestrictions ())
+				il.addInstructions (ilComputationUnrolled);
+			else
+				il.addInstructions (ilComputationUnrolled.replaceInstructions (mapUnalignedMoves));
+			
 			il.addInstructions (m_assemblySection.translate (generateUnrolledMainFooter (), specType));
 			
 			// non-unrolled, aligned main computation (clean up unrolling)
@@ -250,7 +258,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				{
 					il.addInstruction (new Comment ("aligned unrolling cleanup loop"));
 					il.addInstructions (m_assemblySection.translate (ilSimpleMainHeader, specType));
-					il.addInstructions (ilComputationNotUnrolled);
+					il.addInstructions (hasAlignmentRestrictions () ? ilComputationNotUnrolled : ilComputationNotUnrolledUnaligned);
 					il.addInstructions (m_assemblySection.translate (generateSimpleMainFooter (), specType));
 				}
 			}
@@ -578,6 +586,8 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	 */
 	private boolean m_bArchSupportsSIMD;
 	
+	private boolean m_bHasAlignmentRestriction;
+	
 	/**
 	 * Flag indicating whether the architecture supports unaligned data movement
 	 */
@@ -599,6 +609,12 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		m_bArchSupportsUnalignedMoves = true;
 		if (m_bArchSupportsSIMD)
 			m_bArchSupportsUnalignedMoves = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), specType) != null;
+		
+		// determine whether there are alignment restrictions on the vector data types
+		m_bHasAlignmentRestriction = true;
+		for (Specifier spec : Globals.BASE_DATATYPES)
+			if (m_data.getArchitectureDescription ().getAlignmentRestriction (spec) == 1)
+				m_bHasAlignmentRestriction = false;
 		
 		m_mapCachedCodes = new HashMap<> ();
 	}
@@ -627,7 +643,12 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	public boolean isUnalignedMoveSupported ()
 	{
 		return m_bArchSupportsUnalignedMoves;
-	}	
+	}
+	
+	public boolean hasAlignmentRestrictions ()
+	{
+		return m_bHasAlignmentRestriction;
+	}
 
 	/**
 	 * Determines whether the architecture supports SIMD.

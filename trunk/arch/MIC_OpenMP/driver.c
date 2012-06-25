@@ -1,3 +1,9 @@
+/**
+ * DISCLAIMER:
+ * The generated code was not tested on actual Xeon Phi (MIC) devices and may be erroneous.
+ * For now, only native (no-offload) executables are built, which are to be run directly on the co-processor.
+ */
+ 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -50,7 +56,7 @@ int main (int argc, char** argv)
 	if (PATUS_DO_VALIDATION)
 	{
 		//#pragma offload target(mic) out(<grid>:length(<grid_size>) alloc_if(0) free_if(0))
-		#pragma patus offload_mic
+		#pragma patus offload_mic_copyback
 		#pragma omp parallel
 		{
 			#pragma patus initialize_grids
@@ -72,6 +78,8 @@ int main (int argc, char** argv)
 	// free memory
 	//#pragma offload target(mic) out(<grid>:length(<grid_size>) alloc_if(0) free_if(1))
 	#pragma patus deallocate_mic_grids
+	{}
+	
 	#pragma patus deallocate_grids
 
 	return 0;

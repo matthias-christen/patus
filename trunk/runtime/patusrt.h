@@ -5,9 +5,9 @@
 #ifndef __PATUSRT_H__
 #define __PATUSRT_H__
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 /*************************************************************************/
@@ -46,8 +46,8 @@ inline int max (int a, int b)
 #endif
 
 
-//#ifdef __cplusplus
-//}
-//#endif
+#ifdef __cplusplus
+}
+#endif
 
 #endif

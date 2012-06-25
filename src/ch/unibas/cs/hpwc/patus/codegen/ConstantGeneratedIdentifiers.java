@@ -328,8 +328,8 @@ public class ConstantGeneratedIdentifiers
 				return (Initializer) rgConstantCalculations[0];
 			else if (rgConstantCalculations[0] instanceof Expression)
 			{
-				if (containsNonParamIdentifier ((Expression) rgConstantCalculations[0]))
-					return null;
+//				if (containsNonParamIdentifier ((Expression) rgConstantCalculations[0]))
+//					return null;
 				return new ValueInitializer ((Expression) rgConstantCalculations[0]);
 			}
 			else
@@ -350,7 +350,7 @@ public class ConstantGeneratedIdentifiers
 			if (rgConstantCalculations[i] instanceof Expression)
 			{
 				if (isLiteralOrParam ((Expression) rgConstantCalculations[i]))
-					listValues.add ((Expression) rgConstantCalculations[i]);
+					listValues.add (rgConstantCalculations[i]);
 				else
 				{
 					// add dummy values to the values array

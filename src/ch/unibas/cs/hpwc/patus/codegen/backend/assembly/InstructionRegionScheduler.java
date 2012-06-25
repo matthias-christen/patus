@@ -69,14 +69,13 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 
 		computeInitialScheduleBounds ();
 		
-		InstructionList ilOutLastFromILP = null;
+		//InstructionList ilOutLastFromILP = null;
+		int nLastFeasibleScheduleLength = -1;
 		boolean bAllOneCycleBounds = false;
 		
-		// iteratively reduce the schedule length until the lower bound is reached or the scheduling
-		// becomes infeasible
+		// iteratively reduce the schedule length until the lower bound is reached or
+		// the scheduling becomes infeasible
 		int nCurrentScheduleLength = getUpperScheduleLengthBound () - 1;
-//solveILP (nCurrentScheduleLength, ilOut);
-solveILP (/*getLowerScheduleLengthBound () - 1*/29, ilOut);
 		
 		for ( ; nCurrentScheduleLength >= getLowerScheduleLengthBound (); nCurrentScheduleLength--)
 		{
@@ -99,11 +98,12 @@ solveILP (/*getLowerScheduleLengthBound () - 1*/29, ilOut);
 				if (!allOneCycleBounds ())
 				{
 					InstructionList ilOutTmp = new InstructionList ();
-					if (!solveILP (nCurrentScheduleLength, ilOutTmp))
+					if (!solveILP (nCurrentScheduleLength, ilOutTmp, false))
 						break;
 					
 					// the ILP schedule is feasible; memorize it
-					ilOutLastFromILP = ilOutTmp;
+					//ilOutLastFromILP = ilOutTmp;
+					nLastFeasibleScheduleLength = nCurrentScheduleLength;
 				}
 				else
 					bAllOneCycleBounds = true;
@@ -111,10 +111,12 @@ solveILP (/*getLowerScheduleLengthBound () - 1*/29, ilOut);
 			
 			reduceCurrentScheduleLength ();
 		}
-		
+				
 		// build the output instruction list
-		if (ilOutLastFromILP != null)
-			ilOut.addInstructions (ilOutLastFromILP);
+//		if (ilOutLastFromILP != null)
+//			ilOut.addInstructions (ilOutLastFromILP);
+		if (nLastFeasibleScheduleLength != -1)
+			solveILP (nLastFeasibleScheduleLength, ilOut, true);
 		else if (bAllOneCycleBounds)
 			reconstructInstructionList (ilOut);
 		else
@@ -476,59 +478,75 @@ solveILP (/*getLowerScheduleLengthBound () - 1*/29, ilOut);
 	}
 	
 	/**
-	 * <p>Builds the ILP formulation from the graph and tries to solve the ILP.</p>
+	 * <p>
+	 * Builds the ILP formulation from the graph and tries to solve the ILP.
+	 * </p>
 	 * 
-	 * <p>The problem:</p>
-	 * 		min <i>T</i>  (schedule time)<br/>
-	 * 		such that
+	 * <p>
+	 * The problem:
+	 * </p>
+	 * min <i>T</i> (schedule time)<br/>
+	 * such that
 	 * <ul>
-	 * 	<li>&sum;<sub>j=1</sub><sup>m</sup> j x<sub>i</sub><sup>j</sup>  &le;  T  for all i   ("time" constraint)</li>
-	 *	<li>&sum;<sub>j=1</sub><sup>m</sup> x<sub>i</sub><sup>j</sup>  =  1     for all i   ("must schedule" constraint)</li>
-	 *	<li>&sum;<sub>i=1</sub><sup>n</sup>  &le;  r          for all j   ("issue" constraint, r is issue rate)</li>
-	 *	<li>&sum;<sub>j=1</sub><sup>m</sup> j x<sub>k</sub><sup>j</sup> + L<sub>ki</sub>  &le;  &sum;<sub>j=1</sub><sup>m</sup> j x<sub>i</sub><sup>j</sup>   for all  edges (i,k)   ("dependence" constraint)</li>
+	 * <li>&sum;<sub>j=1</sub><sup>m</sup> j x<sub>i</sub><sup>j</sup> &le; T
+	 * for all i ("time" constraint)</li>
+	 * <li>&sum;<sub>j=1</sub><sup>m</sup> x<sub>i</sub><sup>j</sup> = 1 for all
+	 * i ("must schedule" constraint)</li>
+	 * <li>&sum;<sub>i=1</sub><sup>n</sup> &le; r for all j ("issue" constraint,
+	 * r is issue rate)</li>
+	 * <li>&sum;<sub>j=1</sub><sup>m</sup> j x<sub>k</sub><sup>j</sup> +
+	 * L<sub>ki</sub> &le; &sum;<sub>j=1</sub><sup>m</sup> j
+	 * x<sub>i</sub><sup>j</sup> for all edges (i,k) ("dependence" constraint)</li>
 	 * </ul>
 	 * where
 	 * <ul>
-	 * 	<li>m is the number of cycles</li>
-	 * 	<li>n is the number of instructions</li>
-	 * 	<li>the decision variable x<sub>i</sub><sup>j</sup> is 1 if the instruction i is scheduled in cycle j, and 0 otherwise
-	 * 	<li>&sum;<sub>j=1</sub><sup>m</sup> j x<sub>i</sub><sup>j</sup> is the cycle in which instruction i is scheduled.</li>
+	 * <li>m is the number of cycles</li>
+	 * <li>n is the number of instructions</li>
+	 * <li>the decision variable x<sub>i</sub><sup>j</sup> is 1 if the
+	 * instruction i is scheduled in cycle j, and 0 otherwise
+	 * <li>&sum;<sub>j=1</sub><sup>m</sup> j x<sub>i</sub><sup>j</sup> is the
+	 * cycle in which instruction i is scheduled.</li>
 	 * </ul>
 	 * The variables of the model are:
 	 * <ul>
-	 * 	<li>T (the schedule time)</li>
-	 * 	<li>x<sub>i</sub><sup>j</sup>  (for 1 &le; i &le; n, 1 &le; j &le; m);
-	 * 		<ul>
-	 * 			<li>i: instruction index</li>
-	 * 			<li>j: cycle index</li>
-	 * 			<li>memory layout:
-	 * 				x<sub>1</sub><sup>1</sup> x<sub>1</sub><sup>2</sup> ... x<sub>1</sub><sup>m</sup> &nbsp;&nbsp;
-	 * 				x<sub>2</sub><sup>1</sup> x<sub>2</sub><sup>2</sup> ... x<sub>2</sub><sup>m</sup> &nbsp;&nbsp; ... &nbsp;&nbsp;
-	 * 				x<sub>n</sub><sup>1</sup> x<sub>n</sub><sup>2</sup> ... x<sub>n</sub><sup>m</sup><br/>
-	 * 				(first cycles, then instructions)
-	 *			</li>
-	 * 		</ul>
-	 * 	</li>
+	 * <li>T (the schedule time)</li>
+	 * <li>x<sub>i</sub><sup>j</sup> (for 1 &le; i &le; n, 1 &le; j &le; m);
+	 * <ul>
+	 * <li>i: instruction index</li>
+	 * <li>j: cycle index</li>
+	 * <li>memory layout: x<sub>1</sub><sup>1</sup> x<sub>1</sub><sup>2</sup>
+	 * ... x<sub>1</sub><sup>m</sup> &nbsp;&nbsp; x<sub>2</sub><sup>1</sup>
+	 * x<sub>2</sub><sup>2</sup> ... x<sub>2</sub><sup>m</sup> &nbsp;&nbsp; ...
+	 * &nbsp;&nbsp; x<sub>n</sub><sup>1</sup> x<sub>n</sub><sup>2</sup> ...
+	 * x<sub>n</sub><sup>m</sup><br/>
+	 * (first cycles, then instructions)</li>
+	 * </ul>
+	 * </li>
 	 * </ul>
 	 * The constraints of the model are:
 	 * <ul>
-	 * 	<li>n time constraints</li>
-	 * 	<li>n must schedule constraints</li>
-	 * 	<li>m issue constraints</li>
-	 * 	<li>#edges dependence constraints</li>
+	 * <li>n time constraints</li>
+	 * <li>n must schedule constraints</li>
+	 * <li>m issue constraints</li>
+	 * <li>#edges dependence constraints</li>
 	 * </ul>
 	 * 
 	 * @param nCyclesCount
-	 * 			The number of cycles for which to build a schedule
+	 *            The number of cycles for which to build a schedule
 	 * 
 	 * @param ilOut
-	 * 			The instruction list to which the instructions of the generated schedule will be added
+	 *            The instruction list to which the instructions of the
+	 *            generated schedule will be added
+	 * 
+	 * @param bSolveFull
+	 *            solve the full ILP (<code>bSolveFull == true</code>) or only
+	 *            do an infeasibility test (<code>bSolveFull == false</code>)?
 	 * 
 	 * @return <code>true</code> if the solver was able to solve the ILP,
 	 *         <code>false</code> if no solution was found or the problem is
 	 *         infeasible
 	 */
-	protected boolean solveILP (final int nCyclesCount, InstructionList ilOut)
+	protected boolean solveILP (final int nCyclesCount, InstructionList ilOut, boolean bSolveFull)
 	{
 		// problem:
 		//     min T  (schedule time)
@@ -558,23 +576,9 @@ solveILP (/*getLowerScheduleLengthBound () - 1*/29, ilOut);
 		// - #edges dependence constraints
 		
 		int nResult = -1;
-		
-		// solve the full ILP or only do an infeasibility test?
-		final boolean bSolveFull = true;
-		
+				
 		final int nVerticesCount = getGraph ().getVerticesCount ();
 		int nVarsCount = 1 + nVerticesCount * nCyclesCount;
-//		int nConstraintsCount = 2 * nVerticesCount + nCyclesCount + getGraph ().getEdgesCount ();
-		
-		// count redundant constraints
-		// - a must-schedule constraint is redundant if the instruction has a one-cycle range
-		// - a dependence constraint between instructions j,k is redundant if L_{jk} + ubnd(j) <= lbnd(k)
-//		for (DAGraph.Vertex v : getGraph ().getVertices ())
-//			if (v.getLowerScheduleBound () == v.getUpperScheduleBound ())
-//				nConstraintsCount--;
-//		for (DAGraph.Edge e : getGraph ().getEdges ())
-//			if (e.getLatency () + e.getTailVertex ().getUpperScheduleBound () <= e.getHeadVertex ().getLowerScheduleBound ())
-//				nConstraintsCount--;
 		
 		
 		// make indexing easier...
@@ -739,7 +743,9 @@ solveILP (/*getLowerScheduleLengthBound () - 1*/29, ilOut);
 					if (y[x.idx (i, j) - 1] > 0)
 						m_rgILPIdxToVertex[i].setScheduleBounds (j, j);
 						
-			reconstructInstructionList (ilOut);
+			if (bSolveFull)
+				reconstructInstructionList (ilOut);
+			
 			discardBounds ();
 			
 			// clean up

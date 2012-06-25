@@ -127,7 +127,7 @@
 			<intrinsic base-name="move-fpr" name="movsd" datatype="double"/>
 
 			<!-- vector operations -->
-			<intrinsic base-name="unary_minus" name="xorpd" datatype="__m128d" arguments="reg,=imm:{0x00000000 0x80000000 0x00000000 0x80000000}"/>
+			<intrinsic base-name="unary_minus" name="xorpd" datatype="__m128d" arguments="imm:{0x00000000 0x80000000 0x00000000 0x80000000},=reg"/>
 			<intrinsic base-name="plus" name="addpd" datatype="__m128d" arguments="reg,=reg"/>
 			<intrinsic base-name="minus" name="subpd" datatype="__m128d" arguments="reg:rhs,=reg:lhs"/>
 			<intrinsic base-name="multiply" name="mulpd" datatype="__m128d" arguments="reg,=reg"/>
@@ -145,7 +145,7 @@
 			<intrinsic base-name="move-fpr" name="movss" datatype="float"/>
 			
 			<!-- vector operations -->
-			<intrinsic base-name="unary_minus" name="xorps" datatype="__m128" arguments="reg,=imm:{0x80000000 0x80000000 0x80000000 0x80000000}"/>
+			<intrinsic base-name="unary_minus" name="xorps" datatype="__m128" arguments="imm:{0x80000000 0x80000000 0x80000000 0x80000000},=reg"/>
 			<intrinsic base-name="plus" name="addps" datatype="__m128" arguments="reg,=reg"/>
 			<intrinsic base-name="minus" name="subps" datatype="__m128" arguments="reg:rhs,=reg:lhs"/>
 			<intrinsic base-name="multiply" name="mulps" datatype="__m128" arguments="reg,=reg"/>
@@ -445,7 +445,7 @@
 	<architectureType name="x86_64 AVX asm" inherits-from="x86_64 AVX">
 		<codegenerator src-suffix="c" backend="OpenMP_AVX_Asm" innermost-loop-cg="x86_64" use-function-pointers="true"/>
 		<datatypes>
-			<!-- declare SSE datatypes -->
+			<!-- declare AVX datatypes -->
 			<!-- restrict alignment to 32 bytes -->
 			<datatype basetype="float" name="__m256" simd-vector-length="8" width="256" alignment="32"/>
 			<datatype basetype="double" name="__m256d" simd-vector-length="4" width="256" alignment="32"/>
@@ -602,10 +602,18 @@
 		</assembly>
 	</architectureType>
 	
+	<architectureType name="x86_64 AVX asm noalign" inherits-from="x86_64 AVX asm">
+		<datatypes>
+			<!-- don't impose any alignment restrictions -->
+			<datatype basetype="float" name="__m256" simd-vector-length="8" width="256"/>
+			<datatype basetype="double" name="__m256d" simd-vector-length="4" width="256"/>
+		</datatypes>
+	</architectureType>
+		
 	<architectureType name="x86_64 AVX FMA4 asm" inherits-from="x86_64 AVX asm">
 		<codegenerator src-suffix="c" backend="OpenMP_AVX_Asm" innermost-loop-cg="x86_64" use-function-pointers="true"/>
 		<datatypes>
-			<!-- declare SSE datatypes -->
+			<!-- declare AVX datatypes -->
 			<!-- restrict alignment to 32 bytes -->
 			<datatype basetype="float" name="__m256" simd-vector-length="8" width="256" alignment="32"/>
 			<datatype basetype="double" name="__m256d" simd-vector-length="4" width="256" alignment="32"/>
@@ -709,13 +717,10 @@
 		</intrinsics>
 		<includes>
 			<include file="omp.h"/>
-			<!--
 			<include file="immintrin.h"/>
-			<include file="x86intrin.h"/>
-			<include file="avxmathlib.h"/>
-			-->
+			<include file="zmmintrin.h"/>
 		</includes>
-		<build compiler-command="make" harness-template-dir="CPU_OpenMP_AVX"/>
+		<build compiler-command="make" harness-template-dir="MIC_OpenMP"/>
 	</architectureType>
 
 	<!-- NVIDIA CUDA GPU -->

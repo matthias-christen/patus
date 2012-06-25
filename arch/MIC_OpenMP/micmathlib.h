@@ -13,17 +13,14 @@
 #endif
 
 #define MIC_DECLARE_INT_CONST(Name, Val) \
-    static const MIC_ALIGN64_BEG int Name##_PI64_[16] MIC_ALIGN64_END = { Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val };
+    static const MIC_ALIGN64_BEG int Name##_PI32_[16] MIC_ALIGN64_END = { Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val, Val };
 #define MIC_DECLARE_LONG_CONST(Name, Val1, Val2) \
-    static const MIC_ALIGN64_BEG int Name##_PI64_[16] MIC_ALIGN64_END = { Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2 };
+    static const MIC_ALIGN64_BEG int Name##_PI32_[16] MIC_ALIGN64_END = { Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2, Val1, Val2 };
 
 MIC_DECLARE_INT_CONST(MIC_SIGN_MASK_SINGLE, 0x80000000)
 #define MIC_SIGN_MASK_SINGLE *(__m512i*) MIC_SIGN_MASK_SINGLE_PI32_
 MIC_DECLARE_LONG_CONST(MIC_SIGN_MASK_DOUBLE, 0x00000000, 0x80000000)
 #define MIC_SIGN_MASK_DOUBLE *(__m512i*) MIC_SIGN_MASK_DOUBLE_PI32_
-
-//#define _mm256_load1_ps(x) _mm256_set_ps(x, x, x, x, x, x, x, x)
-//#define _mm256_load1_pd(x) _mm256_set_pd(x, x, x, x)
 
 #define _mm512_neg_ps(x) _mm512_xor_epi32 ((__m512i) x, MIC_SIGN_MASK_SINGLE)
 #define _mm512_neg_pd(x) _mm512_xor_epi32 ((__m512i) x, MIC_SIGN_MASK_DOUBLE)

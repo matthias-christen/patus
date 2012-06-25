@@ -147,7 +147,9 @@ public class OpenMPMICCodeGenerator extends OpenMPCodeGenerator
 				
 		StringBuilder sbPragma = new StringBuilder ("offload target(mic) ");
 		
-		for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getInputGrids ())
+		// TODO: individual treatment of in/out grids depending on the use case
+		for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
+			GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID.mask () | GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID.mask ()))
 		{
 			sbPragma.append (strClause);
 			sbPragma.append ('(');

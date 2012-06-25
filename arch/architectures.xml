@@ -603,6 +603,7 @@
 	</architectureType>
 	
 	<architectureType name="x86_64 AVX asm noalign" inherits-from="x86_64 AVX asm">
+		<codegenerator src-suffix="c" backend="OpenMP_AVX_Asm" innermost-loop-cg="x86_64" use-function-pointers="true"/>
 		<datatypes>
 			<!-- don't impose any alignment restrictions -->
 			<datatype basetype="float" name="__m256" simd-vector-length="8" width="256"/>

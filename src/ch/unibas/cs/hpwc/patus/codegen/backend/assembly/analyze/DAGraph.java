@@ -60,6 +60,9 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 		{
 			m_nTemporaryLowerScheduleBound = nLowerBound;
 			m_nTemporaryUpperScheduleBound = nUpperBound;
+			
+			if (m_nTemporaryUpperScheduleBound < m_nTemporaryLowerScheduleBound)
+				m_nTemporaryUpperScheduleBound = m_nTemporaryLowerScheduleBound;
 		}
 		
 		public int getLowerScheduleBound ()
@@ -88,6 +91,10 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 		{
 			m_nInitialLowerScheduleBound = nLowerBound;
 			m_nInitialUpperScheduleBound = nUpperBound;
+			
+			if (m_nInitialUpperScheduleBound < m_nInitialLowerScheduleBound)
+				m_nInitialUpperScheduleBound = m_nInitialLowerScheduleBound;
+			
 			setScheduleBounds (m_nInitialLowerScheduleBound, m_nInitialUpperScheduleBound);
 			commitBounds ();
 		}

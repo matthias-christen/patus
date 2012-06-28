@@ -78,8 +78,9 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 				
 				if (!allOneCycleBounds ())
 				{
-					ilOutLastFromILP = new InstructionList ();
-					int nNewScheduleLength = ilpsolver.solve (nCurrentScheduleLength, ilOutLastFromILP);
+					InstructionList ilTmp = new InstructionList ();
+					int nNewScheduleLength = ilpsolver.solve (nCurrentScheduleLength, ilTmp);
+					
 					if (nNewScheduleLength == -1)
 					{
 						// ILP could not be solved successfully
@@ -88,6 +89,7 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 					
 					nUpperBoundDecrease = nCurrentScheduleLength - nNewScheduleLength;
 					nCurrentScheduleLength = nNewScheduleLength;
+					ilOutLastFromILP = ilTmp;
 				}
 				else
 					bAllOneCycleBounds = true;

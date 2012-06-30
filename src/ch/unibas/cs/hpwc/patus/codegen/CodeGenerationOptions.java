@@ -140,6 +140,8 @@ public class CodeGenerationOptions
 
 	private double m_fValidationTolerance;
 
+	private boolean m_bUseOptimalInstructionScheduling;
+
 
 	///////////////////////////////////////////////////////////////////
 	// Implementation
@@ -159,6 +161,7 @@ public class CodeGenerationOptions
 		m_bCreateInitialization = true;
 		m_bCreateValidation = true;
 		m_fValidationTolerance = TOLERANCE_DEFAULT;
+		m_bUseOptimalInstructionScheduling = false;
 	}
 
 	/**
@@ -179,6 +182,7 @@ public class CodeGenerationOptions
 		setCreateInitialization (options.getCreateInitialization ());
 		setCreateValidation (options.getCreateValidationCode ());
 		setValidationTolerance (options.getValidationTolerance ());
+		setUseOptimalInstructionScheduling (options.getUseOptimalInstructionScheduling ());
 	}
 
 	/**
@@ -388,5 +392,15 @@ public class CodeGenerationOptions
 	public void setValidationTolerance (double fValidationTolerance)
 	{
 		m_fValidationTolerance = fValidationTolerance;
+	}
+
+	public void setUseOptimalInstructionScheduling (boolean bUseOptimalInstructionScheduling)
+	{
+		m_bUseOptimalInstructionScheduling = bUseOptimalInstructionScheduling;
+	}
+	
+	public boolean getUseOptimalInstructionScheduling ()
+	{
+		return m_bUseOptimalInstructionScheduling;
 	}
 }

@@ -117,6 +117,8 @@ public class CommandLineOptions
 				m_options.setUseNativeSIMDDatatypes (strValue.equals ("yes"));
 			else if ("always-use-nonaligned-moves".equals (strOption))
 				m_options.setAlwaysUseNonalignedMoves (strValue.equals ("yes"));
+			else if ("optimal-instruction-scheduling".equals (strOption))
+				m_options.setUseOptimalInstructionScheduling (strValue.equals ("yes"));
 			else if ("balance-binary-expressions".equals (strOption))
 				m_options.setBalanceBinaryExpressions (!strValue.equals ("no"));
 			else if ("create-initialization".equals (strOption))
@@ -152,6 +154,7 @@ public class CommandLineOptions
 		System.out.println ("    [--unroll=<UnrollFactor1,UnrollFactor2,...>]");
 		System.out.println ("    [--use-native-simd-datatypes={yes|no}]");
 		System.out.println ("    [--always-use-nonaligned-moves={yes|no}]");
+		System.out.println ("    [--optimal-instruction-scheduling={yes|no}]");
 		System.out.println ("    [--create-validation={yes|no}] [--validation-tolerance=<Tolerance>]");
 		System.out.println ("    [--debug=<Debug Option 1>,[<Debug Option 2>,[...,[<Debug Option N>]...]]");
 		System.out.println ();
@@ -208,7 +211,7 @@ public class CommandLineOptions
 		System.out.println ("--use-native-simd-datatypes={yes|no}");
 		System.out.println ("              Specifies whether the native SSE datatype is to be used in the kernel");
 		System.out.println ("              signature. This also requires that the fields are padded correctly");
-		System.out.println ("              in unit stride direction. Defaults to 'no'.");
+		System.out.println ("              in unit stride direction. Defaults to \"no\".");
 		System.out.println ();
 		System.out.println ("--always-use-nonaligned-moves={yes|no}");
 		System.out.println ("              Specifies whether always non-aligned instructions to transfer data");
@@ -218,7 +221,14 @@ public class CommandLineOptions
 		System.out.println ("              SIMD vector length. This can be achieved by array padding.");
 		System.out.println ("              Padding the unit stride direction to multiples of the SIMD vector length");
 		System.out.println ("              might result in increased performance.");
-		System.out.println ("              Defaults to 'no'.");
+		System.out.println ("              Defaults to \"no\".");
+		System.out.println ();
+		System.out.println ("--optimal-instruction-scheduling={yes|no}]");
+		System.out.println ("              Performs optimal instruction scheduling if inline assembly code is");
+		System.out.println ("              generated. (The option is ignored if not in inline assembly mode.)");
+		System.out.println ("              Note that if turned on, the compilation time might be substantially");
+		System.out.println ("              increased.");
+		System.out.println ("              Defaults to \"no\".");
 		System.out.println ();
 		System.out.println ("--create-initialization={yes|no}");
 		System.out.println ("              Specifies whether to create initialization code.");

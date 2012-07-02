@@ -7,6 +7,7 @@
 #include <OsiClpSolverInterface.hpp>
 
 #include <math.h>
+#include <omp.h>
 
 
 /**
@@ -187,11 +188,15 @@ JNIEXPORT jint JNICALL Java_ch_unibas_cs_hpwc_patus_ilp_ILPSolver_solveInternal 
 	OsiClpSolverInterface solver;
 	solver.loadFromCoinModel (*pModel, true);
 	
+	// get number of cores
+	char szNumThds[5];
+	sprintf (szNumThds, "%d", omp_get_num_procs ());
+	
 	// create the Cbc model and invoke the solver
 	CbcModel model (solver);
 	CbcMain0 (model);
-    const char * argv2[] = { "CoinInterface", "-solve", "-quit" };
-    CbcMain1 (3, argv2, model, callback);	
+    const char * argv2[] = { "CoinInterface", "-threads", szNumThds, "-solve", "-quit" };
+    CbcMain1 (5, argv2, model, callback);	
 	//model.branchAndBound ();
 
 	// check whether a problem has occurred during solving, and if yes, return immediately	
@@ -212,6 +217,8 @@ JNIEXPORT jint JNICALL Java_ch_unibas_cs_hpwc_patus_ilp_ILPSolver_solveInternal 
 	if (nArrLen < nLen)
 		nLen = nArrLen;
 	pEnv->SetDoubleArrayRegion (rgSolution, 0, nLen, pSolution);
+	
+	fflush (stdout);
 	   
 	return ch_unibas_cs_hpwc_patus_ilp_ILPSolution_STATUS_OPTIMAL;
 }

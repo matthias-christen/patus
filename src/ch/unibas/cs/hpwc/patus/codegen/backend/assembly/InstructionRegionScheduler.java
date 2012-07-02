@@ -28,7 +28,7 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 	
-	public static boolean DEBUG = true;
+	public static boolean DEBUG = false;
 	
 	
 	///////////////////////////////////////////////////////////////////

@@ -92,7 +92,7 @@ public class InstructionRegionSchedulerILPSolver
 	///////////////////////////////////////////////////////////////////
 	// Constants
 
-	private final static boolean DEBUG = true;
+	private final static boolean DEBUG = false;
 	
 	private final static Logger LOGGER = Logger.getLogger (InstructionRegionSchedulerILPSolver.class);
 	

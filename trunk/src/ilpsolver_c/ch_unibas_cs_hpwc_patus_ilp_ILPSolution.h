@@ -15,6 +15,8 @@ extern "C" {
 #define ch_unibas_cs_hpwc_patus_ilp_ILPSolution_STATUS_LIMIT_REACHED 2L
 #undef ch_unibas_cs_hpwc_patus_ilp_ILPSolution_STATUS_ABANDONED
 #define ch_unibas_cs_hpwc_patus_ilp_ILPSolution_STATUS_ABANDONED 3L
+#undef ch_unibas_cs_hpwc_patus_ilp_ILPSolution_STATUS_NOSOLUTIONFOUND
+#define ch_unibas_cs_hpwc_patus_ilp_ILPSolution_STATUS_NOSOLUTIONFOUND 4L
 #ifdef __cplusplus
 }
 #endif

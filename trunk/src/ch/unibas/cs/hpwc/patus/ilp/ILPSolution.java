@@ -9,6 +9,7 @@ public class ILPSolution
 	/* package */ final static int STATUS_INFEASIBLE = 1;
 	/* package */ final static int STATUS_LIMIT_REACHED = 2;
 	/* package */ final static int STATUS_ABANDONED = 3;
+	/* package */ final static int STATUS_NOSOLUTIONFOUND = 4;
 	
 	
 	///////////////////////////////////////////////////////////////////
@@ -20,6 +21,7 @@ public class ILPSolution
 		INFEASIBLE (STATUS_INFEASIBLE),
 		SOLUTION_LIMIT_REACHED (STATUS_LIMIT_REACHED),
 		ABANDONED (STATUS_ABANDONED),
+		NOSOLUTIONFOUND (STATUS_NOSOLUTIONFOUND),
 		UNKNOWN (-1);
 		
 		
@@ -47,6 +49,8 @@ public class ILPSolution
 				return SOLUTION_LIMIT_REACHED;
 			case STATUS_ABANDONED:
 				return ABANDONED;
+			case STATUS_NOSOLUTIONFOUND:
+				return NOSOLUTIONFOUND;
 			}
 			
 			return UNKNOWN;

@@ -230,7 +230,7 @@ public class InstructionRegionSchedulerILPSolver
 		{
 			for (DAGraph.Edge e : m_graph.getEdges ())
 			{
-				final int b = e.getTailVertex ().getUpperScheduleBound ();
+				final int b = Math.min (e.getTailVertex ().getUpperScheduleBound (), m_nCyclesCount);
 				final int c = e.getHeadVertex ().getLowerScheduleBound ();
 				final int L = e.getLatency ();
 				
@@ -250,7 +250,7 @@ public class InstructionRegionSchedulerILPSolver
 					double[] rgCoeffs = new double[m_nVarsCount];
 					for (int j = c - L + 1; j <= b; j++)
 						rgCoeffs[x.idx (k, j)] = j + L - c;
-					for (int j = c; j <= b + L - 1; j++)
+					for (int j = c; j <= Math.min (b + L - 1, m_nCyclesCount); j++)
 						rgCoeffs[x.idx (i, j)] = M - j + c;
 					
 					model.addConstraint (rgCoeffs, ILPModel.EOperator.LE, M);
@@ -290,7 +290,7 @@ public class InstructionRegionSchedulerILPSolver
 				double[] rgCoeffs = new double[m_nVarsCount];
 				
 				int nLbnd = m_rgILPIdxToVertex[i].getLowerScheduleBound ();
-				int nUbnd = m_rgILPIdxToVertex[i].getUpperScheduleBound ();
+				int nUbnd = Math.min (m_rgILPIdxToVertex[i].getUpperScheduleBound (), m_nCyclesCount);
 				
 				// two equivalent formulations:
 				// - the sum of all vars outside the bounds must be 0
@@ -308,7 +308,7 @@ public class InstructionRegionSchedulerILPSolver
 				}
 				else
 				{
-					for (int j = m_rgILPIdxToVertex[i].getLowerScheduleBound (); j <= m_rgILPIdxToVertex[i].getUpperScheduleBound (); j++)
+					for (int j = nLbnd; j <= nUbnd; j++)
 						rgCoeffs[x.idx (i, j)] = 1;
 					model.addConstraint (rgCoeffs, ILPModel.EOperator.EQ, 1);
 				}
@@ -453,7 +453,7 @@ public class InstructionRegionSchedulerILPSolver
 				model.writeMPS (StringUtil.concat ("scheduling-cbc_", new Date ().toString ().replaceAll (":", ".").replaceAll (" ", "_"), ".mps"));
 
 			// invoke the external solver
-			ILPSolution solution = ILPSolver.getInstance ().solve (model);
+			ILPSolution solution = ILPSolver.getInstance ().solve (model, 30);
 			boolean bOptimalSolutionFound = solution.getStatus ().equals (ILPSolution.ESolutionStatus.OPTIMAL);
 			
 			if (bOptimalSolutionFound)

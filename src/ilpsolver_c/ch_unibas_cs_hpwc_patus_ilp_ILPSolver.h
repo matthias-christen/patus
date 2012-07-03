@@ -10,10 +10,10 @@ extern "C" {
 /*
  * Class:     ch_unibas_cs_hpwc_patus_ilp_ILPSolver
  * Method:    solveInternal
- * Signature: (Lch/unibas/cs/hpwc/patus/ilp/ILPModel;[D[D)I
+ * Signature: (Lch/unibas/cs/hpwc/patus/ilp/ILPModel;[D[DI)I
  */
 JNIEXPORT jint JNICALL Java_ch_unibas_cs_hpwc_patus_ilp_ILPSolver_solveInternal
-  (JNIEnv *, jobject, jobject, jdoubleArray, jdoubleArray);
+  (JNIEnv *, jobject, jobject, jdoubleArray, jdoubleArray, jint);
 
 #ifdef __cplusplus
 }

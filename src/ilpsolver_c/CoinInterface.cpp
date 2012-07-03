@@ -6,6 +6,7 @@
 #include <CbcModel.hpp>
 #include <OsiClpSolverInterface.hpp>
 
+#include <string.h>
 #include <math.h>
 #include <omp.h>
 
@@ -180,7 +181,8 @@ static int callback (CbcModel* pModel, int nWhereFrom)
 	return nReturnCode;
 }
 
-JNIEXPORT jint JNICALL Java_ch_unibas_cs_hpwc_patus_ilp_ILPSolver_solveInternal (JNIEnv* pEnv, jobject pThis, jobject pILPModel, jdoubleArray rgSolution, jdoubleArray rgObjective)
+JNIEXPORT jint JNICALL Java_ch_unibas_cs_hpwc_patus_ilp_ILPSolver_solveInternal (JNIEnv* pEnv, jobject pThis,
+	jobject pILPModel, jdoubleArray rgSolution, jdoubleArray rgObjective, jint nTimeLimit)
 {
 	CoinModel* pModel = getModel (pEnv, pILPModel);
 
@@ -190,14 +192,28 @@ JNIEXPORT jint JNICALL Java_ch_unibas_cs_hpwc_patus_ilp_ILPSolver_solveInternal 
 	
 	// get number of cores
 	char szNumThds[5];
-	sprintf (szNumThds, "%d", omp_get_num_procs ());
+	int nNumCores = omp_get_num_procs ();
+	sprintf (szNumThds, "%d", nNumCores);
+	
+	// format the time limit
+	char szTimeLimit[8];
+	memset (szTimeLimit, 0, 8);
+	if (nTimeLimit < 0)
+		strcpy (szTimeLimit, "1e10");
+	else
+	{
+		// Cbc sets accumulated time limit, so multiply by the number of threads
+		// to account for wallclock time (approximately)
+		sprintf (szTimeLimit, "%d", nTimeLimit * nNumCores);
+	}
 	
 	// create the Cbc model and invoke the solver
 	CbcModel model (solver);
 	CbcMain0 (model);
-    const char * argv2[] = { "CoinInterface", "-threads", szNumThds, "-solve", "-quit" };
-    CbcMain1 (5, argv2, model, callback);	
-	//model.branchAndBound ();
+    const char* argv2[] = { "CoinInterface", "-threads", szNumThds, "-sec", szTimeLimit, "-solve", "-quit" };
+    CbcMain1 (7, argv2, model, callback);	
+
+	fflush (stdout);
 
 	// check whether a problem has occurred during solving, and if yes, return immediately	
 	if (model.isProvenInfeasible ())
@@ -211,14 +227,17 @@ JNIEXPORT jint JNICALL Java_ch_unibas_cs_hpwc_patus_ilp_ILPSolver_solveInternal 
 	jdouble fObjective = (jdouble) model.getObjValue ();
 	pEnv->SetDoubleArrayRegion (rgObjective, 0, 1, &fObjective);
 
-	const double* pSolution = model.bestSolution ();
-	int nLen = model.solver ()->getNumCols ();
-	jsize nArrLen = pEnv->GetArrayLength (rgSolution);
-	if (nArrLen < nLen)
-		nLen = nArrLen;
-	pEnv->SetDoubleArrayRegion (rgSolution, 0, nLen, pSolution);
-	
-	fflush (stdout);
+	if (fObjective < 1e10)
+	{
+		const double* pSolution = model.bestSolution ();
+		int nLen = model.solver ()->getNumCols ();
+		jsize nArrLen = pEnv->GetArrayLength (rgSolution);
+		if (nArrLen < nLen)
+			nLen = nArrLen;
+		pEnv->SetDoubleArrayRegion (rgSolution, 0, nLen, pSolution);
+	}
+	else
+		return ch_unibas_cs_hpwc_patus_ilp_ILPSolution_STATUS_NOSOLUTIONFOUND;
 	   
 	return ch_unibas_cs_hpwc_patus_ilp_ILPSolution_STATUS_OPTIMAL;
 }

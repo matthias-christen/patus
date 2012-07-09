@@ -143,9 +143,13 @@ public class UnneededAddressLoadRemover implements IInstructionListOptimizer
 			return true;
 		
 		String[] rgMoveInstructions = {
-			TypeBaseIntrinsicEnum.MOVE_GPR.value (),
-			TypeBaseIntrinsicEnum.MOVE_FPR.value (),
-			TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ()
+			TypeBaseIntrinsicEnum.LOAD_GPR.value (),
+			TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED.value (),
+			TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED.value (),
+			
+			TypeBaseIntrinsicEnum.STORE_GPR.value (),
+			TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED.value (),
+			TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED.value ()
 		};
 		
 		for (String strMoveInstruction : rgMoveInstructions)

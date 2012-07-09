@@ -929,7 +929,7 @@ public class StencilAssemblySection extends AssemblySection
 		if (op != null)
 		{
 			// reuse a constant or param: load the value into a pseudo register
-			rgInstrMove = new IInstruction[] { new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, opAddr, op) };
+			rgInstrMove = new IInstruction[] { new Instruction (TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED, opAddr, op) };
 		}
 		
 		return new OperandWithInstructions (rgInstrMove, op == null ? opAddr : op, null);

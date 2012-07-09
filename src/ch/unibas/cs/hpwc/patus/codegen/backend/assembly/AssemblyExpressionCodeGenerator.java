@@ -124,7 +124,7 @@ public class AssemblyExpressionCodeGenerator
 				else
 				{
 					rgDest[i] = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
-					addInstructions (il, i == nUnrollFactor - 1, new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
+					addInstructions (il, i == nUnrollFactor - 1, new Instruction (TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED, rgResult[i], rgDest[i]));
 				}
 			}
 			
@@ -134,7 +134,7 @@ public class AssemblyExpressionCodeGenerator
 		{
 			IOperand[] rgDest = processStencilNode (nodeOutput, nUnrollFactor, il);
 			for (int i = 0; i < nUnrollFactor; i++)
-				addInstructions (il, i == nUnrollFactor - 1, new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgResult[i], rgDest[i]));
+				addInstructions (il, i == nUnrollFactor - 1, new Instruction (TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED, rgResult[i], rgDest[i]));
 		}
 	}
 	
@@ -473,7 +473,7 @@ public class AssemblyExpressionCodeGenerator
 						il.addInstructions (op.getInstrPre ());
 					
 					rgOpResults[i] = new IOperand.PseudoRegister (TypeRegisterType.SIMD);
-					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, op.getOp (), rgOpResults[i]));
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED, op.getOp (), rgOpResults[i]));
 					
 					if (i == nUnrollFactor - 1)
 						il.addInstructions (op.getInstrPost ());

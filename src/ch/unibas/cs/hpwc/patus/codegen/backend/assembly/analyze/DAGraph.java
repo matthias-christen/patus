@@ -7,6 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import ch.unibas.cs.hpwc.patus.arch.TypeExecUnitType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.graph.IParametrizedEdge;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
@@ -27,6 +28,7 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 	{
 		private int m_nIndex;
 		private IInstruction m_instruction;
+		private List<TypeExecUnitType> m_listExecUnitTypes;
 
 		private int m_nInitialLowerScheduleBound;
 		private int m_nInitialUpperScheduleBound;
@@ -42,6 +44,7 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 		{
 			m_nIndex = m_nVertexIndex++;
 			m_instruction = instr;
+			m_listExecUnitTypes = null;
 			
 			m_nInitialLowerScheduleBound = -1;
 			m_nInitialUpperScheduleBound = -1;
@@ -56,6 +59,16 @@ public class DAGraph extends Graph<DAGraph.Vertex, DAGraph.Edge>
 			return m_instruction;
 		}
 		
+		public Collection<TypeExecUnitType> getExecUnitTypes ()
+		{
+			return m_listExecUnitTypes;
+		}
+		
+		public void setExecUnitTypes (List<TypeExecUnitType> listExecUnits)
+		{
+			m_listExecUnitTypes = listExecUnits;
+		}
+
 		public void setScheduleBounds (int nLowerBound, int nUpperBound)
 		{
 			m_nTemporaryLowerScheduleBound = nLowerBound;

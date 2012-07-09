@@ -22,13 +22,19 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 public class LoadStoreMover implements IInstructionListOptimizer
 {
 	private final static int INSTRUCTIONS_SKIP = 2;
-	private Intrinsic m_iMovFpr;
-	private Intrinsic m_iMovFprUa;
+	private Intrinsic m_iLoadFpr;
+	private Intrinsic m_iLoadFprUa;
+	private Intrinsic m_iStoreFpr;
+	private Intrinsic m_iStoreFprUa;
+	
 	
 	public LoadStoreMover (IArchitectureDescription arch)
 	{
-		m_iMovFpr = arch.getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), Specifier.FLOAT);
-		m_iMovFprUa = arch.getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), Specifier.FLOAT);
+		m_iLoadFpr = arch.getIntrinsic (TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED.value (), Specifier.FLOAT);
+		m_iLoadFprUa = arch.getIntrinsic (TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED.value (), Specifier.FLOAT);
+
+		m_iStoreFpr = arch.getIntrinsic (TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED.value (), Specifier.FLOAT);
+		m_iStoreFprUa = arch.getIntrinsic (TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED.value (), Specifier.FLOAT);
 	}
 	
 	@Override
@@ -89,7 +95,8 @@ public class LoadStoreMover implements IInstructionListOptimizer
 		Instruction instr = (Instruction) instruction;
 		
 		//if (UnneededAddressLoadRemover.MOV_INSTRUCTION.equals (instr.getIntrinsicBaseName ()))
-		if (instr.getIntrinsicBaseName ().equals (m_iMovFpr.getName ()) || instr.getIntrinsicBaseName ().equals (m_iMovFprUa.getName ()))
+		if (instr.getIntrinsicBaseName ().equals (m_iLoadFpr.getName ()) || instr.getIntrinsicBaseName ().equals (m_iLoadFprUa.getName ()) ||
+			instr.getIntrinsicBaseName ().equals (m_iStoreFpr.getName ()) || instr.getIntrinsicBaseName ().equals (m_iStoreFprUa.getName ()))
 		{
 			return instr.getOperands ().length == 2 && 
 				(instr.getOperands ()[0] instanceof IOperand.Address) &&

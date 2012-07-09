@@ -105,7 +105,7 @@ public class InstructionListTranslatorTest
 		{
 			if (TypeBaseIntrinsicEnum.PLUS.value ().equals (strOperation) || TypeBaseIntrinsicEnum.MINUS.value ().equals (strOperation))
 				return createIntrinsic (strOperation, m_strBinaryOpArgs);
-			if (TypeBaseIntrinsicEnum.MOVE_FPR.value ().equals (strOperation))
+			if (TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED.value ().equals (strOperation))
 				return createIntrinsic (strOperation, "reg/mem,reg/mem");
 			
 			return null;

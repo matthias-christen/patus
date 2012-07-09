@@ -9,6 +9,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.arch.TypeExecUnitType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
 import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphUtil;
@@ -18,9 +19,11 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  * <p>Reorders the instructions, which are given as a dependence graph,
  * so that latencies between instructions are minimized.</p>
  * 
- * <p>The algorithms are described in the following paper:</p>
- * 
- * K. Wilken, J. Liu, M. Heffernan: Optimal Instruction Scheduling Using Integer Programming, PLDI 2000
+ * <p>The algorithms are described in the following papers:</p>
+ * <ul>
+ * 	<li>K. Wilken, J. Liu, M. Heffernan: Optimal Instruction Scheduling Using Integer Programming, PLDI 2000</li>
+ * 	<li>D. K&auml;stner, S. Winkel: ILP-based Instruction Scheduling for IA-64</li>
+ * </ul>
  * 
  * @author Matthias-M. Christen
  */
@@ -58,11 +61,22 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 			
 
 	///////////////////////////////////////////////////////////////////
+	// Member Variables
+	
+	private List<TypeExecUnitType> m_listAllExecUnitTypes;
+
+	
+	///////////////////////////////////////////////////////////////////
 	// Implementation
 
 	public InstructionScheduler (DAGraph graph, IArchitectureDescription arch)
 	{
 		super (graph, arch);
+		
+		if (arch.getAssemblySpec () != null && arch.getAssemblySpec ().getExecUnitTypes () != null)
+			m_listAllExecUnitTypes = arch.getAssemblySpec ().getExecUnitTypes ().getExecUnitType ();
+		else
+			m_listAllExecUnitTypes = new ArrayList<> (1);
 	}
 		
 	@Override
@@ -110,6 +124,7 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 		{
 			DAGraph.Vertex vertRootNew = new DAGraph.Vertex (new NopInstruction ());
 			graph.addVertex (vertRootNew);
+			vertRootNew.setExecUnitTypes (m_listAllExecUnitTypes);
 			
 			for (DAGraph.Vertex vertRootOld : collRoots)
 				graph.addEdge (vertRootNew, vertRootOld).setLatency (1);
@@ -122,6 +137,7 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 		{
 			DAGraph.Vertex vertLeafNew = new DAGraph.Vertex (new NopInstruction ());
 			graph.addVertex (vertLeafNew);
+			vertLeafNew.setExecUnitTypes (m_listAllExecUnitTypes);
 			
 			for (DAGraph.Vertex vertLeafOld : collLeaves)
 				graph.addEdge (vertLeafOld, vertLeafNew).setLatency (1);

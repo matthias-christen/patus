@@ -10,6 +10,7 @@ import cetus.hir.Statement;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
+import ch.unibas.cs.hpwc.patus.arch.TypeExecUnitType;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Assembly;
@@ -219,6 +220,27 @@ public class DummyArchitectureDescription implements IArchitectureDescription
 	{
 		// TODO Auto-generated method stub
 		return 0;
+	}
+	
+	@Override
+	public int getExecutionUnitTypesCount ()
+	{
+		// TODO Auto-generated method stub
+		return 0;
+	}
+	
+	@Override
+	public TypeExecUnitType getExecutionUnitTypeByID (int nID)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	@Override
+	public List<TypeExecUnitType> getExecutionUnitTypesByIDs (List<?> listIDs)
+	{
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
 	@Override

@@ -289,4 +289,26 @@ public interface IArchitectureDescription
 	 *         cycle
 	 */
 	public abstract int getIssueRate ();
+	
+	/**
+	 * Returns the number of execution unit types defined in the architecture
+	 * specification.
+	 * 
+	 * @return The number of execution unit types
+	 */
+	public abstract int getExecutionUnitTypesCount ();
+	
+	/**
+	 * Finds an execution unit type by its ID. The IDs are used in the
+	 * <code>exec-unit-type-ids</code> attribute of intrinsics.
+	 * 
+	 * @param nID
+	 *            The logical ID of the execution unit
+	 * @return The execution unit type corresponding to the ID <code>nID</code>
+	 *         or <code>null</code> if there is no execution unit type for the
+	 *         ID specified
+	 */
+	public abstract TypeExecUnitType getExecutionUnitTypeByID (int nID);
+	
+	public abstract List<TypeExecUnitType> getExecutionUnitTypesByIDs (List<?> listIDs);
 }

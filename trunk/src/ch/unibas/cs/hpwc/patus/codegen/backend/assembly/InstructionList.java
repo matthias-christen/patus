@@ -243,7 +243,10 @@ public class InstructionList implements Iterable<IInstruction>
 	
 	private void addSIMDSpillInstruction (AssemblySection as, LiveAnalysis analysis, int nInstrIdx, int nNoAccessRegIdx, boolean bSpillToMemory, List<Integer> listIndexOffsets)
 	{
-		Intrinsic intrinsic = as.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), Specifier.FLOAT);
+		Intrinsic intrinsic = as.getArchitectureDescription ().getIntrinsic (
+			bSpillToMemory ? TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED.value () : TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED.value (),
+			Specifier.FLOAT
+		);
 		
 		IOperand opReg = analysis.getPseudoRegisters ()[nNoAccessRegIdx];
 		IOperand opMem = new IOperand.Address (

@@ -61,6 +61,7 @@ public class ArchitectureDescriptionManager
 		private Map<String, Datatype> m_mapDataTypesFromBase;
 		private Map<String, List<Intrinsic>> m_mapOperationsToIntrinsics;
 		private Map<String, Intrinsic> m_mapIntrinsicNamesToIntrinsics;
+		private Map<Integer, TypeExecUnitType> m_mapExecUnitTypes;
 		
 		private boolean m_bHasNonDestructiveOperations;
 
@@ -113,6 +114,14 @@ public class ArchitectureDescriptionManager
 							m_bHasNonDestructiveOperations = false;
 					}
 				}
+			}
+			
+			m_mapExecUnitTypes = new HashMap<> ();
+			if (m_type.getAssembly () != null && m_type.getAssembly ().getExecUnitTypes () != null)
+			{
+				for (TypeExecUnitType t : m_type.getAssembly ().getExecUnitTypes ().getExecUnitType ())
+					m_mapExecUnitTypes.put (t.getId ().intValue (), t);
+				checkExecUnitTypeIDs ();
 			}
 		}
 
@@ -258,7 +267,8 @@ public class ArchitectureDescriptionManager
 		@Override
 		public boolean supportsUnalignedSIMD ()
 		{
-			return m_mapOperationsToIntrinsics.containsKey (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ());
+			return m_mapOperationsToIntrinsics.containsKey (TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED.value ()) &&
+				m_mapOperationsToIntrinsics.containsKey (TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED.value ());
 		}
 
 		@Override
@@ -435,6 +445,57 @@ public class ArchitectureDescriptionManager
 			return m_type.getAssembly ().getProcessorIssueRate ().intValue ();
 		}
 		
+		/**
+		 * Checks whether all the execution unit type IDs defined in the
+		 * intrinsics were also defined as execution unit types in the assembly
+		 * specification. Throws an exception if an ID was found for which no
+		 * corresponding type was defined.
+		 */
+		private void checkExecUnitTypeIDs ()
+		{
+			if (m_type.getIntrinsics () != null)
+			{
+				for (Intrinsic intrinsic : m_type.getIntrinsics ().getIntrinsic ())
+				{
+					if (intrinsic.getExecUnitTypeIds () != null)
+					{
+						for (BigInteger id : intrinsic.getExecUnitTypeIds ())
+							if (!m_mapExecUnitTypes.containsKey (id.intValue ()))
+								throw new RuntimeException (StringUtil.concat ("No execution unit type defined for ID ", id));
+					}
+				}
+			}
+		}
+		
+		@Override
+		public int getExecutionUnitTypesCount ()
+		{
+			return m_mapExecUnitTypes.size ();
+		}
+		
+		@Override
+		public TypeExecUnitType getExecutionUnitTypeByID (int nID)
+		{
+			return m_mapExecUnitTypes.get (nID);
+		}
+		
+		@Override
+		public List<TypeExecUnitType> getExecutionUnitTypesByIDs (List<?> listIDs)
+		{
+			List<TypeExecUnitType> listResult = new ArrayList<> (listIDs.size ());
+			for (Object oID : listIDs)
+			{
+				if (oID instanceof Number)
+				{
+					TypeExecUnitType t = getExecutionUnitTypeByID (((Number) oID).intValue ());
+					if (t != null)
+						listResult.add (t);
+				}
+			}
+
+			return listResult;
+		}
+		
 		@Override
 		public List<String> getIncludeFiles ()
 		{
@@ -596,9 +657,16 @@ public class ArchitectureDescriptionManager
 							list.add (null);
 						else
 						{
-							Object objDestEntry = objSrcEntry.getClass ().newInstance ();
-							copyFields (objDestEntry, objSrcEntry);
-							list.add (objDestEntry);
+							if (objSrcEntry.getClass ().equals (Integer.class))
+								list.add (new Integer (((Integer) objSrcEntry).intValue ()));
+							if (objSrcEntry.getClass ().equals (BigInteger.class))
+								list.add (new BigInteger (((BigInteger) objSrcEntry).toByteArray ()));
+							else
+							{
+								Object objDestEntry = objSrcEntry.getClass ().newInstance ();
+								copyFields (objDestEntry, objSrcEntry);
+								list.add (objDestEntry);
+							}
 						}
 					}
 					fieldDest.set (objDest, list);

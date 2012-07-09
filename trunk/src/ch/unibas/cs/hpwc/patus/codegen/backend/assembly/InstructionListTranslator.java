@@ -271,9 +271,9 @@ public class InstructionListTranslator
 		return argDest.isMemory ();
 	}
 	
-	private String getMovFpr (IOperand... op)
+	private String getMovFpr (boolean bIsLoad, IOperand... op)
 	{
-		return InstructionListTranslator.getMovFpr (m_data, m_specDatatype, op);
+		return InstructionListTranslator.getMovFpr (m_data, bIsLoad, m_specDatatype, op);
 	}
 	
 	/**
@@ -294,10 +294,10 @@ public class InstructionListTranslator
 	 * @return The name of the move instruction to use to move the operands
 	 *         <code>rgOperands</code>
 	 */
-	public static String getMovFpr (CodeGeneratorSharedObjects data, Specifier specDatatype, IOperand... rgOperands)
+	public static String getMovFpr (CodeGeneratorSharedObjects data, boolean bIsLoad, Specifier specDatatype, IOperand... rgOperands)
 	{
 		if (data.getOptions ().isAlwaysUseNonalignedMoves ())
-			return TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ();
+			return bIsLoad ? TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED.value () : TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED.value ();
 		
 		int nVectorLength = -1;
 		
@@ -316,11 +316,11 @@ public class InstructionListTranslator
 				}
 				
 				if ((((IOperand.Address) op).getDisplacement () % nVectorLength) != 0)
-					return TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value ();
+					return bIsLoad ? TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED.value () : TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED.value ();
 			}
 		}
 
-		return TypeBaseIntrinsicEnum.MOVE_FPR.value ();
+		return bIsLoad ? TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED.value () : TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED.value ();
 	}
 	
 	/**
@@ -483,7 +483,7 @@ public class InstructionListTranslator
 				if (!bIsOneOfNonSharedInputArgsResult)
 					mapSubstitutions.put (opSourceOutput, opOut);
 				
-				translateInstruction (new Instruction (getMovFpr (opShared), opShared, opOut));
+				translateInstruction (new Instruction (getMovFpr (opShared instanceof IOperand.Address, opShared), opShared, opOut));
 			}
 		}
 		
@@ -521,7 +521,12 @@ public class InstructionListTranslator
 						{
 							// mov arg_i, tmp
 							mapSubstitutions.put (rgSourceOps[i], rgDestOps[rgPermSourceToDest[i]]);
-							translateInstruction (new Instruction (getMovFpr (rgSourceOps[i]), rgSourceOps[i], rgDestOps[rgPermSourceToDest[i]]));
+							
+							translateInstruction (new Instruction (
+								getMovFpr (rgSourceOps[i] instanceof IOperand.Address, rgSourceOps[i]),
+								rgSourceOps[i],
+								rgDestOps[rgPermSourceToDest[i]])
+							);
 						}
 					}
 				}
@@ -539,9 +544,12 @@ public class InstructionListTranslator
 //else
 ////
 		String strInstruction = intrinsic.getName ();
-		if (intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.MOVE_FPR.value ()))
+		
+		boolean bIsLoad = intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED.value ());
+		boolean bIsStore = intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED.value ());
+		if (bIsLoad || bIsStore)
 		{
-			Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (getMovFpr (rgDestOps), m_specDatatype);
+			Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (getMovFpr (bIsLoad, rgDestOps), m_specDatatype);
 			if (i != null)
 				strInstruction = i.getName ();
 		}
@@ -552,7 +560,7 @@ public class InstructionListTranslator
 		if (bHasNonCompatibleResultOperand)
 		{
 			// mov tmp, result
-			translateInstruction (new Instruction (getMovFpr (opTmpResultOperand), opTmpResultOperand, rgSourceOps[rgSourceOps.length - 1]));
+			translateInstruction (new Instruction (getMovFpr (opTmpResultOperand instanceof IOperand.Address, opTmpResultOperand), opTmpResultOperand, rgSourceOps[rgSourceOps.length - 1]));
 		}
 	}
 	

@@ -136,7 +136,7 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 		 */
 		private void createMovInstruction (IOperand opSrc, IOperand opDest)
 		{
-			Instruction instr = new Instruction (InstructionListTranslator.getMovFpr (m_data, null, opSrc), opSrc, opDest);
+			Instruction instr = new Instruction (InstructionListTranslator.getMovFpr (m_data, opSrc instanceof IOperand.Address, null, opSrc), opSrc, opDest);
 			
 			if (LOGGER.isDebugEnabled ())
 				LOGGER.debug (StringUtil.concat ("Created MOV: ", instr.toString ()));

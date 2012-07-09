@@ -226,9 +226,12 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 							
 			// generate the loop
 			Map<String, String> mapUnalignedMoves = new HashMap<> ();
-			Intrinsic intrMoveFpr = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR.value (), specType);
-			Intrinsic intrMoveFprUnaligned = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), specType);
-			mapUnalignedMoves.put (intrMoveFpr.getName (), intrMoveFprUnaligned.getName ());
+			Intrinsic intrLoadFpr = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED.value (), specType);
+			Intrinsic intrLoadFprUnaligned = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED.value (), specType);
+			Intrinsic intrStoreFpr = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED.value (), specType);
+			Intrinsic intrStoreFprUnaligned = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED.value (), specType);
+			mapUnalignedMoves.put (intrLoadFpr.getName (), intrLoadFprUnaligned.getName ());
+			mapUnalignedMoves.put (intrStoreFpr.getName (), intrStoreFprUnaligned.getName ());
 			
 			InstructionList ilComputationNotUnrolledUnaligned = ilComputationNotUnrolled.replaceInstructions (mapUnalignedMoves);
 						
@@ -391,7 +394,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 							
 							// load the value into the register
 							StencilAssemblySection.OperandWithInstructions opGrid = m_assemblySection.getGrid (node, i - node.getSpaceIndex ()[0]);
-							il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, opGrid.getOp (), opReg), opGrid);
+							il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED, opGrid.getOp (), opReg), opGrid);
 						}
 					}
 					
@@ -408,7 +411,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 					// load the value into the register
 					StencilAssemblySection.OperandWithInstructions opGrid = m_assemblySection.getGrid (node, 0);
 					if (true) throw new RuntimeException ("Handle pre and post instructions");
-					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, opGrid.getOp (), opReg), opGrid);
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED, opGrid.getOp (), opReg), opGrid);
 					
 					nPrevCoord = node.getSpaceIndex ()[0];
 				}
@@ -469,13 +472,13 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 
 				// swap registers
 				for ( ; i < rgRegs.length - nUnrollingFactor; i++)
-					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR, rgRegs[i + nUnrollingFactor], rgRegs[i]));
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED, rgRegs[i + nUnrollingFactor], rgRegs[i]));
 
 				// load new values into the register that corresponds to the largest coordinates
 				for ( ; i < rgRegs.length; i++)
 				{
 					StencilAssemblySection.OperandWithInstructions op = m_assemblySection.getGrid (m_mapRegistersToReuseNodes.get (rgRegs[i]), 0);
-					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED, op.getOp (), rgRegs[i]), op);
+					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED, op.getOp (), rgRegs[i]), op);
 				}
 				
 				// OLD CODE -->
@@ -610,7 +613,11 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		m_bArchSupportsSIMD = m_data.getArchitectureDescription ().getSIMDVectorLength (specType) > 1;
 		m_bArchSupportsUnalignedMoves = true;
 		if (m_bArchSupportsSIMD)
-			m_bArchSupportsUnalignedMoves = m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.MOVE_FPR_UNALIGNED.value (), specType) != null;
+		{
+			m_bArchSupportsUnalignedMoves = 
+				m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED.value (), specType) != null &&
+				m_data.getArchitectureDescription ().getIntrinsic (TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED.value (), specType) != null;
+		}
 		
 		// determine whether there are alignment restrictions on the vector data types
 		m_bHasAlignmentRestriction = true;

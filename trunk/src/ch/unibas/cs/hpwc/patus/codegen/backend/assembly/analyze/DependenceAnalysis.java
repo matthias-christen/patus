@@ -55,6 +55,11 @@ public class DependenceAnalysis
 		for (int i = 0; i < m_nInstructionsCount; i++)
 		{
 			graph.addVertex (rgVertices[i] = new DAGraph.Vertex (m_rgInstructions[i]));
+			
+			Intrinsic intrinsicI = m_arch.getIntrinsicByIntrinsicName (((Instruction) m_rgInstructions[i]).getIntrinsicBaseName ());
+			if (intrinsicI != null && intrinsicI.getExecUnitTypeIds () != null && intrinsicI.getExecUnitTypeIds ().size () > 0)
+				rgVertices[i].setExecUnitTypes (m_arch.getExecutionUnitTypesByIDs (intrinsicI.getExecUnitTypeIds ()));
+			
 			for (int j = 0; j < i; j++)
 			{
 				if (m_rgInstructions[j] instanceof Instruction)
@@ -69,8 +74,8 @@ public class DependenceAnalysis
 //							edge.setLatency (LATENCY_MEMORY_MOVE);
 //						else
 						{
-							Intrinsic intrinsic = m_arch.getIntrinsicByIntrinsicName (((Instruction) m_rgInstructions[j]).getIntrinsicBaseName ());
-							edge.setLatency (intrinsic == null || intrinsic.getLatency () == null ? LATENCY_DEFAULT : intrinsic.getLatency ().intValue ());
+							Intrinsic intrinsicJ = m_arch.getIntrinsicByIntrinsicName (((Instruction) m_rgInstructions[j]).getIntrinsicBaseName ());
+							edge.setLatency (intrinsicJ == null || intrinsicJ.getLatency () == null ? LATENCY_DEFAULT : intrinsicJ.getLatency ().intValue ());
 						}
 					}
 				}

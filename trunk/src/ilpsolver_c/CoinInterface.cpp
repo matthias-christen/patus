@@ -89,6 +89,7 @@ JNIEXPORT void JNICALL Java_ch_unibas_cs_hpwc_patus_ilp_ILPModel_addConstraintIn
 	jsize nEltsCount = pEnv->GetArrayLength (rgCoeffs);
 	
 	// count the number of nonzero elements
+//#pragma omp parallel for reduction(+: nNumNzElts)
 	for (int i = 0; i < nEltsCount; i++)
 		if (pCoeffs[i] != 0.0)
 			nNumNzElts++;
@@ -99,6 +100,8 @@ JNIEXPORT void JNICALL Java_ch_unibas_cs_hpwc_patus_ilp_ILPModel_addConstraintIn
 	
 	// copy the data
 	int j = 0;
+	
+//#pragma omp parallel for
 	for (int i = 0; i < nEltsCount; i++)
 	{
 		if (pCoeffs[i] != 0.0)

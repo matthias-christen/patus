@@ -164,7 +164,7 @@ public class InstructionListTranslator
 	 */
 	private Intrinsic getIntrinsicForInstruction (Instruction instruction)
 	{
-		return m_data.getArchitectureDescription ().getIntrinsic (instruction.getIntrinsicBaseName (), m_specDatatype);
+		return m_data.getArchitectureDescription ().getIntrinsic (instruction.getInstructionName (), m_specDatatype);
 	}
 	
 	/**
@@ -271,7 +271,7 @@ public class InstructionListTranslator
 		return argDest.isMemory ();
 	}
 	
-	private String getMovFpr (boolean bIsLoad, IOperand... op)
+	private TypeBaseIntrinsicEnum getMovFpr (boolean bIsLoad, IOperand... op)
 	{
 		return InstructionListTranslator.getMovFpr (m_data, bIsLoad, m_specDatatype, op);
 	}
@@ -294,10 +294,10 @@ public class InstructionListTranslator
 	 * @return The name of the move instruction to use to move the operands
 	 *         <code>rgOperands</code>
 	 */
-	public static String getMovFpr (CodeGeneratorSharedObjects data, boolean bIsLoad, Specifier specDatatype, IOperand... rgOperands)
+	public static TypeBaseIntrinsicEnum getMovFpr (CodeGeneratorSharedObjects data, boolean bIsLoad, Specifier specDatatype, IOperand... rgOperands)
 	{
 		if (data.getOptions ().isAlwaysUseNonalignedMoves ())
-			return bIsLoad ? TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED.value () : TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED.value ();
+			return bIsLoad ? TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED : TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED;
 		
 		int nVectorLength = -1;
 		
@@ -316,11 +316,11 @@ public class InstructionListTranslator
 				}
 				
 				if ((((IOperand.Address) op).getDisplacement () % nVectorLength) != 0)
-					return bIsLoad ? TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED.value () : TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED.value ();
+					return bIsLoad ? TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED : TypeBaseIntrinsicEnum.STORE_FPR_UNALIGNED;
 			}
 		}
 
-		return bIsLoad ? TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED.value () : TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED.value ();
+		return bIsLoad ? TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED : TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED;
 	}
 	
 	/**
@@ -549,12 +549,16 @@ public class InstructionListTranslator
 		boolean bIsStore = intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED.value ());
 		if (bIsLoad || bIsStore)
 		{
-			Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (getMovFpr (bIsLoad, rgDestOps), m_specDatatype);
+			Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (getMovFpr (bIsLoad, rgDestOps).value (), m_specDatatype);
 			if (i != null)
 				strInstruction = i.getName ();
 		}
 		
-		m_ilOut.addInstruction (new Instruction (strInstruction, rgDestOps));
+		m_ilOut.addInstruction (new Instruction (
+			strInstruction,
+			instruction.getIntrinsic (),
+			rgDestOps
+		));
 		
 		// add a move-result instruction if needed
 		if (bHasNonCompatibleResultOperand)
@@ -601,7 +605,7 @@ public class InstructionListTranslator
 		Intrinsic intrinsic = getIntrinsicForInstruction (instruction);
 		if (intrinsic == null)
 		{
-			LOGGER.info (StringUtil.concat ("No intrinsic found for the instruction ", instruction.getIntrinsicBaseName ()));
+			LOGGER.info (StringUtil.concat ("No intrinsic found for the instruction ", instruction.getInstructionName ()));
 			m_ilOut.addInstruction (instruction);
 			return;
 		}

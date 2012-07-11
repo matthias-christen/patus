@@ -9,19 +9,27 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.WindowConstants;
 
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphUtil;
+import ch.unibas.cs.hpwc.patus.util.IParallelOperation;
+import ch.unibas.cs.hpwc.patus.util.MathUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -118,6 +126,70 @@ public class DefaultGraph<V extends IVertex, E extends IEdge<V>> implements IGra
 	public void removeAllEdges ()
 	{
 		m_setEdges.clear ();
+	}
+	
+	protected <T> void forAllElements (final IParallelOperation<T> op, final Collection<T> elements)
+	{
+		// runnable class used to pass the number of the thread
+		abstract class RunnableWithThreadNum implements Runnable
+		{
+			protected int m_nThreadNum;
+			
+			public RunnableWithThreadNum (int nThreadNum)
+			{
+				m_nThreadNum = nThreadNum;
+			}
+		}
+		
+		// submit a runnable for each thread
+		List<Future<?>> listFutures = new ArrayList<> (Globals.NUM_THREADS);
+		for (int i = 0; i < Globals.NUM_THREADS; i++)
+		{
+			listFutures.add (Globals.EXECUTOR_SERVICE.submit (new RunnableWithThreadNum (i)
+			{
+				@Override
+				public void run ()
+				{
+					// perform max-min+1 operations on contiguous collection elements per thread
+					int nChunk = MathUtil.divCeil (elements.size (), Globals.NUM_THREADS);
+					int nMin = m_nThreadNum * nChunk;
+					int nMax = Math.min ((m_nThreadNum + 1) * nChunk - 1, elements.size () - 1);
+					
+					int j = 0;
+					for (T element : elements)
+					{
+						if (nMin <= j && j <= nMax)
+							op.perform (element);
+						j++;
+					}
+				}
+			}));
+		}
+		
+		// synchronize
+		try
+		{
+			for (Future<?> f : listFutures)
+				f.get ();
+		}
+		catch (InterruptedException e)
+		{			
+		}
+		catch (ExecutionException e)
+		{			
+		}		
+	}
+	
+	@Override
+	public void forAllVertices (final IParallelOperation<V> op)
+	{
+		forAllElements (op, m_mapVertices.keySet ());
+	}
+	
+	@Override
+	public void forAllEdges (IParallelOperation<E> op)
+	{
+		forAllElements (op, m_setEdges);
 	}
 	
 	private String getShortVertexString (V vertex)

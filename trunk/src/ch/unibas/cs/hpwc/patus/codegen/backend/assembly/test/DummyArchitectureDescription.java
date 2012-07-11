@@ -9,6 +9,7 @@ import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
 import ch.unibas.cs.hpwc.patus.arch.TypeExecUnitType;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
@@ -153,6 +154,13 @@ public class DummyArchitectureDescription implements IArchitectureDescription
 	}
 	
 	@Override
+	public Intrinsic getIntrinsic (TypeBaseIntrinsicEnum type, Specifier specType)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	@Override
 	public Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName)
 	{
 		// TODO Auto-generated method stub
@@ -217,6 +225,13 @@ public class DummyArchitectureDescription implements IArchitectureDescription
 
 	@Override
 	public int getIssueRate ()
+	{
+		// TODO Auto-generated method stub
+		return 0;
+	}
+	
+	@Override
+	public int getMinimumNumberOfExecutionUnitsPerType (Iterable<Intrinsic> itIntrinsics)
 	{
 		// TODO Auto-generated method stub
 		return 0;

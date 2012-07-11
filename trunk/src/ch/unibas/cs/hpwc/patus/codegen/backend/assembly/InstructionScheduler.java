@@ -9,6 +9,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeExecUnitType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
 import ch.unibas.cs.hpwc.patus.graph.IVertex;
@@ -44,6 +45,12 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 		public void issue (StringBuilder sbResult)
 		{
 			// empty instruction: nothing to do
+		}
+		
+		@Override
+		public TypeBaseIntrinsicEnum getIntrinsic ()
+		{
+			return null;
 		}
 		
 		@Override

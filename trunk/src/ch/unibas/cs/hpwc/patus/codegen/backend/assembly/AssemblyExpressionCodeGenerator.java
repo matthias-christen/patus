@@ -19,7 +19,6 @@ import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
@@ -210,7 +209,7 @@ public class AssemblyExpressionCodeGenerator
 	 *            The operand arguments to the instruction
 	 * @return An array of operands containing the result for each of the unrollings
 	 */
-	private IOperand[] addInstruction (InstructionList il, int nUnrollFactor, String strIntrinsicBaseName, IOperand[] rgResult, IOperand[]... rgArguments)
+	private IOperand[] addInstruction (InstructionList il, int nUnrollFactor, TypeBaseIntrinsicEnum intrinsic, IOperand[] rgResult, IOperand[]... rgArguments)
 	{
 		IOperand[] rgResultLocal = rgResult;
 		if (rgResultLocal == null)
@@ -227,7 +226,7 @@ public class AssemblyExpressionCodeGenerator
 				rgArgs[j] = rgArguments[j][i];
 			rgArgs[rgArguments.length] = rgResultLocal[i];
 			
-			addInstructions (il, i == nUnrollFactor - 1, new Instruction (strIntrinsicBaseName, rgArgs));
+			addInstructions (il, i == nUnrollFactor - 1, new Instruction (intrinsic, rgArgs));
 		}
 		
 		return rgResultLocal;
@@ -358,7 +357,7 @@ public class AssemblyExpressionCodeGenerator
 	private IOperand[] processBinaryExpression (BinaryExpression expr, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
 		return addInstruction (
-			il, nUnrollFactor, Globals.getIntrinsicBase (expr.getOperator ()).value (),
+			il, nUnrollFactor, Globals.getIntrinsicBase (expr.getOperator ()),
 			null, processArguments (specDatatype, nUnrollFactor, il, expr.getLHS (), expr.getRHS ()));
 	}
 	
@@ -373,11 +372,12 @@ public class AssemblyExpressionCodeGenerator
 	private IOperand[] processFunctionCall (FunctionCall fnxCall, Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
 		Expression exprFuncName = fnxCall.getName ();
-		Intrinsic i = m_data.getArchitectureDescription ().getIntrinsic (exprFuncName.toString (), specDatatype);
 
 		// only fma and fms supported for now...
-		if (exprFuncName.equals (Globals.FNX_FMA) || exprFuncName.equals (Globals.FNX_FMS))
-			return processFusedMultiplyAddSub (i, fnxCall.getArgument (0), fnxCall.getArgument (1), fnxCall.getArgument (2), specDatatype, nUnrollFactor, il);
+		if (exprFuncName.equals (Globals.FNX_FMA))
+			return processFusedMultiplyAddSub (TypeBaseIntrinsicEnum.FMA, fnxCall.getArgument (0), fnxCall.getArgument (1), fnxCall.getArgument (2), specDatatype, nUnrollFactor, il);
+		else if (exprFuncName.equals (Globals.FNX_FMS))
+			return processFusedMultiplyAddSub (TypeBaseIntrinsicEnum.FMS, fnxCall.getArgument (0), fnxCall.getArgument (1), fnxCall.getArgument (2), specDatatype, nUnrollFactor, il);
 		else
 			throw new RuntimeException (StringUtil.concat ("The function '", exprFuncName.toString (), "' is currently not supported."));
 	}
@@ -393,11 +393,11 @@ public class AssemblyExpressionCodeGenerator
 	 * @param il
 	 * @return
 	 */
-	private IOperand[] processFusedMultiplyAddSub (Intrinsic intrinsic, Expression exprSummand, Expression exprFactor1, Expression exprFactor2,
+	private IOperand[] processFusedMultiplyAddSub (TypeBaseIntrinsicEnum intrinsic, Expression exprSummand, Expression exprFactor1, Expression exprFactor2,
 		Specifier specDatatype, int nUnrollFactor, InstructionList il)
 	{
 		return addInstruction (
-			il, nUnrollFactor, intrinsic.getBaseName (), null,
+			il, nUnrollFactor, intrinsic, null,
 			processArguments (specDatatype, nUnrollFactor, il, exprSummand, exprFactor1, exprFactor2)
 		);
 	}
@@ -420,7 +420,7 @@ public class AssemblyExpressionCodeGenerator
 		IOperand[] rgOps = traverse (expr.getExpression (), specDatatype, nUnrollFactor, il);
 		
 		if (expr.getOperator ().equals (UnaryOperator.MINUS))
-			rgOps = addInstruction (il, nUnrollFactor, TypeBaseIntrinsicEnum.UNARY_MINUS.value (), null, rgOps);
+			rgOps = addInstruction (il, nUnrollFactor, TypeBaseIntrinsicEnum.UNARY_MINUS, null, rgOps);
 
 		return rgOps;
 	}

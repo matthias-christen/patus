@@ -2,6 +2,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -32,9 +33,9 @@ class AddSub
 		return m_expr;
 	}
 	
-	public String getBaseIntrinsic ()
+	public TypeBaseIntrinsicEnum getBaseIntrinsic ()
 	{
-		return Globals.getIntrinsicBase (m_op).value ();
+		return Globals.getIntrinsicBase (m_op);
 	}
 	
 	public BinaryOperator getOperator ()

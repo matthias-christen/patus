@@ -499,7 +499,7 @@ public class InstructionRegionSchedulerILPSolver
 			// build the schedule from the solution of the ILP
 			for (int i = 1; i <= m_nVerticesCount; i++)
 				for (int j = 1; j <= m_nCyclesCount; j++)
-					if (solution.getSolution ()[x.idx (i, j) - 1] > 0)
+					if (solution.getSolution ()[x.idx (i, j)] > 0)
 						m_rgILPIdxToVertex[i].setScheduleBounds (j, j);
 
 			reconstructInstructionList (ilOut);

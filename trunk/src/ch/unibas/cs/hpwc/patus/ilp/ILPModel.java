@@ -156,7 +156,7 @@ public class ILPModel
 	 *            The upper bound of the constraint or <code>null</code> if no
 	 *            upper bound
 	 */
-	public void addConstraint (double[] rgCoeffs, Double fLowerBound, Double fUpperBound)
+	public synchronized void addConstraint (double[] rgCoeffs, Double fLowerBound, Double fUpperBound)
 	{
 		addConstraintInternal (rgCoeffs,
 			fLowerBound != null, fLowerBound == null ? 0.0 : fLowerBound,

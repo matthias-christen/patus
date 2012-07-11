@@ -95,8 +95,8 @@ public class LoadStoreMover implements IInstructionListOptimizer
 		Instruction instr = (Instruction) instruction;
 		
 		//if (UnneededAddressLoadRemover.MOV_INSTRUCTION.equals (instr.getIntrinsicBaseName ()))
-		if (instr.getIntrinsicBaseName ().equals (m_iLoadFpr.getName ()) || instr.getIntrinsicBaseName ().equals (m_iLoadFprUa.getName ()) ||
-			instr.getIntrinsicBaseName ().equals (m_iStoreFpr.getName ()) || instr.getIntrinsicBaseName ().equals (m_iStoreFprUa.getName ()))
+		if (instr.getInstructionName ().equals (m_iLoadFpr.getName ()) || instr.getInstructionName ().equals (m_iLoadFprUa.getName ()) ||
+			instr.getInstructionName ().equals (m_iStoreFpr.getName ()) || instr.getInstructionName ().equals (m_iStoreFprUa.getName ()))
 		{
 			return instr.getOperands ().length == 2 && 
 				(instr.getOperands ()[0] instanceof IOperand.Address) &&
@@ -117,7 +117,7 @@ public class LoadStoreMover implements IInstructionListOptimizer
 			return false;
 		
 		Instruction instr = (Instruction) instruction;		
-		return instr.getIntrinsicBaseName ().equals ("neg");
+		return instr.getInstructionName ().equals ("neg");
 	}
 	
 	private int getAddressLoadBlockSize (IInstruction[] rgInstrs, int nIdx)

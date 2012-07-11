@@ -12,6 +12,8 @@ package ch.unibas.cs.hpwc.patus.codegen;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import cetus.hir.AnnotationStatement;
 import cetus.hir.BinaryOperator;
@@ -31,6 +33,10 @@ public class Globals
 {
 	///////////////////////////////////////////////////////////////////
 	// Constants
+	
+	public static final int NUM_THREADS = Runtime.getRuntime ().availableProcessors ();
+	public static final ExecutorService EXECUTOR_SERVICE = Executors.newFixedThreadPool (NUM_THREADS);
+	
 
 	public static final IntegerLiteral ZERO = new IntegerLiteral (0);
 	public static final IntegerLiteral ONE = new IntegerLiteral (1);

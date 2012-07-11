@@ -34,7 +34,7 @@ public class SimpleUnneededAddressLoadRemover implements IInstructionListOptimiz
 				boolean bIsInstructionNeeded = true;
 				
 				// check for "mov" instructions
-				if (instr.getIntrinsicBaseName ().equals (UnneededAddressLoadRemover.MOV_INSTRUCTION))
+				if (instr.getInstructionName ().equals (UnneededAddressLoadRemover.MOV_INSTRUCTION))
 				{
 					// if the previous "mov" is the same as the current one and the destination register
 					// (rgDest) hasn't been modified (instrLastLoad is set to null), this one is not needed

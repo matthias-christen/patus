@@ -14,10 +14,12 @@ import org.apache.log4j.Logger;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeExecUnitType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph.Edge;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph.Vertex;
 import ch.unibas.cs.hpwc.patus.ilp.ILPModel;
 import ch.unibas.cs.hpwc.patus.ilp.ILPSolution;
 import ch.unibas.cs.hpwc.patus.ilp.ILPSolver;
+import ch.unibas.cs.hpwc.patus.util.IParallelOperation;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -151,6 +153,17 @@ public class InstructionRegionSchedulerILPSolver2
 	 */
 	private class Solver
 	{
+		/**
+		 * Determine whether to use bounds constraints (i.e., add constraints
+		 * that constrain the lower and upper scheduling bounds of
+		 * instructions).
+		 * If no bounds constraints are added, the solution needs to be checked
+		 * whether it is a valid solution, but if bounds constraints are added,
+		 * the ILP solving time increases.
+		 */
+		private static final boolean USE_BOUNDS_CONSTRAINTS = false;
+
+		
 		private IndexCalc x;
 
 		private int m_nVarsCount;
@@ -173,38 +186,46 @@ public class InstructionRegionSchedulerILPSolver2
 		
 		/**
 		 * 
-		 * @param model
+		 * @param model The ILP model to which the constraints are added
 		 */
-		protected void addTimeConstraints (ILPModel model)
+		protected void addTimeConstraints (final ILPModel model)
 		{
-			for (int i = 1; i <= m_nVerticesCount; i++)
+			m_graph.forAllVertices (new IParallelOperation<DAGraph.Vertex> ()
 			{
-				double[] rgCoeffs = new double[m_nVarsCount];
-				rgCoeffs[0] = -1;
-				
-				for (int j = 1; j <= m_nCyclesCount; j++)
-					for (int k = 1; k <= m_nExecUnitsCount; k++)
-						rgCoeffs[x.idx (i, j, k)] = j;
-				
-				model.addConstraint (rgCoeffs, ILPModel.EOperator.LE, 0);
-			}
+				public void perform (DAGraph.Vertex v)
+				{
+					int i = m_mapVertexToILPIdx.get (v);
+					
+					double[] rgCoeffs = new double[m_nVarsCount];
+					rgCoeffs[0] = -1;
+					
+					for (int j = 1; j <= m_nCyclesCount; j++)
+						for (int k = 1; k <= m_nExecUnitsCount; k++)
+							rgCoeffs[x.idx (i, j, k)] = j;
+					
+					model.addConstraint (rgCoeffs, ILPModel.EOperator.LE, 0);
+				}
+			});
 		}
 		
 		/**
 		 * 
-		 * @param model
+		 * @param model The ILP model to which the constraints are added
 		 */
-		protected void addMustScheduleConstraints (ILPModel model)
+		protected void addMustScheduleConstraints (final ILPModel model)
 		{
-			int i = 1;
-			for (DAGraph.Vertex v : m_graph.getVertices ())
+			m_graph.forAllVertices (new IParallelOperation<DAGraph.Vertex> ()
 			{
-				double[] rgCoeffs = new double[m_nVarsCount];
-				
-				for (int j = v.getLowerScheduleBound (); j <= v.getUpperScheduleBound (); j++)
+				public void perform (DAGraph.Vertex v)
 				{
 					if (v.getExecUnitTypes () == null)
 						throw new RuntimeException (StringUtil.concat ("No execution unit type for vertex ", v.toString ()));
+
+					int i = m_mapVertexToILPIdx.get (v);
+					
+					double[] rgCoeffs = new double[m_nVarsCount];
+					int nExecUnitTypesCode = 0;
+					boolean bHasMultipleExecUnitTypes = v.getExecUnitTypes ().size () > 1;
 					
 					for (TypeExecUnitType eu : v.getExecUnitTypes ())
 					{
@@ -212,17 +233,22 @@ public class InstructionRegionSchedulerILPSolver2
 						if (k == null)
 							throw new RuntimeException (StringUtil.concat ("No execution unit type for type ", eu.getName (), " in vertex ", v.toString ()));
 							
-						rgCoeffs[x.idx (i, j, k)] = 1;
+						for (int j = v.getLowerScheduleBound (); j <= v.getUpperScheduleBound (); j++)
+							rgCoeffs[x.idx (i, j, k)] = bHasMultipleExecUnitTypes ? 1 << (k - 1) : 1;
+						
+						nExecUnitTypesCode += (1 << (k - 1));
 					}
+										
+					model.addConstraint (rgCoeffs, ILPModel.EOperator.EQ, bHasMultipleExecUnitTypes ? nExecUnitTypesCode : 1);					
 				}
-				
-				model.addConstraint (rgCoeffs, ILPModel.EOperator.EQ, 1);
-
-				i++;
-			}
+			});			
 		}
 		
-		protected void addResourceConstraints (ILPModel model)
+		/**
+		 * 
+		 * @param model The ILP model to which the constraints are added
+		 */
+		protected void addResourceConstraints (final ILPModel model)
 		{
 			for (int k = 1; k <= m_nExecUnitsCount; k++)
 			{
@@ -230,12 +256,10 @@ public class InstructionRegionSchedulerILPSolver2
 				{
 					double[] rgCoeffs = new double[m_nVarsCount];
 					
-					int i = 1;
 					for (DAGraph.Vertex v : m_graph.getVertices ())
 					{
 						if (v.getExecUnitTypes ().contains (m_rgILPIdxToExecUnitType[k]))
-							rgCoeffs[x.idx (i, j, k)] = 1;
-						i++;
+							rgCoeffs[x.idx (m_mapVertexToILPIdx.get (v), j, k)] = 1;
 					}
 					
 					model.addConstraint (rgCoeffs, ILPModel.EOperator.LE, m_rgILPIdxToExecUnitType[k].getQuantity ().intValue ());
@@ -245,9 +269,9 @@ public class InstructionRegionSchedulerILPSolver2
 		
 		/**
 		 * 
-		 * @param model
+		 * @param model The ILP model to which the constraints are added
 		 */
-		protected void addIssueConstraints (ILPModel model)
+		protected void addIssueConstraints (final ILPModel model)
 		{
 			for (int j = 1; j <= m_nCyclesCount; j++)
 			{
@@ -261,71 +285,89 @@ public class InstructionRegionSchedulerILPSolver2
 			}
 		}
 		
-		protected void addDependenceConstraints (ILPModel model)
+		/**
+		 * 
+		 * @param model The ILP model to which the constraints are added
+		 */
+		protected void addDependenceConstraints (final ILPModel model)
 		{
-			for (DAGraph.Edge e : m_graph.getEdges ())
+			m_graph.forAllEdges (new IParallelOperation<DAGraph.Edge> ()
 			{
-				final int t_min = Math.max (e.getTailVertex ().getLowerScheduleBound () + e.getLatency () - 1, e.getHeadVertex ().getLowerScheduleBound ());
-				final int t_max = Math.min (e.getTailVertex ().getUpperScheduleBound () + e.getLatency () - 1, e.getHeadVertex ().getUpperScheduleBound ());
-				
-				for (int t = t_min; t <= t_max; t++)
+				@Override
+				public void perform (Edge e)
 				{
-					double[] rgCoeffs = new double[m_nVarsCount];
+					if (e.getTailVertex ().getUpperScheduleBound () + e.getLatency () - 1 < e.getHeadVertex ().getLowerScheduleBound ())
+						return;
 					
-					for (int k = 1; k <= m_nExecUnitsCount; k++)
+					final int t_min = Math.max (e.getTailVertex ().getLowerScheduleBound () + e.getLatency () - 1, e.getHeadVertex ().getLowerScheduleBound ());
+					final int t_max = Math.min (e.getTailVertex ().getUpperScheduleBound () + e.getLatency () - 1, e.getHeadVertex ().getUpperScheduleBound ());
+					
+					for (int t = t_min; t <= t_max; t++)
 					{
-						for (int tn = e.getHeadVertex ().getLowerScheduleBound (); tn <= Math.min (t, e.getHeadVertex ().getUpperScheduleBound ()); tn++)
-							rgCoeffs[x.idx (m_mapVertexToILPIdx.get (e.getHeadVertex ()), tn, k)] = 1;
-						for (int tm = t - e.getLatency () + 1; tm <= e.getTailVertex ().getUpperScheduleBound (); tm++)
-							rgCoeffs[x.idx (m_mapVertexToILPIdx.get (e.getTailVertex ()), tm, k)] = 1;
+						double[] rgCoeffs = new double[m_nVarsCount];
+						
+						for (int k = 1; k <= m_nExecUnitsCount; k++)
+						{
+							for (int tn = e.getHeadVertex ().getLowerScheduleBound (); tn <= Math.min (t, e.getHeadVertex ().getUpperScheduleBound ()); tn++)
+								rgCoeffs[x.idx (m_mapVertexToILPIdx.get (e.getHeadVertex ()), tn, k)] = 1;
+							for (int tm = t - e.getLatency () + 1; tm <= e.getTailVertex ().getUpperScheduleBound (); tm++)
+								rgCoeffs[x.idx (m_mapVertexToILPIdx.get (e.getTailVertex ()), tm, k)] = 1;
+						}
+						
+						model.addConstraint (rgCoeffs, ILPModel.EOperator.LE, 1);
 					}
-					
-					model.addConstraint (rgCoeffs, ILPModel.EOperator.LE, 1);
 				}
-			}
+			});
 		}
 				
 		/**
-		 * Instructions must be scheduled within the predetermined upper and lower bounds on the cycle numbers.
+		 * Instructions must be scheduled within the predetermined upper and
+		 * lower bounds on the cycle numbers.
+		 * 
 		 * @param model
+		 *            The ILP model to which the constraints are added
 		 */
-//		protected void addBoundsConstraints (ILPModel model)
-//		{
-//			for (int i = 1; i <= m_nVerticesCount; i++)
-//			{
-//				double[] rgCoeffs = new double[m_nVarsCount];
-//				
-//				int nLbnd = m_rgILPIdxToVertex[i].getLowerScheduleBound ();
-//				int nUbnd = Math.min (m_rgILPIdxToVertex[i].getUpperScheduleBound (), m_nCyclesCount);
-//				
-//				// two equivalent formulations:
-//				// - the sum of all vars outside the bounds must be 0
-//				// - the sum of all vars within the bounds must be 1
-//				
-//				// pick the one which generates "more sparsity"
-//				if (nLbnd - 1 + m_nCyclesCount - nUbnd - 1 < nUbnd - nLbnd + 1)
-//				{
-//					for (int j = 1; j < nLbnd; j++)
-//						rgCoeffs[x.idx (i, j)] = 1;
-//					for (int j = nUbnd + 1; j <= m_nCyclesCount; j++)
-//						rgCoeffs[x.idx (i, j)] = 1;
-//	
-//					model.addConstraint (rgCoeffs, ILPModel.EOperator.EQ, 0);
-//				}
-//				else
-//				{
-//					for (int j = nLbnd; j <= nUbnd; j++)
-//						rgCoeffs[x.idx (i, j)] = 1;
-//					model.addConstraint (rgCoeffs, ILPModel.EOperator.EQ, 1);
-//				}
-//			}
-//		}		
+		protected void addBoundsConstraints (final ILPModel model)
+		{
+			for (int i = 1; i <= m_nVerticesCount; i++)
+			{
+				double[] rgCoeffs = new double[m_nVarsCount];
+				
+				int nLbnd = m_rgILPIdxToVertex[i].getLowerScheduleBound ();
+				int nUbnd = Math.min (m_rgILPIdxToVertex[i].getUpperScheduleBound (), m_nCyclesCount);
+				
+				// two equivalent formulations:
+				// - the sum of all vars outside the bounds must be 0
+				// - the sum of all vars within the bounds must be 1
+				
+				// pick the one which generates "more sparsity"
+				if (nLbnd - 1 + m_nCyclesCount - nUbnd - 1 < nUbnd - nLbnd + 1)
+				{
+					for (int k = 1; k <= m_nExecUnitsCount; k++)
+					{
+						for (int j = 1; j < nLbnd; j++)
+							rgCoeffs[x.idx (i, j, k)] = 1;
+						for (int j = nUbnd + 1; j <= m_nCyclesCount; j++)
+							rgCoeffs[x.idx (i, j, k)] = 1;
+					}
+					
+					model.addConstraint (rgCoeffs, ILPModel.EOperator.EQ, 0);
+				}
+				else
+				{
+					for (int j = nLbnd; j <= nUbnd; j++)
+						for (int k = 1; k <= m_nExecUnitsCount; k++)
+							rgCoeffs[x.idx (i, j, k)] = 1;
+					model.addConstraint (rgCoeffs, ILPModel.EOperator.EQ, 1);
+				}
+			}
+		}		
 		
 		/**
 		 * 
 		 * @param model
 		 */
-		protected void setVariableBounds (ILPModel model)
+		protected void setVariableBounds (final ILPModel model)
 		{
 			model.setVariableType (0, 0.0, new Double (m_nCyclesCount), false);
 			for (int i = 1; i < m_nVarsCount; i++)
@@ -336,7 +378,7 @@ public class InstructionRegionSchedulerILPSolver2
 		 * 
 		 * @param model
 		 */
-		protected void setObjective (ILPModel model)
+		protected void setObjective (final ILPModel model)
 		{
 			double[] rgObj = new double[m_nVarsCount];
 			rgObj[0] = 1;
@@ -351,6 +393,9 @@ public class InstructionRegionSchedulerILPSolver2
 		 */
 		public int solve (InstructionList il)
 		{
+			if (DEBUG)
+				m_graph.graphviz ();
+			
 			ILPModel model = new ILPModel (m_nVarsCount);
 
 			// build the model
@@ -360,7 +405,9 @@ public class InstructionRegionSchedulerILPSolver2
 			addResourceConstraints (model);
 			addIssueConstraints (model);
 			addDependenceConstraints (model);
-//			addBoundsConstraints (model);
+			
+			if (USE_BOUNDS_CONSTRAINTS)
+				addBoundsConstraints (model);
 			
 			setVariableBounds (model);
 			setObjective (model);
@@ -376,6 +423,9 @@ public class InstructionRegionSchedulerILPSolver2
 			ILPSolution solution = ILPSolver.getInstance ().solve (model, 30);
 			boolean bOptimalSolutionFound = solution.getStatus ().equals (ILPSolution.ESolutionStatus.OPTIMAL);
 			
+			if (!USE_BOUNDS_CONSTRAINTS)
+				bOptimalSolutionFound &= checkSolution (solution);
+			
 			if (bOptimalSolutionFound)
 			{
 				if (DEBUG)
@@ -390,6 +440,33 @@ public class InstructionRegionSchedulerILPSolver2
 			model.delete ();
 			
 			return bOptimalSolutionFound ? (int) solution.getObjective () : -1;
+		}
+		
+		/**
+		 * Checks whether the solution is valid, i.e., all instructions are
+		 * scheduled within their lower and upper bounds.
+		 * 
+		 * @param solution
+		 *            The solution to check
+		 * @return <code>true</code> iff the solution is valid
+		 */
+		private boolean checkSolution (ILPSolution solution)
+		{
+			for (int i = 1; i <= m_nVerticesCount; i++)
+			{
+				for (int j = 1; j <= m_nCyclesCount; j++)
+				{
+					for (int k = 1; k <= m_nExecUnitsCount; k++)
+						if (solution.getSolution ()[x.idx (i, j, k)] > 0)
+						{
+							boolean bInBounds = m_rgILPIdxToVertex[i].getLowerScheduleBound () <= j && j <= m_rgILPIdxToVertex[i].getUpperScheduleBound ();
+							if (!bInBounds)
+								return false;
+						}
+				}
+			}
+			
+			return true;
 		}
 		
 		/**
@@ -415,7 +492,7 @@ public class InstructionRegionSchedulerILPSolver2
 							if (bInBounds)
 								nPossibilities++;
 							System.out.println (StringUtil.concat ((bInBounds ? "* " : "  "),
-								"x[instr=", i, ", cycle=", j, ", y=", solution.getSolution ()[x.idx (i, j, k)], "] :: ", m_rgILPIdxToVertex[i]));
+								"x[instr=", i, ", cycle=", j, ", unit=", k, ", y=", solution.getSolution ()[x.idx (i, j, k)], "] :: ", m_rgILPIdxToVertex[i]));
 						}
 				}
 				
@@ -438,7 +515,7 @@ public class InstructionRegionSchedulerILPSolver2
 			for (int i = 1; i <= m_nVerticesCount; i++)
 				for (int j = 1; j <= m_nCyclesCount; j++)
 					for (int k = 1; k <= m_nExecUnitsCount; k++)
-						if (solution.getSolution ()[x.idx (i, j, k) - 1] > 0)
+						if (solution.getSolution ()[x.idx (i, j, k)] > 0)
 							m_rgILPIdxToVertex[i].setScheduleBounds (j, j);
 
 			reconstructInstructionList (ilOut);

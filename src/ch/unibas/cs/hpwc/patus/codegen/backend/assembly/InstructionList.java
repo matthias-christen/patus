@@ -235,7 +235,7 @@ public class InstructionList implements Iterable<IInstruction>
 		
 		m_listInstructions.add (
 			InstructionList.getOffsetIndex (nInstrIdx, listIndexOffsets),
-			new Instruction (instrLoad.getIntrinsicBaseName (), instrLoad.getOperands ())
+			new Instruction (instrLoad)
 		);
 		
 		listIndexOffsets.add (nInstrIdx);
@@ -243,10 +243,8 @@ public class InstructionList implements Iterable<IInstruction>
 	
 	private void addSIMDSpillInstruction (AssemblySection as, LiveAnalysis analysis, int nInstrIdx, int nNoAccessRegIdx, boolean bSpillToMemory, List<Integer> listIndexOffsets)
 	{
-		Intrinsic intrinsic = as.getArchitectureDescription ().getIntrinsic (
-			bSpillToMemory ? TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED.value () : TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED.value (),
-			Specifier.FLOAT
-		);
+		TypeBaseIntrinsicEnum type = bSpillToMemory ? TypeBaseIntrinsicEnum.STORE_FPR_ALIGNED : TypeBaseIntrinsicEnum.LOAD_FPR_ALIGNED; 
+		Intrinsic intrinsic = as.getArchitectureDescription ().getIntrinsic (type.value (),	Specifier.FLOAT);
 		
 		IOperand opReg = analysis.getPseudoRegisters ()[nNoAccessRegIdx];
 		IOperand opMem = new IOperand.Address (
@@ -258,6 +256,7 @@ public class InstructionList implements Iterable<IInstruction>
 			InstructionList.getOffsetIndex (nInstrIdx, listIndexOffsets),
 			new Instruction (
 				intrinsic.getName (),
+				type,
 				bSpillToMemory ? opReg : opMem,
 				bSpillToMemory ? opMem : opReg
 			)
@@ -338,7 +337,7 @@ public class InstructionList implements Iterable<IInstruction>
 				
 				// generate a new instruction if one of the operands has been modified
 				if (rgOpsNew != null)
-					instrNew = new Instruction (((Instruction) instrNew).getIntrinsicBaseName (), rgOpsNew);
+					instrNew = new Instruction (((Instruction) instrNew).getInstructionName (), instrNew.getIntrinsic (), rgOpsNew);
 			}
 			
 			il.addInstruction (instrNew);
@@ -365,9 +364,10 @@ public class InstructionList implements Iterable<IInstruction>
 			IInstruction instrNew = instr;
 			if (instr instanceof Instruction)
 			{
-				String strInstrRepl = mapInstructionReplacements.get (((Instruction) instr).getIntrinsicBaseName ());
+				String strInstrRepl = mapInstructionReplacements.get (((Instruction) instr).getInstructionName ());
 				if (strInstrRepl != null)
-					instrNew = new Instruction (strInstrRepl, ((Instruction) instr).getOperands ());
+					instrNew = new Instruction (strInstrRepl, instr.getIntrinsic (), ((Instruction) instr).getOperands ());
+				// TODO: intrinsic should also be replaced
 			}
 
 			il.addInstruction (instrNew);

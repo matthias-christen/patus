@@ -200,7 +200,7 @@ public class InstructionSchedulerTest
 		Address op48 = new Address (new InputRef ("u[t=-1^, s=(0, 0, 0)][0]"), null, 1, 0);
 		PseudoRegister op49 = new PseudoRegister (TypeRegisterType.SIMD);
 		il.addInstruction (new Instruction ("vsubps", op48, op45, op49));
-		Address op50 = new Address (new InputRef ("u[t=-1^, s=(0, 0, 0)][0]"), null, 0, 32);
+		Address op50 = new Address (new InputRef ("u[t=-1^, s=(0, 0, 0)][0]"), null, 0, 32); 
 		PseudoRegister op51 = new PseudoRegister (TypeRegisterType.SIMD);
 		il.addInstruction (new Instruction ("vsubps", op50, op47, op51));
 		PseudoRegister op52 = new PseudoRegister (TypeRegisterType.SIMD);

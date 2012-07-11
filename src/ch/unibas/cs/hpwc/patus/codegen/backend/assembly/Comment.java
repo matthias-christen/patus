@@ -2,6 +2,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.Map;
 
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class Comment implements IInstruction
@@ -19,6 +20,13 @@ public class Comment implements IInstruction
 		sbResult.append ("/* ");
 		sbResult.append (m_strComment);
 		sbResult.append (" */");
+	}
+	
+	@Override
+	public TypeBaseIntrinsicEnum getIntrinsic ()
+	{
+		// this instruction doesn't correspond to an intrinsic
+		return null;
 	}
 	
 	@Override

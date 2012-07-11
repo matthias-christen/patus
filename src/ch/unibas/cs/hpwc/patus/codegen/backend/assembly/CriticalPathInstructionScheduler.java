@@ -95,7 +95,10 @@ public class CriticalPathInstructionScheduler extends AbstractInstructionSchedul
 		while (listActive.size () + quReady.size () > 0)
 		{
 			// remove the next available instruction from the priority queue and schedule it
-			for (int i = 0; i < getIssueRate (); i++)
+
+			// TODO: account for execution unit types
+//			for (int i = 0; i < getIssueRate (); i++)
+			for (int i = 0; i < getMinExecUnits (); i++)
 			{
 				DAGraph.Vertex v = quReady.poll ();
 				if (v != null)

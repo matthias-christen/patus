@@ -197,6 +197,8 @@ public interface IArchitectureDescription
 	 */
 	public abstract Intrinsic getIntrinsic (FunctionCall fnx, Specifier specType);
 	
+	public abstract Intrinsic getIntrinsic (TypeBaseIntrinsicEnum type, Specifier specType);
+	
 	public abstract Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName);
 
 	/**
@@ -289,6 +291,24 @@ public interface IArchitectureDescription
 	 *         cycle
 	 */
 	public abstract int getIssueRate ();
+	
+	/**
+	 * Returns the minimum number of execution units of the execution unit types
+	 * to which the intrinsics in <code>itIntrinsics</code> are mapped.
+	 * E.g., if <code>itIntrinsics</code> only contains &quot;load&quot;
+	 * instructions and there are two execution units capable of
+	 * &quot;load&quot;s, the function will return two.
+	 * If, in addition, <code>itIntrinsics</code> also contains a
+	 * &quot;store&quot; and there is only one unit that can handle
+	 * &quot;store&quot;s, one is returned instead.
+	 * 
+	 * @param itIntrinsics
+	 *            An iterable over intrinsics for which to get the minimum
+	 *            number of execution units
+	 * @return The minimum number of execution units of the execution unit types
+	 *         to which the intrinsics in <code>itIntrinsics</code> are mapped
+	 */
+	public abstract int getMinimumNumberOfExecutionUnitsPerType (Iterable<Intrinsic> itIntrinsics);
 	
 	/**
 	 * Returns the number of execution unit types defined in the architecture

@@ -22,6 +22,7 @@ import java.util.Map;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
+import javax.xml.bind.annotation.XmlType;
 
 import cetus.hir.AnnotationStatement;
 import cetus.hir.BinaryOperator;
@@ -365,6 +366,14 @@ public class ArchitectureDescriptionManager
 		}
 		
 		@Override
+		public Intrinsic getIntrinsic (TypeBaseIntrinsicEnum type, Specifier specType)
+		{
+			if (type == null)
+				return null;
+			return getIntrinsicInternal (type.value (), specType);
+		}
+		
+		@Override
 		public Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName)
 		{
 			return m_mapIntrinsicNamesToIntrinsics.get (strIntrinsicName);
@@ -443,6 +452,33 @@ public class ArchitectureDescriptionManager
 				return 1;
 			
 			return m_type.getAssembly ().getProcessorIssueRate ().intValue ();
+		}
+		
+		@Override
+		public int getMinimumNumberOfExecutionUnitsPerType (Iterable<Intrinsic> itIntrinsics)
+		{
+			int nMin = Integer.MAX_VALUE;
+			
+			for (Intrinsic i : itIntrinsics)
+			{
+				if (i.getExecUnitTypeIds () == null)
+					return 1;
+				
+				for (BigInteger id : i.getExecUnitTypeIds ())
+				{
+					TypeExecUnitType t = getExecutionUnitTypeByID (id.intValue ());
+					if (t == null)
+						return 1;
+					
+					nMin = Math.min (nMin, t.getQuantity ().intValue ());
+					
+					// no need to search further if already 1
+					if (nMin == 1)
+						return 1;
+				}
+			}
+			
+			return nMin == Integer.MAX_VALUE ? 1 : nMin;
 		}
 		
 		/**
@@ -622,9 +658,18 @@ public class ArchitectureDescriptionManager
 			try
 			{
 				Field fieldDest = objDest.getClass ().getDeclaredField (fieldSrc.getName ());
+				
+				// check whether the XML node can have child nodes
+				// we use the JAXB annotation XmlType and look for the propOrder element
+				boolean bHasChildElements = false;
+				XmlType xmlType = fieldDest.getType ().getAnnotation (XmlType.class);
+				if (xmlType != null && xmlType.propOrder () != null && xmlType.propOrder ().length > 0 && !"".equals (xmlType.propOrder ()[0]))
+					bHasChildElements = true;
+				
+				boolean bFieldExists = fieldDest.get (objDest) != null;
 
 				// nothing to do if the dest field is already set
-				if (fieldDest.get (objDest) != null)
+				if (!bHasChildElements && bFieldExists)
 					continue;
 
 				// copy the src field contents
@@ -632,7 +677,7 @@ public class ArchitectureDescriptionManager
 				fieldSrc.setAccessible (true);
 				fieldDest.setAccessible (true);
 
-				if (fieldSrc.get (objSrc) == null)
+				if (fieldSrc.get (objSrc) == null && !bFieldExists)
 					fieldDest.set (objDest, null);
 				else if (fieldSrc.getType ().equals (String.class))
 					fieldDest.set (objDest, fieldSrc.get (objSrc));
@@ -675,7 +720,10 @@ public class ArchitectureDescriptionManager
 				{
 					Object objSrcVal = fieldSrc.get (objSrc);
 					if (objSrcVal == null)
-						fieldDest.set (objDest, null);
+					{
+						if (!bFieldExists)
+							fieldDest.set (objDest, null);
+					}
 					else if (objSrcVal instanceof TypeRegisterClass)
 					{
 						// special treatment because of key
@@ -683,8 +731,15 @@ public class ArchitectureDescriptionManager
 					}
 					else
 					{
-						Object objVal = fieldSrc.getType ().newInstance ();
-						fieldDest.set (objDest, objVal);
+						Object objVal = null;
+						if (!bFieldExists)
+						{
+							objVal = fieldSrc.getType ().newInstance ();
+							fieldDest.set (objDest, objVal);
+						}
+						else
+							objVal = fieldDest.get (objDest);
+						
 						copyFields (objVal, fieldSrc.get (objSrc));
 					}
 				}

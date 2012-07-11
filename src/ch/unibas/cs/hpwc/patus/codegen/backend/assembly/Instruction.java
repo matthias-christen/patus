@@ -13,27 +13,70 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  */
 public class Instruction implements IInstruction
 {
-	private String m_strIntrinsicBaseName;
+	/**
+	 * The name of the instruction
+	 */
+	private String m_strInstructionName;
+	
+	/**
+	 * The intrinsic this instruction corresponds to
+	 */
+	private TypeBaseIntrinsicEnum m_intrinsic;
+	
+	/**
+	 * The instruction's operands
+	 */
 	private IOperand[] m_rgOperands;
 	
-	public Instruction (String strIntrinsicBaseName, IOperand... rgOperands)
+	
+	/**
+	 * Constructs a new instruction object.
+	 * @param strInstructionName
+	 * @param intrinsic
+	 * @param rgOperands
+	 */
+	public Instruction (String strInstructionName, TypeBaseIntrinsicEnum intrinsic, IOperand... rgOperands)
 	{
-		m_strIntrinsicBaseName = strIntrinsicBaseName;
+		m_strInstructionName = strInstructionName;
+		m_intrinsic = intrinsic;
 		m_rgOperands = rgOperands;
 	}
 	
 	public Instruction (TypeBaseIntrinsicEnum t, IOperand... rgOperands)
 	{
-		this (t.value (), rgOperands);
+		this (t.value (), t, rgOperands);
+	}
+	
+	public Instruction (String strInstruction, IOperand... rgOperands)
+	{
+		this (strInstruction, null, rgOperands);
+	}
+	
+	/**
+	 * Creates a copy of <code>instruction</code>.
+	 * The operands are <b>not</b> deep-copied.
+	 * 
+	 * @param instruction
+	 *            The instruction to copy
+	 */
+	public Instruction (Instruction instruction)
+	{
+		this (instruction.getInstructionName (), instruction.getIntrinsic (), instruction.getOperands ());
 	}
 	
 	/**
 	 * 
 	 * @return
 	 */
-	public String getIntrinsicBaseName ()
+	public String getInstructionName ()
 	{
-		return m_strIntrinsicBaseName;
+		return m_strInstructionName;
+	}
+	
+	@Override
+	public TypeBaseIntrinsicEnum getIntrinsic ()
+	{
+		return m_intrinsic;
 	}
 
 	/**
@@ -47,7 +90,7 @@ public class Instruction implements IInstruction
 	
 	public void issue (StringBuilder sbResult)
 	{
-		sbResult.append (m_strIntrinsicBaseName);
+		sbResult.append (m_strInstructionName);
 		sbResult.append (" ");
 		
 		boolean bFirst = true;
@@ -75,7 +118,7 @@ public class Instruction implements IInstruction
 	{
 		final int nPrime = 31;
 		int nResult = nPrime + Arrays.hashCode (m_rgOperands);
-		nResult = nPrime * nResult + ((m_strIntrinsicBaseName == null) ? 0 : m_strIntrinsicBaseName.hashCode ());
+		nResult = nPrime * nResult + ((m_strInstructionName == null) ? 0 : m_strInstructionName.hashCode ());
 
 		return nResult;
 	}
@@ -93,12 +136,12 @@ public class Instruction implements IInstruction
 		Instruction instrOther = (Instruction) obj;
 		if (!Arrays.equals (m_rgOperands, instrOther.m_rgOperands))
 			return false;
-		if (m_strIntrinsicBaseName == null)
+		if (m_strInstructionName == null)
 		{
-			if (instrOther.m_strIntrinsicBaseName != null)
+			if (instrOther.m_strInstructionName != null)
 				return false;
 		}
-		else if (!m_strIntrinsicBaseName.equals (instrOther.m_strIntrinsicBaseName))
+		else if (!m_strInstructionName.equals (instrOther.m_strInstructionName))
 			return false;
 		
 		return true;
@@ -109,8 +152,13 @@ public class Instruction implements IInstruction
 	{
 		StringBuilder sb = new StringBuilder ();
 		StringBuilder sbInstr = new StringBuilder ("il.addInstruction (new Instruction (\"");
-		sbInstr.append (m_strIntrinsicBaseName);
+		sbInstr.append (m_strInstructionName);
 		sbInstr.append ('"');
+		if (m_intrinsic != null)
+		{
+			sbInstr.append (", TypeBaseIntrinsicEnum.");
+			sbInstr.append (m_intrinsic.value ());
+		}
 		
 		for (IOperand op : m_rgOperands)
 		{

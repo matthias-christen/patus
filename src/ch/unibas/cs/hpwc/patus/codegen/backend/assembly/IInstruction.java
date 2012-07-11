@@ -2,6 +2,8 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.Map;
 
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
+
 
 /**
  * 
@@ -17,6 +19,15 @@ public interface IInstruction
 	 *            The string builder to which the result is added
 	 */
 	public abstract void issue (StringBuilder sbResult);
+	
+	/**
+	 * Returns the intrinsic corresponding to this instruction or
+	 * <code>null</code> if the instruction doesn't correspond to an intrinsic
+	 * defined in the architecture description.
+	 * 
+	 * @return The intrinsic corresponding to this instruction
+	 */
+	public abstract TypeBaseIntrinsicEnum getIntrinsic ();
 	
 	/**
 	 * Returns the Java code to create this instruction.

@@ -201,7 +201,7 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 						if (rgOpsNew[i] == null)
 							rgOpsNew[i] = rgOpsOld[i];
 					
-					Instruction instrNew = new Instruction (((Instruction) instr).getIntrinsicBaseName (), rgOpsNew);
+					Instruction instrNew = new Instruction (((Instruction) instr).getInstructionName (), instr.getIntrinsic (), rgOpsNew);
 					
 					if (LOGGER.isDebugEnabled ())
 						LOGGER.debug (StringUtil.concat ("Replacing: ", instr.toString (), " --> ", instrNew.toString ()));
@@ -249,7 +249,7 @@ public class MultipleMemoryLoadRemover implements IInstructionListOptimizer
 					// which is at the last position)
 					
 					///
-					if (((Instruction) instruction).getIntrinsicBaseName ().equals ("mov"))
+					if (((Instruction) instruction).getInstructionName ().equals ("mov"))
 						continue;
 					///
 					

@@ -185,7 +185,7 @@ public class UnneededPseudoRegistersRemover implements IInstructionListOptimizer
 					}
 				}
 				
-				ilResult.addInstruction (new Instruction (instr.getIntrinsicBaseName (), rgOpsNew));
+				ilResult.addInstruction (new Instruction (instr.getInstructionName (), instr.getIntrinsic (), rgOpsNew));
 			}
 			else
 				ilResult.addInstruction (instruction);

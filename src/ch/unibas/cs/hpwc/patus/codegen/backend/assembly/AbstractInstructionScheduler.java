@@ -1,6 +1,10 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.DAGraph;
 import ch.unibas.cs.hpwc.patus.graph.algorithm.CriticalPathLengthCalculator;
 import ch.unibas.cs.hpwc.patus.graph.algorithm.GraphUtil;
@@ -33,6 +37,8 @@ public abstract class AbstractInstructionScheduler
 	 * The processor's issue rate as defined in the architecture description
 	 */
 	private int m_nIssueRate;
+	
+	private int m_nMinExecUnits;
 	
 	/**
 	 * The lower bound <i>L</i> for the schedule
@@ -68,15 +74,32 @@ public abstract class AbstractInstructionScheduler
 		m_graph = graph;
 		m_arch = arch;
 		m_nIssueRate = m_arch.getIssueRate ();
+		m_nMinExecUnits = m_arch.getMinimumNumberOfExecutionUnitsPerType (AbstractInstructionScheduler.collectIntrinsics (graph, arch));
 
 		m_cpcalc = cpcalc == null ? new CriticalPathLengthCalculator<> (m_graph, Integer.class) : cpcalc;
 		m_cpsched = null;
-				
+
 		m_nLowerScheduleLengthBound = -1;
 		m_nUpperScheduleLengthBound = -1;
 		
 		m_ilScheduled = null;
 		m_nScheduleLength = -1;
+	}
+	
+	public static Iterable<Intrinsic> collectIntrinsics (DAGraph graph, IArchitectureDescription arch)
+	{
+		List<Intrinsic> listIntrinsics = new LinkedList<> ();
+		for (DAGraph.Vertex v : graph.getVertices ())
+		{
+			if (v.getInstruction () instanceof Instruction)
+			{
+				Intrinsic i = arch.getIntrinsicByIntrinsicName (((Instruction) v.getInstruction ()).getInstructionName ());
+				if (i != null)
+					listIntrinsics.add (i);
+			}
+		}
+		
+		return listIntrinsics;
 	}
 	
 	/**
@@ -143,6 +166,11 @@ public abstract class AbstractInstructionScheduler
 	public int getIssueRate ()
 	{
 		return m_nIssueRate;
+	}
+	
+	public int getMinExecUnits ()
+	{
+		return m_nMinExecUnits;
 	}
 	
 	public int getLowerScheduleLengthBound ()

@@ -1,5 +1,7 @@
 package ch.unibas.cs.hpwc.patus.graph;
 
+import ch.unibas.cs.hpwc.patus.util.IParallelOperation;
+
 /**
  * A general graph data structure.
  * 
@@ -56,4 +58,16 @@ public interface IGraph<V, E>
 	
 	public abstract void removeAllVertices ();
 	public abstract void removeAllEdges ();
+	
+	/**
+	 * 
+	 * @param op
+	 */
+	public abstract void forAllVertices (IParallelOperation<V> op);
+	
+	/**
+	 * 
+	 * @param op
+	 */
+	public abstract void forAllEdges (IParallelOperation<E> op);
 }

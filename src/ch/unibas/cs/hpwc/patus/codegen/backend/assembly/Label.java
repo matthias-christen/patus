@@ -3,6 +3,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 import java.util.HashMap;
 import java.util.Map;
 
+import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class Label implements IInstruction
@@ -77,6 +78,12 @@ public class Label implements IInstruction
 		m_nCurrentLabelIdx++;
 		
 		m_bAddedToInstructions = false;
+	}
+	
+	@Override
+	public TypeBaseIntrinsicEnum getIntrinsic ()
+	{
+		return null;
 	}
 		
 	@Override

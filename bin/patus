@@ -1,5 +1,11 @@
 #!/bin/bash
-PATUS_HOME=$HOME/Patus
+PATUS_HOME=$HOME/Workspace/Patus
+
+if [ "$1" == "--help" ]
+then
+    java -jar $PATUS_HOME/bin/patus.jar codegen
+    exit
+fi
 
 if [ $# -eq 0 ]
 then

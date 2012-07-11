@@ -137,6 +137,9 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 		Iterable<DAGraph.Vertex> itRoots = GraphUtil.getRootVertices (graph);
 		Iterable<DAGraph.Vertex> itLeaves = GraphUtil.getLeafVertices (graph);
 		
+		int nIssueRate = getIssueRate ();
+		int nMinExecUnits = getMinExecUnits ();
+		
 		for (DAGraph.Vertex v : graph.getVertices ())
 		{
 			// get the critical path distance from the roots to v
@@ -164,16 +167,16 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 				nSuccMinLatency = nSuccMinLatency > edge.getLatency () ? edge.getLatency () : nSuccMinLatency;
 			if (nSuccMinLatency == Integer.MAX_VALUE)
 				nSuccMinLatency = 1;
-						
+			
 			v.setInitialScheduleBounds (
 				/*1 +*/ MathUtil.max (
 					nCritPathDistFromRoots,
-					MathUtil.divCeil (1 + nPredecessorsCount, getIssueRate ()) - 1,
-					nPredecessorsCount / getIssueRate () + nPredMinLatency),
+					MathUtil.divCeil (1 + nPredecessorsCount, nIssueRate) - 1,
+					nPredecessorsCount / nIssueRate + nPredMinLatency),
 				getUpperScheduleLengthBound () - MathUtil.max (
 					nCritPathDistToLeaves,
-					MathUtil.divCeil (1 + nSuccessorsCount, getIssueRate ()) - 1,
-					nSuccessorsCount / getIssueRate () + nSuccMinLatency) /**/ -1
+					MathUtil.divCeil (1 + nSuccessorsCount, nMinExecUnits) - 1,
+					nSuccessorsCount / nMinExecUnits + nSuccMinLatency) /**/ -1
 			);
 		}
 	}

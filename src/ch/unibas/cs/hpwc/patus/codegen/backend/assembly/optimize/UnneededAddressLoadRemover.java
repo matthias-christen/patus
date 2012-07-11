@@ -135,7 +135,7 @@ public class UnneededAddressLoadRemover implements IInstructionListOptimizer
 		if (instr == null)
 			return false;
 		
-		String strName = instr.getIntrinsicBaseName ();
+		String strName = instr.getInstructionName ();
 		if (strName == null)
 			return false;
 		

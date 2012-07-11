@@ -1,5 +1,6 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze;
 
+import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
@@ -56,7 +57,7 @@ public class DependenceAnalysis
 		{
 			graph.addVertex (rgVertices[i] = new DAGraph.Vertex (m_rgInstructions[i]));
 			
-			Intrinsic intrinsicI = m_arch.getIntrinsicByIntrinsicName (((Instruction) m_rgInstructions[i]).getIntrinsicBaseName ());
+			Intrinsic intrinsicI = m_arch.getIntrinsic (m_rgInstructions[i].getIntrinsic (), Specifier.FLOAT);
 			if (intrinsicI != null && intrinsicI.getExecUnitTypeIds () != null && intrinsicI.getExecUnitTypeIds ().size () > 0)
 				rgVertices[i].setExecUnitTypes (m_arch.getExecutionUnitTypesByIDs (intrinsicI.getExecUnitTypeIds ()));
 			
@@ -74,7 +75,7 @@ public class DependenceAnalysis
 //							edge.setLatency (LATENCY_MEMORY_MOVE);
 //						else
 						{
-							Intrinsic intrinsicJ = m_arch.getIntrinsicByIntrinsicName (((Instruction) m_rgInstructions[j]).getIntrinsicBaseName ());
+							Intrinsic intrinsicJ = m_arch.getIntrinsic (m_rgInstructions[j].getIntrinsic (), Specifier.FLOAT);
 							edge.setLatency (intrinsicJ == null || intrinsicJ.getLatency () == null ? LATENCY_DEFAULT : intrinsicJ.getLatency ().intValue ());
 						}
 					}

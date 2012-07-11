@@ -645,6 +645,10 @@ public class AssemblySection
 	
 	public void addSpillMemorySpace (int nMemoryPlacesCount, Specifier specDatatype)
 	{
+		m_state.m_nSpillMemoryPlacesCount = nMemoryPlacesCount;
+		if (nMemoryPlacesCount == 0)
+			return;
+		
 		AssemblySectionInput asi = getASInput (INPUT_CONSTANTS_ARRAYPTR);
 		if (asi == null)
 		{
@@ -679,9 +683,7 @@ public class AssemblySection
 				trvElt.setParent (initializer);
 				initializer.getChildren ().add (trvElt);
 			}
-		}
-		
-		m_state.m_nSpillMemoryPlacesCount = nMemoryPlacesCount;
+		}		
 	}
 	
 	/**

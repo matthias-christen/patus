@@ -51,7 +51,7 @@ public class InstructionRegionScheduler extends AbstractInstructionScheduler
 		InstructionList ilOutLastFromILP = null;
 		boolean bAllOneCycleBounds = false;
 		//InstructionRegionSchedulerILPSolver ilpsolver = new InstructionRegionSchedulerILPSolver (getGraph (), getIssueRate ());
-		InstructionRegionSchedulerILPSolver2 ilpsolver = new InstructionRegionSchedulerILPSolver2 (getGraph(), getArchitectureDescription ());
+		InstructionRegionSchedulerILPSolver3 ilpsolver = new InstructionRegionSchedulerILPSolver3 (getGraph(), getArchitectureDescription ());
 		
 		// iteratively reduce the schedule length until the lower bound is reached or
 		// the scheduling becomes infeasible

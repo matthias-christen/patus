@@ -418,7 +418,7 @@ public class StencilAssemblySection extends AssemblySection
 			)));
 			
 			IOperand op = addGrid (node);
-			m_listGridInputs.add (new IOperand.Address (getInput (INPUT_GRIDS_ARRAYPTR), nIdx * m_clsDefaultGPRClass.getWidth ().intValue () / 8));
+			m_listGridInputs.add (new IOperand.Address (getInput (INPUT_GRIDS_ARRAYPTR), nIdx * m_clsDefaultGPRClass.getWidth () / 8));
 			m_mapGridIndices.put (op, nIdx);
 			
 			nIdx++;
@@ -777,7 +777,7 @@ public class StencilAssemblySection extends AssemblySection
 				rgPreInstructions = new IInstruction[] {
 					new Instruction (
 						"mov",
-						new IOperand.Address (getInput (INPUT_GRIDS_ARRAYPTR), m_mapGridIndices.get (opBase) * m_clsDefaultGPRClass.getWidth ().intValue () / 8),
+						new IOperand.Address (getInput (INPUT_GRIDS_ARRAYPTR), m_mapGridIndices.get (opBase) * m_clsDefaultGPRClass.getWidth () / 8),
 						opBase
 					)
 				};

@@ -1,13 +1,17 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.test;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
-import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
+import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.Address;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.InputRef;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.PseudoRegister;
@@ -29,7 +33,7 @@ public class InstructionSchedulerTest
 		}
 		
 		@Override
-		public Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName)
+		public Collection<Intrinsic> getIntrinsicsByIntrinsicName (String strIntrinsicName)
 		{
 			Intrinsic intrinsic = new Intrinsic ();
 			
@@ -38,17 +42,19 @@ public class InstructionSchedulerTest
 			intrinsic.setDatatype ("float");
 			
 			if (strIntrinsicName.indexOf ("mov") >= 0)
-				intrinsic.setLatency (new BigInteger ("1"));
+				intrinsic.setLatency (1);
 			else if (strIntrinsicName.indexOf ("add") >= 0 || strIntrinsicName.indexOf ("sub") >= 0)
-				intrinsic.setLatency (new BigInteger ("3"));
+				intrinsic.setLatency (3);
 			else if (strIntrinsicName.indexOf ("mul") >= 0)
-				intrinsic.setLatency (new BigInteger ("5"));
+				intrinsic.setLatency (5);
 			else if (strIntrinsicName.indexOf ("div") >= 0)
-				intrinsic.setLatency (new BigInteger ("29"));
+				intrinsic.setLatency (29);
 			else
-				intrinsic.setLatency (new BigInteger ("1"));
+				intrinsic.setLatency (1);
 			
-			return intrinsic;
+			List<Intrinsic> l = new ArrayList<> ();
+			l.add (intrinsic);
+			return l;
 		}
 	}
 	
@@ -496,7 +502,7 @@ public class InstructionSchedulerTest
 	{
 		InstructionRegionScheduler.DEBUG = true;
 		IArchitectureDescription arch = new ArchDesc ();
-		DAGraph graph = new DependenceAnalysis (m_il, arch).run ();
+		DAGraph graph = new DependenceAnalysis (m_il, arch).run (Specifier.FLOAT);
 		graph.graphviz ();
 		InstructionScheduler is = new InstructionScheduler (graph, arch);
 		System.out.println (is.schedule ());

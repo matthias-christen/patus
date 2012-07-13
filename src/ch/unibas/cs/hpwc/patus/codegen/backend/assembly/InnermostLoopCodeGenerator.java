@@ -158,7 +158,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				
 				m_rgPreRegAllocOptimizers = new IInstructionListOptimizer[] {
 					m_data.getOptions ().getUseOptimalInstructionScheduling () ?
-						new InstructionScheduleOptimizer (m_data.getArchitectureDescription ()) :
+						new InstructionScheduleOptimizer (m_data.getArchitectureDescription (), m_assemblySection.getDatatype ()) :
 						new LoadStoreMover (m_data.getArchitectureDescription ())
 				};
 				
@@ -346,8 +346,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 		
 		/**
 		 * Assign registers to the stencil nodes, which are to be reused in unit
-		 * stride
-		 * direction within the innermost loop.
+		 * stride direction within the innermost loop.
 		 * 
 		 * @param il
 		 *            The instruction list to which the load instructions will

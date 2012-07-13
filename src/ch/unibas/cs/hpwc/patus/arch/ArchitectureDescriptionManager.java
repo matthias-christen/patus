@@ -14,6 +14,7 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -43,7 +44,9 @@ import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Parallelism.Level.Barrier;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Argument;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Arguments;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class ArchitectureDescriptionManager
@@ -61,7 +64,8 @@ public class ArchitectureDescriptionManager
 		private Map<TypeDeclspec, Declspec> m_mapDeclspecs;
 		private Map<String, Datatype> m_mapDataTypesFromBase;
 		private Map<String, List<Intrinsic>> m_mapOperationsToIntrinsics;
-		private Map<String, Intrinsic> m_mapIntrinsicNamesToIntrinsics;
+		private Map<String, List<Intrinsic>> m_mapOperationsToMergedIntrinsics;
+		private Map<String, List<Intrinsic>> m_mapIntrinsicNamesToIntrinsics;
 		private Map<Integer, TypeExecUnitType> m_mapExecUnitTypes;
 		
 		private boolean m_bHasNonDestructiveOperations;
@@ -93,7 +97,9 @@ public class ArchitectureDescriptionManager
 			m_bHasNonDestructiveOperations = true;
 			
 			m_mapOperationsToIntrinsics = new HashMap<> ();
+			m_mapOperationsToMergedIntrinsics = new HashMap<> ();
 			m_mapIntrinsicNamesToIntrinsics = new HashMap<> ();
+			
 			if (m_type.getIntrinsics () != null)
 			{
 				for (Intrinsic intrinsic : m_type.getIntrinsics ().getIntrinsic ())
@@ -103,7 +109,15 @@ public class ArchitectureDescriptionManager
 						m_mapOperationsToIntrinsics.put (intrinsic.getBaseName (), listIntrinsics = new ArrayList<> ());
 					listIntrinsics.add (intrinsic);
 					
-					m_mapIntrinsicNamesToIntrinsics.put (intrinsic.getName (), intrinsic);
+					List<Intrinsic> listMergedIntrinsics = m_mapOperationsToMergedIntrinsics.get (intrinsic.getBaseName ());
+					if (listMergedIntrinsics == null)
+						m_mapOperationsToMergedIntrinsics.put (intrinsic.getBaseName (), listMergedIntrinsics = new ArrayList<> ());
+					mergeIntrinsics (listMergedIntrinsics, intrinsic);
+					
+					List<Intrinsic> listSameNameIntrinsics = m_mapIntrinsicNamesToIntrinsics.get (intrinsic.getName ());
+					if (listSameNameIntrinsics == null)
+						m_mapIntrinsicNamesToIntrinsics.put (intrinsic.getName (), listSameNameIntrinsics = new ArrayList<> ());
+					listSameNameIntrinsics.add (intrinsic);
 					
 					if (m_bHasNonDestructiveOperations && (
 						intrinsic.getBaseName ().equals (TypeBaseIntrinsicEnum.PLUS.value ()) ||
@@ -124,6 +138,70 @@ public class ArchitectureDescriptionManager
 					m_mapExecUnitTypes.put (t.getId ().intValue (), t);
 				checkExecUnitTypeIDs ();
 			}
+		}
+		
+		private static void mergeIntrinsics (List<Intrinsic> listIntrinsics, Intrinsic intrinsic)
+		{
+			String strName = intrinsic.getName ();
+			
+			Intrinsic intrinsicToRemove = null;
+			Intrinsic intrinsicNew = null;
+			
+			for (Intrinsic i : listIntrinsics)
+			{
+				if (i.getName ().equals (strName))
+				{
+					// create a new intrinsic
+					intrinsicNew = new Intrinsic ();
+					intrinsicNew.setBaseName (i.getBaseName ());
+					intrinsicNew.setDatatype (i.getDatatype ());
+					intrinsicNew.setLatency (Math.max (i.getLatency (), intrinsic.getLatency ()));
+					intrinsicNew.setName (i.getName ());
+					
+					// merge the arguments of intrinsics i and intrinsic
+					Argument[] rgArgs0 = Arguments.parseArguments (i.getArguments ());
+					Argument[] rgArgs1 = Arguments.parseArguments (intrinsic.getArguments ());
+					
+					Argument[] rgArgsNew = null;
+					if (rgArgs0.length == 0)
+						rgArgsNew = rgArgs1;
+					else if (rgArgs1.length == 0)
+						rgArgsNew = rgArgs0;
+					else if (rgArgs0.length == rgArgs1.length)
+					{
+						rgArgsNew = new Argument[rgArgs0.length];
+						for (int j = 0; j < rgArgs0.length; j++)
+						{
+							rgArgsNew[j] = new Argument (
+								rgArgs0[j].isRegister () || rgArgs1[j].isRegister (),
+								rgArgs0[j].isMemory () || rgArgs1[j].isMemory (),
+								rgArgs0[j].isOutput () || rgArgs1[j].isOutput (),
+								rgArgs0[j].getName () == null ? rgArgs1[j].getName () : rgArgs0[j].getName (),
+								j
+							);
+						}
+					}
+					else
+						throw new RuntimeException (StringUtil.concat ("The intrinsics to merge (", intrinsic.toString (), " and ", i.toString (), ") have different number of arguments."));
+					
+					intrinsicNew.setArguments (Arguments.encode (rgArgsNew));
+					
+					// merge exec unit IDs
+					intrinsicNew.getExecUnitTypeIds ().addAll (intrinsic.getExecUnitTypeIds ());
+					intrinsicNew.getExecUnitTypeIds ().addAll (i.getExecUnitTypeIds ());
+					
+					intrinsicToRemove = i;
+					break;
+				}
+			}
+			
+			if (intrinsicToRemove != null)
+			{
+				listIntrinsics.remove (intrinsicToRemove);
+				listIntrinsics.add (intrinsicNew);
+			}
+			else
+				listIntrinsics.add (intrinsic);
 		}
 
 		@Override
@@ -290,12 +368,13 @@ public class ArchitectureDescriptionManager
 			return list;
 		}
 
-		private Intrinsic getIntrinsicInternal (String strIntrinsicName, Specifier specType)
+		private Intrinsic getIntrinsicInternal (String strIntrinsicName, Specifier specType, IOperand[] rgOperands)
 		{
 			Datatype datatype = m_mapDataTypesFromBase.get (specType.toString ());
 
 			// get the list of intrinsics for the function base name
-			List<Intrinsic> listIntrinsics = m_mapOperationsToIntrinsics.get (strIntrinsicName);
+			List<Intrinsic> listIntrinsics = rgOperands == null ?
+				m_mapOperationsToMergedIntrinsics.get (strIntrinsicName) : m_mapOperationsToIntrinsics.get (strIntrinsicName);
 			if (listIntrinsics == null || listIntrinsics.size () == 0)
 				return null;
 
@@ -306,37 +385,74 @@ public class ArchitectureDescriptionManager
 				if (strDatatype == null)
 				{
 					if (datatype == null || datatype.getName () == null || "".equals (datatype.getName ()))
-						return intrinsic;
+					{
+						if (rgOperands == null || intrinsic.getArguments () == null || "".equals (intrinsic.getArguments ()))
+							return intrinsic;
+						
+						// check operands
+						if (matchArgs (Arguments.parseArguments (intrinsic.getArguments ()), rgOperands))
+							return intrinsic;
+					}
 				}
 				else
 				{
 					if (datatype != null && strDatatype.equals (datatype.getName ()))
-						return intrinsic;
+					{
+						if (rgOperands == null || intrinsic.getArguments () == null || "".equals (intrinsic.getArguments ()))
+							return intrinsic;
+
+						// check operands
+						if (matchArgs (Arguments.parseArguments (intrinsic.getArguments ()), rgOperands))
+							return intrinsic;
+					}
 				}
 			}
 
 			return null;
+		}
+		
+		private boolean matchArgs (Argument[] rgArgs, IOperand[] rgOperands)
+		{
+			if (rgArgs.length != rgOperands.length)
+				return false;
+			
+			for (int i = 0; i < rgArgs.length; i++)
+			{
+				if (rgOperands[i] instanceof IOperand.IRegisterOperand)
+				{
+					if (!rgArgs[i].isRegister ())
+						return false;
+				}
+				
+				if (rgOperands[i] instanceof IOperand.Address)
+				{
+					if (!rgArgs[i].isMemory ())
+						return false;
+				}
+			}
+			
+			return true;
 		}
 
 		@Override
 		public Intrinsic getIntrinsic (String strOperationOrBaseName, Specifier specType)
 		{
 			TypeBaseIntrinsicEnum type = Globals.getIntrinsicBase (strOperationOrBaseName);
-			return getIntrinsicInternal (type == null ? strOperationOrBaseName : type.value (), specType);
+			return getIntrinsicInternal (type == null ? strOperationOrBaseName : type.value (), specType, null);
 		}
 
 		@Override
 		public Intrinsic getIntrinsic (UnaryOperator op, Specifier specType)
 		{
 			TypeBaseIntrinsicEnum type = Globals.getIntrinsicBase (op);
-			return type == null ? null : getIntrinsicInternal (type.value (), specType);
+			return type == null ? null : getIntrinsicInternal (type.value (), specType, null);
 		}
 
 		@Override
 		public Intrinsic getIntrinsic (BinaryOperator op, Specifier specType)
 		{
 			TypeBaseIntrinsicEnum type = Globals.getIntrinsicBase (op);
-			return type == null ? null : getIntrinsicInternal (type.value (), specType);
+			return type == null ? null : getIntrinsicInternal (type.value (), specType, null);
 		}
 
 		@Override
@@ -354,27 +470,35 @@ public class ArchitectureDescriptionManager
 				return getIntrinsicInternal (TypeBaseIntrinsicEnum.THREADID.value (), specType);
 			*/
 
-			Intrinsic intfnx = getIntrinsicInternal (strFnx, specType);
+			Intrinsic intfnx = getIntrinsicInternal (strFnx, specType, null);
 			if (intfnx != null)
 				return intfnx;
 
 			intfnx = new Intrinsic ();
+
 			String strName = fnx.getName ().toString ();
 			intfnx.setBaseName (strName);
 			intfnx.setName (strName);
+
 			return intfnx;
 		}
 		
 		@Override
 		public Intrinsic getIntrinsic (TypeBaseIntrinsicEnum type, Specifier specType)
 		{
-			if (type == null)
-				return null;
-			return getIntrinsicInternal (type.value (), specType);
+			return getIntrinsic (type, specType, null);
 		}
 		
 		@Override
-		public Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName)
+		public Intrinsic getIntrinsic (TypeBaseIntrinsicEnum type, Specifier specType, IOperand[] rgOperands)
+		{
+			if (type == null)
+				return null;
+			return getIntrinsicInternal (type.value (), specType, rgOperands);
+		}
+		
+		@Override
+		public Collection<Intrinsic> getIntrinsicsByIntrinsicName (String strIntrinsicName)
 		{
 			return m_mapIntrinsicNamesToIntrinsics.get (strIntrinsicName);
 		}
@@ -419,7 +543,7 @@ public class ArchitectureDescriptionManager
 				@Override
 				public int compare (TypeRegisterClass c1, TypeRegisterClass c2)
 				{
-					return c2.getWidth ().intValue () - c1.getWidth ().intValue ();
+					return c2.getWidth () - c1.getWidth ();
 				}
 			});
 
@@ -448,10 +572,8 @@ public class ArchitectureDescriptionManager
 		{
 			if (m_type.getAssembly () == null)
 				return 1;
-			if (m_type.getAssembly ().getProcessorIssueRate () == null)
-				return 1;
 			
-			return m_type.getAssembly ().getProcessorIssueRate ().intValue ();
+			return Math.max (m_type.getAssembly ().getProcessorIssueRate (), 1);
 		}
 		
 		@Override
@@ -464,9 +586,9 @@ public class ArchitectureDescriptionManager
 				if (i.getExecUnitTypeIds () == null)
 					return 1;
 				
-				for (BigInteger id : i.getExecUnitTypeIds ())
+				for (int nID : i.getExecUnitTypeIds ())
 				{
-					TypeExecUnitType t = getExecutionUnitTypeByID (id.intValue ());
+					TypeExecUnitType t = getExecutionUnitTypeByID (nID);
 					if (t == null)
 						return 1;
 					
@@ -495,9 +617,9 @@ public class ArchitectureDescriptionManager
 				{
 					if (intrinsic.getExecUnitTypeIds () != null)
 					{
-						for (BigInteger id : intrinsic.getExecUnitTypeIds ())
-							if (!m_mapExecUnitTypes.containsKey (id.intValue ()))
-								throw new RuntimeException (StringUtil.concat ("No execution unit type defined for ID ", id));
+						for (int nID : intrinsic.getExecUnitTypeIds ())
+							if (!m_mapExecUnitTypes.containsKey (nID))
+								throw new RuntimeException (StringUtil.concat ("No execution unit type defined for ID ", nID));
 					}
 				}
 			}

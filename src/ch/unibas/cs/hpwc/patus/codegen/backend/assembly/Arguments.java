@@ -26,6 +26,19 @@ public class Arguments
 		return rgArgs;
 	}
 	
+	public static String encode (Argument[] rgArgs)
+	{
+		StringBuilder sb = new StringBuilder ();
+		for (int i = 0; i < rgArgs.length; i++)
+		{
+			if (i > 0)
+				sb.append (',');
+			sb.append (rgArgs[i].encode ());
+		}
+		
+		return sb.toString ();
+	}
+
 	/**
 	 * Determines whether one of the arguments in <code>rgArgs</code> is an
 	 * output argument

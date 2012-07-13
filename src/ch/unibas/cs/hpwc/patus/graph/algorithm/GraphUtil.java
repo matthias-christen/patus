@@ -303,4 +303,32 @@ public class GraphUtil
 			nListIdx.increment ();
 		}
 	}
+	
+	/**
+	 * Determines whether <code>listVertices</code> is a valid topological sort
+	 * of the graph <code>graph</code>.
+	 * 
+	 * @param graph
+	 *            The graph
+	 * @param listVertices
+	 *            The vertex order to check
+	 * @return <code>true</code> if <code>listVertices</code> is a valid
+	 *         topological sort of the graph <code>graph</code>
+	 */
+	public static <V extends IVertex, E extends IEdge<V>> boolean isTopologicalOrder (IGraph<V, E> graph, Iterable<V> listVertices)
+	{
+		Set<V> setVisited = new HashSet<> ();
+		
+		for (V v : listVertices)
+		{
+			// the successors of the vertex v must not have been visited yet
+			for (V vSucc : GraphUtil.getSuccessors (graph, v))
+				if (setVisited.contains (vSucc))
+					return false;
+			
+			setVisited.add (v);
+		}
+		
+		return true;
+	}
 }

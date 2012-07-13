@@ -4,6 +4,7 @@ import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 
@@ -48,7 +49,7 @@ public class DependenceAnalysis
 		m_nInstructionsCount = j;
 	}
 	
-	public DAGraph run ()
+	public DAGraph run (Specifier specDatatype)
 	{
 		DAGraph graph = new DAGraph ();
 		DAGraph.Vertex[] rgVertices = new DAGraph.Vertex[m_nInstructionsCount];
@@ -57,7 +58,10 @@ public class DependenceAnalysis
 		{
 			graph.addVertex (rgVertices[i] = new DAGraph.Vertex (m_rgInstructions[i]));
 			
-			Intrinsic intrinsicI = m_arch.getIntrinsic (m_rgInstructions[i].getIntrinsic (), Specifier.FLOAT);
+			IOperand[] rgOperands = null;
+			if (rgVertices[i].getInstruction () instanceof Instruction)
+				rgOperands = ((Instruction) rgVertices[i].getInstruction ()).getOperands ();
+			Intrinsic intrinsicI = m_arch.getIntrinsic (m_rgInstructions[i].getIntrinsic (), specDatatype, rgOperands);
 			if (intrinsicI != null && intrinsicI.getExecUnitTypeIds () != null && intrinsicI.getExecUnitTypeIds ().size () > 0)
 				rgVertices[i].setExecUnitTypes (m_arch.getExecutionUnitTypesByIDs (intrinsicI.getExecUnitTypeIds ()));
 			
@@ -71,12 +75,13 @@ public class DependenceAnalysis
 						DAGraph.Edge edge = graph.addEdge (rgVertices[j], rgVertices[i]);
 					
 						// set the latency (the edge weight)
+						
 //						if (InstructionListAnalyzer.movesDataBetweenMemory (m_rgInstructions[j]))
 //							edge.setLatency (LATENCY_MEMORY_MOVE);
 //						else
 						{
-							Intrinsic intrinsicJ = m_arch.getIntrinsic (m_rgInstructions[j].getIntrinsic (), Specifier.FLOAT);
-							edge.setLatency (intrinsicJ == null || intrinsicJ.getLatency () == null ? LATENCY_DEFAULT : intrinsicJ.getLatency ().intValue ());
+							Intrinsic intrinsicJ = m_arch.getIntrinsic (m_rgInstructions[j].getIntrinsic (), specDatatype);
+							edge.setLatency (intrinsicJ == null ? LATENCY_DEFAULT : intrinsicJ.getLatency ());
 						}
 					}
 				}

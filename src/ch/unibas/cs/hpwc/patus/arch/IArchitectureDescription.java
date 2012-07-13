@@ -11,6 +11,7 @@
 package ch.unibas.cs.hpwc.patus.arch;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.List;
 
 import cetus.hir.BinaryOperator;
@@ -22,6 +23,7 @@ import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Assembly;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 
 /**
  * Describes data types, SIMD vector lengths, etc. for a certain
@@ -197,9 +199,32 @@ public interface IArchitectureDescription
 	 */
 	public abstract Intrinsic getIntrinsic (FunctionCall fnx, Specifier specType);
 	
+	/**
+	 * Returns the merged intrinsic for the base intrinsic <code>type</code> and the datatype <code>specType</code>.
+	 * @param type
+	 * @param specType
+	 * @return
+	 */
 	public abstract Intrinsic getIntrinsic (TypeBaseIntrinsicEnum type, Specifier specType);
 	
-	public abstract Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName);
+	/**
+	 * Returns a particular intrinsic for the base intrinsic <code>type</code>,
+	 * the datatype <code>specType</code>, and a set of operands, which have to
+	 * correspond to the types of <code>rgOperands</code>.
+	 * 
+	 * @param type
+	 * @param specType
+	 * @param rgOperands
+	 * @return
+	 */
+	public abstract Intrinsic getIntrinsic (TypeBaseIntrinsicEnum type, Specifier specType, IOperand[] rgOperands);
+	
+	/**
+	 * 
+	 * @param strIntrinsicName
+	 * @return
+	 */
+	public abstract Collection<Intrinsic> getIntrinsicsByIntrinsicName (String strIntrinsicName);
 
 	/**
 	 * Returns the assembly specification (registers, ...)

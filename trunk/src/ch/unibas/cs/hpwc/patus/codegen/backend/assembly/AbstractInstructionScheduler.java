@@ -1,5 +1,6 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -93,9 +94,9 @@ public abstract class AbstractInstructionScheduler
 		{
 			if (v.getInstruction () instanceof Instruction)
 			{
-				Intrinsic i = arch.getIntrinsicByIntrinsicName (((Instruction) v.getInstruction ()).getInstructionName ());
-				if (i != null)
-					listIntrinsics.add (i);
+				Collection<Intrinsic> intrinsics = arch.getIntrinsicsByIntrinsicName (((Instruction) v.getInstruction ()).getInstructionName ());
+				if (intrinsics != null)
+					listIntrinsics.addAll (intrinsics);
 			}
 		}
 		

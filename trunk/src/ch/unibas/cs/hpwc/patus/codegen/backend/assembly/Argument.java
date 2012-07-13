@@ -92,6 +92,15 @@ public class Argument
 			m_strName = strArgDescriptor;
 	}
 	
+	public Argument (boolean bIsRegister, boolean bIsMemory, boolean bIsOutput, String strName, int nNumber)
+	{
+		m_bIsRegister = bIsRegister;
+		m_bIsMemory = bIsMemory;
+		m_bIsOutput = bIsOutput;
+		m_strName = strName;
+		m_nNumber = nNumber;
+	}
+	
 	/**
 	 * Determines whether the operand can be loaded from a memory location.
 	 * 
@@ -145,6 +154,28 @@ public class Argument
 		return m_nNumber;
 	}
 	
+	public String encode ()
+	{
+		StringBuilder sb = new StringBuilder ();
+		if (m_bIsOutput)
+			sb.append ('=');
+		if (m_bIsRegister)
+		{
+			sb.append ("reg");
+			if (m_bIsMemory)
+				sb.append ('/');
+		}
+		if (m_bIsMemory)
+			sb.append ("mem");
+		if (m_strName != null)
+		{
+			sb.append (':');
+			sb.append (m_strName);
+		}
+
+		return sb.toString ();
+	}
+
 	@Override
 	public String toString ()
 	{

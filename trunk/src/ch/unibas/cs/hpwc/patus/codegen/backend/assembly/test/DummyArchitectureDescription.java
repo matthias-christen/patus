@@ -1,6 +1,7 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.test;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.List;
 
 import cetus.hir.BinaryOperator;
@@ -9,14 +10,15 @@ import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Assembly;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
+import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
 import ch.unibas.cs.hpwc.patus.arch.TypeExecUnitType;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Assembly;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Build;
-import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 
 public class DummyArchitectureDescription implements IArchitectureDescription
 {
@@ -161,7 +163,14 @@ public class DummyArchitectureDescription implements IArchitectureDescription
 	}
 	
 	@Override
-	public Intrinsic getIntrinsicByIntrinsicName (String strIntrinsicName)
+	public Intrinsic getIntrinsic (TypeBaseIntrinsicEnum type, Specifier specType, IOperand[] rgOperands)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	@Override
+	public Collection<Intrinsic> getIntrinsicsByIntrinsicName (String strIntrinsicName)
 	{
 		// TODO Auto-generated method stub
 		return null;

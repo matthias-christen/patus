@@ -136,7 +136,7 @@
 								<xs:attribute name="base-name" type="typeBaseIntrinsicName" use="required"/>
 								<xs:attribute name="datatype" type="xs:string" use="required"/>
 								<xs:attribute name="arguments" type="xs:string" use="optional"/>
-								<xs:attribute default="1" name="latency" type="xs:integer" use="optional">
+								<xs:attribute default="1" name="latency" type="xs:int" use="optional">
 									<xs:annotation>
 										<xs:documentation>
 											The latency in number of cycles between issuing the instruction
@@ -180,7 +180,7 @@
 							</xs:complexType>
 						</xs:element>
 					</xs:sequence>
-					<xs:attribute default="1" name="processor-issue-rate" type="xs:integer" use="optional"/>
+					<xs:attribute default="1" name="processor-issue-rate" type="xs:int" use="optional"/>
 				</xs:complexType>
 			</xs:element>
 			<xs:element maxOccurs="1" minOccurs="0" name="includes">
@@ -293,7 +293,7 @@
 	<xs:complexType name="typeRegisterClass">
 		<xs:attribute name="name" type="xs:ID" use="required"/>
 		<xs:attribute name="type" type="typeRegisterType" use="required"/>
-		<xs:attribute name="width" type="xs:integer" use="required">
+		<xs:attribute name="width" type="xs:int" use="required">
 			<xs:annotation>
 				<xs:documentation>Register width in bits (e.g., general purpose registers on x86_64 (rax, rbx, ...) are 64 bits wide.</xs:documentation>
 			</xs:annotation>
@@ -357,18 +357,18 @@
 		</xs:annotation>
 		<xs:list>
 			<xs:simpleType>
-				<xs:restriction base="xs:integer"/>
+				<xs:restriction base="xs:int"/>
 			</xs:simpleType>
 		</xs:list>
 	</xs:simpleType>
 	<xs:complexType name="typeExecUnitType">
-		<xs:attribute name="id" type="xs:integer"/>
+		<xs:attribute name="id" type="xs:int"/>
 		<xs:attribute name="name" type="xs:string" use="optional">
 			<xs:annotation>
 				<xs:documentation>An optional name for the execution unit (only for documentation purposes)</xs:documentation>
 			</xs:annotation>
 		</xs:attribute>
-		<xs:attribute name="quantity" type="xs:integer">
+		<xs:attribute name="quantity" type="xs:int">
 			<xs:annotation>
 				<xs:documentation>The number of execution units of this type that are available</xs:documentation>
 			</xs:annotation>

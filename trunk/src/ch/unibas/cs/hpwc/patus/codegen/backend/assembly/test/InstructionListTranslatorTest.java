@@ -1,7 +1,5 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.test;
 
-import java.math.BigInteger;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -137,7 +135,7 @@ public class InstructionListTranslatorTest
 		REGCLASS_SIMD.setBitrange ("0..127");
 		REGCLASS_SIMD.setName ("xmm");
 		REGCLASS_SIMD.setSubregisterOf ("");
-		REGCLASS_SIMD.setWidth (new BigInteger ("128"));
+		REGCLASS_SIMD.setWidth (128);
 	}
 	
 	private IArchitectureDescription m_arch1, m_arch2, m_arch3, m_arch4, m_arch5, m_arch6, m_arch7;

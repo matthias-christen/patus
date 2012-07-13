@@ -629,61 +629,61 @@
 			
 			<!-- scalar operations -->
 			<intrinsic base-name="plus" name="vaddsd" datatype="double" arguments="reg,reg,=reg" latency="3" exec-unit-type-ids="1"/>
-			<intrinsic base-name="plus" name="vaddsd" datatype="double" arguments="mem,reg,=reg" latency="3" exec-unit-type-ids="1 23"/>
+			<intrinsic base-name="plus" name="vaddsd" datatype="double" arguments="mem,reg,=reg" latency="6" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="minus" name="vsubsd" datatype="double" arguments="reg:rhs,reg:lhs,=reg" latency="3" exec-unit-type-ids="1"/>
-			<intrinsic base-name="minus" name="vsubsd" datatype="double" arguments="mem:rhs,reg:lhs,=reg" latency="3" exec-unit-type-ids="1 23"/>
+			<intrinsic base-name="minus" name="vsubsd" datatype="double" arguments="mem:rhs,reg:lhs,=reg" latency="6" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="multiply" name="vmulsd" datatype="double" arguments="reg,reg,=reg" latency="5" exec-unit-type-ids="0"/>
-			<intrinsic base-name="multiply" name="vmulsd" datatype="double" arguments="mem,reg,=reg" latency="5" exec-unit-type-ids="0 23"/>
+			<intrinsic base-name="multiply" name="vmulsd" datatype="double" arguments="mem,reg,=reg" latency="8" exec-unit-type-ids="0 23"/>
 			<intrinsic base-name="divide" name="vdivsd" datatype="double" arguments="reg:rhs,reg:lhs,=reg" latency="45" exec-unit-type-ids="0"/>
-			<intrinsic base-name="divide" name="vdivsd" datatype="double" arguments="mem:rhs,reg:lhs,=reg" latency="45" exec-unit-type-ids="0 23"/>
-			<intrinsic base-name="load-fpr-aligned" name="vmovsd" datatype="double" latency="1" exec-unit-type-ids="23"/>
-			<intrinsic base-name="store-fpr-aligned" name="vmovsd" datatype="double" latency="1" exec-unit-type-ids="4"/>
+			<intrinsic base-name="divide" name="vdivsd" datatype="double" arguments="mem:rhs,reg:lhs,=reg" latency="48" exec-unit-type-ids="0 23"/>
+			<intrinsic base-name="load-fpr-aligned" name="vmovsd" datatype="double" latency="3" exec-unit-type-ids="23"/>
+			<intrinsic base-name="store-fpr-aligned" name="vmovsd" datatype="double" latency="4" exec-unit-type-ids="4"/>
 
 			<!-- vector operations -->
 			<intrinsic base-name="unary_minus" name="vxorpd" datatype="__m256d" arguments="reg,imm:{0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000},=reg" latency="1" exec-unit-type-ids="1"/>
 			<intrinsic base-name="unary_minus" name="vxorpd" datatype="__m256d" arguments="mem,imm:{0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000},=reg" latency="1" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="plus" name="vaddpd" datatype="__m256d" arguments="reg,reg,=reg" latency="3" exec-unit-type-ids="1"/>
-			<intrinsic base-name="plus" name="vaddpd" datatype="__m256d" arguments="mem,reg,=reg" latency="3" exec-unit-type-ids="1 23"/>
+			<intrinsic base-name="plus" name="vaddpd" datatype="__m256d" arguments="mem,reg,=reg" latency="6" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="minus" name="vsubpd" datatype="__m256d" arguments="reg:rhs,reg:lhs,=reg" latency="3" exec-unit-type-ids="1"/>
-			<intrinsic base-name="minus" name="vsubpd" datatype="__m256d" arguments="mem:rhs,reg:lhs,=reg" latency="3" exec-unit-type-ids="1 23"/>
+			<intrinsic base-name="minus" name="vsubpd" datatype="__m256d" arguments="mem:rhs,reg:lhs,=reg" latency="6" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="multiply" name="vmulpd" datatype="__m256d" arguments="reg,reg,=reg" latency="5" exec-unit-type-ids="0"/>
-			<intrinsic base-name="multiply" name="vmulpd" datatype="__m256d" arguments="mem,reg,=reg" latency="5" exec-unit-type-ids="0 23"/>
+			<intrinsic base-name="multiply" name="vmulpd" datatype="__m256d" arguments="mem,reg,=reg" latency="8" exec-unit-type-ids="0 23"/>
 			<intrinsic base-name="divide" name="vdivpd" datatype="__m256d" arguments="reg:rhs,reg:lhs,=reg" latency="45" exec-unit-type-ids="0"/>
-			<intrinsic base-name="divide" name="vdivpd" datatype="__m256d" arguments="mem:rhs,reg:lhs,=reg" latency="45" exec-unit-type-ids="0 23"/>
-			<intrinsic base-name="load-fpr-aligned" name="vmovapd" datatype="__m256d" latency="1" exec-unit-type-ids="23"/>
-			<intrinsic base-name="load-fpr-unaligned" name="vmovupd" datatype="__m256d" latency="4" exec-unit-type-ids="23"/>
-			<intrinsic base-name="store-fpr-aligned" name="vmovapd" datatype="__m256d" latency="1" exec-unit-type-ids="4"/>
-			<intrinsic base-name="store-fpr-unaligned" name="vmovupd" datatype="__m256d" latency="4" exec-unit-type-ids="4"/>
+			<intrinsic base-name="divide" name="vdivpd" datatype="__m256d" arguments="mem:rhs,reg:lhs,=reg" latency="48" exec-unit-type-ids="0 23"/>
+			<intrinsic base-name="load-fpr-aligned" name="vmovapd" datatype="__m256d" latency="3" exec-unit-type-ids="23"/>
+			<intrinsic base-name="load-fpr-unaligned" name="vmovupd" datatype="__m256d" latency="6" exec-unit-type-ids="23"/>
+			<intrinsic base-name="store-fpr-aligned" name="vmovapd" datatype="__m256d" latency="4" exec-unit-type-ids="4"/>
+			<intrinsic base-name="store-fpr-unaligned" name="vmovupd" datatype="__m256d" latency="8" exec-unit-type-ids="4"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
 			
 			<!-- scalar operations -->
 			<intrinsic base-name="plus" name="vaddss" datatype="float" arguments="reg,reg,=reg" latency="3" exec-unit-type-ids="1"/>
-			<intrinsic base-name="plus" name="vaddss" datatype="float" arguments="mem,reg,=reg" latency="3" exec-unit-type-ids="1 23"/>
+			<intrinsic base-name="plus" name="vaddss" datatype="float" arguments="mem,reg,=reg" latency="6" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="minus" name="vsubss" datatype="float" arguments="reg:rhs,reg:lhs,=reg" latency="3" exec-unit-type-ids="1"/>
-			<intrinsic base-name="minus" name="vsubss" datatype="float" arguments="mem:rhs,reg:lhs,=reg" latency="3" exec-unit-type-ids="1 23"/>
+			<intrinsic base-name="minus" name="vsubss" datatype="float" arguments="mem:rhs,reg:lhs,=reg" latency="6" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="multiply" name="vmulss" datatype="float" arguments="reg,reg,=reg" latency="5" exec-unit-type-ids="0"/>
-			<intrinsic base-name="multiply" name="vmulss" datatype="float" arguments="mem,reg,=reg" latency="5" exec-unit-type-ids="0 23"/>
+			<intrinsic base-name="multiply" name="vmulss" datatype="float" arguments="mem,reg,=reg" latency="8" exec-unit-type-ids="0 23"/>
 			<intrinsic base-name="divide" name="vdivss" datatype="float" arguments="reg:rhs,reg:lhs,=reg" latency="5" exec-unit-type-ids="0"/>
-			<intrinsic base-name="divide" name="vdivss" datatype="float" arguments="mem:rhs,reg:lhs,=reg" latency="5" exec-unit-type-ids="0 23"/>
-			<intrinsic base-name="load-fpr-aligned" name="vmovss" datatype="float" latency="1" exec-unit-type-ids="23"/>
-			<intrinsic base-name="store-fpr-aligned" name="vmovss" datatype="float" latency="1" exec-unit-type-ids="4"/>
+			<intrinsic base-name="divide" name="vdivss" datatype="float" arguments="mem:rhs,reg:lhs,=reg" latency="8" exec-unit-type-ids="0 23"/>
+			<intrinsic base-name="load-fpr-aligned" name="vmovss" datatype="float" latency="3" exec-unit-type-ids="23"/>
+			<intrinsic base-name="store-fpr-aligned" name="vmovss" datatype="float" latency="4" exec-unit-type-ids="4"/>
 			
 			<!-- vector operations -->
 			<intrinsic base-name="unary_minus" name="vxorps" datatype="__m256" arguments="reg,imm:{0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000},=reg" latency="1" exec-unit-type-ids="1"/>
 			<intrinsic base-name="unary_minus" name="vxorps" datatype="__m256" arguments="mem,imm:{0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000},=reg" latency="1" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="plus" name="vaddps" datatype="__m256" arguments="reg,reg,=reg" latency="3" exec-unit-type-ids="1"/>
-			<intrinsic base-name="plus" name="vaddps" datatype="__m256" arguments="mem,reg,=reg" latency="3" exec-unit-type-ids="1 23"/>
+			<intrinsic base-name="plus" name="vaddps" datatype="__m256" arguments="mem,reg,=reg" latency="6" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="minus" name="vsubps" datatype="__m256" arguments="reg:rhs,reg:lhs,=reg" latency="3" exec-unit-type-ids="1"/>
-			<intrinsic base-name="minus" name="vsubps" datatype="__m256" arguments="mem:rhs,reg:lhs,=reg" latency="3" exec-unit-type-ids="1 23"/>
+			<intrinsic base-name="minus" name="vsubps" datatype="__m256" arguments="mem:rhs,reg:lhs,=reg" latency="6" exec-unit-type-ids="1 23"/>
 			<intrinsic base-name="multiply" name="vmulps" datatype="__m256" arguments="reg,reg,=reg" latency="5" exec-unit-type-ids="0"/>
-			<intrinsic base-name="multiply" name="vmulps" datatype="__m256" arguments="mem,reg,=reg" latency="5" exec-unit-type-ids="0 23"/>
+			<intrinsic base-name="multiply" name="vmulps" datatype="__m256" arguments="mem,reg,=reg" latency="8" exec-unit-type-ids="0 23"/>
 			<intrinsic base-name="divide" name="vdivps" datatype="__m256" arguments="reg:rhs,reg:lhs,=reg" latency="29" exec-unit-type-ids="0"/>
-			<intrinsic base-name="divide" name="vdivps" datatype="__m256" arguments="mem:rhs,reg:lhs,=reg" latency="29" exec-unit-type-ids="0 23"/>
-			<intrinsic base-name="load-fpr-aligned" name="vmovaps" datatype="__m256" latency="1" exec-unit-type-ids="23"/>
-			<intrinsic base-name="load-fpr-unaligned" name="vmovups" datatype="__m256" latency="4" exec-unit-type-ids="23"/>
-			<intrinsic base-name="store-fpr-aligned" name="vmovaps" datatype="__m256" latency="1" exec-unit-type-ids="4"/>
-			<intrinsic base-name="store-fpr-unaligned" name="vmovups" datatype="__m256" latency="4" exec-unit-type-ids="4"/>
+			<intrinsic base-name="divide" name="vdivps" datatype="__m256" arguments="mem:rhs,reg:lhs,=reg" latency="32" exec-unit-type-ids="0 23"/>
+			<intrinsic base-name="load-fpr-aligned" name="vmovaps" datatype="__m256" latency="3" exec-unit-type-ids="23"/>
+			<intrinsic base-name="load-fpr-unaligned" name="vmovups" datatype="__m256" latency="6" exec-unit-type-ids="23"/>
+			<intrinsic base-name="store-fpr-aligned" name="vmovaps" datatype="__m256" latency="4" exec-unit-type-ids="4"/>
+			<intrinsic base-name="store-fpr-unaligned" name="vmovups" datatype="__m256" latency="8" exec-unit-type-ids="4"/>
 		</intrinsics>
 		<assembly processor-issue-rate="4">
 			<exec-unit-types>

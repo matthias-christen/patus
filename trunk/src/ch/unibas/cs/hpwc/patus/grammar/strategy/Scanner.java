@@ -284,12 +284,12 @@ public class Scanner {
 		start.set(40, 8); 
 		start.set(41, 9); 
 		start.set(44, 10); 
+		start.set(61, 32); 
 		start.set(59, 11); 
 		start.set(123, 12); 
 		start.set(125, 13); 
 		start.set(91, 14); 
 		start.set(93, 15); 
-		start.set(61, 32); 
 		start.set(46, 33); 
 		start.set(43, 16); 
 		start.set(45, 17); 
@@ -310,9 +310,9 @@ public class Scanner {
 		literals.put("int", new Integer(10));
 		literals.put("dim", new Integer(11));
 		literals.put("codim", new Integer(12));
-		literals.put("for", new Integer(18));
-		literals.put("parallel", new Integer(19));
-		literals.put("schedule", new Integer(20));
+		literals.put("for", new Integer(19));
+		literals.put("parallel", new Integer(20));
+		literals.put("schedule", new Integer(21));
 		literals.put("by", new Integer(23));
 		literals.put("subdomain", new Integer(24));
 		literals.put("plane", new Integer(25));
@@ -499,15 +499,15 @@ public class Scanner {
 				case 10:
 					{t.kind = 8; break loop;}
 				case 11:
-					{t.kind = 13; break loop;}
-				case 12:
 					{t.kind = 14; break loop;}
-				case 13:
+				case 12:
 					{t.kind = 15; break loop;}
-				case 14:
+				case 13:
 					{t.kind = 16; break loop;}
-				case 15:
+				case 14:
 					{t.kind = 17; break loop;}
+				case 15:
+					{t.kind = 18; break loop;}
 				case 16:
 					{t.kind = 28; break loop;}
 				case 17:
@@ -543,9 +543,9 @@ public class Scanner {
 				case 31:
 					{t.kind = 54; break loop;}
 				case 32:
-					recEnd = pos; recKind = 21;
+					recEnd = pos; recKind = 13;
 					if (ch == '=') {AddCh(); state = 25; break;}
-					else {t.kind = 21; break loop;}
+					else {t.kind = 13; break loop;}
 				case 33:
 					recEnd = pos; recKind = 34;
 					if (ch == '.') {AddCh(); state = 37; break;}

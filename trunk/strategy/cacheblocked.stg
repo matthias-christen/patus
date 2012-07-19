@@ -1,7 +1,10 @@
 /**
  * Cache-blocking strategy.
  */
-strategy cacheblocked_domain (domain u, auto dim cb, auto int chunk)
+strategy cacheblocked_domain (
+	domain u,
+	auto dim cb /*= ({u.size(1)/4, u.size(1)/2, u.size(1)}, 4:4:u.size(2 .. u.dim))*/,
+	auto int chunk = {1,2,4})
 {
 	// iterate over time steps 
 	for t = 1 .. stencil.t_max

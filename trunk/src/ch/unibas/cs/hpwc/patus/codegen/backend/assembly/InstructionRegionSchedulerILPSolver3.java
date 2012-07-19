@@ -85,7 +85,7 @@ public class InstructionRegionSchedulerILPSolver3
 
 	private final static boolean DEBUG = false;
 	
-	private final static boolean OPTIMIZE_FOR_DENSE_CODE = true;
+	private final static boolean OPTIMIZE_FOR_DENSE_CODE = false;
 	
 	/**
 	 * Determine whether to use bounds constraints (i.e., add constraints

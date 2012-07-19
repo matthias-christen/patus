@@ -896,21 +896,37 @@ public class Parser {
 			listParams.add (new VariableDeclaration (StencilSpecifier.STRATEGY_AUTO, declNew)); 
 			} 
 			} 
+			if (la.kind == 13) {
+				Get();
+				List<IAutotunerParam> listAutotuneParams  = AutoTuneValues();
+			}
 		}
 		return listParams;
 	}
 
 	Statement  StrategyCompoundStatement() {
 		Statement  stmt;
-		Expect(14);
+		Expect(15);
 		CompoundStatement cmpstmt = new CompoundStatement (); pushContext (); 
 		while (StartOf(1)) {
 			Statement stmt1 = StrategyStatement();
 			if (stmt1 != null) { if (stmt1 instanceof DeclarationStatement) { Declaration decl = ((DeclarationStatement) stmt1).getDeclaration (); decl.setParent (null); cmpstmt.addDeclaration (decl); } else cmpstmt.addStatement (stmt1); } 
 		}
-		Expect(15);
+		Expect(16);
 		if (cmpstmt.getChildren ().size () == 1) { stmt = (Statement) cmpstmt.getChildren ().get (0); stmt.setParent (null); } else stmt = cmpstmt; popContext (); 
 		return stmt;
+	}
+
+	List<IAutotunerParam>  AutoTuneValues() {
+		List<IAutotunerParam>  listParams;
+		listParams = new ArrayList<> (); 
+		if (la.kind == 5) {
+			AutoTuneVector(listParams);
+		} else if (StartOf(2)) {
+			IAutotunerParam param = AutoTuneScalars();
+			listParams.add (param); 
+		} else SynErr(57);
+		return listParams;
 	}
 
 	Statement  StrategyStatement() {
@@ -918,29 +934,29 @@ public class Parser {
 		stmt = null; 
 		if (la.kind == 7 || la.kind == 10) {
 			Statement stmtDeclaration = StrategyDeclaration();
-			while (!(la.kind == 0 || la.kind == 13)) {SynErr(57); Get();}
-			Expect(13);
+			while (!(la.kind == 0 || la.kind == 14)) {SynErr(58); Get();}
+			Expect(14);
 			stmt = stmtDeclaration; 
-		} else if (la.kind == 18) {
+		} else if (la.kind == 19) {
 			Statement stmtLoop = StrategyLoop();
 			stmt = stmtLoop; 
 		} else if (la.kind == 43) {
 			Statement stmtConditional = StrategyIfStatement();
 			stmt = stmtConditional; 
-		} else if (la.kind == 14) {
+		} else if (la.kind == 15) {
 			Statement stmtCompound = StrategyCompoundStatement();
 			stmt = stmtCompound; 
 		} else if (isSubCall ()) {
 			Statement stmtSubCall = SubCall();
-			while (!(la.kind == 0 || la.kind == 13)) {SynErr(58); Get();}
-			Expect(13);
+			while (!(la.kind == 0 || la.kind == 14)) {SynErr(59); Get();}
+			Expect(14);
 			stmt = stmtSubCall; 
 		} else if (la.kind == 1) {
 			Expression exprAssign = StrategyAssignment();
-			while (!(la.kind == 0 || la.kind == 13)) {SynErr(59); Get();}
-			Expect(13);
+			while (!(la.kind == 0 || la.kind == 14)) {SynErr(60); Get();}
+			Expect(14);
 			stmt = new ExpressionStatement (exprAssign); 
-		} else SynErr(60);
+		} else SynErr(61);
 		return stmt;
 	}
 
@@ -951,15 +967,15 @@ public class Parser {
 			stmt = StrategyDomainDeclaration();
 		} else if (la.kind == 10) {
 			stmt = StrategyIntegerDeclaration();
-		} else SynErr(61);
+		} else SynErr(62);
 		return stmt;
 	}
 
 	Loop  StrategyLoop() {
 		Loop  loop;
 		loop = null; boolean bNewParallelismLevel = false; 
-		while (!(la.kind == 0 || la.kind == 18)) {SynErr(62); Get();}
-		Expect(18);
+		while (!(la.kind == 0 || la.kind == 19)) {SynErr(63); Get();}
+		Expect(19);
 		if (la.kind == 24 || la.kind == 25 || la.kind == 26) {
 			SubdomainIterator loopSubdomain = new SubdomainIterator (); 
 			if (la.kind == 24) {
@@ -969,12 +985,12 @@ public class Parser {
 			} else {
 				PointLoop(loopSubdomain);
 			}
-			if (la.kind == 19) {
-				while (!(la.kind == 0 || la.kind == 19)) {SynErr(63); Get();}
+			if (la.kind == 20) {
+				while (!(la.kind == 0 || la.kind == 20)) {SynErr(64); Get();}
 				Get();
 				loopSubdomain.setNumberOfThreads (Loop.MAX_THREADS); bNewParallelismLevel = true; 
-				if (la.kind == 20) {
-					while (!(la.kind == 0 || la.kind == 20)) {SynErr(64); Get();}
+				if (la.kind == 21) {
+					while (!(la.kind == 0 || la.kind == 21)) {SynErr(65); Get();}
 					Get();
 					Expression exprChunkSizeTmp = StrategyExpression();
 					int nDim = loopSubdomain.getDomainIdentifier ().getDimensionality (); Expression[] rgChunkSize = new Expression[nDim]; rgChunkSize[0] = exprChunkSizeTmp; for (int i = 1; i < nDim; i++) rgChunkSize[i] = Globals.ONE.clone (); loopSubdomain.setChunkSize (rgChunkSize); 
@@ -983,23 +999,23 @@ public class Parser {
 			loop = loopSubdomain; 
 		} else if (la.kind == 1) {
 			loop = RangeLoop();
-			if (la.kind == 19) {
-				while (!(la.kind == 0 || la.kind == 19)) {SynErr(65); Get();}
+			if (la.kind == 20) {
+				while (!(la.kind == 0 || la.kind == 20)) {SynErr(66); Get();}
 				Get();
 				loop.setNumberOfThreads (Loop.MAX_THREADS); bNewParallelismLevel = true; 
-				if (StartOf(2)) {
+				if (StartOf(3)) {
 					Expression exprNumThreads = StrategyExpression();
 					loop.setNumberOfThreads (exprNumThreads); bNewParallelismLevel = false; 
 				}
 				if (bNewParallelismLevel) m_stackParallelismLevels.push (m_stackParallelismLevels.peek () + 1); 
-				if (la.kind == 20) {
-					while (!(la.kind == 0 || la.kind == 20)) {SynErr(66); Get();}
+				if (la.kind == 21) {
+					while (!(la.kind == 0 || la.kind == 21)) {SynErr(67); Get();}
 					Get();
 					Expression exprChunkSizeTmp = StrategyExpression();
 					loop.setChunkSize (new Expression[] { exprChunkSizeTmp }); 
 				}
 			}
-		} else SynErr(67);
+		} else SynErr(68);
 		if (loop == null) loop = new RangeIterator (); 
 		int nParLevel = m_stackParallelismLevels.peek (); if (bNewParallelismLevel) nParLevel++; m_stackParallelismLevels.push (nParLevel); loop.setParallelismLevel (nParLevel); 
 		Statement stmtBody = StrategyStatement();
@@ -1009,7 +1025,7 @@ public class Parser {
 
 	Statement  StrategyIfStatement() {
 		Statement  stmt;
-		while (!(la.kind == 0 || la.kind == 43)) {SynErr(68); Get();}
+		while (!(la.kind == 0 || la.kind == 43)) {SynErr(69); Get();}
 		Expect(43);
 		Expect(5);
 		Expression exprCondition = ConditionalExpression();
@@ -1017,7 +1033,7 @@ public class Parser {
 		Statement stmtIf = StrategyStatement();
 		stmt = new IfStatement (exprCondition, stmtIf); 
 		if (la.kind == 44) {
-			while (!(la.kind == 0 || la.kind == 44)) {SynErr(69); Get();}
+			while (!(la.kind == 0 || la.kind == 44)) {SynErr(70); Get();}
 			Get();
 			Statement stmtElse = StrategyStatement();
 			((IfStatement) stmt).setElseStatement (stmtElse); 
@@ -1031,7 +1047,7 @@ public class Parser {
 		Expect(1);
 		String strSubName = t.val; 
 		Expect(5);
-		if (StartOf(3)) {
+		if (StartOf(4)) {
 			Expression expr = SubCallExpression();
 			listArgs.add (expr); 
 			while (la.kind == 8) {
@@ -1057,7 +1073,7 @@ public class Parser {
 	Statement  StrategyDomainDeclaration() {
 		Statement  stmt;
 		stmt = null; 
-		while (!(la.kind == 0 || la.kind == 7)) {SynErr(70); Get();}
+		while (!(la.kind == 0 || la.kind == 7)) {SynErr(71); Get();}
 		Expect(7);
 		Expect(1);
 		String strIdentifier = t.val; 
@@ -1066,7 +1082,7 @@ public class Parser {
 		SubdomainSize(size, border, Vector.getZeroVector (nDim));
 		Expect(6);
 		size.addBorder (border); List<Expression> listArraySizes = new ArrayList<Expression> (); 
-		if (la.kind == 16) {
+		if (la.kind == 17) {
 			Get();
 			Expression exprArraySize = StrategyExpression();
 			listArraySizes.add (exprArraySize); 
@@ -1075,7 +1091,7 @@ public class Parser {
 				exprArraySize = StrategyExpression();
 				listArraySizes.add (exprArraySize); 
 			}
-			Expect(17);
+			Expect(18);
 		}
 		registerSubdomain (strIdentifier, new Subdomain (null, Subdomain.ESubdomainType.SUBDOMAIN, size), listArraySizes); SubdomainIdentifier sgid = getSubdomainIdentifier (strIdentifier); addDeclaration (StencilSpecifier.STENCIL_GRID, sgid); 
 		stmt = new ExpressionStatement (new AssignmentExpression (sgid, AssignmentOperator.NORMAL, new FunctionCall (Globals.FNX_MALLOC.clone (), CodeGeneratorUtil.expressions (size.getVolume ())))); 
@@ -1085,11 +1101,11 @@ public class Parser {
 	Statement  StrategyIntegerDeclaration() {
 		Statement  stmt;
 		stmt = null; 
-		while (!(la.kind == 0 || la.kind == 10)) {SynErr(71); Get();}
+		while (!(la.kind == 0 || la.kind == 10)) {SynErr(72); Get();}
 		Expect(10);
 		Expect(1);
 		String strIdentifier = t.val; 
-		if (la.kind == 21) {
+		if (la.kind == 13) {
 			Expression expr = StrategyAssignmentOperation();
 			Integer nVal = getIntegerValue (expr); if (nVal != null) m_mapConstants.put (strIdentifier, nVal); 
 			else { 
@@ -1128,21 +1144,21 @@ public class Parser {
 	Expression  StrategyAssignmentOperation() {
 		Expression  expr;
 		expr = null; 
-		Expect(21);
+		Expect(13);
 		if (isStencilCall ()) {
 			Expect(33);
 			Expect(5);
 			Expression exprArgument = StrategyGridAccess(EHandSide.RIGHT);
 			expr = CodeGeneratorUtil.createStencilFunctionCall (exprArgument.clone ()); 
 			Expect(6);
-		} else if (StartOf(2)) {
+		} else if (StartOf(3)) {
 			expr = StrategyExpression();
-		} else SynErr(72);
+		} else SynErr(73);
 		return expr;
 	}
 
 	void SubdomainLoop(SubdomainIterator loop) {
-		while (!(la.kind == 0 || la.kind == 24)) {SynErr(73); Get();}
+		while (!(la.kind == 0 || la.kind == 24)) {SynErr(74); Get();}
 		Expect(24);
 		Expect(1);
 		String strIdentifier = t.val; byte nDimensionality = m_stencilCalculation.getDimensionality (); Size size = new Size (nDimensionality); Border border = new Border (nDimensionality); Size sizeDomn = new Size (nDimensionality); Border borderDomn = new Border (nDimensionality); 
@@ -1159,7 +1175,7 @@ public class Parser {
 	}
 
 	void PlaneLoop(SubdomainIterator loop) {
-		while (!(la.kind == 0 || la.kind == 25)) {SynErr(74); Get();}
+		while (!(la.kind == 0 || la.kind == 25)) {SynErr(75); Get();}
 		Expect(25);
 		Expect(1);
 		String strIdentifier = t.val; byte nDimensionality = m_stencilCalculation.getDimensionality (); Size sizeDomn = new Size (nDimensionality); Border borderDomn = new Border (nDimensionality); 
@@ -1173,7 +1189,7 @@ public class Parser {
 	}
 
 	void PointLoop(SubdomainIterator loop) {
-		while (!(la.kind == 0 || la.kind == 26)) {SynErr(75); Get();}
+		while (!(la.kind == 0 || la.kind == 26)) {SynErr(76); Get();}
 		Expect(26);
 		Expect(1);
 		String strIdentifier = t.val; byte nDimensionality = m_stencilCalculation.getDimensionality (); Size sizeDomn = new Size (nDimensionality); Border borderDomn = new Border (nDimensionality); 
@@ -1191,14 +1207,14 @@ public class Parser {
 		loop = new RangeIterator (); 
 		Expect(1);
 		NameID idLoopIdx = new NameID (t.val); loop.setLoopIndex (addDeclaration (Globals.SPECIFIER_INDEX, idLoopIdx)); 
-		Expect(21);
+		Expect(13);
 		Expression exprStart = StrategyExpression();
 		Expect(22);
 		Expression exprEnd = StrategyExpression();
 		if (exprEnd.equals (StencilProperty.getMaxTime ())) { exprEnd = m_stencilCalculation.getMaxIterations ().clone (); loop.setMainTemporalIterator (true); } 
 		Expression exprStep = new IntegerLiteral (1); 
 		if (la.kind == 23) {
-			while (!(la.kind == 0 || la.kind == 23)) {SynErr(76); Get();}
+			while (!(la.kind == 0 || la.kind == 23)) {SynErr(77); Get();}
 			Get();
 			Expression exprStepTmp = StrategyExpression();
 			exprStep = exprStepTmp; 
@@ -1209,7 +1225,7 @@ public class Parser {
 
 	SubdomainIdentifier  IterationSpace(Size size, Border border) {
 		SubdomainIdentifier  subdomain;
-		while (!(la.kind == 0 || la.kind == 27)) {SynErr(77); Get();}
+		while (!(la.kind == 0 || la.kind == 27)) {SynErr(78); Get();}
 		Expect(27);
 		subdomain = null; 
 		Expression exprSgid = StrategySubdomainIdentifier(EHandSide.RIGHT);
@@ -1217,7 +1233,7 @@ public class Parser {
 		Expect(5);
 		subdomain = (SubdomainIdentifier) exprSgid; 
 		SubdomainSize(size, border, subdomain.getSubdomain ().getSize ());
-		Expect(13);
+		Expect(14);
 		Expression exprTimeIdx = StrategyExpression();
 		if (exprTimeIdx != null) subdomain.setTemporalIndex (exprTimeIdx); 
 		Expect(6);
@@ -1258,12 +1274,12 @@ public class Parser {
 		if (isBorder ()) {
 			border = SubdomainBorder();
 			if (border == null) return null; 
-		} else if (StartOf(2)) {
+		} else if (StartOf(3)) {
 			exprFactor1 = StrategyUnaryExpression();
 			Expect(30);
 			border = SubdomainBorder();
 			if (border == null) return null; 
-		} else SynErr(78);
+		} else SynErr(79);
 		if (la.kind == 30) {
 			Get();
 			exprFactor2 = StrategyUnaryExpression();
@@ -1280,7 +1296,7 @@ public class Parser {
 			border = StencilBoxBorder();
 		} else if (la.kind == 31) {
 			border = LiteralSubdomainBorder();
-		} else SynErr(79);
+		} else SynErr(80);
 		return border;
 	}
 
@@ -1319,14 +1335,14 @@ public class Parser {
 		} else if (la.kind == 1) {
 			Get();
 			Integer nVal = getConstantValue (t.val); expr = nVal != null ? new IntegerLiteral ((bIsNegative ? -1 : 1) * nVal) : createUnaryExpression (bIsNegative, new NameID (t.val)); 
-		} else SynErr(80);
+		} else SynErr(81);
 		return expr;
 	}
 
 	Border  StencilBoxBorder() {
 		Border  border;
 		border = null; Stencil stencil = m_stencilCalculation.getStencilBundle ().getFusedStencil (); 
-		while (!(la.kind == 0 || la.kind == 33)) {SynErr(81); Get();}
+		while (!(la.kind == 0 || la.kind == 33)) {SynErr(82); Get();}
 		Expect(33);
 		Expect(34);
 		Expect(35);
@@ -1361,12 +1377,12 @@ public class Parser {
 				for (int i = 0; i < border1.getDimensionality (); i++) { rgExprMin[nDim0 + i] = border1.getMin ().getCoord (i); rgExprMax[nDim0 + i] = border1.getMax ().getCoord (i); } 
 				border = new Border (new Size (rgExprMin), new Size (rgExprMax)); 
 			}
-		} else if (StartOf(2)) {
+		} else if (StartOf(3)) {
 			Expression exprMin = StrategyExpression();
 			Expect(8);
 			Expression exprMax = StrategyExpression();
 			border = new Border (new Size (new UnaryExpression (UnaryOperator.MINUS, exprMin)), new Size (exprMax)); 
-		} else SynErr(82);
+		} else SynErr(83);
 		Expect(32);
 		return border;
 	}
@@ -1412,9 +1428,9 @@ public class Parser {
 				listExpressions.addAll (listExprs1); 
 			}
 			Expect(6);
-		} else if (StartOf(2)) {
+		} else if (StartOf(3)) {
 			listExpressions = ScalarList();
-		} else SynErr(83);
+		} else SynErr(84);
 		return listExpressions;
 	}
 
@@ -1455,7 +1471,7 @@ public class Parser {
 		} else if (la.kind == 1) {
 			Expression exprSgid = StrategySubdomainIdentifier(EHandSide.RIGHT);
 			Subdomain sg = getSubdomain (t.val); if (sg == null) return new ArrayList<Expression> (0); box = sg.getBox (); 
-		} else SynErr(84);
+		} else SynErr(85);
 		Expect(34);
 		listExpressions = new ArrayList<Expression> (); if (box == null) { errors.SemErr (la.line, la.col, "No box defined"); return null; } 
 		if (la.kind == 38) {
@@ -1467,7 +1483,7 @@ public class Parser {
 		} else if (la.kind == 40) {
 			Get();
 			for (Expression expr : box.getMax ()) listExpressions.add (expr); 
-		} else SynErr(85);
+		} else SynErr(86);
 		if (la.kind == 5) {
 			Get();
 			List<Expression> listCoords = StrategyVector(null );
@@ -1507,7 +1523,7 @@ public class Parser {
 		} else if (la.kind == 1) {
 			Get();
 			expr = new NameID (t.val); 
-		} else SynErr(86);
+		} else SynErr(87);
 		return expr;
 	}
 
@@ -1515,27 +1531,27 @@ public class Parser {
 		Expression  exprSubdomainIdentifier;
 		Expression exprSgid = StrategySubdomainIdentifier(hs);
 		exprSubdomainIdentifier = exprSgid; 
-		Expect(16);
+		Expect(17);
 		if (!(exprSubdomainIdentifier instanceof SubdomainIdentifier)) { errors.SemErr (la.line, la.col, StringUtil.concat (exprSubdomainIdentifier.toString (), " has not been declared a subdomain. Only subdomains can have array subscripts.")); return null; } 
 		SubdomainIdentifier sgid = (SubdomainIdentifier) exprSubdomainIdentifier; 
 		if (isSubdomainIdentifier ()) {
 			Expression exprPoint = StrategySubdomainIdentifier(hs);
 			exprSubdomainIdentifier = exprPoint; sgid = (SubdomainIdentifier) exprSubdomainIdentifier; 
-		} else if (StartOf(4)) {
+		} else if (StartOf(5)) {
 			byte nDim = m_stencilCalculation.getDimensionality (); Size size = new Size (nDim); Border border = new Border (nDim); 
 			SubdomainSize(size, border, Vector.getZeroVector (nDim));
 			Box box = new Box (size.getCoords (), size.getCoords ()); box.addBorder (border); sgid.setSpatialOffset (box.getMin ().getCoords ()); 
-		} else SynErr(87);
-		Expect(13);
+		} else SynErr(88);
+		Expect(14);
 		Expression exprTimeIndex = StrategyExpression();
 		sgid.setTemporalIndex (exprTimeIndex); 
-		while (la.kind == 13) {
-			while (!(la.kind == 0 || la.kind == 13)) {SynErr(88); Get();}
+		while (la.kind == 14) {
+			while (!(la.kind == 0 || la.kind == 14)) {SynErr(89); Get();}
 			Get();
 			Expression exprIdx = StrategyExpression();
 			
 		}
-		Expect(17);
+		Expect(18);
 		return exprSubdomainIdentifier;
 	}
 
@@ -1556,7 +1572,7 @@ public class Parser {
 			expr = StrategyStencilProperty();
 		} else if (la.kind == 1) {
 			expr = StrategySubdomainProperty();
-		} else SynErr(89);
+		} else SynErr(90);
 		return expr;
 	}
 
@@ -1587,7 +1603,7 @@ public class Parser {
 			int nIdx = CompileTimeConstant();
 			Expect(6);
 			expr = v.getCoord (nIdx - 1); 
-		} else SynErr(90);
+		} else SynErr(91);
 		return expr;
 	}
 
@@ -1615,7 +1631,7 @@ public class Parser {
 		} else if (la.kind == 42) {
 			Get();
 			expr = sgid.getSubdomain ().getBox ().getVolume (); /* TODO: respect padding/alignment restrictions... */ 
-		} else SynErr(91);
+		} else SynErr(92);
 		return expr;
 	}
 
@@ -1678,7 +1694,7 @@ public class Parser {
 			op = BinaryOperator.COMPARE_NE; 
 			break;
 		}
-		default: SynErr(92); break;
+		default: SynErr(93); break;
 		}
 		Expression expr1 = StrategyExpression();
 		expr = new BinaryExpression (expr0, op, expr1); 
@@ -1733,7 +1749,7 @@ public class Parser {
 		} else if (la.kind == 3) {
 			Get();
 			numValue = Double.parseDouble (t.val); 
-		} else SynErr(93);
+		} else SynErr(94);
 		return numValue;
 	}
 
@@ -1760,11 +1776,11 @@ public class Parser {
 		String strFunctionName = t.val; 
 		Expect(5);
 		List<Expression> listArgs = new ArrayList<Expression> (); 
-		if (StartOf(2)) {
+		if (StartOf(3)) {
 			Expression expr = StrategyExpression();
 			listArgs.add (expr); 
 			while (la.kind == 8) {
-				while (!(la.kind == 0 || la.kind == 8)) {SynErr(94); Get();}
+				while (!(la.kind == 0 || la.kind == 8)) {SynErr(95); Get();}
 				Get();
 				expr = StrategyExpression();
 				listArgs.add (expr); 
@@ -1780,21 +1796,88 @@ public class Parser {
 		expr = null; 
 		if (la.kind == 54) {
 			expr = StringExpression();
-		} else if (StartOf(2)) {
+		} else if (StartOf(3)) {
 			expr = StrategyExpression();
-		} else SynErr(95);
+		} else SynErr(96);
 		return expr;
 	}
 
 	Expression  StringExpression() {
 		Expression  expr;
 		Expect(54);
-		while (StartOf(5)) {
+		while (StartOf(6)) {
 			Get();
 		}
 		expr = new StringLiteral (t.val); 
 		Expect(54);
 		return expr;
+	}
+
+	void AutoTuneVector(List<IAutotunerParam> listParams ) {
+		Expect(5);
+		if (StartOf(2)) {
+			IAutotunerParam param0 = AutoTuneScalars();
+			listParams.add (param0); 
+		} else if (StartOf(5)) {
+			List<Expression> listCoords = StrategyVector(null );
+		} else SynErr(97);
+		while (la.kind == 8) {
+			Get();
+			if (StartOf(2)) {
+				IAutotunerParam param1 = AutoTuneScalars();
+				listParams.add (param1); 
+			} else if (StartOf(5)) {
+				List<Expression> listCoords = StrategyVector(null );
+			} else SynErr(98);
+		}
+		Expect(6);
+	}
+
+	IAutotunerParam  AutoTuneScalars() {
+		IAutotunerParam  param;
+		param = null; 
+		if (StartOf(3)) {
+			param = AutoTuneScalarRange();
+		} else if (la.kind == 15) {
+			param = AutoTuneScalarList();
+		} else SynErr(99);
+		return param;
+	}
+
+	IAutotunerParam  AutoTuneScalarRange() {
+		IAutotunerParam  param;
+		boolean bIsMultiplicative = false; 
+		Expression exprStart = StrategyExpression();
+		Expect(37);
+		if (la.kind == 30) {
+			Get();
+			bIsMultiplicative = true; 
+		}
+		Expression exprStepOrEnd = StrategyExpression();
+		Expression exprEnd = null; 
+		if (la.kind == 37) {
+			Get();
+			exprEnd = StrategyExpression();
+		}
+		param = exprEnd == null ? 
+		new IAutotunerParam.AutotunerRangeParam (exprStart, exprStepOrEnd) : 
+		new IAutotunerParam.AutotunerRangeParam (exprStart, exprStepOrEnd, bIsMultiplicative, exprEnd); 
+		return param;
+	}
+
+	IAutotunerParam  AutoTuneScalarList() {
+		IAutotunerParam  param;
+		param = new IAutotunerParam.AutotunerListParam (); 
+		Expect(15);
+		Expression expr0 = StrategyExpression();
+		((IAutotunerParam.AutotunerListParam) param).addValue (expr0); 
+		while (la.kind == 8) {
+			Get();
+			Expression expr1 = StrategyExpression();
+			((IAutotunerParam.AutotunerListParam) param).addValue (expr1); 
+		}
+		Expect(16);
+		return param;
 	}
 
 
@@ -1809,8 +1892,9 @@ public class Parser {
 	}
 
 	private static final boolean[][] set = {
-		{T,x,x,x, x,x,x,T, T,x,T,x, x,T,x,x, x,x,T,T, T,x,x,T, T,T,T,T, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,T, T,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,T,x,x, x,x,x,T, x,x,T,x, x,x,T,x, x,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{T,x,x,x, x,x,x,T, T,x,T,x, x,x,T,x, x,x,x,T, T,T,x,T, T,T,T,T, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,T, T,x,x,x, x,x,x,x, x,x,x,x, x},
+		{x,T,x,x, x,x,x,T, x,x,T,x, x,x,x,T, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, T,T,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x},
 		{x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x},
 		{x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,x, x},
 		{x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,x,x, x,T,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x},
@@ -1851,15 +1935,15 @@ class Errors {
 			case 10: s = "\"int\" expected"; break;
 			case 11: s = "\"dim\" expected"; break;
 			case 12: s = "\"codim\" expected"; break;
-			case 13: s = "\";\" expected"; break;
-			case 14: s = "\"{\" expected"; break;
-			case 15: s = "\"}\" expected"; break;
-			case 16: s = "\"[\" expected"; break;
-			case 17: s = "\"]\" expected"; break;
-			case 18: s = "\"for\" expected"; break;
-			case 19: s = "\"parallel\" expected"; break;
-			case 20: s = "\"schedule\" expected"; break;
-			case 21: s = "\"=\" expected"; break;
+			case 13: s = "\"=\" expected"; break;
+			case 14: s = "\";\" expected"; break;
+			case 15: s = "\"{\" expected"; break;
+			case 16: s = "\"}\" expected"; break;
+			case 17: s = "\"[\" expected"; break;
+			case 18: s = "\"]\" expected"; break;
+			case 19: s = "\"for\" expected"; break;
+			case 20: s = "\"parallel\" expected"; break;
+			case 21: s = "\"schedule\" expected"; break;
 			case 22: s = "\"..\" expected"; break;
 			case 23: s = "\"by\" expected"; break;
 			case 24: s = "\"subdomain\" expected"; break;
@@ -1895,45 +1979,49 @@ class Errors {
 			case 54: s = "\"\"\" expected"; break;
 			case 55: s = "??? expected"; break;
 			case 56: s = "invalid StrategyParamList"; break;
-			case 57: s = "this symbol not expected in StrategyStatement"; break;
+			case 57: s = "invalid AutoTuneValues"; break;
 			case 58: s = "this symbol not expected in StrategyStatement"; break;
 			case 59: s = "this symbol not expected in StrategyStatement"; break;
-			case 60: s = "invalid StrategyStatement"; break;
-			case 61: s = "invalid StrategyDeclaration"; break;
-			case 62: s = "this symbol not expected in StrategyLoop"; break;
+			case 60: s = "this symbol not expected in StrategyStatement"; break;
+			case 61: s = "invalid StrategyStatement"; break;
+			case 62: s = "invalid StrategyDeclaration"; break;
 			case 63: s = "this symbol not expected in StrategyLoop"; break;
 			case 64: s = "this symbol not expected in StrategyLoop"; break;
 			case 65: s = "this symbol not expected in StrategyLoop"; break;
 			case 66: s = "this symbol not expected in StrategyLoop"; break;
-			case 67: s = "invalid StrategyLoop"; break;
-			case 68: s = "this symbol not expected in StrategyIfStatement"; break;
+			case 67: s = "this symbol not expected in StrategyLoop"; break;
+			case 68: s = "invalid StrategyLoop"; break;
 			case 69: s = "this symbol not expected in StrategyIfStatement"; break;
-			case 70: s = "this symbol not expected in StrategyDomainDeclaration"; break;
-			case 71: s = "this symbol not expected in StrategyIntegerDeclaration"; break;
-			case 72: s = "invalid StrategyAssignmentOperation"; break;
-			case 73: s = "this symbol not expected in SubdomainLoop"; break;
-			case 74: s = "this symbol not expected in PlaneLoop"; break;
-			case 75: s = "this symbol not expected in PointLoop"; break;
-			case 76: s = "this symbol not expected in RangeLoop"; break;
-			case 77: s = "this symbol not expected in IterationSpace"; break;
-			case 78: s = "invalid SubdomainScaledBorder"; break;
-			case 79: s = "invalid SubdomainBorder"; break;
-			case 80: s = "invalid StrategyUnaryExpression"; break;
-			case 81: s = "this symbol not expected in StencilBoxBorder"; break;
-			case 82: s = "invalid LiteralSubdomainBorder"; break;
-			case 83: s = "invalid Subvector"; break;
-			case 84: s = "invalid DomainSizeExpression"; break;
+			case 70: s = "this symbol not expected in StrategyIfStatement"; break;
+			case 71: s = "this symbol not expected in StrategyDomainDeclaration"; break;
+			case 72: s = "this symbol not expected in StrategyIntegerDeclaration"; break;
+			case 73: s = "invalid StrategyAssignmentOperation"; break;
+			case 74: s = "this symbol not expected in SubdomainLoop"; break;
+			case 75: s = "this symbol not expected in PlaneLoop"; break;
+			case 76: s = "this symbol not expected in PointLoop"; break;
+			case 77: s = "this symbol not expected in RangeLoop"; break;
+			case 78: s = "this symbol not expected in IterationSpace"; break;
+			case 79: s = "invalid SubdomainScaledBorder"; break;
+			case 80: s = "invalid SubdomainBorder"; break;
+			case 81: s = "invalid StrategyUnaryExpression"; break;
+			case 82: s = "this symbol not expected in StencilBoxBorder"; break;
+			case 83: s = "invalid LiteralSubdomainBorder"; break;
+			case 84: s = "invalid Subvector"; break;
 			case 85: s = "invalid DomainSizeExpression"; break;
-			case 86: s = "invalid StrategyLValue"; break;
-			case 87: s = "invalid StrategyGridAccess"; break;
-			case 88: s = "this symbol not expected in StrategyGridAccess"; break;
-			case 89: s = "invalid StrategyProperty"; break;
-			case 90: s = "invalid StrategyStencilProperty"; break;
-			case 91: s = "invalid StrategySubdomainProperty"; break;
-			case 92: s = "invalid ComparisonExpression"; break;
-			case 93: s = "invalid NumberLiteral"; break;
-			case 94: s = "this symbol not expected in StrategyFunctionCall"; break;
-			case 95: s = "invalid SubCallExpression"; break;
+			case 86: s = "invalid DomainSizeExpression"; break;
+			case 87: s = "invalid StrategyLValue"; break;
+			case 88: s = "invalid StrategyGridAccess"; break;
+			case 89: s = "this symbol not expected in StrategyGridAccess"; break;
+			case 90: s = "invalid StrategyProperty"; break;
+			case 91: s = "invalid StrategyStencilProperty"; break;
+			case 92: s = "invalid StrategySubdomainProperty"; break;
+			case 93: s = "invalid ComparisonExpression"; break;
+			case 94: s = "invalid NumberLiteral"; break;
+			case 95: s = "this symbol not expected in StrategyFunctionCall"; break;
+			case 96: s = "invalid SubCallExpression"; break;
+			case 97: s = "invalid AutoTuneVector"; break;
+			case 98: s = "invalid AutoTuneVector"; break;
+			case 99: s = "invalid AutoTuneScalars"; break;
 			default: s = "error " + n; break;
 		}
 		printMsg(line, col, s);

@@ -300,7 +300,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			l.addInstruction (new Instruction ("and", new IOperand.Immediate (getSIMDVectorLength () - 1), regEpilogLength));
 
 			// nothing to do if the epilogue length was 0
-			l.addInstruction (new Instruction ("or", m_regPrologLength, regEpilogLength));
+			//l.addInstruction (new Instruction ("or", m_regPrologLength, regEpilogLength));	// this is not needed; "and" does the job already
 			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_EPILOGHDR_ENDCOMPUTATION)));
 
 			// adjust the pointers

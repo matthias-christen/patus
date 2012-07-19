@@ -850,6 +850,10 @@ PRODUCTIONS                                                                    /
         	                                                                   (.         listParams.add (new VariableDeclaration (StencilSpecifier.STRATEGY_AUTO, declNew)); .)
         	                                                                   (.     } .)
         	                                                                   (. } .)
+			[
+				'='
+				AutoTuneValues<. out List<IAutotunerParam> listAutotuneParams .>
+			]
         }.
 
                
@@ -1545,6 +1549,68 @@ PRODUCTIONS                                                                    /
     	{ ANY }                                                                (. expr = new StringLiteral (t.val); .)
     	'"'
     	.
+
+
+    ///////////////////////////////////////////////////////////////////////
+	// Auto-tuner Specification
+	
+	AutoTuneValues<. out List<IAutotunerParam> listParams .> =                 (. listParams = new ArrayList<> (); .)
+		(
+			AutoTuneVector<listParams>
+			|
+			AutoTuneScalars<out IAutotunerParam param>                         (. listParams.add (param); .)
+		).
+		
+	AutoTuneVector<. List<IAutotunerParam> listParams .> =
+		'('
+			(
+				AutoTuneScalars<out IAutotunerParam param0>                    (. listParams.add (param0); .)
+				|
+				StrategyVector<. out List<Expression> listCoords, null .>
+			)
+			{
+				','
+				(
+					AutoTuneScalars<out IAutotunerParam param1>                (. listParams.add (param1); .)
+					|
+					StrategyVector<. out List<Expression> listCoords, null .>
+				)
+			}
+		')'
+		.
+		
+	AutoTuneScalars<out IAutotunerParam param> =                               (. param = null; .)
+		(
+			AutoTuneScalarRange<out param>
+			|
+			AutoTuneScalarList<out param>
+		).
+		
+	AutoTuneScalarRange<out IAutotunerParam param> =                           (. boolean bIsMultiplicative = false; .)
+		StrategyExpression<out Expression exprStart>
+		':'
+		[
+			'*'                                                                (. bIsMultiplicative = true; .)
+		]
+		StrategyExpression<out Expression exprStepOrEnd>                       (. Expression exprEnd = null; .)
+		[
+			':'
+			StrategyExpression<out exprEnd>
+		]
+		                                                                       (. param = exprEnd == null ? .)
+		                                                                       (. 	new IAutotunerParam.AutotunerRangeParam (exprStart, exprStepOrEnd) : .)
+		                                                                       (. 	new IAutotunerParam.AutotunerRangeParam (exprStart, exprStepOrEnd, bIsMultiplicative, exprEnd); .)
+		.
+		
+	AutoTuneScalarList<out IAutotunerParam param> =                            (. param = new IAutotunerParam.AutotunerListParam (); .)
+		'{'
+		StrategyExpression<out Expression expr0>                               (. ((IAutotunerParam.AutotunerListParam) param).addValue (expr0); .)
+		{
+			','
+			StrategyExpression<out Expression expr1>                           (. ((IAutotunerParam.AutotunerListParam) param).addValue (expr1); .)
+		}
+		'}'
+		.
 
 
     ///////////////////////////////////////////////////////////////////////

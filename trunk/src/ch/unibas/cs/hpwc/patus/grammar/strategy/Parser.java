@@ -887,18 +887,24 @@ public class Parser {
 				bIsDimParam = true; nStartDimension = Math.max (0, m_stencilCalculation.getDimensionality () - Integer.parseInt (t.val)); 
 			} else SynErr(56);
 			Expect(1);
-			decl = new VariableDeclarator (new NameID (t.val)); 
+			String strParamName = t.val; String[] rgParamNames = null; decl = new VariableDeclarator (new NameID (strParamName)); 
 			if (!bIsDimParam) listParams.add (new VariableDeclaration (StencilSpecifier.STRATEGY_AUTO, decl)); 
 			else { 
+			rgParamNames = new String[m_stencilCalculation.getDimensionality ()]; 
 			m_mapDimensionIdentifiers.put (decl.getSymbolName (), m_stencilCalculation.getDimensionality () - nStartDimension); 
 			for (int i = nStartDimension; i < m_stencilCalculation.getDimensionality (); i++) { 
-			VariableDeclarator declNew = decl.clone (); declNew.setName (StringUtil.concat (decl.getSymbolName (), "_", CodeGeneratorUtil.getDimensionName (i))); 
+			rgParamNames[i] = StringUtil.concat (decl.getSymbolName (), "_", CodeGeneratorUtil.getDimensionName (i)); 
+			VariableDeclarator declNew = decl.clone (); declNew.setName (rgParamNames[i]); 
 			listParams.add (new VariableDeclaration (StencilSpecifier.STRATEGY_AUTO, declNew)); 
 			} 
 			} 
 			if (la.kind == 13) {
 				Get();
-				List<IAutotunerParam> listAutotuneParams  = AutoTuneValues();
+				List<IAutotunerParam> listAutotuneParams = AutoTuneValues();
+				if (!bIsDimParam) m_strategy.setAutotuneSpecification (strParamName, listAutotuneParams.get (0)); 
+				else for (int i = nStartDimension; i < m_stencilCalculation.getDimensionality (); i++) { 
+				m_strategy.setAutotuneSpecification (rgParamNames[i], listAutotuneParams.get (i - nStartDimension)); 
+				} 
 			}
 		}
 		return listParams;
@@ -919,12 +925,11 @@ public class Parser {
 
 	List<IAutotunerParam>  AutoTuneValues() {
 		List<IAutotunerParam>  listParams;
-		listParams = new ArrayList<> (); 
+		listParams = null; 
 		if (la.kind == 5) {
-			AutoTuneVector(listParams);
+			listParams = AutoTuneVector();
 		} else if (StartOf(2)) {
-			IAutotunerParam param = AutoTuneScalars();
-			listParams.add (param); 
+			listParams = AutoTuneItem();
 		} else SynErr(57);
 		return listParams;
 	}
@@ -1813,71 +1818,86 @@ public class Parser {
 		return expr;
 	}
 
-	void AutoTuneVector(List<IAutotunerParam> listParams ) {
+	List<IAutotunerParam>  AutoTuneVector() {
+		List<IAutotunerParam>  listParams;
+		listParams = new ArrayList<> (); 
 		Expect(5);
-		if (StartOf(2)) {
-			IAutotunerParam param0 = AutoTuneScalars();
-			listParams.add (param0); 
-		} else if (StartOf(5)) {
-			List<Expression> listCoords = StrategyVector(null );
-		} else SynErr(97);
+		List<IAutotunerParam> l0  = AutoTuneItem();
+		listParams.addAll (l0); 
 		while (la.kind == 8) {
 			Get();
-			if (StartOf(2)) {
-				IAutotunerParam param1 = AutoTuneScalars();
-				listParams.add (param1); 
-			} else if (StartOf(5)) {
-				List<Expression> listCoords = StrategyVector(null );
-			} else SynErr(98);
+			List<IAutotunerParam> l1  = AutoTuneItem();
+			listParams.addAll (l1); 
 		}
 		Expect(6);
+		return listParams;
 	}
 
-	IAutotunerParam  AutoTuneScalars() {
-		IAutotunerParam  param;
-		param = null; 
-		if (StartOf(3)) {
-			param = AutoTuneScalarRange();
-		} else if (la.kind == 15) {
-			param = AutoTuneScalarList();
-		} else SynErr(99);
-		return param;
+	List<IAutotunerParam>  AutoTuneItem() {
+		List<IAutotunerParam>  listParams;
+		listParams = null; 
+		if (la.kind == 15) {
+			listParams = AutoTuneList();
+		} else if (StartOf(3)) {
+			listParams = AutoTuneRange();
+		} else SynErr(97);
+		return listParams;
 	}
 
-	IAutotunerParam  AutoTuneScalarRange() {
-		IAutotunerParam  param;
+	List<IAutotunerParam>  AutoTuneList() {
+		List<IAutotunerParam>  listParams;
+		listParams = new ArrayList<> (); 
+		Expect(15);
+		List<Expression> l0  = AutoTuneValue();
+		listParams = new ArrayList<> (l0.size ()); 
+		for (Expression expr : l0) listParams.add (new IAutotunerParam.AutotunerListParam (expr)); 
+		while (la.kind == 8) {
+			Get();
+			List<Expression> l1  = AutoTuneValue();
+			if (listParams.size () != l1.size ()) errors.SemErr (la.line, la.col, "Entries in an auto-tuner list parameter must have the same length."); 
+			int i = 0; for (Expression expr : l1) { ((IAutotunerParam.AutotunerListParam) listParams.get (i)).addValue (expr); i++; }
+		}
+		Expect(16);
+		return listParams;
+	}
+
+	List<IAutotunerParam>  AutoTuneRange() {
+		List<IAutotunerParam>  listParams;
 		boolean bIsMultiplicative = false; 
-		Expression exprStart = StrategyExpression();
+		List<Expression> listStart  = AutoTuneValue();
 		Expect(37);
 		if (la.kind == 30) {
 			Get();
 			bIsMultiplicative = true; 
 		}
-		Expression exprStepOrEnd = StrategyExpression();
-		Expression exprEnd = null; 
+		List<Expression> listStepOrEnd  = AutoTuneValue();
+		List<Expression> listEnd = null; 
+		if (listStart.size () != listStepOrEnd.size ()) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); 
 		if (la.kind == 37) {
 			Get();
-			exprEnd = StrategyExpression();
+			listEnd = AutoTuneValue();
+			if (listStart.size () != listEnd.size ()) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); 
 		}
-		param = exprEnd == null ? 
-		new IAutotunerParam.AutotunerRangeParam (exprStart, exprStepOrEnd) : 
-		new IAutotunerParam.AutotunerRangeParam (exprStart, exprStepOrEnd, bIsMultiplicative, exprEnd); 
-		return param;
+		listParams = new ArrayList<> (listStart.size ()); 
+		for (int i = 0; i < listStart.size (); i++) 
+		listParams.add (listEnd == null ? 
+		new IAutotunerParam.AutotunerRangeParam (listStart.get (i), listStepOrEnd.get (i)) : 
+		new IAutotunerParam.AutotunerRangeParam (listStart.get (i), listStepOrEnd.get (i), bIsMultiplicative, listEnd.get (i))); 
+		return listParams;
 	}
 
-	IAutotunerParam  AutoTuneScalarList() {
-		IAutotunerParam  param;
-		param = new IAutotunerParam.AutotunerListParam (); 
-		Expect(15);
-		Expression expr0 = StrategyExpression();
-		((IAutotunerParam.AutotunerListParam) param).addValue (expr0); 
-		while (la.kind == 8) {
-			Get();
-			Expression expr1 = StrategyExpression();
-			((IAutotunerParam.AutotunerListParam) param).addValue (expr1); 
-		}
-		Expect(16);
-		return param;
+	List<Expression>  AutoTuneValue() {
+		List<Expression>  listExpressions;
+		listExpressions = null; 
+		if (isDimensionParameter ()) {
+			listExpressions = DimensionIdentifier();
+		} else if (isVectorProperty ()) {
+			listExpressions = DomainSizeExpression();
+		} else if (StartOf(3)) {
+			Expression expr = StrategyExpression();
+			listExpressions = new ArrayList<Expression> (1); listExpressions.add (expr); 
+		} else SynErr(98);
+		return listExpressions;
 	}
 
 
@@ -2019,9 +2039,8 @@ class Errors {
 			case 94: s = "invalid NumberLiteral"; break;
 			case 95: s = "this symbol not expected in StrategyFunctionCall"; break;
 			case 96: s = "invalid SubCallExpression"; break;
-			case 97: s = "invalid AutoTuneVector"; break;
-			case 98: s = "invalid AutoTuneVector"; break;
-			case 99: s = "invalid AutoTuneScalars"; break;
+			case 97: s = "invalid AutoTuneItem"; break;
+			case 98: s = "invalid AutoTuneValue"; break;
 			default: s = "error " + n; break;
 		}
 		printMsg(line, col, s);

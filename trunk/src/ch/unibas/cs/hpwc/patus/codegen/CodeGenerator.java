@@ -230,23 +230,49 @@ public class CodeGenerator
 	{
 		createFunctionParameterList (true, bIncludeAutotuneParameters);
 
+		// create the stencil calculation code (the code that one thread executes)
+		StatementListBundle slbThreadBody = createComputeCode ();
 
-		// create the stencil calculation code
+		// create the initialization code
+		StatementListBundle slbInitializationBody = createInitializationCode (listOutputs);
+		
+		// add global declarations
+		for (KernelSourceFile out : listOutputs)
+			addAdditionalGlobalDeclarations (out, slbThreadBody.getDefault ());
 
+		// add internal autotune parameters to the parameter list
+		createFunctionInternalAutotuneParameterList (slbThreadBody);
+
+		// do post-generation optimizations
+		optimizeCode (slbThreadBody);
+
+		// package the code into functions, add them to the translation unit, and write the code files
+		for (KernelSourceFile out : listOutputs)
+		{
+			packageKernelSourceFile (out, slbThreadBody, slbInitializationBody, bIncludeAutotuneParameters);
+			out.writeCode (this, m_data, fileOutputDirectory);
+		}
+	}
+	
+	private StatementListBundle createComputeCode ()
+	{
 		m_data.getData ().setCreatingInitialization (false);
 		CodeGeneratorRuntimeOptions optionsStencil = new CodeGeneratorRuntimeOptions ();
 		optionsStencil.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 
-		// create the code that one thread executes
 		CompoundStatement cmpstmtStrategyKernelThreadBody = m_cgThreadCode.generate (m_data.getStrategy ().getBody (), optionsStencil);
 		m_data.getData ().capture ();
 
 		StatementListBundle slbThreadBody = new SingleThreadCodeGenerator (m_data).generate (cmpstmtStrategyKernelThreadBody, optionsStencil);
 		addAdditionalDeclarationsAndAssignments (slbThreadBody, optionsStencil);
-
-
-		// create the initialization code
+		
+		return slbThreadBody;
+	}
+	
+	private StatementListBundle createInitializationCode (List<KernelSourceFile> listOutputs)
+	{
 		StatementListBundle slbInitializationBody = null;
+		
 		boolean bCreateInitialization = false;
 		for (KernelSourceFile out : listOutputs)
 			if (out.getCreateInitialization ())
@@ -269,23 +295,8 @@ public class CodeGenerator
 			slbInitializationBody = new SingleThreadCodeGenerator (m_data).generate (cmpstmtStrategyInitThreadBody, optionsInitialize);
 			addAdditionalDeclarationsAndAssignments (slbInitializationBody, optionsInitialize);
 		}
-
-		// add global declarations
-		for (KernelSourceFile out : listOutputs)
-			addAdditionalGlobalDeclarations (out, slbThreadBody.getDefault ());
-
-		// add internal autotune parameters to the parameter list
-		createFunctionInternalAutotuneParameterList (slbThreadBody);
-
-		// do post-generation optimizations
-		optimizeCode (slbThreadBody);
-
-		// package the code into functions, add them to the translation unit, and write the code files
-		for (KernelSourceFile out : listOutputs)
-		{
-			packageKernelSourceFile (out, slbThreadBody, slbInitializationBody, bIncludeAutotuneParameters);
-			out.writeCode (this, m_data, fileOutputDirectory);
-		}
+		
+		return slbInitializationBody;
 	}
 
 	private void packageKernelSourceFile (KernelSourceFile out, StatementListBundle slbThreadBody, StatementListBundle slbInitializationBody, boolean bIncludeAutotuneParameters)
@@ -701,7 +712,8 @@ public class CodeGenerator
 					new VariableDeclaration (Specifier.INT, decl),
 					param.getName (),
 					new SizeofExpression (CodeGeneratorUtil.specifiers (Specifier.INT)),
-					null)
+					null
+				)
 			);
 		}
 	}

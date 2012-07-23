@@ -10,6 +10,7 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.codegen;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +21,7 @@ import cetus.hir.VariableDeclaration;
 import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.geometry.Subdomain;
+import ch.unibas.cs.hpwc.patus.grammar.strategy.IAutotunerParam;
 import ch.unibas.cs.hpwc.patus.grammar.strategy.Parser;
 import ch.unibas.cs.hpwc.patus.grammar.strategy.Scanner;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
@@ -61,6 +63,8 @@ public class Strategy
 	 * List of parameters to the strategy
 	 */
 	private List<Declaration> m_listParameters;
+	
+	private Map<String, IAutotunerParam> m_mapAutotuneParams;
 
 	/**
 	 * Maps subdomain identifiers to subdomain objects
@@ -85,6 +89,7 @@ public class Strategy
 	public Strategy ()
 	{
 		m_strFilename = "";
+		m_mapAutotuneParams = new HashMap<> ();
 	}
 
 	public void setFilename (String strFilename)
@@ -148,6 +153,37 @@ public class Strategy
 		}
 
 		return false;
+	}
+	
+	/**
+	 * Sets the range specification for the parameter <code>strParamName</code>,
+	 * which will be used by the auto-tuner.
+	 * 
+	 * @param strParamName
+	 *            The name of the parameter for which to set the auto-tuner
+	 *            value range
+	 * @param value
+	 *            The value range descriptor
+	 */
+	public void setAutotuneSpecification (String strParamName, IAutotunerParam value)
+	{
+		m_mapAutotuneParams.put (strParamName, value);
+	}
+	
+	/**
+	 * Returns the range specification for the parameter
+	 * <code>strParamName</code>, which will be used by the auto-tuner.
+	 * 
+	 * @param strParamName
+	 *            The name of the parameter for which to retrieve its auto-tuner
+	 *            value range
+	 * @return The value range for the parameter <code>strParamName</code> or
+	 *         <code>null</code> if the parameter doesn't exist or no
+	 *         specification has been provided
+	 */
+	public IAutotunerParam getAutotuneSpecification (String strParamName)
+	{
+		return m_mapAutotuneParams.get (strParamName);
 	}
 
 	/**

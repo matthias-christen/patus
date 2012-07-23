@@ -102,6 +102,10 @@ public class StandaloneAutotuner
 	{
 		if (!m_bInitSuccessful)
 			return;
+		
+		// get the default optimizer if not set on the command line
+		if (m_optimizer == null)
+			m_optimizer = OptimizerFactory.getOptimizer ();
 
 		try
 		{

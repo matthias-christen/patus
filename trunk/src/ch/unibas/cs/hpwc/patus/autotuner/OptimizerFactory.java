@@ -29,10 +29,10 @@ public class OptimizerFactory extends AbstractConfigurable
 	 * The default optimizer
 	 */
 	private static final Class<? extends IOptimizer> CLS_DEFAULT_OPTIMIZER =
-		//MetaHeuristicOptimizer.class;
+		MetaHeuristicOptimizer.class;
 		//SimplexSearchOptimizer.class;
 		//ExhaustiveSearchOptimizer.class;
-		GreedyOptimizer.class;
+		//GreedyOptimizer.class;
 
 	/**
 	 * Property: which optimizer to use

@@ -59,4 +59,12 @@ public interface INonKernelFunctions
 	public abstract Expression getDoValidation ();
 
 	public abstract Expression getValidates ();
+
+
+	///////////////////////////////////////////////////////////////////
+	// Makefile Variables
+	
+	public abstract String initNonautotuneExeParams ();
+	public abstract String testNonautotuneExeParams ();
+	public abstract String autotuner ();
 }

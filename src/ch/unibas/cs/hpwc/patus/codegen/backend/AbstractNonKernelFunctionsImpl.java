@@ -59,10 +59,12 @@ import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
 import ch.unibas.cs.hpwc.patus.codegen.MemoryObject;
 import ch.unibas.cs.hpwc.patus.codegen.ValidationCodeGenerator;
+import ch.unibas.cs.hpwc.patus.grammar.strategy.IAutotunerParam;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.ASTUtil;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
+import ch.unibas.cs.hpwc.patus.util.FileUtil;
 import ch.unibas.cs.hpwc.patus.util.MathUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -880,5 +882,78 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 			return Globals.ONE.clone ();
 
 		return new UnaryExpression (UnaryOperator.LOGICAL_NEGATION, exprHasValidationErrors.clone ());
+	}
+	
+	
+	// ----------------------------------------------------------------
+	// Makefile Variable Processors
+
+	@Override
+	public String initNonautotuneExeParams ()
+	{
+		StringBuilder sb = new StringBuilder ();
+		for (GlobalGeneratedIdentifiers.Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
+		{
+			if (var.getType ().equals (GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER))
+			{
+				sb.append (var.getName ());
+				sb.append (" = 0\n");
+			}
+		}
+		
+		return sb.toString ();
+	}
+	
+	@Override
+	public String testNonautotuneExeParams ()
+	{
+		StringBuilder sb = new StringBuilder ();
+		for (GlobalGeneratedIdentifiers.Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
+		{
+			if (var.getType ().equals (GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER))
+			{
+				sb.append ("ifeq ($(");
+				sb.append (var.getName ());
+				sb.append ("), 0)\n $(error For tuning, the value of x_max must be specified. E.g. 'make tune ");
+				sb.append (var.getName ());
+				sb.append ("=100')");
+				sb.append ("endif\n");
+			}
+		}
+		
+		return sb.toString ();
+	}
+	
+	@Override
+	public String autotuner ()
+	{
+		StringBuilder sb = new StringBuilder ("java -jar ");
+		sb.append (FileUtil.getFileRelativeToJar ("patus.jar"));
+		sb.append (" autotune bench ");
+		
+		for (GlobalGeneratedIdentifiers.Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
+		{
+			GlobalGeneratedIdentifiers.EVariableType t = var.getType ();
+			IAutotunerParam param = null;
+			if (t.equals (GlobalGeneratedIdentifiers.EVariableType.AUTOTUNE_PARAMETER) ||
+				t.equals (GlobalGeneratedIdentifiers.EVariableType.INTERNAL_AUTOTUNE_PARAMETER) ||
+				t.equals (GlobalGeneratedIdentifiers.EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER))
+			{
+				param = m_data.getStrategy ().getAutotuneSpecification (var.getName ());
+			}
+			
+			if (param != null)
+				sb.append (param.toString ().replaceAll ("\\$", "$$"));
+			else
+			{
+				sb.append ("$(");
+				sb.append (var.getName ());
+				sb.append (')');
+			}
+			
+			sb.append (' ');
+		}
+		
+		return sb.toString ();
 	}
 }

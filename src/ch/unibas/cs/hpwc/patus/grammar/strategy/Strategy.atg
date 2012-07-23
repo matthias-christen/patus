@@ -841,18 +841,23 @@ PRODUCTIONS                                                                    /
         			"codim" '(' integer ')'                                    (. bIsDimParam = true; nStartDimension = Math.max (0, m_stencilCalculation.getDimensionality () - Integer.parseInt (t.val)); .)
         		)
         	)
-        	ident                                                              (. decl = new VariableDeclarator (new NameID (t.val)); .)
+        	ident                                                              (. String strParamName = t.val; String[] rgParamNames = null; decl = new VariableDeclarator (new NameID (strParamName)); .)
         	                                                                   (. if (!bIsDimParam) listParams.add (new VariableDeclaration (StencilSpecifier.STRATEGY_AUTO, decl)); .)
         	                                                                   (. else { .)
+        	                                                                   (.     rgParamNames = new String[m_stencilCalculation.getDimensionality ()]; .)
         	                                                                   (.     m_mapDimensionIdentifiers.put (decl.getSymbolName (), m_stencilCalculation.getDimensionality () - nStartDimension); .)
         	                                                                   (.     for (int i = nStartDimension; i < m_stencilCalculation.getDimensionality (); i++) { .)
-        	                                                                   (.         VariableDeclarator declNew = decl.clone (); declNew.setName (StringUtil.concat (decl.getSymbolName (), "_", CodeGeneratorUtil.getDimensionName (i))); .)
+        	                                                                   (.         rgParamNames[i] = StringUtil.concat (decl.getSymbolName (), "_", CodeGeneratorUtil.getDimensionName (i)); .)
+        	                                                                   (.         VariableDeclarator declNew = decl.clone (); declNew.setName (rgParamNames[i]); .)
         	                                                                   (.         listParams.add (new VariableDeclaration (StencilSpecifier.STRATEGY_AUTO, declNew)); .)
         	                                                                   (.     } .)
         	                                                                   (. } .)
 			[
 				'='
-				AutoTuneValues<. out List<IAutotunerParam> listAutotuneParams .>
+				AutoTuneValues<. out List<IAutotunerParam> listAutotuneParams.>(. if (!bIsDimParam) m_strategy.setAutotuneSpecification (strParamName, listAutotuneParams.get (0)); .)
+				                                                               (. else for (int i = nStartDimension; i < m_stencilCalculation.getDimensionality (); i++) { .)
+				                                                               (.     m_strategy.setAutotuneSpecification (rgParamNames[i], listAutotuneParams.get (i - nStartDimension)); .)
+				                                                               (. } .)
 			]
         }.
 
@@ -1554,64 +1559,72 @@ PRODUCTIONS                                                                    /
     ///////////////////////////////////////////////////////////////////////
 	// Auto-tuner Specification
 	
-	AutoTuneValues<. out List<IAutotunerParam> listParams .> =                 (. listParams = new ArrayList<> (); .)
+	AutoTuneValues<. out List<IAutotunerParam> listParams .> =                 (. listParams = null; .)
 		(
-			AutoTuneVector<listParams>
+			AutoTuneVector<out listParams>
 			|
-			AutoTuneScalars<out IAutotunerParam param>                         (. listParams.add (param); .)
+			AutoTuneItem<out listParams>
 		).
 		
-	AutoTuneVector<. List<IAutotunerParam> listParams .> =
+	AutoTuneVector<. out List<IAutotunerParam> listParams .> =                 (. listParams = new ArrayList<> (); .)
 		'('
-			(
-				AutoTuneScalars<out IAutotunerParam param0>                    (. listParams.add (param0); .)
-				|
-				StrategyVector<. out List<Expression> listCoords, null .>
-			)
+			AutoTuneItem<. out List<IAutotunerParam> l0 .>                     (. listParams.addAll (l0); .)
 			{
 				','
-				(
-					AutoTuneScalars<out IAutotunerParam param1>                (. listParams.add (param1); .)
-					|
-					StrategyVector<. out List<Expression> listCoords, null .>
-				)
+				AutoTuneItem<. out List<IAutotunerParam> l1 .>                 (. listParams.addAll (l1); .)
 			}
 		')'
 		.
 		
-	AutoTuneScalars<out IAutotunerParam param> =                               (. param = null; .)
+	AutoTuneItem<. out List<IAutotunerParam> listParams .> =                   (. listParams = null; .)
 		(
-			AutoTuneScalarRange<out param>
+			AutoTuneList<out listParams>
 			|
-			AutoTuneScalarList<out param>
+			AutoTuneRange<out listParams>
 		).
 		
-	AutoTuneScalarRange<out IAutotunerParam param> =                           (. boolean bIsMultiplicative = false; .)
-		StrategyExpression<out Expression exprStart>
+	AutoTuneRange<. out List<IAutotunerParam> listParams .> =                  (. boolean bIsMultiplicative = false; .)
+		AutoTuneValue<. out List<Expression> listStart .>
 		':'
 		[
 			'*'                                                                (. bIsMultiplicative = true; .)
 		]
-		StrategyExpression<out Expression exprStepOrEnd>                       (. Expression exprEnd = null; .)
+		AutoTuneValue<. out List<Expression> listStepOrEnd .>                  (. List<Expression> listEnd = null; .)
+		                                                                       (. if (listStart.size () != listStepOrEnd.size ()) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); .)
 		[
 			':'
-			StrategyExpression<out exprEnd>
+			AutoTuneValue<out listEnd>                                         (. if (listStart.size () != listEnd.size ()) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); .)
 		]
-		                                                                       (. param = exprEnd == null ? .)
-		                                                                       (. 	new IAutotunerParam.AutotunerRangeParam (exprStart, exprStepOrEnd) : .)
-		                                                                       (. 	new IAutotunerParam.AutotunerRangeParam (exprStart, exprStepOrEnd, bIsMultiplicative, exprEnd); .)
+		                                                                       (. listParams = new ArrayList<> (listStart.size ()); .)
+		                                                                       (. for (int i = 0; i < listStart.size (); i++) .)
+		                                                                       (.     listParams.add (listEnd == null ? .)
+		                                                                       (. 	      new IAutotunerParam.AutotunerRangeParam (listStart.get (i), listStepOrEnd.get (i)) : .)
+		                                                                       (. 	      new IAutotunerParam.AutotunerRangeParam (listStart.get (i), listStepOrEnd.get (i), bIsMultiplicative, listEnd.get (i))); .)
 		.
 		
-	AutoTuneScalarList<out IAutotunerParam param> =                            (. param = new IAutotunerParam.AutotunerListParam (); .)
+	AutoTuneList<. out List<IAutotunerParam> listParams .> =                   (. listParams = new ArrayList<> (); .)
 		'{'
-		StrategyExpression<out Expression expr0>                               (. ((IAutotunerParam.AutotunerListParam) param).addValue (expr0); .)
+		AutoTuneValue<. out List<Expression> l0 .>                             (. listParams = new ArrayList<> (l0.size ()); .)
+		                                                                       (. for (Expression expr : l0) listParams.add (new IAutotunerParam.AutotunerListParam (expr)); .)
 		{
 			','
-			StrategyExpression<out Expression expr1>                           (. ((IAutotunerParam.AutotunerListParam) param).addValue (expr1); .)
+			AutoTuneValue<. out List<Expression> l1 .>                         (. if (listParams.size () != l1.size ()) errors.SemErr (la.line, la.col, "Entries in an auto-tuner list parameter must have the same length."); .)
+			                                                                   (. int i = 0; for (Expression expr : l1) { ((IAutotunerParam.AutotunerListParam) listParams.get (i)).addValue (expr); i++; }.)
 		}
 		'}'
 		.
-
+		
+	AutoTuneValue<. out List<Expression> listExpressions .> =                  (. listExpressions = null; .)
+		(
+			IF(isDimensionParameter ())
+				DimensionIdentifier<out listExpressions>
+            |
+            IF(isVectorProperty ())
+            	DomainSizeExpression<out listExpressions>
+            |
+			StrategyExpression<out Expression expr>                            (. listExpressions = new ArrayList<Expression> (1); listExpressions.add (expr); .)
+		).
+		
 
     ///////////////////////////////////////////////////////////////////////
     // General Types

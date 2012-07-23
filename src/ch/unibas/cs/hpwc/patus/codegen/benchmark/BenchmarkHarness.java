@@ -511,6 +511,8 @@ public class BenchmarkHarness
 					strReplacement = StringUtil.join (getRuntimeSourceFiles (), " ");
 				else if ("RUNTIME_OBJECT_FILES".equals (strVar))
 					strReplacement = StringUtil.join (getRuntimeObjectFiles (), " ");
+				else
+					strReplacement = generateCodeForVar (strVar);
 
 				// do the replacements
 				if (strReplacement != null)

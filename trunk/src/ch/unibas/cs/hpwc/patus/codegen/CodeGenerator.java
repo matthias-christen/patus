@@ -39,6 +39,7 @@ import cetus.hir.Declarator;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.FunctionCall;
+import cetus.hir.IDExpression;
 import cetus.hir.Identifier;
 import cetus.hir.Initializer;
 import cetus.hir.IntegerLiteral;
@@ -67,7 +68,10 @@ import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.StencilSpecifier;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
+import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
+import ch.unibas.cs.hpwc.patus.geometry.Size;
+import ch.unibas.cs.hpwc.patus.grammar.strategy.IAutotunerParam;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -97,22 +101,33 @@ public class CodeGenerator
 
 	private abstract class GeneratedProcedure
 	{
-		private NameID m_nidFunctionName;
+		private String m_strBaseFunctionName;
 		private List<Declaration> m_listParams;
 		private StatementListBundle m_slbBody;
 		private TranslationUnit m_unit;
+		private boolean m_bMakeFortranCompatible;
 
-		public GeneratedProcedure (NameID nidFunctionName, List<Declaration> listParams, StatementListBundle slbBody, TranslationUnit unit)
+		public GeneratedProcedure (String strBaseFunctionName, List<Declaration> listParams, StatementListBundle slbBody,
+			TranslationUnit unit, boolean bMakeFortranCompatible)
 		{
-			m_nidFunctionName = nidFunctionName;
+			m_strBaseFunctionName = strBaseFunctionName;
 			m_listParams = listParams;
 			m_slbBody = slbBody;
 			m_unit = unit;
+			m_bMakeFortranCompatible = bMakeFortranCompatible;
 		}
 
-		public final NameID getFunctionName ()
+		public final String getBaseFunctionName ()
 		{
-			return m_nidFunctionName;
+			return m_strBaseFunctionName;
+		}
+		
+		public final String getFunctionName (boolean bIsParametrizedVersion)
+		{
+			String strFnxName = bIsParametrizedVersion ? StringUtil.concat (m_strBaseFunctionName, Globals.PARAMETRIZED_FUNCTION_SUFFIX) : m_strBaseFunctionName;
+			if (m_bMakeFortranCompatible)
+				strFnxName = Globals.createFortranName (strFnxName);
+			return strFnxName;
 		}
 
 		public final List<Declaration> getParams ()
@@ -138,24 +153,31 @@ public class CodeGenerator
 		 * @param cmpstmtBody
 		 * @param unit
 		 */
-		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, CompoundStatement cmpstmtBody, boolean bIncludeStencilCommentAnnotation)
+		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, CompoundStatement cmpstmtBody,
+			boolean bIsParametrizedVersion, boolean bIncludeStencilCommentAnnotation)
 		{
-			addProcedureDeclaration (listAdditionalDeclSpecs, m_listParams, cmpstmtBody, bIncludeStencilCommentAnnotation);
+			addProcedureDeclaration (listAdditionalDeclSpecs, m_listParams, cmpstmtBody, bIsParametrizedVersion, bIncludeStencilCommentAnnotation);
 		}
 
-		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, List<Declaration> listParams, CompoundStatement cmpstmtBody, boolean bIncludeStencilCommentAnnotation)
+		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, List<Declaration> listParams, CompoundStatement cmpstmtBody,
+			boolean bIsParametrizedVersion, boolean bIncludeStencilCommentAnnotation)
 		{
-			setGlobalGeneratedIdentifiersFunctionName (m_nidFunctionName);
-			addProcedureDeclaration (listAdditionalDeclSpecs, m_nidFunctionName.getName (), listParams, cmpstmtBody, bIncludeStencilCommentAnnotation);
+			// set the name of the stencil/initialization function, which is called in the benchmarking harness
+			// i.e., always set the parametrized version
+			setGlobalGeneratedIdentifiersFunctionName (new NameID (getFunctionName (true)));
+			
+			addProcedureDeclaration (listAdditionalDeclSpecs, getFunctionName (bIsParametrizedVersion), listParams, cmpstmtBody, bIncludeStencilCommentAnnotation);
 		}
 
-		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, String strFunctionName, CompoundStatement cmpstmtBody, boolean bIncludeStencilCommentAnnotation)
+		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, String strFunctionName,
+			CompoundStatement cmpstmtBody, boolean bIncludeStencilCommentAnnotation)
 		{
 			addProcedureDeclaration (listAdditionalDeclSpecs, strFunctionName, m_listParams, cmpstmtBody, bIncludeStencilCommentAnnotation);
 		}
 
 		@SuppressWarnings("unchecked")
-		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, String strFunctionName, List<Declaration> listParams, CompoundStatement cmpstmtBody, boolean bIncludeStencilCommentAnnotation)
+		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, String strFunctionName,
+			List<Declaration> listParams, CompoundStatement cmpstmtBody, boolean bIncludeStencilCommentAnnotation)
 		{
 			List<Specifier> listSpecs = new ArrayList<> (listAdditionalDeclSpecs == null ? 1 : listAdditionalDeclSpecs.size () + 1);
 			if (listAdditionalDeclSpecs != null)
@@ -165,7 +187,8 @@ public class CodeGenerator
 			Procedure procedure = new Procedure (
 				listSpecs,
 				new ProcedureDeclarator (new NameID (strFunctionName), (List<Declaration>) CodeGeneratorUtil.clone (listParams)),
-				cmpstmtBody);
+				cmpstmtBody
+			);
 
 			if (bIncludeStencilCommentAnnotation)
 				procedure.annotate (new CommentAnnotation (m_data.getStencilCalculation ().getStencilExpressions ()));
@@ -303,36 +326,37 @@ public class CodeGenerator
 	{
 		// stencil function(s)
 		boolean bMakeFortranCompatible = out.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
-		String strStencilKernelName = m_data.getStencilCalculation ().getName ();
 		
 		packageCode (new GeneratedProcedure (
-			new NameID (bMakeFortranCompatible ? Globals.createFortranName (strStencilKernelName) : strStencilKernelName),
+			m_data.getStencilCalculation ().getName (),
 			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (true, bIncludeAutotuneParameters, false, false),
 			slbThreadBody,
-			out.getTranslationUnit ())
+			out.getTranslationUnit (),
+			bMakeFortranCompatible)
 		{
 			@Override
 			protected void setGlobalGeneratedIdentifiersFunctionName (NameID nidFnxName)
 			{
 				m_data.getData ().getGlobalGeneratedIdentifiers ().setStencilFunctionName (nidFnxName);
 			}
-		}, true, bIncludeAutotuneParameters, out.getCompatibility ());
+		}, true, true, bIncludeAutotuneParameters, bIncludeAutotuneParameters, out.getCompatibility ());
 
 		// initialization function
 		if (slbInitializationBody != null && out.getCreateInitialization ())
 		{
 			packageCode (new GeneratedProcedure (
-				Globals.getInitializeFunction (m_data.getStencilCalculation ().getName (), bMakeFortranCompatible),
+				Globals.getInitializeFunctionName (m_data.getStencilCalculation ().getName ()),
 				m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (false, bIncludeAutotuneParameters, false, false),
 				slbInitializationBody,
-				out.getTranslationUnit ())
+				out.getTranslationUnit (),
+				bMakeFortranCompatible)
 			{
 				@Override
 				protected void setGlobalGeneratedIdentifiersFunctionName (NameID nidFnxName)
 				{
 					m_data.getData ().getGlobalGeneratedIdentifiers ().setInitializeFunctionName (nidFnxName);
 				}
-			}, false, bIncludeAutotuneParameters, out.getCompatibility ());
+			}, false, false, bIncludeAutotuneParameters, false, out.getCompatibility ());
 		}
 	}
 
@@ -349,10 +373,6 @@ public class CodeGenerator
 			if (HIRAnalyzer.isReferenced (new Identifier (declarator), trvContext))
 				unit.addDeclaration (decl);
 		}
-
-		// add the stencil counter
-//		VariableDeclarator declStencilCounter = new Variabled
-//		unit.addDeclaration (new VariableDeclaration (declStencilCounter));
 	}
 
 	/**
@@ -463,8 +483,9 @@ public class CodeGenerator
 	 * @param mapCodes
 	 * @param unit
 	 */
-	@SuppressWarnings("unchecked")
-	private void packageCode (GeneratedProcedure proc, boolean bIncludeStencilCommentAnnotation, boolean bIncludeAutotuneParameters, CodeGenerationOptions.ECompatibility compatibility)
+	private void packageCode (GeneratedProcedure proc,
+		boolean bIncludeStencilCommentAnnotation, boolean bIncludeOutputGrids, boolean bIncludeAutotuneParameters, boolean bIncludeInternalAutotuneParameters,
+		CodeGenerationOptions.ECompatibility compatibility)
 	{
 		int nCodesCount = proc.getBodyCodes ().size ();
 		boolean bIsFortranCompatible = compatibility == CodeGenerationOptions.ECompatibility.FORTRAN;
@@ -472,7 +493,7 @@ public class CodeGenerator
 		if (nCodesCount == 0)
 		{
 			// no codes: add an empty function
-			proc.addProcedureDeclaration (null, new CompoundStatement (), true);
+			proc.addProcedureDeclaration (null, new CompoundStatement (), false, true);
 		}
 		else
 		{
@@ -482,7 +503,7 @@ public class CodeGenerator
 			for (ParameterAssignment pa : proc.getBodyCodes ())
 			{
 				// build a name for the function
-				StringBuilder sbFunctionName = new StringBuilder (proc.getFunctionName ().getName ());
+				StringBuilder sbFunctionName = new StringBuilder (proc.getBaseFunctionName ());
 				for (Parameter param : pa)
 				{
 					// skip the default parameter
@@ -509,7 +530,7 @@ public class CodeGenerator
 
 				// add the code to the translation unit
 				if (nCodesCount == 1 && !bIsFortranCompatible)
-					proc.addProcedureDeclaration (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL), cmpstmtBody, bIncludeStencilCommentAnnotation);
+					proc.addProcedureDeclaration (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL), cmpstmtBody, true, bIncludeStencilCommentAnnotation);
 				else
 					proc.addProcedureDeclaration (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.LOCALFUNCTION), strDecoratedFunctionName, cmpstmtBody, false);
 
@@ -518,44 +539,123 @@ public class CodeGenerator
 
 			// add a function call to the kernel (if there is more than one)
 			if (nCodesCount > 1 || bIsFortranCompatible)
+				createParametrizedProxyFunction (proc, listStencilFunctions, bIncludeStencilCommentAnnotation, bIncludeAutotuneParameters, bIsFortranCompatible);
+			
+			// add a function calling the kernel function with the parameters from the tuned_params.h
+			if (m_data.getData ().getGlobalGeneratedIdentifiers ().getAutotuneVariables ().size () > 0)
 			{
-				// add a function that selects the right unrolling configuration based on a command line parameter
-				NameID nidCodeVariants = new NameID (StringUtil.concat ("g_rgCodeVariants", m_nCodeVariantsCount++));
-				if (m_data.getArchitectureDescription ().useFunctionPointers ())
-					proc.getTranslationUnit ().addDeclaration (CodeGenerator.createCodeVariantFnxPtrArray (nidCodeVariants, listStencilFunctions, proc.getParams ()));
-
-				// build the function parameter list: same as for the stencil functions, but with additional parameters for the code selection
-				List<Identifier> listSelectors = new ArrayList<> ();
-				List<Integer> listSelectorsCount = new ArrayList<> ();
-				for (Parameter param : proc.getBodyCodes ().getParameters ())
-				{
-					VariableDeclarator decl = new VariableDeclarator (new NameID (param.getName ()));
-					listSelectors.add (new Identifier (decl));
-					listSelectorsCount.add (param.getValues ().length);
-				}
-
-				int[] rgSelectorsCount = new int[listSelectorsCount.size ()];
-				int i = 0;
-				for (int nValue : listSelectorsCount)
-					rgSelectorsCount[i++] = nValue;
-
-				// add the function call
-				proc.addProcedureDeclaration (
-					m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL),
-					m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (
-						true, bIncludeAutotuneParameters, bIncludeAutotuneParameters, bIsFortranCompatible),
-					getFunctionSelector (
-						nidCodeVariants,
-						listStencilFunctions,
-						(List<Declaration>) CodeGeneratorUtil.clone (proc.getParams ()),
-						listSelectors,
-						rgSelectorsCount,
-						bIsFortranCompatible),
-					bIncludeStencilCommentAnnotation);
+				createUnparametrizedProxyFunction (
+					proc, listStencilFunctions,
+					bIncludeStencilCommentAnnotation, bIncludeOutputGrids,
+					bIncludeAutotuneParameters, bIncludeInternalAutotuneParameters,
+					bIsFortranCompatible
+				);
 			}
 		}
 	}
+	
+	@SuppressWarnings("unchecked")
+	protected void createParametrizedProxyFunction (GeneratedProcedure proc, List<String> listStencilFunctions,
+		boolean bIncludeStencilCommentAnnotation, boolean bIncludeAutotuneParameters, boolean bIsFortranCompatible)
+	{
+		// add a function that selects the right unrolling configuration based on a command line parameter
+		NameID nidCodeVariants = new NameID (StringUtil.concat ("g_rgCodeVariants", m_nCodeVariantsCount++));
+		if (m_data.getArchitectureDescription ().useFunctionPointers ())
+			proc.getTranslationUnit ().addDeclaration (CodeGenerator.createCodeVariantFnxPtrArray (nidCodeVariants, listStencilFunctions, proc.getParams ()));
 
+		// build the function parameter list: same as for the stencil functions, but with additional parameters for the code selection
+		List<Identifier> listSelectors = new ArrayList<> ();
+		List<Integer> listSelectorsCount = new ArrayList<> ();
+		for (Parameter param : proc.getBodyCodes ().getParameters ())
+		{
+			VariableDeclarator decl = new VariableDeclarator (new NameID (param.getName ()));
+			listSelectors.add (new Identifier (decl));
+			listSelectorsCount.add (param.getValues ().length);
+		}
+
+		int[] rgSelectorsCount = new int[listSelectorsCount.size ()];
+		int i = 0;
+		for (int nValue : listSelectorsCount)
+			rgSelectorsCount[i++] = nValue;
+
+		// add the function call
+		proc.addProcedureDeclaration (
+			m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL),
+			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (
+				true, bIncludeAutotuneParameters, bIncludeAutotuneParameters, bIsFortranCompatible),
+			getFunctionSelector (
+				nidCodeVariants,
+				listStencilFunctions,
+				(List<Declaration>) CodeGeneratorUtil.clone (proc.getParams ()),
+				listSelectors,
+				rgSelectorsCount,
+				bIsFortranCompatible),
+			true,
+			bIncludeStencilCommentAnnotation
+		);
+	}
+	
+	protected void createUnparametrizedProxyFunction (GeneratedProcedure proc, List<String> listStencilFunctions,
+		boolean bIncludeStencilCommentAnnotation, boolean bIncludeOutputGrids,
+		boolean bIncludeAutotuneParameters, boolean bIncludeInternalAutotuneParameters,
+		boolean bIsFortranCompatible)
+	{
+		GlobalGeneratedIdentifiers glid = m_data.getData ().getGlobalGeneratedIdentifiers ();
+		
+		// the function body containing the call to the parametrized kernel function
+		CompoundStatement cmpstmtFnxCall = new CompoundStatement ();
+		
+		// create temporary variables for auto-tuning parameters so that we can pass pointers
+		if (bIsFortranCompatible)
+		{
+			for (Variable var : glid.getAutotuneVariables ())
+			{
+				VariableDeclarator decl = new VariableDeclarator (new NameID (var.getName ()));
+				decl.setInitializer (new ValueInitializer (new NameID (glid.getDefinedVariableName (var))));
+				cmpstmtFnxCall.addDeclaration (new VariableDeclaration (Globals.SPECIFIER_INDEX, decl));				
+			}
+		}
+		
+		List<Declaration> listArgs = m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (
+			bIncludeOutputGrids, bIncludeAutotuneParameters, bIncludeInternalAutotuneParameters, bIsFortranCompatible);
+		List<Expression> listFnxCallArgs = new ArrayList<> ();
+
+		for (Declaration decl : listArgs)
+		{
+			IDExpression id = ((VariableDeclarator) ((VariableDeclaration) decl).getDeclarator (0)).getID ();
+			Variable var = glid.getVariableByName (id.getName ());
+			
+			if (var != null)
+			{
+				if (!bIsFortranCompatible && var.isAutotuningParameter ())
+					listFnxCallArgs.add (new NameID (glid.getDefinedVariableName (var)));
+				else
+					listFnxCallArgs.add (id.clone ());
+			}
+			else
+				listFnxCallArgs.add (id.clone ());
+		}
+		
+		// create the function call
+		cmpstmtFnxCall.addStatement (new ExpressionStatement (new FunctionCall (
+			new NameID (proc.getFunctionName (true)),
+			listFnxCallArgs
+		)));
+		
+		// create the function
+		List<Specifier> listSpecs = new ArrayList<> ();
+		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
+		listSpecs.add (Specifier.INLINE);
+		
+		proc.addProcedureDeclaration (
+			listSpecs,
+			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (bIncludeOutputGrids, false, false, bIsFortranCompatible),
+			cmpstmtFnxCall,
+			false,
+			bIncludeStencilCommentAnnotation
+		);
+	}
+	
 	/**
 	 * Creates a variable declaration for the argument named <code>strArgName</code>.
 	 * @param strArgName
@@ -668,7 +768,7 @@ public class CodeGenerator
 									declSize,
 									nidSizeParam.getName (),
 									new SizeofExpression (CodeGeneratorUtil.specifiers (Globals.SPECIFIER_SIZE)),
-									null)
+									(Size) null)
 							);
 						}
 					}
@@ -685,7 +785,7 @@ public class CodeGenerator
 								declAutoParam,
 								strParamName,
 								new SizeofExpression (CodeGeneratorUtil.specifiers (Specifier.INT)),
-								null)
+								(Size) null)
 						);
 					}
 				}
@@ -712,7 +812,7 @@ public class CodeGenerator
 					new VariableDeclaration (Specifier.INT, decl),
 					param.getName (),
 					new SizeofExpression (CodeGeneratorUtil.specifiers (Specifier.INT)),
-					null
+					new IAutotunerParam.AutotunerRangeParam (Globals.ZERO.clone (), new IntegerLiteral (param.getValues ().length - 1))
 				)
 			);
 		}
@@ -1033,6 +1133,10 @@ public class CodeGenerator
 
 		sb.append ("#include <stdint.h>\n");
 		sb.append ("#include \"patusrt.h\"\n");
+		
+		sb.append ("#include \"");
+		sb.append (CodeGenerationOptions.DEFAULT_TUNEDPARAMS_FILENAME);
+		sb.append ("\"\n");
 
 		////////
 		//sb.append ("#define t_max 1");

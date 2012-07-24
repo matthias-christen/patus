@@ -139,20 +139,20 @@ COMPILER StrategySpecification
 	/**
 	 * Map of subdomains used in the strategy
 	 */
-	private Map<String, List<SubdomainDecl>> m_mapSubdomains = new HashMap<String, List<SubdomainDecl>> ();
+	private Map<String, List<SubdomainDecl>> m_mapSubdomains = new HashMap<> ();
 	
 	/**
 	 * Parallelism levels of loops
 	 */
-	private Stack<Integer> m_stackParallelismLevels = new Stack<Integer> ();
+	private Stack<Integer> m_stackParallelismLevels = new Stack<> ();
 	
 	/**
 	 * Dimension identifiers. The value in the map are the codimensions of the corresponding
 	 * dimension identifiers.
 	 */
-	private Map<String, Integer> m_mapDimensionIdentifiers = new HashMap<String, Integer> ();
+	private Map<String, Integer> m_mapDimensionIdentifiers = new HashMap<> ();
 	
-	private Map<String, Integer> m_mapConstants = new HashMap<String, Integer> ();
+	private Map<String, Integer> m_mapConstants = new HashMap<> ();
 	
 	/**
 	 * The stencil calculation
@@ -204,7 +204,7 @@ COMPILER StrategySpecification
         // initialize the context
         m_nCurrentContextID = 0;
         m_nLastContextID = 0;
-        m_stackContextIDs = new Stack<Integer> ();
+        m_stackContextIDs = new Stack<> ();
         m_stackContextIDs.push (m_nCurrentContextID);
     }
     
@@ -292,7 +292,7 @@ COMPILER StrategySpecification
 	{
         List<SubdomainDecl> list = m_mapSubdomains.get (strIdentifier);
         if (list == null)
-            m_mapSubdomains.put (strIdentifier, list = new LinkedList<SubdomainDecl> ());
+            m_mapSubdomains.put (strIdentifier, list = new LinkedList<> ());
 		list.add (new SubdomainDecl (strIdentifier, subdomain, m_nCurrentContextID));
 	}
 	
@@ -336,7 +336,7 @@ COMPILER StrategySpecification
 	
 	private void setStrategySubdomainMap ()
 	{
-		Map<String, Subdomain> map = new HashMap<String, Subdomain> ();
+		Map<String, Subdomain> map = new HashMap<> ();
 		for (String s : m_mapSubdomains.keySet ())
 			map.put (s, m_mapSubdomains.get (s).iterator ().next ().getSubdomain ());    // just get the first list entry
 		m_strategy.setSubdomains (map); 
@@ -414,7 +414,7 @@ COMPILER StrategySpecification
 		}
 		
 		// fill result list
-		List<Expression> listResult = new ArrayList<Expression> (nDimensionality);
+		List<Expression> listResult = new ArrayList<> (nDimensionality);
 		j = 0;
 		for (Expression expr : rgIdx)
 		{
@@ -510,7 +510,7 @@ COMPILER StrategySpecification
 	 */
 	private List<Expression> createSubscriptedVector (List<Expression> listVector, List<Expression> listCoords)
 	{
-        List<Expression> listResult = new ArrayList<Expression> (listCoords.size ());
+        List<Expression> listResult = new ArrayList<> (listCoords.size ());
         for (Expression exprCoord : listCoords)
         {
             int nCoord = getIntValue (exprCoord);
@@ -777,6 +777,13 @@ COMPILER StrategySpecification
 		return (isSubdomainIdentifier () || la.val.equals ("stencil")) && t.val.equals (".");
 	}
 	
+	private Expression getAutotuneListItem (List<Expression> l, int nIdx)
+	{
+		if (l.size () == 1)
+			return l.get (0);
+		return l.get (nIdx);
+	}
+	
 
 ///////////////////////////////////////////////////////////////////////////
 // Tokens
@@ -825,7 +832,7 @@ PRODUCTIONS                                                                    /
     /**
      * The strategy parameter list.
      */
-    StrategyParamList<. out List<Declaration> listParams .> =                  (. listParams = new ArrayList<Declaration> (); .)
+    StrategyParamList<. out List<Declaration> listParams .> =                  (. listParams = new ArrayList<> (); .)
         "domain" ident                                                         (. VariableDeclarator decl = new VariableDeclarator (new NameID (t.val)); listParams.add (new VariableDeclaration (StencilSpecifier.STENCIL_GRID, decl)); .)
                                                                                (. Point ptMin = m_stencilCalculation.getDomainSize ().getMin (); Point ptMax = m_stencilCalculation.getDomainSize ().getMax (); .)
 		                                                                       (. Subdomain sg = new Subdomain (null, Subdomain.ESubdomainType.SUBDOMAIN, ptMin, new Size (ptMin, ptMax), true); .)
@@ -1147,7 +1154,7 @@ PRODUCTIONS                                                                    /
     	.
     	
     LiteralVectorBorder<out Border border> =                                   (. border = null; Vector v = Vector.getZeroVector (m_stencilCalculation.getStencilBundle ().getFusedStencil ().getDimensionality ()); .)
-    	'(' StrategyVector<. out List<Expression> listMin, v .> ')'            (. List<Expression> listMinNeg = new ArrayList<Expression> (listMin.size ()); .)
+    	'(' StrategyVector<. out List<Expression> listMin, v .> ')'            (. List<Expression> listMinNeg = new ArrayList<> (listMin.size ()); .)
     	','                                                                    (. for (Expression expr : listMin) listMinNeg.add (new UnaryExpression (UnaryOperator.MINUS, expr)); .)
     	'(' StrategyVector<. out List<Expression> listMax, v .> ')'            (. border = new Border (createSize (listMinNeg), createSize (listMax)); .)
     	.
@@ -1156,7 +1163,7 @@ PRODUCTIONS                                                                    /
      * A coordinate vector expression which can contain place holders and ellipses,
      * which will be filled with the appropriate values.
      */
-    StrategyVector<out List<Expression> listExpressions, Vector vecDefault> =  (. listExpressions = new LinkedList<Expression> (); List<Expression> listTail = null; byte nDim = m_stencilCalculation.getDimensionality (); .)
+    StrategyVector<out List<Expression> listExpressions, Vector vecDefault> =  (. listExpressions = new LinkedList<> (); List<Expression> listTail = null; byte nDim = m_stencilCalculation.getDimensionality (); .)
         Subvector<. out List<Expression> listHead .>
         [
             "..."
@@ -1175,7 +1182,7 @@ PRODUCTIONS                                                                    /
             	':'                                                            (. List<Expression> listExprs1 = null; .)
             	{
             		',' ScalarList<out listExprs1>
-            	}                                                              (. listExpressions = new ArrayList<Expression> (nDimensionality); int nTailSize = listExprs1 == null ? 0 : listExprs1.size (); .)
+            	}                                                              (. listExpressions = new ArrayList<> (nDimensionality); int nTailSize = listExprs1 == null ? 0 : listExprs1.size (); .)
             	                                                               (. for (int i = 0; i < nDimensionality - nTailSize; i++) listExpressions.add (null); if (listExprs1 != null) listExpressions.addAll (listExprs1); .)
             )
             |
@@ -1198,7 +1205,7 @@ PRODUCTIONS                                                                    /
         ).
         
     DimensionIdentifier<out List<Expression> listExpressions> =                (. byte nDimensionality = m_stencilCalculation.getDimensionality (); .)
-	    StrategyExpression<out Expression exprSize>                            (. listExpressions = new ArrayList<Expression> (); for (int i = 0; i < nDimensionality; i++) listExpressions.add (getDimIdentifier (exprSize, i)); .)
+	    StrategyExpression<out Expression exprSize>                            (. listExpressions = new ArrayList<> (); for (int i = 0; i < nDimensionality; i++) listExpressions.add (getDimIdentifier (exprSize, i)); .)
         [
     	  	'('                                                                (. Vector v = new Vector (nDimensionality); for (int i = 0; i < nDimensionality; i++) v.setCoord (i, i + 1); .)
           	StrategyVector<. out List<Expression> listSubscripts, v .>         (. listExpressions = createSubscriptedVector (listExpressions, listSubscripts); .)
@@ -1208,7 +1215,7 @@ PRODUCTIONS                                                                    /
     /**
      * A list of scalars, which can contain a range token "..".
      */
-    ScalarList<. out List<Expression> listExpressions .> =                     (. listExpressions = new ArrayList<Expression> (); .)
+    ScalarList<. out List<Expression> listExpressions .> =                     (. listExpressions = new ArrayList<> (); .)
     	ScalarRange<. out List<Expression> listRange .>                        (. listExpressions.addAll (listRange); .)
     	{
     		',' ScalarRange<. out listRange .>                                 (. listExpressions.addAll (listRange); .)
@@ -1217,7 +1224,7 @@ PRODUCTIONS                                                                    /
     /**
      * A range of scalars (with the range token ".." between the start and end value. 
      */
-    ScalarRange<. out List<Expression> listExpressions .> =                    (. listExpressions = new ArrayList<Expression> (); .)
+    ScalarRange<. out List<Expression> listExpressions .> =                    (. listExpressions = new ArrayList<> (); .)
         StrategyExpression<out Expression exprStart>                           (. listExpressions.add (exprStart); .)
         [
         	".." CompileTimeConstant<out int nEnd>                             (. for (int i = getIntValue (exprStart) + 1; i <= nEnd; i++) listExpressions.add (new IntegerLiteral (i)); .)
@@ -1227,9 +1234,9 @@ PRODUCTIONS                                                                    /
         (
             "stencil"                                                          (. box = m_stencilCalculation.getStencilBundle ().getFusedStencil ().getBoundingBox (); .)
             |
-            StrategySubdomainIdentifier<out Expression exprSgid, EHandSide.RIGHT>(. Subdomain sg = getSubdomain (t.val); if (sg == null) return new ArrayList<Expression> (0); box = sg.getBox (); .)
+            StrategySubdomainIdentifier<out Expression exprSgid, EHandSide.RIGHT>(. Subdomain sg = getSubdomain (t.val); if (sg == null) return new ArrayList<> (0); box = sg.getBox (); .)
         )
-        '.'                                                                    (. listExpressions = new ArrayList<Expression> (); if (box == null) { errors.SemErr (la.line, la.col, "No box defined"); return null; } .)
+        '.'                                                                    (. listExpressions = new ArrayList<> (); if (box == null) { errors.SemErr (la.line, la.col, "No box defined"); return null; } .)
         (
             "size"                                                             (. for (Expression expr : box.getSize ()) listExpressions.add (expr); .)
             |
@@ -1345,7 +1352,9 @@ PRODUCTIONS                                                                    /
         	|
         	"min" '(' CompileTimeConstant<out int nIdx> ')'                    (. expr = sgid.getSubdomain ().getBox ().getMin ().getCoord (nIdx - 1); .)
         	|
-        	"max" '(' CompileTimeConstant<out int nIdx> ')'                    (. expr = sgid.getSubdomain ().getBox ().getMax ().getCoord (nIdx - 1); .)        	 
+        	"max" '(' CompileTimeConstant<out int nIdx> ')'                    (. expr = sgid.getSubdomain ().getBox ().getMax ().getCoord (nIdx - 1); .)
+        	|
+        	"size" '(' CompileTimeConstant<out int nIdx> ')'                   (. expr = sgid.getSubdomain ().getBox ().getSize ().getCoord (nIdx - 1); .)        	 
         	|
         	"volume"                                                           (. expr = sgid.getSubdomain ().getBox ().getVolume (); /* TODO: respect padding/alignment restrictions... */ .)
         ).
@@ -1516,7 +1525,7 @@ PRODUCTIONS                                                                    /
 	 */
     StrategyFunctionCall<out Expression exprFnx> =
         ident                                                                  (. String strFunctionName = t.val; .)
-        '('                                                                    (. List<Expression> listArgs = new ArrayList<Expression> (); .)
+        '('                                                                    (. List<Expression> listArgs = new ArrayList<> (); .)
         [
         	StrategyExpression<out Expression expr>                            (. listArgs.add (expr); .)
         	{
@@ -1530,7 +1539,7 @@ PRODUCTIONS                                                                    /
      * A subroutine call that will be treated as non-strategy
      * related call and transferred verbatim to the generated code.
      */
-    SubCall<out Statement stmtSubCall> =                                       (. List<Expression> listArgs = new ArrayList<Expression> (); .)
+    SubCall<out Statement stmtSubCall> =                                       (. List<Expression> listArgs = new ArrayList<> (); .)
     	ident                                                                  (. String strSubName = t.val; .)
     	'('
     	[
@@ -1590,16 +1599,18 @@ PRODUCTIONS                                                                    /
 			'*'                                                                (. bIsMultiplicative = true; .)
 		]
 		AutoTuneValue<. out List<Expression> listStepOrEnd .>                  (. List<Expression> listEnd = null; .)
-		                                                                       (. if (listStart.size () != listStepOrEnd.size ()) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); .)
+		                                                                       (. if (listStart.size () != listStepOrEnd.size () && (listStart.size () > 1 && listStepOrEnd.size () > 1)) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); .)
 		[
 			':'
-			AutoTuneValue<out listEnd>                                         (. if (listStart.size () != listEnd.size ()) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); .)
+			AutoTuneValue<out listEnd>                                         (. if ((listStart.size () != listEnd.size () && (listStart.size () > 1 && listEnd.size () > 1)) || (listStepOrEnd.size () != listEnd.size () && (listStepOrEnd.size () > 1 && listEnd.size () > 1))) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); .)
 		]
 		                                                                       (. listParams = new ArrayList<> (listStart.size ()); .)
-		                                                                       (. for (int i = 0; i < listStart.size (); i++) .)
+		                                                                       (. int nLen = Math.max (listStart.size (), listStepOrEnd.size ()); .)
+		                                                                       (. if (listEnd != null) nLen = Math.max (nLen, listEnd.size ()); .)
+		                                                                       (. for (int i = 0; i < nLen; i++) .)
 		                                                                       (.     listParams.add (listEnd == null ? .)
-		                                                                       (. 	      new IAutotunerParam.AutotunerRangeParam (listStart.get (i), listStepOrEnd.get (i)) : .)
-		                                                                       (. 	      new IAutotunerParam.AutotunerRangeParam (listStart.get (i), listStepOrEnd.get (i), bIsMultiplicative, listEnd.get (i))); .)
+		                                                                       (. 	      new IAutotunerParam.AutotunerRangeParam (getAutotuneListItem (listStart, i), getAutotuneListItem (listStepOrEnd, i)) : .)
+		                                                                       (. 	      new IAutotunerParam.AutotunerRangeParam (getAutotuneListItem (listStart, i), getAutotuneListItem (listStepOrEnd, i), bIsMultiplicative, getAutotuneListItem (listEnd, i))); .)
 		.
 		
 	AutoTuneList<. out List<IAutotunerParam> listParams .> =                   (. listParams = new ArrayList<> (); .)

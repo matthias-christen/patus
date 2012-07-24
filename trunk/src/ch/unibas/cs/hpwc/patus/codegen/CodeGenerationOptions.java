@@ -38,6 +38,8 @@ public class CodeGenerationOptions
 	 * The default filename for the kernel source file
 	 */
 	public final static String DEFAULT_KERNEL_FILENAME = "kernel";
+	
+	public final static String DEFAULT_TUNEDPARAMS_FILENAME = "tuned_params.h";
 
 	/**
 	 * Tolerance for validation (if the absolute value of the difference

@@ -1,8 +1,8 @@
 /**
- * Naive parallel strategy using coordinates:
+ * Simple parallel strategy:
  * Iterate over the grid and parallelize the outer most loop.
  */
-strategy naive_parallel (domain u, auto int chunk)
+strategy simple_parallel (domain u, auto int chunk)
 {
 	// do all the timesteps
 	for t = 1 .. stencil.t_max

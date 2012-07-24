@@ -11,8 +11,10 @@
 package ch.unibas.cs.hpwc.patus.codegen;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
@@ -27,6 +29,7 @@ import cetus.hir.VariableDeclaration;
 import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
 import ch.unibas.cs.hpwc.patus.geometry.Size;
+import ch.unibas.cs.hpwc.patus.grammar.strategy.IAutotunerParam;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -70,6 +73,11 @@ public class GlobalGeneratedIdentifiers
 		{
 			return INPUT_GRID.equals (this) || OUTPUT_GRID.equals (this);
 		}
+		
+		public boolean isAutotuningParameter ()
+		{
+			return AUTOTUNE_PARAMETER.equals (this) || INTERNAL_AUTOTUNE_PARAMETER.equals (this) || INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.equals (this);
+		}
 	}
 
 	/**
@@ -93,6 +101,11 @@ public class GlobalGeneratedIdentifiers
 		 * Memory object box. Only valid for grid type variables.
 		 */
 		private Size m_sizeBox;
+		
+		/**
+		 * The values this variable can take (for auto-tuning)
+		 */
+		private IAutotunerParam m_autoparam;
 
 		private VariableDeclaration m_declaration;
 
@@ -106,6 +119,7 @@ public class GlobalGeneratedIdentifiers
 			m_strName = strOriginalName;
 			m_exprSize = exprSize;
 			m_sizeBox = null;
+			m_autoparam = null;
 
 			m_declaration = new VariableDeclaration (listSpecifiers, new VariableDeclarator (new NameID (strName)));
 		}
@@ -120,6 +134,20 @@ public class GlobalGeneratedIdentifiers
 			m_strOriginalName = strOriginalName;
 			m_exprSize = exprSize;
 			m_sizeBox = sizeBox;
+			m_autoparam = null;
+		}
+		
+		public Variable (EVariableType type, VariableDeclaration decl, String strOriginalName, Expression exprSize, IAutotunerParam autoparam)
+		{
+			m_type = type;
+			m_declaration = decl;
+			m_listSpecifiers = decl.getSpecifiers ();
+			m_specType = findDatatype ();
+			m_strName = decl.getDeclarator (0).getID ().getName ();
+			m_strOriginalName = strOriginalName;
+			m_exprSize = exprSize;
+			m_sizeBox = null;
+			m_autoparam = autoparam;
 		}
 
 		/**
@@ -151,6 +179,11 @@ public class GlobalGeneratedIdentifiers
 		public final boolean isGrid ()
 		{
 			return m_type.isGrid ();
+		}
+		
+		public final boolean isAutotuningParameter ()
+		{
+			return m_type.isAutotuningParameter ();
 		}
 
 		public final List<Specifier> getSpecifiers ()
@@ -189,6 +222,11 @@ public class GlobalGeneratedIdentifiers
 		public final Size getBoxSize ()
 		{
 			return m_sizeBox;
+		}
+		
+		public final IAutotunerParam getAutotuneParam ()
+		{
+			return m_autoparam;
 		}
 
 		public final VariableDeclaration getDeclaration ()
@@ -266,7 +304,10 @@ public class GlobalGeneratedIdentifiers
 	private NameID m_nidInitializeFunction;
 
 	private NameID m_nidStencilFunction;
+	
 	private List<Variable> m_listVariables;
+	
+	private Map<String, Variable> m_mapVariables;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -280,6 +321,7 @@ public class GlobalGeneratedIdentifiers
 	{
 		m_data = data;
 		m_listVariables = new LinkedList<> ();
+		m_mapVariables = new HashMap<> ();
 	}
 
 	/**
@@ -306,9 +348,9 @@ public class GlobalGeneratedIdentifiers
 	/**
 	 * Returns a list of all variables satisfying a type mask, <code>nVariableTypeMask</code>.
 	 * E.g., to retrieve all input grids, use
-	 * <pre>getVariables (EVariableType.INPUT_GRID.mask ())</pre>,
+	 * <pre>getVariables (EVariableType.INPUT_GRID.mask ()),</pre>
 	 * to retrieve all input or output grids, use
-	 * <pre>getVariables (EVariableType.INPUT_GRID.mask () | EVariableType.OUTPUT_GRID.mask ())</pre>,
+	 * <pre>getVariables (EVariableType.INPUT_GRID.mask () | EVariableType.OUTPUT_GRID.mask ()),</pre>
 	 * to get all variables but output grids, use
 	 * <pre>getVariables (~EVariableType.OUTPUT_GRID.mask ())</pre>
 	 * @param m_strType The variable type
@@ -340,10 +382,32 @@ public class GlobalGeneratedIdentifiers
 	{
 		return getVariables (EVariableType.OUTPUT_GRID);
 	}
+	
+	public List<Variable> getAutotuneVariables ()
+	{
+		return getVariables (
+			EVariableType.AUTOTUNE_PARAMETER.mask () |
+			EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask () |
+			EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask ()
+		);
+	}
+	
+	/**
+	 * Finds and returns a variable by its name, or returns <code>null</code> if
+	 * there is no variable with that name.
+	 * 
+	 * @param strVarName
+	 *            The name of the variable to retrieve
+	 * @return The variable named <code>strVarName</code> or <code>null</code>
+	 *         if there is no such variable
+	 */
+	public Variable getVariableByName (String strVarName)
+	{
+		return m_mapVariables.get (strVarName);
+	}
 
 	public NameID getInitializeFunctionName ()
 	{
-		//m_declInitializeFunction.get
 		return m_nidInitializeFunction;
 	}
 
@@ -409,7 +473,7 @@ public class GlobalGeneratedIdentifiers
 	}
 
 	/**
-	 * Returns the name of the (generic) stencil function.
+	 * Returns the name of the (generic, parametrized) stencil function.
 	 * @return
 	 */
 	public NameID getStencilFunctionName ()
@@ -452,8 +516,11 @@ public class GlobalGeneratedIdentifiers
 	 */
 	public void addStencilFunctionArguments (Variable varArgument)
 	{
-		if (!m_listVariables.contains (varArgument))
+		if (!m_mapVariables.containsKey (varArgument.getName ()))
+		{
 			m_listVariables.add (varArgument);
+			m_mapVariables.put (varArgument.getName (), varArgument);
+		}
 	}
 
 	/**
@@ -516,5 +583,14 @@ public class GlobalGeneratedIdentifiers
 		}
 
 		return listVars;
+	}
+	
+	public String getDefinedVariableName (Variable var)
+	{
+		StringBuilder sb = new StringBuilder (m_data.getStencilCalculation ().getName ().toUpperCase ());
+		sb.append ('_');
+		sb.append (var.getName ().toUpperCase ());
+		
+		return sb.toString ();
 	}
 }

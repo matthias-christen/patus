@@ -292,22 +292,22 @@ public abstract class AbstractBackend implements IBackend
 	{
 		return m_mixinNonKernelFunctions.getValidates ();
 	}
-	
+		
 	@Override
-	public String initNonautotuneExeParams ()
+	public String getTestNonautotuneExeParams ()
 	{
-		return m_mixinNonKernelFunctions.initNonautotuneExeParams ();
+		return m_mixinNonKernelFunctions.getTestNonautotuneExeParams ();
 	}
 	
 	@Override
-	public String testNonautotuneExeParams ()
+	public String getAutotuner ()
 	{
-		return m_mixinNonKernelFunctions.testNonautotuneExeParams ();
+		return m_mixinNonKernelFunctions.getAutotuner ();
 	}
 	
 	@Override
-	public String autotuner ()
+	public String getExeParams ()
 	{
-		return m_mixinNonKernelFunctions.autotuner ();
+		return m_mixinNonKernelFunctions.getExeParams ();
 	}
 }

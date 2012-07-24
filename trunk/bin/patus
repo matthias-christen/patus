@@ -32,4 +32,4 @@ then
     ARCH_NAME=$3
 fi
 
-java -jar $PATUS_HOME/bin/patus.jar codegen --stencil=$1 --strategy=$PATUS_HOME/strategy/cacheblocked.stg --outdir=$OUTDIR --unroll=1,2 --architecture="$PATUS_HOME/arch/architectures.xml,$ARCH_NAME"
+java -jar $PATUS_HOME/bin/patus.jar codegen --stencil=$1 --strategy=$PATUS_HOME/strategy/cacheblocked.stg --outdir=$OUTDIR --unroll=1,2,4:1:1 --architecture="$PATUS_HOME/arch/architectures.xml,$ARCH_NAME"

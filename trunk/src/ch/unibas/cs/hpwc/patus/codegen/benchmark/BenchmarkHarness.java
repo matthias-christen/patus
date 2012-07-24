@@ -26,7 +26,6 @@ import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 
-import cetus.hir.Expression;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
@@ -427,7 +426,7 @@ public class BenchmarkHarness
 
 		try
 		{
-			return ((Expression) method.invoke (m_data.getCodeGenerators ().getBackendCodeGenerator ())).toString ();
+			return method.invoke (m_data.getCodeGenerators ().getBackendCodeGenerator ()).toString ();
 		}
 		catch (IllegalArgumentException e)
 		{
@@ -514,9 +513,9 @@ public class BenchmarkHarness
 				else
 					strReplacement = generateCodeForVar (strVar);
 
-				// do the replacements
+				// do the replacements (and replace "$$" by "\$$" (we need a lot of backslashes because of Java and Regex escaping))
 				if (strReplacement != null)
-					matcher.appendReplacement (sb, strReplacement);
+					matcher.appendReplacement (sb, Matcher.quoteReplacement (strReplacement.replaceAll ("\\$\\$", "\\\\\\$\\$")));
 			}
 			matcher.appendTail (sb);
 			out.println (sb.toString ());

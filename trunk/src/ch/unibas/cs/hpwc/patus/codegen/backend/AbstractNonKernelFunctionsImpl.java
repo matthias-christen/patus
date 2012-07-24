@@ -573,11 +573,13 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		StatementList sl = new StatementList ();
 		List<Expression> listArgs = getFunctionArguments (
 			m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (~EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask () & nMask),
-			sl, true);
+			sl, true
+		);
 
 		sl.addStatement (new ExpressionStatement (new FunctionCall (
 			m_data.getData ().getGlobalGeneratedIdentifiers ().getStencilFunctionName ().clone (),
-			listArgs)));
+			listArgs
+		)));
 
 		return sl;
 	}
@@ -888,16 +890,22 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	// ----------------------------------------------------------------
 	// Makefile Variable Processors
 
+	
 	@Override
-	public String initNonautotuneExeParams ()
+	public String getTestNonautotuneExeParams ()
 	{
 		StringBuilder sb = new StringBuilder ();
 		for (GlobalGeneratedIdentifiers.Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
 		{
 			if (var.getType ().equals (GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER))
 			{
+				sb.append ("ifndef ");
 				sb.append (var.getName ());
-				sb.append (" = 0\n");
+				sb.append ("\n\t@echo For tuning, the value of ");
+				sb.append (var.getName ());
+				sb.append (" must be specified. E.g. 'make tune ");
+				sb.append (var.getName ());
+				sb.append ("=100'\n\t@false\nendif\n");
 			}
 		}
 		
@@ -905,55 +913,63 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	}
 	
 	@Override
-	public String testNonautotuneExeParams ()
-	{
-		StringBuilder sb = new StringBuilder ();
-		for (GlobalGeneratedIdentifiers.Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
-		{
-			if (var.getType ().equals (GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER))
-			{
-				sb.append ("ifeq ($(");
-				sb.append (var.getName ());
-				sb.append ("), 0)\n $(error For tuning, the value of x_max must be specified. E.g. 'make tune ");
-				sb.append (var.getName ());
-				sb.append ("=100')");
-				sb.append ("endif\n");
-			}
-		}
-		
-		return sb.toString ();
-	}
-	
-	@Override
-	public String autotuner ()
+	public String getAutotuner ()
 	{
 		StringBuilder sb = new StringBuilder ("java -jar ");
-		sb.append (FileUtil.getFileRelativeToJar ("patus.jar"));
-		sb.append (" autotune bench ");
+		sb.append (FileUtil.getJarFilePath ());
+		sb.append (" autotune");
+				
+		return sb.toString ();
+	}
+	
+	@Override
+	public String getExeParams ()
+	{
+		StringBuilder sb = new StringBuilder ();
+		int nIdx = 0;
+		Map<String, Integer> mapArgName2ArgIdx = new HashMap<> ();
 		
-		for (GlobalGeneratedIdentifiers.Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
+		for (Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
+			GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER.mask () |
+			GlobalGeneratedIdentifiers.EVariableType.AUTOTUNE_PARAMETER.mask () |
+			GlobalGeneratedIdentifiers.EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask () |
+			GlobalGeneratedIdentifiers.EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask ()))
 		{
-			GlobalGeneratedIdentifiers.EVariableType t = var.getType ();
-			IAutotunerParam param = null;
-			if (t.equals (GlobalGeneratedIdentifiers.EVariableType.AUTOTUNE_PARAMETER) ||
-				t.equals (GlobalGeneratedIdentifiers.EVariableType.INTERNAL_AUTOTUNE_PARAMETER) ||
-				t.equals (GlobalGeneratedIdentifiers.EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER))
-			{
-				param = m_data.getStrategy ().getAutotuneSpecification (var.getName ());
-			}
-			
-			if (param != null)
-				sb.append (param.toString ().replaceAll ("\\$", "$$"));
-			else
+			if (var.getType ().equals (GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER))
 			{
 				sb.append ("$(");
 				sb.append (var.getName ());
 				sb.append (')');
+				
+				mapArgName2ArgIdx.put (var.getName (), nIdx);
 			}
-			
+			else
+			{
+				IAutotunerParam param = m_data.getStrategy ().getAutotuneSpecification (var.getName ());
+				if (param == null)
+					param = var.getAutotuneParam ();
+				
+				if (param != null)
+				{
+					// append the auto-tune specification
+					// (any size parameters replaced by references to the corresponding command line argument)
+					sb.append ('@');
+					sb.append (m_data.getData ().getGlobalGeneratedIdentifiers ().getDefinedVariableName (var));
+					sb.append ('=');
+					sb.append (param.replaceIdentifiers (mapArgName2ArgIdx).replaceAll ("\\(", "\\\\\\(").replaceAll ("\\)", "\\\\\\)"));
+				}
+				else
+				{
+					sb.append ("$(");
+					sb.append (var.getName ());
+					sb.append (')');
+				}
+			}
+						
 			sb.append (' ');
+			nIdx++;
 		}
-		
+
 		return sb.toString ();
 	}
 }

@@ -8,11 +8,16 @@
 CC = gcc
 CFLAGS = -O3 -g -mavx -fopenmp -I.
 
+
 bench: kernel.o driver.o $(PATUS_RUNTIME_OBJECT_FILES)
 	$(CC) $(CFLAGS) -o $@ $+
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
-	
+
+tune:
+$(PATUS_TEST_NONAUTOTUNE_EXE_PARAMS)
+	$(PATUS_AUTOTUNER) bench $(PATUS_EXE_PARAMS)
+
 clean:
 	rm -rf *.o bench

@@ -146,20 +146,20 @@ public class Parser {
 	/**
 	 * Map of subdomains used in the strategy
 	 */
-	private Map<String, List<SubdomainDecl>> m_mapSubdomains = new HashMap<String, List<SubdomainDecl>> ();
+	private Map<String, List<SubdomainDecl>> m_mapSubdomains = new HashMap<> ();
 	
 	/**
 	 * Parallelism levels of loops
 	 */
-	private Stack<Integer> m_stackParallelismLevels = new Stack<Integer> ();
+	private Stack<Integer> m_stackParallelismLevels = new Stack<> ();
 	
 	/**
 	 * Dimension identifiers. The value in the map are the codimensions of the corresponding
 	 * dimension identifiers.
 	 */
-	private Map<String, Integer> m_mapDimensionIdentifiers = new HashMap<String, Integer> ();
+	private Map<String, Integer> m_mapDimensionIdentifiers = new HashMap<> ();
 	
-	private Map<String, Integer> m_mapConstants = new HashMap<String, Integer> ();
+	private Map<String, Integer> m_mapConstants = new HashMap<> ();
 	
 	/**
 	 * The stencil calculation
@@ -211,7 +211,7 @@ public class Parser {
         // initialize the context
         m_nCurrentContextID = 0;
         m_nLastContextID = 0;
-        m_stackContextIDs = new Stack<Integer> ();
+        m_stackContextIDs = new Stack<> ();
         m_stackContextIDs.push (m_nCurrentContextID);
     }
     
@@ -299,7 +299,7 @@ public class Parser {
 	{
         List<SubdomainDecl> list = m_mapSubdomains.get (strIdentifier);
         if (list == null)
-            m_mapSubdomains.put (strIdentifier, list = new LinkedList<SubdomainDecl> ());
+            m_mapSubdomains.put (strIdentifier, list = new LinkedList<> ());
 		list.add (new SubdomainDecl (strIdentifier, subdomain, m_nCurrentContextID));
 	}
 	
@@ -343,7 +343,7 @@ public class Parser {
 	
 	private void setStrategySubdomainMap ()
 	{
-		Map<String, Subdomain> map = new HashMap<String, Subdomain> ();
+		Map<String, Subdomain> map = new HashMap<> ();
 		for (String s : m_mapSubdomains.keySet ())
 			map.put (s, m_mapSubdomains.get (s).iterator ().next ().getSubdomain ());    // just get the first list entry
 		m_strategy.setSubdomains (map); 
@@ -421,7 +421,7 @@ public class Parser {
 		}
 		
 		// fill result list
-		List<Expression> listResult = new ArrayList<Expression> (nDimensionality);
+		List<Expression> listResult = new ArrayList<> (nDimensionality);
 		j = 0;
 		for (Expression expr : rgIdx)
 		{
@@ -517,7 +517,7 @@ public class Parser {
 	 */
 	private List<Expression> createSubscriptedVector (List<Expression> listVector, List<Expression> listCoords)
 	{
-        List<Expression> listResult = new ArrayList<Expression> (listCoords.size ());
+        List<Expression> listResult = new ArrayList<> (listCoords.size ());
         for (Expression exprCoord : listCoords)
         {
             int nCoord = getIntValue (exprCoord);
@@ -784,6 +784,13 @@ public class Parser {
 		return (isSubdomainIdentifier () || la.val.equals ("stencil")) && t.val.equals (".");
 	}
 	
+	private Expression getAutotuneListItem (List<Expression> l, int nIdx)
+	{
+		if (l.size () == 1)
+			return l.get (0);
+		return l.get (nIdx);
+	}
+	
 
 ///////////////////////////////////////////////////////////////////////////
 // Tokens
@@ -863,7 +870,7 @@ public class Parser {
 
 	List<Declaration>  StrategyParamList() {
 		List<Declaration>  listParams;
-		listParams = new ArrayList<Declaration> (); 
+		listParams = new ArrayList<> (); 
 		Expect(7);
 		Expect(1);
 		VariableDeclarator decl = new VariableDeclarator (new NameID (t.val)); listParams.add (new VariableDeclaration (StencilSpecifier.STENCIL_GRID, decl)); 
@@ -1048,7 +1055,7 @@ public class Parser {
 
 	Statement  SubCall() {
 		Statement  stmtSubCall;
-		List<Expression> listArgs = new ArrayList<Expression> (); 
+		List<Expression> listArgs = new ArrayList<> (); 
 		Expect(1);
 		String strSubName = t.val; 
 		Expect(5);
@@ -1259,7 +1266,7 @@ public class Parser {
 
 	List<Expression>  StrategyVector(Vector vecDefault) {
 		List<Expression>  listExpressions;
-		listExpressions = new LinkedList<Expression> (); List<Expression> listTail = null; byte nDim = m_stencilCalculation.getDimensionality (); 
+		listExpressions = new LinkedList<> (); List<Expression> listTail = null; byte nDim = m_stencilCalculation.getDimensionality (); 
 		List<Expression> listHead  = Subvector();
 		if (la.kind == 36) {
 			Get();
@@ -1398,7 +1405,7 @@ public class Parser {
 		Expect(5);
 		List<Expression> listMin = StrategyVector(v );
 		Expect(6);
-		List<Expression> listMinNeg = new ArrayList<Expression> (listMin.size ()); 
+		List<Expression> listMinNeg = new ArrayList<> (listMin.size ()); 
 		Expect(8);
 		for (Expression expr : listMin) listMinNeg.add (new UnaryExpression (UnaryOperator.MINUS, expr)); 
 		Expect(5);
@@ -1418,7 +1425,7 @@ public class Parser {
 				Get();
 				listExprs1 = ScalarList();
 			}
-			listExpressions = new ArrayList<Expression> (nDimensionality); int nTailSize = listExprs1 == null ? 0 : listExprs1.size (); 
+			listExpressions = new ArrayList<> (nDimensionality); int nTailSize = listExprs1 == null ? 0 : listExprs1.size (); 
 			for (int i = 0; i < nDimensionality - nTailSize; i++) listExpressions.add (null); if (listExprs1 != null) listExpressions.addAll (listExprs1); 
 		} else if (isDimensionParameter ()) {
 			listExpressions = DimensionIdentifier();
@@ -1441,7 +1448,7 @@ public class Parser {
 
 	List<Expression>  ScalarList() {
 		List<Expression>  listExpressions;
-		listExpressions = new ArrayList<Expression> (); 
+		listExpressions = new ArrayList<> (); 
 		List<Expression> listRange  = ScalarRange();
 		listExpressions.addAll (listRange); 
 		while (la.kind == 8) {
@@ -1456,7 +1463,7 @@ public class Parser {
 		List<Expression>  listExpressions;
 		byte nDimensionality = m_stencilCalculation.getDimensionality (); 
 		Expression exprSize = StrategyExpression();
-		listExpressions = new ArrayList<Expression> (); for (int i = 0; i < nDimensionality; i++) listExpressions.add (getDimIdentifier (exprSize, i)); 
+		listExpressions = new ArrayList<> (); for (int i = 0; i < nDimensionality; i++) listExpressions.add (getDimIdentifier (exprSize, i)); 
 		if (la.kind == 5) {
 			Get();
 			Vector v = new Vector (nDimensionality); for (int i = 0; i < nDimensionality; i++) v.setCoord (i, i + 1); 
@@ -1475,10 +1482,10 @@ public class Parser {
 			box = m_stencilCalculation.getStencilBundle ().getFusedStencil ().getBoundingBox (); 
 		} else if (la.kind == 1) {
 			Expression exprSgid = StrategySubdomainIdentifier(EHandSide.RIGHT);
-			Subdomain sg = getSubdomain (t.val); if (sg == null) return new ArrayList<Expression> (0); box = sg.getBox (); 
+			Subdomain sg = getSubdomain (t.val); if (sg == null) return new ArrayList<> (0); box = sg.getBox (); 
 		} else SynErr(85);
 		Expect(34);
-		listExpressions = new ArrayList<Expression> (); if (box == null) { errors.SemErr (la.line, la.col, "No box defined"); return null; } 
+		listExpressions = new ArrayList<> (); if (box == null) { errors.SemErr (la.line, la.col, "No box defined"); return null; } 
 		if (la.kind == 38) {
 			Get();
 			for (Expression expr : box.getSize ()) listExpressions.add (expr); 
@@ -1500,7 +1507,7 @@ public class Parser {
 
 	List<Expression>  ScalarRange() {
 		List<Expression>  listExpressions;
-		listExpressions = new ArrayList<Expression> (); 
+		listExpressions = new ArrayList<> (); 
 		Expression exprStart = StrategyExpression();
 		listExpressions.add (exprStart); 
 		if (la.kind == 22) {
@@ -1633,6 +1640,12 @@ public class Parser {
 			int nIdx = CompileTimeConstant();
 			Expect(6);
 			expr = sgid.getSubdomain ().getBox ().getMax ().getCoord (nIdx - 1); 
+		} else if (la.kind == 38) {
+			Get();
+			Expect(5);
+			int nIdx = CompileTimeConstant();
+			Expect(6);
+			expr = sgid.getSubdomain ().getBox ().getSize ().getCoord (nIdx - 1); 
 		} else if (la.kind == 42) {
 			Get();
 			expr = sgid.getSubdomain ().getBox ().getVolume (); /* TODO: respect padding/alignment restrictions... */ 
@@ -1780,7 +1793,7 @@ public class Parser {
 		Expect(1);
 		String strFunctionName = t.val; 
 		Expect(5);
-		List<Expression> listArgs = new ArrayList<Expression> (); 
+		List<Expression> listArgs = new ArrayList<> (); 
 		if (StartOf(3)) {
 			Expression expr = StrategyExpression();
 			listArgs.add (expr); 
@@ -1872,17 +1885,19 @@ public class Parser {
 		}
 		List<Expression> listStepOrEnd  = AutoTuneValue();
 		List<Expression> listEnd = null; 
-		if (listStart.size () != listStepOrEnd.size ()) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); 
+		if (listStart.size () != listStepOrEnd.size () && (listStart.size () > 1 && listStepOrEnd.size () > 1)) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); 
 		if (la.kind == 37) {
 			Get();
 			listEnd = AutoTuneValue();
-			if (listStart.size () != listEnd.size ()) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); 
+			if ((listStart.size () != listEnd.size () && (listStart.size () > 1 && listEnd.size () > 1)) || (listStepOrEnd.size () != listEnd.size () && (listStepOrEnd.size () > 1 && listEnd.size () > 1))) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); 
 		}
 		listParams = new ArrayList<> (listStart.size ()); 
-		for (int i = 0; i < listStart.size (); i++) 
+		int nLen = Math.max (listStart.size (), listStepOrEnd.size ()); 
+		if (listEnd != null) nLen = Math.max (nLen, listEnd.size ()); 
+		for (int i = 0; i < nLen; i++) 
 		listParams.add (listEnd == null ? 
-		new IAutotunerParam.AutotunerRangeParam (listStart.get (i), listStepOrEnd.get (i)) : 
-		new IAutotunerParam.AutotunerRangeParam (listStart.get (i), listStepOrEnd.get (i), bIsMultiplicative, listEnd.get (i))); 
+		new IAutotunerParam.AutotunerRangeParam (getAutotuneListItem (listStart, i), getAutotuneListItem (listStepOrEnd, i)) : 
+		new IAutotunerParam.AutotunerRangeParam (getAutotuneListItem (listStart, i), getAutotuneListItem (listStepOrEnd, i), bIsMultiplicative, getAutotuneListItem (listEnd, i))); 
 		return listParams;
 	}
 

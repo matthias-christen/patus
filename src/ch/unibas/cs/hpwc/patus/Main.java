@@ -16,6 +16,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import ch.unibas.cs.hpwc.patus.autotuner.StandaloneAutotuner;
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.preprocessor.Preprocessor;
 import ch.unibas.cs.hpwc.patus.tools.Compare;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -54,5 +55,8 @@ public class Main
 			Compare.main (Arrays.copyOfRange (args, 1, args.length));
 		else
 			System.out.println (StringUtil.concat ("Mode '", strMode, "' not recognized. Available modes are: 'codegen', 'codegen-x', 'autotune', 'compare'."));
+		
+		Globals.EXECUTOR_SERVICE.shutdown ();
+		System.exit (0);
 	}
 }

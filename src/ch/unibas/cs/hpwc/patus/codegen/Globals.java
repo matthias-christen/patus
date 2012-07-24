@@ -49,6 +49,11 @@ public class Globals
 
 	public static final NameID FNX_STENCIL = new NameID ("stencil");
 	public static final NameID FNX_INITIALIZE = new NameID ("initialize");
+	
+	/**
+	 * The suffix appended to the parametrized initialization/stencil kernel functions
+	 */
+	public static final String PARAMETRIZED_FUNCTION_SUFFIX = "_parm";
 
 
 	// ----------------------------------------------------------------
@@ -118,21 +123,16 @@ public class Globals
 	}
 
 	/**
-	 * Returns a {@link NameID} for the initialization function.
+	 * Returns the name of the initialization function for the stencil named
+	 * <code>strStencilName</code>.
 	 * 
 	 * @param strStencilName
 	 *            The name of the stencil
-	 * @param bMakeFortranCompatible
-	 *            Flag indicating whether to make the initialization function
-	 *            name compatible with Fortran
-	 * @return A {@link NameID} for the initialization function
+	 * @return The name of the initialization function
 	 */
-	public static NameID getInitializeFunction (String strStencilName, boolean bMakeFortranCompatible)
+	public static String getInitializeFunctionName (String strStencilName)
 	{
-		String strInitializeFnxName = StringUtil.concat (FNX_INITIALIZE.getName (), "_", strStencilName);
-		if (bMakeFortranCompatible)
-			return new NameID (Globals.createFortranName (strInitializeFnxName));
-		return new NameID (strInitializeFnxName);
+		return StringUtil.concat (FNX_INITIALIZE.getName (), "_", strStencilName);
 	}
 
 	/**

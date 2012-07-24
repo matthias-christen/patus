@@ -10,15 +10,23 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.autotuner;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 
 import cetus.hir.Expression;
 import ch.unibas.cs.hpwc.patus.autotuner.HybridOptimizer.HybridRunExecutable;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
 import ch.unibas.cs.hpwc.patus.symbolic.ExpressionParser;
+import ch.unibas.cs.hpwc.patus.symbolic.Maxima;
+import ch.unibas.cs.hpwc.patus.symbolic.MaximaTimeoutException;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -64,6 +72,11 @@ public class StandaloneAutotuner
 	 * Set of constraints
 	 */
 	private List<Expression> m_listConstraints;
+	
+	/**
+	 * Maps named auto-tuner parameters (arguments like '@NAME=4:4:100') to the argument index
+	 */
+	private Map<String, Integer> m_mapNamedAutotuneParams;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -78,6 +91,7 @@ public class StandaloneAutotuner
 		m_bInitSuccessful = false;
 		m_rgParams = rgParams;
 		m_optimizer = null;
+		m_mapNamedAutotuneParams = new HashMap<> ();
 
 		// check whether the call is valid
 		if (!checkCommandLine ())
@@ -290,6 +304,9 @@ public class StandaloneAutotuner
 
 		m_listParamSets = new ArrayList<> (m_rgParams.length - 1);
 		m_listConstraints = new ArrayList<> ();
+		
+		StringBuilder sbFixedVars = new StringBuilder ();
+		int nIdxArgs = 0;
 
 		for (int i = 1; i < m_rgParams.length; i++)
 		{
@@ -309,10 +326,12 @@ public class StandaloneAutotuner
 				
 				else if (m_rgParams[i].indexOf (':') >= 0)
 				{
+					String strValues = getArgValues (m_rgParams[i], nIdxArgs);
+					
 					// variant "startvalue:[[*]step:]endvalue"
 
 					// parse the input
-					String[] rgValues = m_rgParams[i].split (":");
+					String[] rgValues = strValues.split (":");
 
 					boolean bUseExhaustive = false;
 					if (rgValues[rgValues.length - 1].endsWith ("!"))
@@ -321,18 +340,18 @@ public class StandaloneAutotuner
 						bUseExhaustive = true;
 					}
 
-					int nStartValue = Integer.parseInt (rgValues[0]);
+					int nStartValue = getValue (rgValues[0], sbFixedVars.toString ());
 					int nEndValue = 0;
 					int nStep = 1;
 					boolean bIsStepMultiplicative = false;
 
 					if (rgValues.length == 2)
-						nEndValue = Integer.parseInt (rgValues[1]);
+						nEndValue = getValue (rgValues[1], sbFixedVars.toString ());
 					else if (rgValues.length == 3)
 					{
 						bIsStepMultiplicative = rgValues[1].charAt (0) == '*';
-						nStep = Integer.parseInt (bIsStepMultiplicative ? rgValues[1].substring (1) : rgValues[1]);
-						nEndValue = Integer.parseInt (rgValues[2]);
+						nStep = getValue (bIsStepMultiplicative ? rgValues[1].substring (1) : rgValues[1], sbFixedVars.toString ());
+						nEndValue = getValue (rgValues[2], sbFixedVars.toString ());
 					}
 					else
 						throw new RuntimeException ("Malformed argument " + m_rgParams[i]);
@@ -359,12 +378,15 @@ public class StandaloneAutotuner
 					ParamSet ps = new ParamSet (rgParamSet, bUseExhaustive);
 					LOGGER.info (ps.toString ());
 					m_listParamSets.add (ps);
+					
+					nIdxArgs++;
 				}
 				else if (m_rgParams[i].indexOf (',') >= 0)
 				{
 					// variant "value1[,value2[,value3...]]"
 
-					String[] rgValues = m_rgParams[i].split (",");
+					String strValues = getArgValues (m_rgParams[i], nIdxArgs);
+					String[] rgValues = strValues.split (",");
 
 					boolean bUseExhaustive = false;
 					if (rgValues[rgValues.length - 1].endsWith ("!"))
@@ -377,20 +399,31 @@ public class StandaloneAutotuner
 					int j = 0;
 					for (String strValue : rgValues)
 					{
-						rgParamSet[j] = Integer.parseInt (strValue);
+						rgParamSet[j] = getValue (strValue, sbFixedVars.toString ());
 						j++;
 					}
 					
 					ParamSet ps = new ParamSet (rgParamSet, bUseExhaustive);
 					LOGGER.info (ps.toString ());
 					m_listParamSets.add (ps);
+					
+					nIdxArgs++;
 				}
 				else
 				{
 					// assume this is only a single number
-					ParamSet ps = new ParamSet (new int[] { Integer.parseInt (m_rgParams[i]) }, false);
+					int nValue = Integer.parseInt (m_rgParams[i]);
+					ParamSet ps = new ParamSet (new int[] { nValue }, false);
 					LOGGER.info (ps.toString ());
 					m_listParamSets.add (ps);
+					
+					// build the maxima string to assign variables X0, X1, ... the fixed value: e.g., X0=4$
+					sbFixedVars.append ('X');
+					sbFixedVars.append (nIdxArgs);
+					sbFixedVars.append (':');
+					sbFixedVars.append (nValue);
+					sbFixedVars.append ('$');
+					nIdxArgs++;
 				}
 			}
 			catch (NumberFormatException e)
@@ -407,6 +440,32 @@ public class StandaloneAutotuner
 				// TODO
 			}
 		}
+	}
+	
+	private static int getValue (String strVal, String strVars)
+	{
+		try
+		{
+			return Integer.parseInt (Maxima.getInstance ().executeExpectingSingleOutput (StringUtil.concat (strVars, "entier(", strVal.replace ('$', 'X'), ");")));
+		}
+		catch (MaximaTimeoutException e)
+		{
+			return 0;
+		}
+		catch (NumberFormatException e)
+		{
+			return 0;
+		}
+	}
+	
+	private String getArgValues (String strArg, int nIdxArgs)
+	{
+		String[] rgParts = strArg.split ("=");
+		String strValues = rgParts[rgParts.length - 1];
+		if (rgParts.length > 1)
+			m_mapNamedAutotuneParams.put (rgParts[0].replace ("@", ""), nIdxArgs);
+	
+		return strValues;
 	}
 
 	/**
@@ -444,6 +503,42 @@ public class StandaloneAutotuner
 
 		System.out.println ("\nProgram output of the optimal run:");
 		System.out.println (optMain.getProgramOutput ());
+		
+		System.out.print ("\nWriting results to ");
+		System.out.print (CodeGenerationOptions.DEFAULT_TUNEDPARAMS_FILENAME);
+		System.out.println ("...");
+		writeTunedParametersFile (run.getParameters (optMain.getResultParameters ()));
+	}
+	
+	private void writeTunedParametersFile (int[] rgOptimizedParamValues)
+	{
+		if (m_mapNamedAutotuneParams.size () == 0)
+			return;
+		
+		try
+		{
+			PrintWriter out = new PrintWriter (new File (new File (m_strFilename).getParentFile (), CodeGenerationOptions.DEFAULT_TUNEDPARAMS_FILENAME));
+			
+			for (String strVarName : m_mapNamedAutotuneParams.keySet ())
+			{
+				out.print ("#define ");
+				out.print (strVarName);
+				out.print (' ');
+				
+				Integer nIdx = m_mapNamedAutotuneParams.get (strVarName);
+				if (nIdx != null && nIdx >= 0 && nIdx < rgOptimizedParamValues.length)
+					out.println (rgOptimizedParamValues[nIdx]);
+				else
+					out.println ("0");
+			}
+			
+			out.flush ();
+			out.close ();
+		}
+		catch (FileNotFoundException e)
+		{
+			e.printStackTrace ();
+		}
 	}
 
 	public static void printEnvironment ()

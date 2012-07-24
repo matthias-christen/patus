@@ -28,22 +28,52 @@ public interface INonKernelFunctions
 	///////////////////////////////////////////////////////////////////
 	// Patus Pragmas
 
+	/**
+	 * Creates a {@link StatementList} with forward declarations of the
+	 * initialization and stencil kernel functions.
+	 */
 	public abstract StatementList forwardDecls ();
 
+	/**
+	 * Creates the code declaring the grids to be passed to the
+	 * initialization/stencil kernel functions.
+	 */
 	public abstract StatementList declareGrids ();
 
+	/**
+	 * Creates the code allocating memory for the stencil grids.
+	 */
 	public abstract StatementList allocateGrids ();
 
+	/**
+	 * Creates the code to call the generated initialization function.
+	 */
 	public abstract StatementList initializeGrids ();
 
+	/**
+	 * Creates the code to transfer the data to the compute units.
+	 */
 	public abstract StatementList sendData ();
 
+	/**
+	 * Creates the code to receive computed data from the compute units.
+	 */
 	public abstract StatementList receiveData ();
 
+	/**
+	 * Creates the code calling the generated stencil kernel. 
+	 */
 	public abstract StatementList computeStencil ();
 
+	/**
+	 * Creates the code to validate the computation done by the generated
+	 * stencil kernel.
+	 */
 	public abstract StatementList validateComputation ();
 
+	/**
+	 * Creates the code to free the data.
+	 */
 	public abstract StatementList deallocateGrids ();
 
 
@@ -63,8 +93,24 @@ public interface INonKernelFunctions
 
 	///////////////////////////////////////////////////////////////////
 	// Makefile Variables
+		
+	/**
+	 * Creates the code to test whether the size parameters are still 0 (i.e.,
+	 * haven't been changed on the command line to <code>make</code>) and in
+	 * this case emits an error message.
+	 * 
+	 * @return Makefile code as a {@link String}
+	 */
+	public abstract String getTestNonautotuneExeParams ();
+
+	/**
+	 * Returns the command to call the Patus auto-tuner.
+	 */
+	public abstract String getAutotuner ();
 	
-	public abstract String initNonautotuneExeParams ();
-	public abstract String testNonautotuneExeParams ();
-	public abstract String autotuner ();
+	/**
+	 * Returns the list of command line parameters to the auto-tuner (excluding
+	 * the name of the executable).
+	 */
+	public abstract String getExeParams ();
 }

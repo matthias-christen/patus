@@ -230,7 +230,9 @@ public class FileUtil
 
 	/**
 	 * Determines whether <code>file</code> is an absolute file name.
+	 * 
 	 * @param file
+	 *            The file descriptor to test
 	 * @return <code>true</code> iff <code>file</code> is an absolute file name
 	 */
 	public static boolean isPathAbsolute (File file)
@@ -242,8 +244,11 @@ public class FileUtil
 
 	/**
 	 * Determines whether <code>strFile</code> is an absolute file name.
+	 * 
 	 * @param strFile
-	 * @return <code>true</code> iff <code>strFile</code> is an absolute file name
+	 *            The name of the file to test
+	 * @return <code>true</code> iff <code>strFile</code> is an absolute file
+	 *         name
 	 */
 	public static boolean isPathAbsolute (String strFile)
 	{
@@ -264,9 +269,12 @@ public class FileUtil
 
 	/**
 	 * Determines whether <code>strFile</code> is absolute, and if it is not,
-	 * interprets the file name relative to the location of the Jar file/source code.
+	 * interprets the file name relative to the location of the Jar file/source
+	 * code.
+	 * 
 	 * @param strFile
-	 * @return
+	 *            The name of the file whose path to retrieve
+	 * @return A descriptor of the file <code>strFile</code>
 	 */
 	public static File getFileRelativeToJar (String strFile)
 	{
@@ -275,22 +283,24 @@ public class FileUtil
 
 		return new File (getBaseDir (), strFile);
 	}
-
-	private static File getBaseDir ()
+	
+	/**
+	 * Returns the descriptor of the patus.jar file.
+	 * 
+	 * @return The descriptor of the patus.jar file
+	 */
+	public static String getJarFilePath ()
 	{
-		if (FileUtil.BASE_DIR != null)
-			return FileUtil.BASE_DIR;
-
 		// get the class path
 		String strMainClassPath = null;
 		String strClassPath = System.getProperty ("java.class.path");
 		if (strClassPath == null)
-			return FileUtil.BASE_DIR = new File ("");
+			return null;
 
 		// find
 		String[] rgPaths = strClassPath.split (File.pathSeparator);
 		if (rgPaths.length == 0)
-			return FileUtil.BASE_DIR = new File ("");
+			return null;
 		else if (rgPaths.length == 1)
 			strMainClassPath = rgPaths[0];
 		else
@@ -306,6 +316,15 @@ public class FileUtil
 			}
 		}
 
+		return strMainClassPath; 
+	}
+
+	private static File getBaseDir ()
+	{
+		if (FileUtil.BASE_DIR != null)
+			return FileUtil.BASE_DIR;
+
+		String strMainClassPath = getJarFilePath ();
 		if (strMainClassPath == null)
 			return FileUtil.BASE_DIR = new File ("");
 		

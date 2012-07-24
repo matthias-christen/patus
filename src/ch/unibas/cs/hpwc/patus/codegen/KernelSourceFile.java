@@ -1,6 +1,7 @@
 package ch.unibas.cs.hpwc.patus.codegen;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -28,6 +29,7 @@ public class KernelSourceFile
 
 	protected File m_file;
 	protected TranslationUnit m_unit;
+	//protected 
 
 	// configuration
 	protected CodeGenerationOptions.ECompatibility m_compatibility;
@@ -50,6 +52,15 @@ public class KernelSourceFile
 	}
 
 	public void writeCode (CodeGenerator cg, CodeGeneratorSharedObjects data, File fileOutputDirectory)
+	{
+		writeKernelSource (cg, data, fileOutputDirectory);
+		writeTuningParamsSource (data, fileOutputDirectory);
+	}
+
+	/**
+	 * Write the stencil kernel implementation source file.
+	 */
+	private void writeKernelSource (CodeGenerator cg, CodeGeneratorSharedObjects data, File fileOutputDirectory)
 	{
 		if (m_bCreateBenchmarkingHarness)
 		{
@@ -87,9 +98,35 @@ public class KernelSourceFile
 		{
 			if (out != null)
 				out.close ();
+		}		
+	}
+	
+	/**
+	 * Write the tuning parameters header file.
+	 */
+	@SuppressWarnings("static-method")
+	private void writeTuningParamsSource (CodeGeneratorSharedObjects data, File fileOutputDirectory)
+	{
+		try
+		{
+			PrintWriter out = new PrintWriter (new File (fileOutputDirectory, CodeGenerationOptions.DEFAULT_TUNEDPARAMS_FILENAME));
+			GlobalGeneratedIdentifiers glid = data.getData ().getGlobalGeneratedIdentifiers ();
+			
+			for (GlobalGeneratedIdentifiers.Variable var : glid.getAutotuneVariables ())
+			{
+				out.print ("#define ");
+				out.print (glid.getDefinedVariableName (var));
+				out.print (" 0\n");
+			}
+			
+			out.flush ();
+			out.close ();
+		}
+		catch (FileNotFoundException e)
+		{
+			e.printStackTrace ();
 		}
 	}
-
 
 	public final CodeGenerationOptions.ECompatibility getCompatibility ()
 	{

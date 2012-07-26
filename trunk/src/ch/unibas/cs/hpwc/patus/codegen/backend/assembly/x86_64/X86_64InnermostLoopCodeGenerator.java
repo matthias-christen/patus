@@ -3,6 +3,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.x86_64;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.AssemblySection;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InnermostLoopCodeGenerator;
@@ -217,6 +218,8 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			l.addInstruction (Label.getLabel (LABEL_UNROLLEDMAINHDR_STARTCOMPUTATION));
 			l.addInstruction (new Instruction (".align 4"));
 			
+			l.addInstructions (generatePrefetching ());
+			
 			return l;
 		}
 		
@@ -260,6 +263,8 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			l.addInstruction (new Instruction ("jz",  Label.getLabelOperand (LABEL_EPILOGHDR)));
 			l.addInstruction (Label.getLabel (LABEL_SIMPLEMAINHDR_STARTCOMPUTATION));		
 			l.addInstruction (new Instruction (".align 4"));
+			
+			l.addInstructions (generatePrefetching ());
 
 			return l;
 		}
@@ -326,7 +331,20 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			l.addInstruction (Label.getLabel (LABEL_EPILOGHDR_ENDCOMPUTATION));
 			
 			return l;		
-		}		
+		}
+		
+		public InstructionList generatePrefetching ()
+		{
+			InstructionList l = new InstructionList ();
+			
+			StencilNodeSet setNodes = new StencilNodeSet (
+				m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil (),
+				StencilNodeSet.ENodeTypes.INPUT_NODES
+			).getFront (1);
+
+			
+			return l;
+		}
 	}
 
 

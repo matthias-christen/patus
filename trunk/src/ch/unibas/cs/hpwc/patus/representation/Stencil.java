@@ -22,7 +22,6 @@ import cetus.hir.ArrayAccess;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
-import cetus.hir.IDExpression;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;

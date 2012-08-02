@@ -3,7 +3,6 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.x86_64;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
-import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.AssemblySection;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InnermostLoopCodeGenerator;
@@ -16,6 +15,7 @@ import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.MathUtil;
 
+
 /**
  * Generates inline assembly code for the inner most loop for x86_64 architectures.
  * 
@@ -27,7 +27,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 {
 	///////////////////////////////////////////////////////////////////
 	// Constants
-	
+		
 	// generate a CMOV instruction
 	private final static boolean USE_CMOV = true;
 	
@@ -43,13 +43,20 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 	protected abstract class AbstractCodeGenerator extends InnermostLoopCodeGenerator.CodeGenerator
 	{
 		///////////////////////////////////////////////////////////////////
+		// Member Variables
+		
+		private X86_64PrefetchingCodeGenerator m_cgPrefetch;
+
+		
+		///////////////////////////////////////////////////////////////////
 		// Implementation
 
 		public AbstractCodeGenerator (SubdomainIterator sdit, CodeGeneratorRuntimeOptions options)
 		{
 			super (sdit, options);
 			initialize ();
-		}		
+			m_cgPrefetch = m_data.getOptions ().getCreatePrefetching () ? new X86_64PrefetchingCodeGenerator (m_data, getAssemblySection ()) : null;
+		}
 
 		/**
 		 * Increments the addresses and decrements the loop counter.
@@ -83,6 +90,13 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 		 *            instructions
 		 */
 		protected abstract void decrementMainLoopCounterAndJump (InstructionList il, String strHeadLabel, int nLoopUnrollingFactor);
+		
+		protected InstructionList generatePrefetching ()
+		{
+			if (m_cgPrefetch == null)
+				return null;
+			return m_cgPrefetch.generate ();
+		}
 	}
 	
 	
@@ -331,20 +345,7 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			l.addInstruction (Label.getLabel (LABEL_EPILOGHDR_ENDCOMPUTATION));
 			
 			return l;		
-		}
-		
-		public InstructionList generatePrefetching ()
-		{
-			InstructionList l = new InstructionList ();
-			
-			StencilNodeSet setNodes = new StencilNodeSet (
-				m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil (),
-				StencilNodeSet.ENodeTypes.INPUT_NODES
-			).getFront (1);
-
-			
-			return l;
-		}
+		}		
 	}
 
 

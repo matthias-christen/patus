@@ -119,6 +119,8 @@ public class CommandLineOptions
 				m_options.setAlwaysUseNonalignedMoves (strValue.equals ("yes"));
 			else if ("optimal-instruction-scheduling".equals (strOption))
 				m_options.setUseOptimalInstructionScheduling (strValue.equals ("yes"));
+			else if ("create-prefetching".equals (strOption))
+				m_options.setCreatePrefetching (!strValue.equals ("no"));
 			else if ("balance-binary-expressions".equals (strOption))
 				m_options.setBalanceBinaryExpressions (!strValue.equals ("no"));
 			else if ("create-initialization".equals (strOption))
@@ -154,6 +156,7 @@ public class CommandLineOptions
 		System.out.println ("    [--unroll=<UnrollFactor1,UnrollFactor2,...>]");
 		System.out.println ("    [--use-native-simd-datatypes={yes|no}]");
 		System.out.println ("    [--always-use-nonaligned-moves={yes|no}]");
+		System.out.println ("    [--create-prefetching={yes|no}]");
 		System.out.println ("    [--optimal-instruction-scheduling={yes|no}]");
 		System.out.println ("    [--create-validation={yes|no}] [--validation-tolerance=<Tolerance>]");
 		System.out.println ("    [--debug=<Debug Option 1>,[<Debug Option 2>,[...,[<Debug Option N>]...]]");
@@ -222,6 +225,10 @@ public class CommandLineOptions
 		System.out.println ("              Padding the unit stride direction to multiples of the SIMD vector length");
 		System.out.println ("              might result in increased performance.");
 		System.out.println ("              Defaults to \"no\".");
+		System.out.println ();
+		System.out.println ("--create-prefetching={yes|no}");
+		System.out.println ("              Generates prefetching code in assembly mode if set to \"yes\".");
+		System.out.println ("              Defaults to \"yes\".");
 		System.out.println ();
 		System.out.println ("--optimal-instruction-scheduling={yes|no}]");
 		System.out.println ("              Performs optimal instruction scheduling if inline assembly code is");

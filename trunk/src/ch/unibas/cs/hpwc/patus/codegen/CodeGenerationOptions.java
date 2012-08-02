@@ -144,6 +144,8 @@ public class CodeGenerationOptions
 
 	private boolean m_bUseOptimalInstructionScheduling;
 
+	private boolean m_bCreatePrefetching;
+
 
 	///////////////////////////////////////////////////////////////////
 	// Implementation
@@ -164,6 +166,7 @@ public class CodeGenerationOptions
 		m_bCreateValidation = true;
 		m_fValidationTolerance = TOLERANCE_DEFAULT;
 		m_bUseOptimalInstructionScheduling = false;
+		m_bCreatePrefetching = true;
 	}
 
 	/**
@@ -185,6 +188,7 @@ public class CodeGenerationOptions
 		setCreateValidation (options.getCreateValidationCode ());
 		setValidationTolerance (options.getValidationTolerance ());
 		setUseOptimalInstructionScheduling (options.getUseOptimalInstructionScheduling ());
+		setCreatePrefetching (options.getCreatePrefetching ());
 	}
 
 	/**
@@ -404,5 +408,15 @@ public class CodeGenerationOptions
 	public boolean getUseOptimalInstructionScheduling ()
 	{
 		return m_bUseOptimalInstructionScheduling;
+	}
+	
+	public void setCreatePrefetching (boolean bCreatePrefetching)
+	{
+		m_bCreatePrefetching = bCreatePrefetching;
+	}
+
+	public boolean getCreatePrefetching ()
+	{
+		return m_bCreatePrefetching;
 	}
 }

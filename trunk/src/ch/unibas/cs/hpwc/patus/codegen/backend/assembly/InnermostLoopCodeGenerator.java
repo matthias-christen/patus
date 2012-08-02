@@ -673,4 +673,9 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	{
 		return true;
 	}
+	
+	public static void main (String[] args)
+	{
+		
+	}
 }

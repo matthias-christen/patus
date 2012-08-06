@@ -231,6 +231,19 @@ public class IntArray implements Iterable<Integer>, Comparable<IntArray>
 			}
 		};
 	}
+	
+	/**
+	 * Performs a linear search to check whether the array contains the value <code>nValue</code>.
+	 * @param nValue The value to look for
+	 * @return <code>true</code> iff the array contains <code>nValue</code>
+	 */
+	public boolean contains (int nValue)
+	{
+		for (int v : m_rgValues)
+			if (v == nValue)
+				return true;
+		return false;
+	}
 
 	@Override
 	public String toString ()

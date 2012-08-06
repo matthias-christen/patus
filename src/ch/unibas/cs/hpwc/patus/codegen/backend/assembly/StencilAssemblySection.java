@@ -58,6 +58,12 @@ public class StencilAssemblySection extends AssemblySection
 	
 	private final static Logger LOGGER = Logger.getLogger (StencilAssemblySection.class);
 	
+	/**
+	 * Factors by which the index operand in an address can be scaled
+	 */
+	// TODO: put this in architecture.xml
+	public final static int[] ELIGIBLE_ADDRESS_SCALING_FACTORS = new int[] { 1, 2, 4, 8 };
+	
 	public final static String INPUT_GRIDS_ARRAYPTR = "_grids_";
 	public final static String INPUT_STRIDE_ARRAYPTR = "_strides_";
 	
@@ -211,7 +217,7 @@ public class StencilAssemblySection extends AssemblySection
 		m_bUseGridPointers = false;
 		m_bUseStridePointers = false;
 		
-		m_baseVectors = new FindStencilNodeBaseVectors (new int[] { 1, 2, 4, 8 });	// TODO: put this in architecture.xml
+		m_baseVectors = new FindStencilNodeBaseVectors (ELIGIBLE_ADDRESS_SCALING_FACTORS);
 		m_specDatatype = null;
 		
 		m_rgOffset = (int[]) options.getObjectValue (CodeGeneratorRuntimeOptions.OPTION_INNER_UNROLLINGCONFIGURATION);

@@ -1,9 +1,12 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.x86_64;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 
@@ -18,7 +21,9 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.StencilAssemblySection;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.StencilAssemblySection.OperandWithInstructions;
+import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.MathUtil;
 
 public class X86_64PrefetchingCodeGenerator
@@ -28,7 +33,10 @@ public class X86_64PrefetchingCodeGenerator
 	
 	private final static Logger LOGGER = Logger.getLogger (X86_64PrefetchingCodeGenerator.class);
 	
-	private final static String PREFETCH_INSTR = "prefetchnta";
+	/**
+	 * The prefetch instruction
+	 */
+	private final static String PREFETCH_INSTR = "prefetchnta";	
 
 	
 	///////////////////////////////////////////////////////////////////
@@ -36,7 +44,8 @@ public class X86_64PrefetchingCodeGenerator
 
 	private CodeGeneratorSharedObjects m_data;
 	private StencilAssemblySection m_as;
-	private InstructionList m_ilPrefetching;
+	
+	private Map<PrefetchConfig, InstructionList> m_mapGeneratedCode;
 	
 	
 	///////////////////////////////////////////////////////////////////
@@ -46,26 +55,38 @@ public class X86_64PrefetchingCodeGenerator
 	{
 		m_data = data;
 		m_as = as;
-		m_ilPrefetching = null;
+		
+		m_mapGeneratedCode = new HashMap<> ();
 	}
 	
 	/**
 	 * Generates prefetching code.
 	 * 
+	 * @param bPrefetchHigherDimensions
+	 *            Flag indicating whether higher dimensions (dimensions >= 2)
+	 *            should be prefetched
+	 * 
 	 * @return The list of instructions implementing the prefetching
 	 */
-	public InstructionList generate ()
+	public InstructionList generate (PrefetchConfig config)
 	{
-		if (m_ilPrefetching != null)
-			return m_ilPrefetching;
+		InstructionList il = m_mapGeneratedCode.get (config);
+		if (il != null)
+			return il;
 		
 		InstructionList l = new InstructionList ();
+		
+		// do prefetching at all?
+		if (!config.doPrefetching ())
+		{
+			m_mapGeneratedCode.put (config, l);
+			return l;
+		}
+		
 		l.addInstruction (new Comment ("Prefetching next y-line"));
 		
-		StencilNodeSet setPrefetch = getPrefetchNodeSet ();
-		
 		// get the register with the "+y_stride"
-		StencilAssemblySection.OperandWithInstructions owiYOffset = getYStrideOffsetRegister (setPrefetch, l);
+		StencilAssemblySection.OperandWithInstructions owiYOffset = getStrideOffsetRegister (1, true, l);
 		if (owiYOffset == null)
 		{
 			// no offset register could be found/computed
@@ -85,39 +106,57 @@ public class X86_64PrefetchingCodeGenerator
 		// if there is a scaling in the address, apply it
 		if (addrYOffset.getScale () != 1)
 			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (addrYOffset.getScale ())), regYOffset));
-
-		// save the value
-		l.addInstruction (new Instruction ("push", regYOffset));
 		
 		IOperand.Register regStack = getStackPointerRegister ();
 		MultiplyByConstantCodeGenerator multiplyCG = new MultiplyByConstantCodeGenerator (regYOffset, new IOperand.Address (regStack));
+		
+		IntArray arrEligibleScalings = new IntArray (StencilAssemblySection.ELIGIBLE_ADDRESS_SCALING_FACTORS);
 		
 		boolean bYOffsetRegChanged = false;
 		
 		// generate the prefetching code proper
 		StencilNode nodePrev = null;
 		int nPrevCoord = 1;
+		int nPrevDir = -1;
+		IOperand.IRegisterOperand regOtherDirOffset = null;
 		
-		for (StencilNode node : X86_64PrefetchingCodeGenerator.sortNodesForPrefetching (setPrefetch))
+		for (StencilNode node : X86_64PrefetchingCodeGenerator.sortNodesForPrefetching (getPrefetchNodeSet (config)))
 		{
+			OperandWithInstructions owiGrid = m_as.getGrid (node, 0);
+
 			if (isParallelToYDirection (node))
 			{
+				boolean bCanPrefetch = false;
+				if (owiGrid.getOp () instanceof IOperand.Address)
+				{
+					if (((IOperand.Address) owiGrid.getOp ()).getRegBase ().equals (regYBase))
+						bCanPrefetch = true;
+					else if ((owiGrid.getInstrPre () == null || owiGrid.getInstrPre ().length == 0) && (owiGrid.getInstrPost () == null || owiGrid.getInstrPost ().length == 0))
+						bCanPrefetch = true;
+				}
+				
+				if (!bCanPrefetch)
+					continue;
+				
+				// stencil node is parallel to the prefetching direction
+				
 				int nCoord = node.getSpaceIndex ()[1] + 1;
 				int nScale = 1;
 
 				if (isParallelToYDirection (nodePrev))
 				{
-					// note: nodePrev can't be null here (if it is, isParallelToYDirection returns false)
-					
 					// this and the previous node are both parallel to the y-direction:
 					// increment the register by the difference
+
+					// note: nodePrev can't be null here (if it is, isParallelToYDirection returns false)
+					
 					if ((nCoord % nPrevCoord) == 0)
 					{
 						if (bYOffsetRegChanged)
 							l.addInstruction (new Instruction ("mov", new IOperand.Address (regStack), regYOffset));
 
 						int nQuot = nCoord / nPrevCoord;
-						if (nQuot == 2 || nQuot == 4 || nQuot == 8)
+						if (arrEligibleScalings.contains (nQuot))
 						{
 							// we could use the scaling factor in the address to do the multiplication
 							nScale = nQuot;
@@ -125,25 +164,33 @@ public class X86_64PrefetchingCodeGenerator
 						}
 						else
 						{
+							if (config.isPrefetchOnlyAddressable ())
+								continue;
+
 							multiplyCG.generate (l, nQuot, false);
 							bYOffsetRegChanged = true;
 						}
 					}
-					else if (nCoord - nPrevCoord <= 2)
+					else if (config.isPrefetchOnlyAddressable ())
 					{
-						for (int i = nPrevCoord; i < nCoord; i++)
-							l.addInstruction (new Instruction ("add", new IOperand.Address (regStack), regYOffset));
-						bYOffsetRegChanged = true;
+						if (nCoord - nPrevCoord <= 2)
+						{
+							for (int i = nPrevCoord; i < nCoord; i++)
+								l.addInstruction (new Instruction ("add", new IOperand.Address (regStack), regYOffset));
+							bYOffsetRegChanged = true;
+						}
+						else
+						{
+							// general case
+							// load from stack and multiply
+							if (bYOffsetRegChanged)
+								l.addInstruction (new Instruction ("mov", new IOperand.Address (regStack), regYOffset));
+							multiplyCG.generate (l, nCoord, false);
+							bYOffsetRegChanged = true;
+						}
 					}
 					else
-					{
-						// general case
-						// load from stack and multiply
-						if (bYOffsetRegChanged)
-							l.addInstruction (new Instruction ("mov", new IOperand.Address (regStack), regYOffset));
-						multiplyCG.generate (l, nCoord, false);
-						bYOffsetRegChanged = true;
-					}
+						continue;
 				}
 				else
 				{
@@ -153,7 +200,7 @@ public class X86_64PrefetchingCodeGenerator
 					if (bYOffsetRegChanged)
 						l.addInstruction (new Instruction ("mov", new IOperand.Address (regStack), regYOffset));
 					
-					if (nCoord == 2 || nCoord == 4 || nCoord == 8)
+					if (nCoord == 1 || arrEligibleScalings.contains (nCoord))
 					{
 						// use the scaling in the address for multiplication
 						nScale = nCoord;
@@ -161,22 +208,27 @@ public class X86_64PrefetchingCodeGenerator
 					}
 					else
 					{
+						if (config.isPrefetchOnlyAddressable ())
+							continue;
+						
 						multiplyCG.generate (l, nCoord, false);
 						bYOffsetRegChanged = true;
 					}
 				}
 				
 				// emit prefetching code
-				l.addInstruction (new Instruction (PREFETCH_INSTR, new IOperand.Address (regYBase, regYOffset, nScale)));
+				l.addInstruction (new Instruction (PREFETCH_INSTR, new IOperand.Address (((IOperand.Address) owiGrid.getOp ()).getRegBase (), regYOffset, nScale)));
 				
 				if (bYOffsetRegChanged)
 					nPrevCoord = nCoord;
 			}
 			else
 			{
-				// emit prefetching code
-				OperandWithInstructions owiGrid = m_as.getGrid (node, 0);
-				l.addInstructions (owiGrid.getInstrPre ());
+				// not parallel to the prefetching (y) direction
+								
+				// if pre/post instructions are required, don't do any prefetching (for now)
+				if ((owiGrid.getInstrPre () != null && owiGrid.getInstrPre ().length > 0) || (owiGrid.getInstrPost () != null && owiGrid.getInstrPost ().length > 0))
+					continue;
 				
 				if (owiGrid.getOp () instanceof IOperand.Register)
 				{
@@ -188,39 +240,90 @@ public class X86_64PrefetchingCodeGenerator
 				else if (owiGrid.getOp () instanceof IOperand.Address)
 				{
 					IOperand.Address opAddr = (IOperand.Address) owiGrid.getOp ();
+
+					// find the next multiple of UNITSTRIDE_ALIGNMENT which is less or equal to opAddr.getDisplacement ()
+					long nOffset = opAddr.getDisplacement () < 0 ?
+						((opAddr.getDisplacement () - config.getUnitStrideAlignment () + 1) / config.getUnitStrideAlignment ()) * config.getUnitStrideAlignment () :
+						(opAddr.getDisplacement () / config.getUnitStrideAlignment ()) * config.getUnitStrideAlignment ();
+
 					if (opAddr.getRegIndex () == null)
 					{
 						if (bYOffsetRegChanged)
 							l.addInstruction (new Instruction ("mov", new IOperand.Address (regStack), regYOffset));
-						
-final long nMultiple = 64;	// cache line size
-long nOffset = ((Math.abs (opAddr.getDisplacement ()) + nMultiple - 1) / nMultiple) * nMultiple;
-if (opAddr.getDisplacement () < 0)
-	nOffset = -nOffset;
-						
-						l.addInstruction (new Instruction (PREFETCH_INSTR, new IOperand.Address (opAddr.getRegBase (), regYOffset, 1, nOffset /*opAddr.getDisplacement ()*/)));
+												
+						l.addInstruction (new Instruction (PREFETCH_INSTR, new IOperand.Address (opAddr.getRegBase (), regYOffset, 1, nOffset)));
 						bYOffsetRegChanged = false;
 					}
-					else
+					else if (!config.isPrefetchOnlyAddressable ())
 					{
-/*
+						// we currently perform prefetching only for nodes parallel to axes
+						// TODO: remove this restriction (if stride register for a direction exists?)
+						
+						int nCurDir = getParallelAxisDirection (node);
+						if (config.isOmitHigherDimensions () && nCurDir >= 2)
+							continue;
+						
+						if (nCurDir != -1)
+						{
+							if (nPrevDir != nCurDir)
+							{
+								nPrevCoord = 0;
+								if (bYOffsetRegChanged)
+								{
+									l.addInstruction (new Instruction ("mov", new IOperand.Address (regStack), regYOffset));
+									bYOffsetRegChanged = false;
+								}								
+								
+								// get the offset register in the positive direction along the current axis
+								OperandWithInstructions owi = getStrideOffsetRegister (nCurDir, false, l);
+								if (owi == null)
+									continue;
+								if (!(owi.getOp () instanceof IOperand.Address))
+									continue;
+								regOtherDirOffset = ((IOperand.Address) owi.getOp ()).getRegIndex ();
+								if (regOtherDirOffset == null)
+									continue;
+							}
+							
+							int nCoord = node.getSpaceIndex ()[nCurDir];
+							if (nPrevCoord > nCoord)
+							{
+								for (int i = 0; i > nCoord; i--)
+									l.addInstruction (new Instruction ("sub", regOtherDirOffset, regYOffset));
+								bYOffsetRegChanged = true;
+							}
+							else
+							{
+								addNTimes (regYOffset, nCoord - nPrevCoord, regOtherDirOffset, l);
+								bYOffsetRegChanged = true;
+							}
+							
+							l.addInstruction (new Instruction (PREFETCH_INSTR, new IOperand.Address (opAddr.getRegBase (), regYOffset, 1, nOffset)));
+							
+							nPrevCoord = nCoord;
+						}
+						nPrevDir = nCurDir;
+						
+ 						// general code, but deoptimizes performance
+						/*
 						l.addInstruction (new Instruction ("lea", opAddr, regYOffset));
 						l.addInstruction (new Instruction ("add", new IOperand.Address (regStack), regYOffset));
 						l.addInstruction (new Instruction (PREFETCH_INSTR, new IOperand.Address (regYOffset)));
 						bYOffsetRegChanged = true;
-*/
-						bYOffsetRegChanged = false;
+						*/
 					}
 				}
-				
-				l.addInstructions (owiGrid.getInstrPost ());
-			}				
+			}
 			
 			nodePrev = node;
 		}
 		
-		// restore
-		l.addInstruction (new Instruction ("pop", regYOffset));
+		// save and restore the register
+		if (bYOffsetRegChanged)
+		{
+			l.addInstructionAtTop (new Instruction ("push", regYOffset));
+			l.addInstruction (new Instruction ("pop", regYOffset));
+		}
 		
 		// if we pushed the shifted value, un-shift it
 		if (addrYOffset.getScale () != 1)
@@ -228,7 +331,8 @@ if (opAddr.getDisplacement () < 0)
 		
 		l.addInstructions (owiYOffset.getInstrPost ());
 		
-		return m_ilPrefetching = l;
+		m_mapGeneratedCode.put (config, l);
+		return l;
 	}
 	
 	/**
@@ -250,20 +354,20 @@ if (opAddr.getDisplacement () < 0)
 	 * @return An {@link OperandWithInstructions} object holding the offset
 	 *         register
 	 */
-	private StencilAssemblySection.OperandWithInstructions getYStrideOffsetRegister (StencilNodeSet set, InstructionList l)
+	private StencilAssemblySection.OperandWithInstructions getStrideOffsetRegister (int nDirection, boolean bAllowPreAndPostInstructions, InstructionList l)
 	{
-		StencilNode nodeYOffset = null;
+		StencilNode nodeOffset = null;
 		int nLastPowerOf2 = Integer.MAX_VALUE;
-		for (StencilNode node : set)
+		for (StencilNode node : m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ())
 		{
-			if (!isParallelToYDirection (node))
+			if (!isParallelToDirection (node, nDirection))
 				continue;
 			
-			int nCoord = node.getSpaceIndex ()[1];
+			int nCoord = node.getSpaceIndex ()[nDirection];
 			if (nCoord == 1)
 			{
-				// we're done as soon as we've found a node that has the coordinates (0,1,0,...,0)
-				nodeYOffset = node;
+				// we're done as soon as we've found a node that has the coordinates (0,...,0,1,0,...,0)
+				nodeOffset = node;
 				break;
 			}
 			else if (MathUtil.isPowerOfTwo (Math.abs (nCoord)))
@@ -271,19 +375,26 @@ if (opAddr.getDisplacement () < 0)
 				// (0,2^i,0,...,0) is also acceptable, but search further
 				if (Math.abs (nCoord) < nLastPowerOf2)
 				{
-					nodeYOffset = node;
+					nodeOffset = node;
 					nLastPowerOf2 = Math.abs (nCoord);
 				}
 			}
 		}
 		
 		// no acceptable node could be found
-		if (nodeYOffset == null)
+		if (nodeOffset == null)
 			return null;
 		
-		StencilAssemblySection.OperandWithInstructions op = m_as.getGrid (nodeYOffset, 0);
+		StencilAssemblySection.OperandWithInstructions op = m_as.getGrid (nodeOffset, 0);
+		if (!bAllowPreAndPostInstructions)
+		{
+			if (op.getInstrPre () != null && op.getInstrPre ().length > 0)
+				return null;
+			if (op.getInstrPost () != null && op.getInstrPost ().length > 0)
+				return null;
+		}
 		
-		// we only support prefetching if the node in y direction can be accessed by (%basereg,%offsetreg) 
+		// we only support prefetching if the node can be accessed by (%basereg,%offsetreg) 
 		if (!(op.getOp () instanceof IOperand.Address))
 			return null;
 
@@ -291,11 +402,12 @@ if (opAddr.getDisplacement () < 0)
 		l.addInstructions (op.getInstrPre ());
 
 		// if the coordinate was not 1, compute the right offset
-		if (nodeYOffset.getSpaceIndex ()[1] != 1)
+		int nCoord = nodeOffset.getSpaceIndex ()[nDirection];
+		if (nCoord != 1)
 		{
-			if (nodeYOffset.getSpaceIndex ()[1] < 0)
+			if (nCoord < 0)
 				l.addInstruction (new Instruction ("neg", op.getOp ()));
-			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (Math.abs (nodeYOffset.getSpaceIndex ()[1]))), op.getOp ()));
+			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (Math.abs (nCoord))), op.getOp ()));
 		}
 		
 		return op;
@@ -317,8 +429,11 @@ if (opAddr.getDisplacement () < 0)
 			@Override
 			public int compare (StencilNode n1, StencilNode n2)
 			{
-				// sort by ascending x- and y-directions first, after that the order doesn't matter
-				for (int nDir = 0; nDir <= 1; nDir++)
+				// sort by ascending x, y, z, ... directions
+				// if not parallel to a direction, the order doesn't matter
+				
+				int nDim = Math.min (n1.getSpaceIndex ().length, n2.getSpaceIndex ().length);
+				for (int nDir = 0; nDir < nDim; nDir++)
 				{
 					if (isParallelToDirection (n1, nDir))
 					{
@@ -365,6 +480,35 @@ if (opAddr.getDisplacement () < 0)
 				return false;
 		return true;			
 	}
+	
+	/**
+	 * Find the direction to which the node <code>node</code> is parallel to. If
+	 * it isn't parallel to any axis, the method returns -1.
+	 * 
+	 * @param node
+	 *            The stencil node
+	 * @return The axis to which the node is parallel to, or -1 if it isn't
+	 *         parallel to any axis
+	 */
+	private static int getParallelAxisDirection (StencilNode node)
+	{
+		int nDir = -1;
+		for (int i = 0; i < node.getSpaceIndex ().length; i++)
+		{
+			if (node.getSpaceIndex ()[i] != 0)
+			{
+				if (nDir != -1)
+				{
+					// a non-zero coordinate has already been found: the node isn't parallel to any axis
+					return -1;
+				}
+				
+				nDir = i;
+			}
+		}
+		
+		return nDir;
+	}
 			
 	/**
 	 * Find all the input nodes of the stencil with
@@ -376,36 +520,69 @@ if (opAddr.getDisplacement () < 0)
 	 * These are the nodes we want to prefetch.
 	 * @return
 	 */
-	private StencilNodeSet getPrefetchNodeSet ()
+	private StencilNodeSet getPrefetchNodeSet (PrefetchConfig config)
 	{
-		StencilNodeSet set = new StencilNodeSet ();
+		Stencil stencil = m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ();
 		
-		int nLowestX = Integer.MAX_VALUE;
-		StencilNode nodeLowestX = null;
+		StencilNodeSet setInput = new StencilNodeSet (stencil, StencilNodeSet.ENodeTypes.INPUT_NODES);
+		StencilNodeSet setOutput = new StencilNodeSet ();
 		
-		for (StencilNode node : m_data.getStencilCalculation ().getStencilBundle ().getFusedStencil ())
+		int nMinT = stencil.getMinTimeIndex ();
+		int nMaxT = stencil.getMaxTimeIndex ();
+		if (config.isRestrictToLargestNodeSets ())
 		{
-			if (node.getSpaceIndex ().length == 0)
-				continue;
-			
-			if (node.getSpaceIndex ()[0] < nLowestX)
+			int nNodesCount = 0;
+			for (int t = stencil.getMinTimeIndex (); t <= stencil.getMaxTimeIndex (); t++)
 			{
-				nLowestX = node.getSpaceIndex ()[0];
-				nodeLowestX = node;
+				int nSize = setInput.restrict (t, null).size ();
+				if (nNodesCount < nSize)
+				{
+					nNodesCount = nSize;
+					nMinT = t;
+				}
 			}
 			
-			for (int i = 1; i < node.getSpaceIndex ().length; i++)
-				if ((i == 1 && node.getSpaceIndex ()[i] > 0) || (i > 1 && node.getSpaceIndex ()[i] != 0))
-				{
-					set.add (node);
-					break;
-				}
+			nMaxT = nMinT;
 		}
 		
-		if (nodeLowestX != null)
-			set.add (nodeLowestX);
-
-		return set;
+		for (int t = nMinT; t <= nMaxT; t++)
+		{
+			int nLowestX = Integer.MAX_VALUE;
+			int nHighestX = Integer.MIN_VALUE;
+			StencilNode nodeLowestX = null;
+			StencilNode nodeHighestX = null;
+			
+			for (StencilNode node : setInput.restrict (t, null))
+			{
+				if (node.getSpaceIndex ().length == 0)
+					continue;
+				
+				if (node.getSpaceIndex ()[0] < nLowestX)
+				{
+					nLowestX = node.getSpaceIndex ()[0];
+					nodeLowestX = node;
+				}
+				if (node.getSpaceIndex ()[0] > nHighestX)
+				{
+					nHighestX = node.getSpaceIndex ()[0];
+					nodeHighestX= node;
+				}
+				
+				for (int i = 1; i < node.getSpaceIndex ().length; i++)
+					if ((i == 1 && node.getSpaceIndex ()[i] > 0) || (i > 1 && node.getSpaceIndex ()[i] != 0))
+					{
+						setOutput.add (node);
+						break;
+					}
+			}
+			
+			if (nodeLowestX != null)
+				setOutput.add (nodeLowestX);
+			if (nodeHighestX != null)
+				setOutput.add (nodeHighestX);
+		}
+		
+		return setOutput;
 	}
 	
 	private IOperand.Register getStackPointerRegister ()
@@ -425,5 +602,44 @@ if (opAddr.getDisplacement () < 0)
 		reg.setName ("rsp");
 
 		return new IOperand.Register (reg);
+	}
+	
+	/**
+	 * Adds <code>nFactor</code> * <code>regFactor</code> to the destination
+	 * register, <code>regDest</code>.
+	 * 
+	 * @param regDest
+	 *            The destination to which the product <code>nFactor</code> *
+	 *            <code>regFactor</code> is added
+	 * @param nFactor
+	 *            The constant factor
+	 * @param regFactor
+	 *            The register holding the variable factor
+	 * @param l
+	 *            The instruction list to which the generated instructions are
+	 *            added
+	 */
+	private static void addNTimes (IOperand.IRegisterOperand regDest, int nFactor, IOperand.IRegisterOperand regFactor, InstructionList l)
+	{
+		int[] rgLeaFactors = new int[StencilAssemblySection.ELIGIBLE_ADDRESS_SCALING_FACTORS.length];
+		System.arraycopy (StencilAssemblySection.ELIGIBLE_ADDRESS_SCALING_FACTORS, 0, rgLeaFactors, 0, rgLeaFactors.length);
+		Arrays.sort (rgLeaFactors);
+		
+		int nRemainingFactor = nFactor;
+		for (int i = rgLeaFactors.length - 1; i >= 0; i--)
+		{
+			while (nRemainingFactor >= rgLeaFactors[i])
+			{
+				if (rgLeaFactors[i] == 1)
+					l.addInstruction (new Instruction ("add", regFactor, regDest));
+				else
+					l.addInstruction (new Instruction ("lea", new IOperand.Address (regDest, regFactor, rgLeaFactors[i]), regDest));
+				
+				nRemainingFactor -= rgLeaFactors[i];
+			}
+		}
+		
+		for ( ; nRemainingFactor > 0; nRemainingFactor--)
+			l.addInstruction (new Instruction ("add", regFactor, regDest));
 	}
 }

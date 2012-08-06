@@ -1,6 +1,8 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.x86_64;
 
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.ast.Parameter;
+import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.AssemblySection;
@@ -28,8 +30,11 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 	///////////////////////////////////////////////////////////////////
 	// Constants
 		
-	// generate a CMOV instruction
+	/**
+	 *  Generate a CMOV instruction
+	 */
 	private final static boolean USE_CMOV = true;
+	
 	
 	private final static String LABEL_PROLOGHDR_LESSTHANMAX = "phdr_ltmax";
 	private final static String LABEL_UNROLLEDMAINHDR = "umhdr";
@@ -95,7 +100,17 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 		{
 			if (m_cgPrefetch == null)
 				return null;
-			return m_cgPrefetch.generate ();
+			
+			InstructionList il = new InstructionList ();
+			Parameter param = new Parameter ("_prefetch");
+			
+			for (PrefetchConfig config : PrefetchConfig.getAllConfigs ())
+			{
+				il.addParameter (param, config.toInteger ());
+				il.addInstructions (new ParameterAssignment (param, config.toInteger ()), m_cgPrefetch.generate (config));
+			}
+			
+			return il;
 		}
 	}
 	

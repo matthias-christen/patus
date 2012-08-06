@@ -10,7 +10,6 @@ import java.util.Map;
 
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
-import cetus.hir.Statement;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.analysis.ReuseNodesCollector;
 import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
@@ -275,10 +274,10 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 			il.addInstructions (m_assemblySection.translate (generateEpilogFooter (), specType));
 			
 			// create the inline assembly statement
-			Statement stmt = m_assemblySection.generate (il, m_options);
+			StatementListBundle slbGenerated = m_assemblySection.generate (il, m_options);
 			
 			slb.addStatements (m_assemblySection.getAuxiliaryStatements ());
-			slb.addStatement (stmt);
+			slb.addStatements (slbGenerated);
 			
 			return slb;
 		}
@@ -672,10 +671,5 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 	public boolean requiresAssemblySection ()
 	{
 		return true;
-	}
-	
-	public static void main (String[] args)
-	{
-		
 	}
 }

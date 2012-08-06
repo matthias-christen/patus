@@ -3,15 +3,23 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 import java.util.Map;
 
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
+import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
-public class Comment implements IInstruction
+public class Comment extends AbstractInstruction
 {
 	private String m_strComment;
+
 	
 	public Comment (String strComment)
 	{
 		m_strComment = strComment;
+	}
+	
+	public Comment (String strComment, ParameterAssignment pa)
+	{
+		this (strComment);
+		setParameterAssignment (pa);
 	}
 
 	@Override

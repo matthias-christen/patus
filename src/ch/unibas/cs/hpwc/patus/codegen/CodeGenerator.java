@@ -507,7 +507,7 @@ public class CodeGenerator
 				for (Parameter param : pa)
 				{
 					// skip the default parameter
-					if (param == StatementListBundle.DEFAULT_PARAM)
+					if (param.equals (StatementListBundle.DEFAULT_PARAM))
 						continue;
 
 					sbFunctionName.append ("__");
@@ -920,8 +920,7 @@ public class CodeGenerator
 
 		// calculate the code selection expression
 		Expression exprCodeSelector = null;
-		int i = 0;
-		for (Identifier idCodeSelector : listCodeSelectors)
+		for (int i = listCodeSelectors.size () - 1; i >= 0; i--)
 		{
 			if (rgCodeSelectorsCount[i] == 1)
 			{
@@ -932,6 +931,7 @@ public class CodeGenerator
 			else if (rgCodeSelectorsCount[i] != 0)
 			{
 				// add a dereference if necessary
+				Identifier idCodeSelector = listCodeSelectors.get (i);
 				Expression exprCodeSel = bMakeCompatibleWithFortran ?
 					new UnaryExpression (UnaryOperator.DEREFERENCE, idCodeSelector.clone ()) :
 					idCodeSelector.clone ();
@@ -942,13 +942,12 @@ public class CodeGenerator
 				else
 				{
 					exprCodeSelector = new BinaryExpression (
-						new BinaryExpression (exprCodeSelector, BinaryOperator.MULTIPLY, new IntegerLiteral (rgCodeSelectorsCount[i - 1])),
+						exprCodeSel,
 						BinaryOperator.ADD,
-						exprCodeSel);
+						new BinaryExpression (new IntegerLiteral (rgCodeSelectorsCount[i]), BinaryOperator.MULTIPLY, exprCodeSelector)
+					);
 				}
 			}
-
-			i++;
 		}
 
 		if (m_data.getArchitectureDescription ().useFunctionPointers ())

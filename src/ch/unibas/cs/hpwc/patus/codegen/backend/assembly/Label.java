@@ -6,7 +6,7 @@ import java.util.Map;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
-public class Label implements IInstruction
+public class Label extends AbstractInstruction
 {
 	///////////////////////////////////////////////////////////////////
 	// Static Types

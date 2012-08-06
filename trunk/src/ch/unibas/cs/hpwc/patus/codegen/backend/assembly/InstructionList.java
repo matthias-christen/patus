@@ -2,6 +2,7 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,9 @@ import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.arch.TypeArchitectureType.Intrinsics.Intrinsic;
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.ast.Parameter;
+import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
+import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.LAGraph;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.analyze.LiveAnalysis;
@@ -47,6 +51,8 @@ public class InstructionList implements Iterable<IInstruction>
 	 * The list of instructions within this portion of the inline assembly section
 	 */
 	private List<IInstruction> m_listInstructions;
+	
+	private Set<Parameter> m_setParameters;
 
 	/**
 	 * The current array index of the array into which register values are spilled
@@ -60,6 +66,9 @@ public class InstructionList implements Iterable<IInstruction>
 	public InstructionList ()
 	{
 		m_listInstructions = new ArrayList<> ();
+		
+		m_setParameters = new HashSet<> ();
+		m_setParameters.add (StatementListBundle.DEFAULT_PARAM.clone ());
 	}
 
 	public void addInstruction (IInstruction instruction)
@@ -78,7 +87,21 @@ public class InstructionList implements Iterable<IInstruction>
 			///
 				
 			m_listInstructions.add (instruction);
+			if (instruction.getParameterAssignment () != null)
+				addParameter (instruction);
 		}
+	}
+	
+	private void addParameter (IInstruction instruction)
+	{
+		for (Parameter param : instruction.getParameterAssignment ())
+			addParameter (param, instruction.getParameterAssignment ().getParameterValue (param));
+	}
+	
+	public void addParameter (Parameter param, int nParamValue)
+	{
+		m_setParameters.add (param);
+		param.addValue (nParamValue);
 	}
 	
 	public void addInstruction (IInstruction instruction, StencilAssemblySection.OperandWithInstructions op)
@@ -86,6 +109,16 @@ public class InstructionList implements Iterable<IInstruction>
 		addInstructions (op.getInstrPre ());
 		addInstruction (instruction);
 		addInstructions (op.getInstrPost ());
+	}
+	
+	public void addInstructionAtTop (IInstruction instruction)
+	{
+		if (instruction != null)
+		{
+			m_listInstructions.add (0, instruction);
+			if (instruction.getParameterAssignment () != null)
+				addParameter (instruction);
+		}
 	}
 	
 	public void addInstructions (InstructionList il)
@@ -97,12 +130,44 @@ public class InstructionList implements Iterable<IInstruction>
 		}
 	}
 	
+	public void addInstructions (ParameterAssignment pa, InstructionList il)
+	{
+		if (pa == null)
+			addInstructions (il);
+		else if (il != null)
+		{
+			for (IInstruction instr : il)
+			{
+				if (instr.getParameterAssignment () == null)
+					instr.setParameterAssignment (pa);
+
+				addInstruction (instr);
+			}
+		}
+	}
+	
 	public void addInstructions (IInstruction[] rgInstructions)
 	{
 		if (rgInstructions != null)
 		{
 			for (IInstruction instr : rgInstructions)
 				addInstruction (instr);
+		}
+	}
+	
+	public void addInstructions (ParameterAssignment pa, IInstruction[] rgInstructions)
+	{
+		if (pa == null)
+			addInstructions (rgInstructions);
+		else if (rgInstructions != null)
+		{
+			for (IInstruction instr : rgInstructions)
+			{
+				if (instr.getParameterAssignment () == null)
+					instr.setParameterAssignment (pa);
+
+				addInstruction (instr);
+			}
 		}
 	}
 
@@ -112,6 +177,95 @@ public class InstructionList implements Iterable<IInstruction>
 		return m_listInstructions.iterator ();
 	}
 	
+	/**
+	 * Returns an iterator that iterates over all instructions that match (
+	 * <code>param</code>, <code>nParamValue</code>)
+	 * 
+	 * @param param
+	 *            The parameter to match
+	 * @param nParamValue
+	 *            The parameter value to match
+	 * @return An iterator over all instructions matching (<code>param</code>,
+	 *         <code>nParamValue</code>)
+	 */
+	public Iterator<IInstruction> iterator (final Parameter param, final int nParamValue)
+	{
+		return new Iterator<IInstruction> ()
+		{
+			private int m_nCurIdx = 0;
+			
+			@Override
+			public boolean hasNext ()
+			{
+				if (m_nCurIdx >= m_listInstructions.size ())
+					return false;
+				
+				for (int i = m_nCurIdx; i < m_listInstructions.size (); i++)
+				{
+					IInstruction instr = m_listInstructions.get (i);
+					if (instr.getParameterAssignment () != null)
+					{
+						if (instr.getParameterAssignment ().matches (param, nParamValue))
+							return true;
+					}
+					else
+						return true;
+				}
+				
+				return false;
+			}
+
+			@Override
+			public IInstruction next ()
+			{
+				for ( ; m_nCurIdx < m_listInstructions.size (); )
+				{
+					IInstruction instr = m_listInstructions.get (m_nCurIdx);
+					m_nCurIdx++;
+					
+					if (instr.getParameterAssignment () != null)
+					{
+						if (instr.getParameterAssignment ().matches (param, nParamValue))
+							return instr;
+					}
+					else
+						return instr;
+				}
+				
+				return null;
+			}
+
+			@Override
+			public void remove ()
+			{
+				throw new RuntimeException ("Not implemented");
+			}
+		};
+	}
+	
+	public Iterable<IInstruction> getInstructions (final Parameter param, final int nParamValue)
+	{
+		return new Iterable<IInstruction> ()
+		{
+			@Override
+			public Iterator<IInstruction> iterator ()
+			{
+				return InstructionList.this.iterator (param, nParamValue);
+			}
+		};
+	}
+	
+	/**
+	 * Returns an iterable over all the parameters (instruction tags) used in
+	 * this instruction list
+	 * 
+	 * @return An iterable over used parameters
+	 */
+	public Iterable<Parameter> getParameters ()
+	{
+		return m_setParameters;
+	}
+		
 	/**
 	 * 
 	 * @param as

@@ -3,10 +3,11 @@ package ch.unibas.cs.hpwc.patus.codegen.backend.assembly;
 import java.util.Map;
 
 import ch.unibas.cs.hpwc.patus.arch.TypeBaseIntrinsicEnum;
+import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
 
 
 /**
- * 
+ * Interface for assembly instructions.
  * @author Matthias-M. Christen
  */
 public interface IInstruction
@@ -34,4 +35,7 @@ public interface IInstruction
 	 * @return
 	 */
 	public abstract String toJavaCode (Map<IOperand, String> mapOperands);
+	
+	public abstract void setParameterAssignment (ParameterAssignment pa);
+	public abstract ParameterAssignment getParameterAssignment ();
 }

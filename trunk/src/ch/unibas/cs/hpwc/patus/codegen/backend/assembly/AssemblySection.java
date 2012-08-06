@@ -26,6 +26,8 @@ import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegister;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterClass;
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
+import ch.unibas.cs.hpwc.patus.ast.Parameter;
+import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.IRegisterOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand.Register;
@@ -598,15 +600,41 @@ public class AssemblySection
 	 * @return The statement containing the list of assembly instructions as an
 	 *         inline assembly section
 	 */
-	public Statement generate (InstructionList ilInstructions, CodeGeneratorRuntimeOptions options)
+	public StatementListBundle generate (InstructionList ilInstructions, CodeGeneratorRuntimeOptions options)
 	{
 		// create a C statement wrapping the inline assembly
 		
 		allocateInputIndices ();
 		
+		// build the list of child expressions (the inputs)
+		// (if no children are provided to SomeExpression, the constarrs will be remove when checking whether
+		// variables are referenced)
+		List<Traversable> listChildren = new ArrayList<> (2 * m_listInputs.size ());
+		String strOutputs = getOutputsAsString (listChildren);
+		String strInputs = getInputsAsString (listChildren);
+
+		StatementListBundle slb = new StatementListBundle ();
+		
+		for (Parameter param : ilInstructions.getParameters ())
+		{
+			for (int nValue : param.getValues ())
+			{
+				slb.addStatement (
+					generateStatement (ilInstructions.getInstructions (param, nValue), strInputs, strOutputs, AssemblySection.cloneList (listChildren)),
+					param, nValue
+				);
+			}
+		}
+
+		return slb;
+	}
+	
+	private Statement generateStatement (Iterable<IInstruction> itInstructions, String strInputs, String strOutputs, List<Traversable> listChildren)
+	{
 		// create the string of instructions
 		StringBuilder sbInstructions = new StringBuilder ();
-		for (IInstruction instruction : ilInstructions)
+
+		for (IInstruction instruction : itInstructions)
 		{
 			if (!(instruction instanceof Comment))
 				sbInstructions.append ('"');
@@ -615,15 +643,7 @@ public class AssemblySection
 				sbInstructions.append ('"');
 			sbInstructions.append ('\n');
 		}
-		
-		// build the list of child expressions (the inputs)
-		// (if no children are provided to SomeExpression, the constarrs will be remove when checking whether
-		// variables are referenced)
-		List<Traversable> listChildren = new ArrayList<> (2 * m_listInputs.size ());
-		String strOutputs = getOutputsAsString (listChildren);
-		String strInputs = getInputsAsString (listChildren);
-		
-		// build the IR object
+
 		return new ExpressionStatement (new SomeExpression (
 			StringUtil.concat (
 				"__asm__ __volatile__ (\n",
@@ -634,7 +654,19 @@ public class AssemblySection
 				")"
 			),
 			listChildren
-		));
+		));		
+	}
+	
+	private static List<Traversable> cloneList (List<Traversable> listInput)
+	{
+		List<Traversable> listOutput = new ArrayList<> (listInput.size ());
+		for (Traversable t : listInput)
+		{
+			if (t instanceof Expression)
+				listOutput.add (((Expression) t).clone ());
+		}
+		
+		return listOutput;
 	}
 
 	@SuppressWarnings("static-method")

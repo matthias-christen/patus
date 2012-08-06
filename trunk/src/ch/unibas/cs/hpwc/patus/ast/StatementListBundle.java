@@ -11,15 +11,22 @@
 package ch.unibas.cs.hpwc.patus.ast;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import cetus.hir.CompoundStatement;
 import cetus.hir.Declaration;
 import cetus.hir.Statement;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  *
@@ -31,14 +38,56 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	// Constants
 
 	public final static Parameter DEFAULT_PARAM = new Parameter ("__default__");
-	public final static ParameterAssignment DEFAULT_ASSIGNMENT = new ParameterAssignment (StatementListBundle.DEFAULT_PARAM, 0);
+	
+	private final static Comparator<Parameter> PARAM_COMPARATOR = new Comparator<Parameter> ()
+	{
+		@Override
+		public int compare (Parameter p1, Parameter p2)
+		{
+			return p1.getName ().compareTo (p2.toString ());
+		}
+	};
+	
+	private final static Comparator<ParameterAssignment> PARAMASSIGNMENT_COMPARATOR = new Comparator<ParameterAssignment> ()
+	{
+		@Override
+		public int compare (ParameterAssignment pa1, ParameterAssignment pa2)
+		{
+			Set<Parameter> setParams = new TreeSet<> (PARAM_COMPARATOR);				
+			for (Parameter p : pa1)
+				setParams.add (p);
+			for (Parameter p : pa2)
+				setParams.add (p);
+			
+			for (Parameter p : setParams)
+			{
+				Integer nVal1 = pa1.getParameterValueOrNull (p);
+				Integer nVal2 = pa2.getParameterValueOrNull (p);
+				
+				if (nVal1 == null)
+					nVal1 = Integer.MIN_VALUE;
+				if (nVal2 == null)
+					nVal2 = Integer.MIN_VALUE;
+				
+				if (nVal1.intValue () != nVal2.intValue ())
+					return nVal1 - nVal2;
+			}
+
+			return 0;
+		}
+	};
 
 
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
-	private List<Parameter> m_listParameters;
+	private Collection<Parameter> m_listParameters;
 	private Map<ParameterAssignment, StatementList> m_mapStatementLists;
+	
+	/**
+	 * Map of statement lists from which new statement lists are derived when a new value is added to a parameter
+	 */
+	private Map<Parameter, StatementList> m_mapDeriveFromStatementLists;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -71,11 +120,15 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 
 	public StatementListBundle (StatementList sl)
 	{
-		m_listParameters = new ArrayList<> ();
-		m_mapStatementLists = new HashMap<> ();
+		// we want the list of parameters and the sl map to be sorted
+		m_listParameters = new PriorityQueue<> (10, PARAM_COMPARATOR);
+		m_mapStatementLists = new TreeMap<> (PARAMASSIGNMENT_COMPARATOR);
+		
+		m_mapDeriveFromStatementLists = new HashMap<> ();
 
-		m_listParameters.add (StatementListBundle.DEFAULT_PARAM);
-		m_mapStatementLists.put (StatementListBundle.DEFAULT_ASSIGNMENT, sl);
+		Parameter paramDefault = StatementListBundle.DEFAULT_PARAM.clone ();
+		m_listParameters.add (paramDefault);
+		m_mapStatementLists.put (new ParameterAssignment (paramDefault, 0), sl);
 	}
 
 	/**
@@ -228,7 +281,7 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 		for (StatementList sl : getStatementLists (param, nParamValue))
 			sl.addStatements (listStatements, strTag);
 	}
-
+	
 	public void addStatementsAtTop (List<Statement> listStatements)
 	{
 		for (StatementList sl : m_mapStatementLists.values ())
@@ -265,9 +318,12 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 		compatibilize (slb);
 		for (ParameterAssignment pa : m_mapStatementLists.keySet ())
 		{
-			StatementList sl = slb.getStatementList (pa);
-			if (sl != null)
-				m_mapStatementLists.get (pa).addStatements (sl);
+			if (!pa.isDeprecated ())
+			{
+				StatementList sl = slb.getStatementList (pa);
+				if (sl != null)
+					m_mapStatementLists.get (pa).addStatements (sl);
+			}
 		}
 	}
 
@@ -279,18 +335,41 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 		compatibilize (slb);
 		for (ParameterAssignment pa : m_mapStatementLists.keySet ())
 		{
+			if (pa.isDeprecated ())
+				continue;
+
 			StatementList sl = slb.getStatementList (pa);
 			if (sl != null)
 				m_mapStatementLists.get (pa).addStatementsAtTop (sl);
 		}
 	}
 
-//	public void addStatements (StatementListBundle slb, Parameter param, int nParamValue)
-//	{
-//		compatibilize (slb);
-//		for (StatementList sl : getStatementList (param, nParamValue))
-//			sl.addStatements (slb.g)
-//	}
+	public void addStatements (StatementListBundle slb, Parameter param, int... rgParamValues)
+	{
+		if (slb.isEmpty ())
+			return;
+		
+		// make sure that the param is contained in "this" statement list bundle
+		ensureParamExists (param, rgParamValues);
+
+		compatibilize (slb);
+		
+		for (ParameterAssignment pa : this)
+		{
+			if (pa.isDeprecated ())
+				continue;
+			
+			// add the statement list once to the pa's statement list if one of the values in rgParamValues matches
+			for (int nParamValue : rgParamValues)
+			{
+				if (pa.matches (param, nParamValue))
+				{
+					getStatementList (pa).addStatements (slb.getStatementList (pa));
+					break;
+				}
+			}
+		}
+	}
 
 	/**
 	 * Adds the {@link CompoundStatement} contents of a statement list in <code>slb</code>
@@ -301,7 +380,8 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	{
 		compatibilize (slb);
 		for (ParameterAssignment pa : m_mapStatementLists.keySet ())
-			m_mapStatementLists.get (pa).addStatement (slb.getStatementList (pa).getCompoundStatement ());
+			if (!pa.isDeprecated ())
+				m_mapStatementLists.get (pa).addStatement (slb.getStatementList (pa).getCompoundStatement ());
 	}
 
 	@Override
@@ -365,6 +445,114 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 				return false;
 		return true;
 	}
+	
+	private void ensureParamExists (Parameter param, int... rgParamValues)
+	{
+		// try find the param assignments that have param set to nParamValue
+		boolean bAllValuesFound = true;
+		List<Integer> listMissingValues = new ArrayList<> (rgParamValues.length);
+		for (int nParamValue : rgParamValues)
+		{
+			boolean bValueFound = false;
+			for (ParameterAssignment pa : m_mapStatementLists.keySet ())
+			{
+				if (pa.matches (param, nParamValue))
+				{
+					bValueFound = true;
+					break;
+				}
+			}
+			
+			if (!bValueFound)
+			{
+				bAllValuesFound = false;
+				listMissingValues.add (nParamValue);
+			}
+		}
+
+		if (bAllValuesFound)
+			return;
+		
+		boolean bContainsParameter = containsParameter (param);
+
+		// get a template value on which the missing values will be based (only used if the parameter isn't contained in the slb yet)
+		int nTemplateValue = -1;
+		if (bContainsParameter)
+			nTemplateValue = param.getValues ()[0];
+
+		// parameter / value was not found
+		for (int nParamValue : listMissingValues)
+			param.addValue (nParamValue);
+
+		if (!bContainsParameter)
+		{
+			// new parameter
+			// discard all deprecated branches, mark all existing branches as deprecated
+
+			List<ParameterAssignment> listDeprecated = new LinkedList<> ();
+			for (ParameterAssignment pa : m_mapStatementLists.keySet ())
+				if (pa.isDeprecated ())
+					listDeprecated.add (pa);
+			if (listDeprecated.size () > 0 && m_mapStatementLists.size () > 1)
+				for (ParameterAssignment pa : listDeprecated)
+					m_mapStatementLists.remove (pa);
+
+			for (ParameterAssignment pa : m_mapStatementLists.keySet ())
+				pa.setDeprecated ();
+
+			// add the new parameter
+			m_listParameters.add (param);
+		}
+		else
+		{
+			// parameter was found, but only some values were not found
+			StatementList slDeriveFrom = m_mapDeriveFromStatementLists.get (param);
+			if (slDeriveFrom == null)
+				throw new RuntimeException (StringUtil.concat ("No statement list found from which a branch for ", param.getName (), "=", listMissingValues.toString (), " could be derived."));
+			
+			Map<ParameterAssignment, StatementList> mapTmp = new HashMap<> ();
+			for (ParameterAssignment pa : m_mapStatementLists.keySet ())
+			{
+				if (pa.matches (param, nTemplateValue))
+				{
+					for (int nParamValue : listMissingValues)
+					{
+						ParameterAssignment paNew = pa.clone ();
+						paNew.setParameter (param, nParamValue);
+						mapTmp.put (paNew, slDeriveFrom.clone ());
+					}
+				}
+			}
+			
+			m_mapStatementLists.putAll (mapTmp);
+		}
+
+		// create a new copy of the branches from the branches marked as deprecated with the new parameter/value added
+		Map<ParameterAssignment, StatementList> mapTmp = new HashMap<> ();
+		for (ParameterAssignment paOld : m_mapStatementLists.keySet ())
+		{
+			if (paOld.isDeprecated ())
+			{
+				for (int nParamValue : rgParamValues)
+				{
+					ParameterAssignment paNew = paOld.clone ();
+					paNew.setParameter (param, nParamValue);
+					
+					if (m_mapStatementLists.containsKey (paNew))
+						continue;
+	
+					StatementList slOld = m_mapStatementLists.get (paOld);
+					if (!m_mapDeriveFromStatementLists.containsKey (param))
+						m_mapDeriveFromStatementLists.put (param, slOld);
+					
+					StatementList slNew = slOld.clone ();
+					mapTmp.put (paNew, slNew);
+				}
+			}
+		}
+
+		m_mapStatementLists.putAll (mapTmp);
+	}
 
 	/**
 	 * Returns all the statement lists that match the parameter assignment <code>pa</code>.
@@ -375,60 +563,12 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	 */
 	private Iterable<StatementList> getStatementLists (Parameter param, int nParamValue)
 	{
+		ensureParamExists (param, nParamValue);
+		
 		List<StatementList> list = new LinkedList<> ();
-
-		// try find the param assignments that have param set to nParamValue
-		boolean bParamExists = false;
 		for (ParameterAssignment pa : m_mapStatementLists.keySet ())
-		{
 			if (pa.matches (param, nParamValue))
-			{
 				list.add (m_mapStatementLists.get (pa));
-				bParamExists = true;
-			}
-		}
-
-		if (!bParamExists)
-		{
-			param.addValue (nParamValue);
-
-			if (!containsParameter (param))
-			{
-				// new parameter
-				// discard all deprecated branches, mark all existing branches as deprecated
-
-				List<ParameterAssignment> listDeprecated = new LinkedList<> ();
-				for (ParameterAssignment pa : m_mapStatementLists.keySet ())
-					if (pa.isDeprecated ())
-						listDeprecated.add (pa);
-				if (listDeprecated.size () > 0 && m_mapStatementLists.size () > 1)
-					for (ParameterAssignment pa : listDeprecated)
-						m_mapStatementLists.remove (pa);
-
-				for (ParameterAssignment pa : m_mapStatementLists.keySet ())
-					pa.setDeprecated ();
-
-				// add the new parameter
-				m_listParameters.add (param);
-			}
-
-			// create a new copy of the branches from the branches marked as deprecated with the new parameter/value added
-			Map<ParameterAssignment, StatementList> mapTmp = new HashMap<> ();
-			for (ParameterAssignment paOld : m_mapStatementLists.keySet ())
-			{
-				if (paOld.isDeprecated ())
-				{
-					ParameterAssignment paNew = paOld.clone ();
-					paNew.setParameter (param, nParamValue);
-
-					StatementList slNew = m_mapStatementLists.get (paOld).clone ();
-					mapTmp.put (paNew, slNew);
-					list.add (slNew);
-				}
-			}
-			m_mapStatementLists.putAll (mapTmp);
-		}
-
 		return list;
 	}
 
@@ -491,9 +631,12 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 				// there is no parameter corresponding to paramOther in this statement list bundle
 				// add the parameter with all the values defined in paramOther
 
-				Map<ParameterAssignment, StatementList> mapTmp = new HashMap<> ();
+				Map<ParameterAssignment, StatementList> mapTmp = new TreeMap<> (PARAMASSIGNMENT_COMPARATOR);
 				for (ParameterAssignment paThis : m_mapStatementLists.keySet ())
 				{
+					if (paThis.isDeprecated ())
+						continue;
+					
 					StatementList slThis = m_mapStatementLists.get (paThis);
 					for (int nValue : paramOther)
 					{
@@ -512,6 +655,16 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	@Override
 	public String toString ()
 	{
+		return toString (100);
+	}
+	
+	public String toLongString ()
+	{
+		return toString (Integer.MAX_VALUE);
+	}
+	
+	public String toString (int nCharLimit)
+	{
 		StringBuilder sb = new StringBuilder ();
 		for (ParameterAssignment pa : m_mapStatementLists.keySet ())
 		{
@@ -520,12 +673,12 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 
 			StatementList sl = m_mapStatementLists.get (pa);
 			String strCode = sl == null ? "<null>" : sl.toString ();
-//			if (false)//if (strCode.length () > 100)
-//			{
-//				sb.append (strCode.substring (0, 100));
-//				sb.append ("...");
-//			}
-//			else
+			if (strCode.length () > nCharLimit)
+			{
+				sb.append (strCode.substring (0, nCharLimit));
+				sb.append ("...");
+			}
+			else
 				sb.append (strCode);
 			sb.append ("\n\n\n");
 		}

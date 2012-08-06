@@ -11,8 +11,11 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  * 
  * @author Matthias-M. Christen
  */
-public class Instruction implements IInstruction
+public class Instruction extends AbstractInstruction
 {
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
 	/**
 	 * The name of the instruction
 	 */
@@ -29,6 +32,9 @@ public class Instruction implements IInstruction
 	private IOperand[] m_rgOperands;
 	
 	
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
 	/**
 	 * Constructs a new instruction object.
 	 * @param strInstructionName

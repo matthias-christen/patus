@@ -39,7 +39,7 @@ public class InstructionScheduler extends AbstractInstructionScheduler
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
 	
-	private static class NopInstruction implements IInstruction
+	private static class NopInstruction extends AbstractInstruction
 	{
 		@Override
 		public void issue (StringBuilder sbResult)

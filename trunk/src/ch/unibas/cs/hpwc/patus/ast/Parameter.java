@@ -10,9 +10,9 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.ast;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
+import java.util.Set;
 
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -33,7 +33,7 @@ public class Parameter implements Cloneable, Iterable<Integer>
 	/**
 	 * The values the parameter can take
 	 */
-	private List<Integer> m_listValues;
+	private Set<Integer> m_setValues;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -45,12 +45,12 @@ public class Parameter implements Cloneable, Iterable<Integer>
 		if (m_strName == null)
 			throw new NullPointerException ("Parameter names must not be null.");
 
-		m_listValues = new ArrayList<> ();
+		m_setValues = new HashSet<> ();
 	}
 
 	public void addValue (int nValue)
 	{
-		m_listValues.add (nValue);
+		m_setValues.add (nValue);
 	}
 
 	public String getName ()
@@ -60,9 +60,9 @@ public class Parameter implements Cloneable, Iterable<Integer>
 
 	public int[] getValues ()
 	{
-		int[] rgValues = new int[m_listValues.size ()];
+		int[] rgValues = new int[m_setValues.size ()];
 		int i = 0;
-		for (Integer nValue : m_listValues)
+		for (Integer nValue : m_setValues)
 			rgValues[i++] = nValue;
 		return rgValues;
 	}
@@ -70,14 +70,14 @@ public class Parameter implements Cloneable, Iterable<Integer>
 	@Override
 	public Iterator<Integer> iterator ()
 	{
-		return m_listValues.iterator ();
+		return m_setValues.iterator ();
 	}
 
 	public boolean isCompatible (Parameter p)
 	{
 		if (!equals (p))
 			return false;
-		return m_listValues.equals (p.m_listValues);
+		return m_setValues.equals (p.m_setValues);
 	}
 
 	@Override
@@ -100,14 +100,14 @@ public class Parameter implements Cloneable, Iterable<Integer>
 	@Override
 	public String toString ()
 	{
-		return StringUtil.concat (m_strName, ": { ", StringUtil.join (m_listValues, ", "), " }");
+		return StringUtil.concat (m_strName, ": { ", StringUtil.join (m_setValues, ", "), " }");
 	}
 
 	@Override
-	protected Parameter clone () throws CloneNotSupportedException
+	public Parameter clone ()
 	{
 		Parameter p = new Parameter (m_strName);
-		p.m_listValues.addAll (m_listValues);
+		p.m_setValues.addAll (m_setValues);
 		return p;
 	}
 }

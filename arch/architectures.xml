@@ -208,12 +208,6 @@
 				<register name="rdi" class="gpr64">
 					<subregister name="edi" class="gpr32"/>
 				</register>
-				<register name="rbp" class="gpr64">
-					<subregister name="ebp" class="gpr32"/>
-				</register>
-				<register name="rsp" class="gpr64">
-					<subregister name="esp" class="gpr32"/>
-				</register>
 				
 				<register name="xmm0" class="xmm"/>
 				<register name="xmm1" class="xmm"/>
@@ -299,8 +293,6 @@
 				<register name="edx" class="gpr32"/>
 				<register name="esi" class="gpr32"/>
 				<register name="edi" class="gpr32"/>
-				<register name="ebp" class="gpr32"/>
-				<register name="esp" class="gpr32"/>
 				
 				<register name="xmm0" class="xmm"/>
 				<register name="xmm1" class="xmm"/>
@@ -506,12 +498,6 @@
 				<register name="rdi" class="gpr64">
 					<subregister name="edi" class="gpr32"/>
 				</register>
-				<register name="rbp" class="gpr64">
-					<subregister name="ebp" class="gpr32"/>
-				</register>
-				<register name="rsp" class="gpr64">
-					<subregister name="esp" class="gpr32"/>
-				</register>
 				
 				<register name="xmm0" class="xmm"/>
 				<register name="xmm1" class="xmm"/>
@@ -640,12 +626,6 @@
 				</register>
 				<register name="rdi" class="gpr64">
 					<subregister name="edi" class="gpr32"/>
-				</register>
-				<register name="rbp" class="gpr64">
-					<subregister name="ebp" class="gpr32"/>
-				</register>
-				<register name="rsp" class="gpr64">
-					<subregister name="esp" class="gpr32"/>
 				</register>
 				
 				<register name="ymm0" class="ymm">

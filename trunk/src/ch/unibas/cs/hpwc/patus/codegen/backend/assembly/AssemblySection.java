@@ -615,16 +615,21 @@ public class AssemblySection
 
 		StatementListBundle slb = new StatementListBundle ();
 		
+		boolean bParamsFound = false;
 		for (Parameter param : ilInstructions.getParameters ())
 		{
 			for (int nValue : param.getValues ())
 			{
+				bParamsFound = true;
 				slb.addStatement (
 					generateStatement (ilInstructions.getInstructions (param, nValue), strInputs, strOutputs, AssemblySection.cloneList (listChildren)),
 					param, nValue
 				);
 			}
 		}
+		
+		if (!bParamsFound)
+			slb.addStatement (generateStatement (ilInstructions, strInputs, strOutputs, AssemblySection.cloneList (listChildren)));
 
 		return slb;
 	}

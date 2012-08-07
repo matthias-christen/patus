@@ -22,11 +22,11 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import cetus.hir.Expression;
+import cetus.hir.IntegerLiteral;
+import cetus.hir.Symbolic;
 import ch.unibas.cs.hpwc.patus.autotuner.HybridOptimizer.HybridRunExecutable;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
 import ch.unibas.cs.hpwc.patus.symbolic.ExpressionParser;
-import ch.unibas.cs.hpwc.patus.symbolic.Maxima;
-import ch.unibas.cs.hpwc.patus.symbolic.MaximaTimeoutException;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -305,7 +305,7 @@ public class StandaloneAutotuner
 		m_listParamSets = new ArrayList<> (m_rgParams.length - 1);
 		m_listConstraints = new ArrayList<> ();
 		
-		StringBuilder sbFixedVars = new StringBuilder ();
+		Map<String, Integer> mapVariables = new HashMap<> ();
 		int nIdxArgs = 0;
 
 		for (int i = 1; i < m_rgParams.length; i++)
@@ -340,18 +340,18 @@ public class StandaloneAutotuner
 						bUseExhaustive = true;
 					}
 
-					int nStartValue = getValue (rgValues[0], sbFixedVars.toString ());
+					int nStartValue = getValue (rgValues[0], mapVariables);
 					int nEndValue = 0;
 					int nStep = 1;
 					boolean bIsStepMultiplicative = false;
 
 					if (rgValues.length == 2)
-						nEndValue = getValue (rgValues[1], sbFixedVars.toString ());
+						nEndValue = getValue (rgValues[1], mapVariables);
 					else if (rgValues.length == 3)
 					{
 						bIsStepMultiplicative = rgValues[1].charAt (0) == '*';
-						nStep = getValue (bIsStepMultiplicative ? rgValues[1].substring (1) : rgValues[1], sbFixedVars.toString ());
-						nEndValue = getValue (rgValues[2], sbFixedVars.toString ());
+						nStep = getValue (bIsStepMultiplicative ? rgValues[1].substring (1) : rgValues[1], mapVariables);
+						nEndValue = getValue (rgValues[2], mapVariables);
 					}
 					else
 						throw new RuntimeException ("Malformed argument " + m_rgParams[i]);
@@ -399,7 +399,7 @@ public class StandaloneAutotuner
 					int j = 0;
 					for (String strValue : rgValues)
 					{
-						rgParamSet[j] = getValue (strValue, sbFixedVars.toString ());
+						rgParamSet[j] = getValue (strValue, mapVariables);
 						j++;
 					}
 					
@@ -417,12 +417,8 @@ public class StandaloneAutotuner
 					LOGGER.info (ps.toString ());
 					m_listParamSets.add (ps);
 					
-					// build the maxima string to assign variables X0, X1, ... the fixed value: e.g., X0=4$
-					sbFixedVars.append ('X');
-					sbFixedVars.append (nIdxArgs);
-					sbFixedVars.append (':');
-					sbFixedVars.append (nValue);
-					sbFixedVars.append ('$');
+					// save this number as a variable
+					mapVariables.put ("$" + nIdxArgs, nValue);
 					nIdxArgs++;
 				}
 			}
@@ -442,20 +438,42 @@ public class StandaloneAutotuner
 		}
 	}
 	
-	private static int getValue (String strVal, String strVars)
+	/**
+	 * Parses the string <code>strVal</code> and substitutes any variables in
+	 * <code>mapVariables</code> by their values.
+	 * 
+	 * @param strVal
+	 *            The string to parse
+	 * @param mapVariables
+	 *            A map of variable names to their values
+	 * @return The value of <code>strVal</code>
+	 */
+	private static int getValue (String strVal, Map<String, Integer> mapVariables)
 	{
-		try
+		String s = strVal;
+		for ( ; ; )
 		{
-			return Integer.parseInt (Maxima.getInstance ().executeExpectingSingleOutput (StringUtil.concat (strVars, "entier(", strVal.replace ('$', 'X'), ");")));
+			int nPos = s.indexOf ('$');
+			if (nPos == -1)
+				break;
+			
+			int nEnd = nPos + 1;
+			while (Character.isDigit (s.charAt (nEnd)))
+				nEnd++;
+			
+			String strVar = s.substring (nPos, nEnd);
+			Integer nVal = mapVariables.get (strVar);
+			if (nVal == null)
+				throw new RuntimeException ("");
+			
+			s = StringUtil.concat (s.substring (0, nPos), String.valueOf (nVal), s.substring (nEnd));
 		}
-		catch (MaximaTimeoutException e)
-		{
-			return 0;
-		}
-		catch (NumberFormatException e)
-		{
-			return 0;
-		}
+		
+		Expression exprResult = Symbolic.simplify (ExpressionParser.parse (s));
+		if (exprResult instanceof IntegerLiteral)
+			return (int) ((IntegerLiteral) exprResult).getValue ();
+		
+		return 0;
 	}
 	
 	private String getArgValues (String strArg, int nIdxArgs)

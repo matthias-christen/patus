@@ -185,11 +185,15 @@ public class LiveAnalysis
 	{
 		// create the matrix of pseudo registers
 		int nPseudoRegistersCount = getMaxPseudoRegIndex () + 1;
+		
 		m_rgLivePseudoRegisters = new int[m_rgInstructions.length][nPseudoRegistersCount];
 		for (int i = 0; i < m_rgInstructions.length; i++)
 			Arrays.fill (m_rgLivePseudoRegisters[i], STATE_UNASSIGNED);
 		m_rgPseudoRegisters = new IOperand.PseudoRegister[nPseudoRegistersCount];
-				
+
+		if (nPseudoRegistersCount == 1)
+			return;
+
 		IOperand.PseudoRegister[] rgRegs = new IOperand.PseudoRegister[2]; 
 
 		for (int i = 0; i < m_rgInstructions.length; i++)

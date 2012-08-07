@@ -197,9 +197,9 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 				recursiveGenerateInner (slbLoopNest, nStartDim - 1, false, config);
 
 //				TODO: is this correct? what if there are more than 1 codes with new params?
-//				if (slbLoopNest.size () == 1)
-//					slbGeneratedParent.addStatement (slbLoopNest.getDefault (), param, config.toInteger ());
-//				else
+				if (slbLoopNest.size () == 1)
+					slbGeneratedParent.addStatement (slbLoopNest.getDefault (), param, config.toInteger ());
+				else
 //					StatementListBundleUtil.addToLoopBody (slbGeneratedParent, slbLoopNest);
 //
 //				new code:

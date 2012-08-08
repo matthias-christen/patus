@@ -1,5 +1,8 @@
 package ch.unibas.cs.hpwc.patus.codegen.backend.assembly.x86_64;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.ast.Parameter;
 import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
@@ -104,10 +107,20 @@ public class X86_64InnermostLoopCodeGenerator extends InnermostLoopCodeGenerator
 			InstructionList il = new InstructionList ();
 			Parameter param = new Parameter ("_prefetch");
 			
+			// keep track of codes to prevent duplicates
+			Set<String> setPrefetchingCodes = new HashSet<> ();
+			
 			for (PrefetchConfig config : PrefetchConfig.getAllConfigs ())
 			{
+				InstructionList ilPrefetching = m_cgPrefetch.generate (config);
+
+				String strCode = ilPrefetching.toStringWithoutComments ();
+				if (setPrefetchingCodes.contains (strCode))
+					continue;
+				
 				il.addParameter (param, config.toInteger ());
-				il.addInstructions (new ParameterAssignment (param, config.toInteger ()), m_cgPrefetch.generate (config));
+				il.addInstructions (new ParameterAssignment (param, config.toInteger ()), ilPrefetching);
+				setPrefetchingCodes.add (strCode);
 			}
 			
 			return il;

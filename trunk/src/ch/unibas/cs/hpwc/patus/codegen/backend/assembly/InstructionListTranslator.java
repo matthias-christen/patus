@@ -483,7 +483,9 @@ public class InstructionListTranslator
 				if (!bIsOneOfNonSharedInputArgsResult)
 					mapSubstitutions.put (opSourceOutput, opOut);
 				
-				translateInstruction (new Instruction (getMovFpr (opShared instanceof IOperand.Address, opShared), opShared, opOut));
+				Instruction instrNewMov = new Instruction (getMovFpr (opShared instanceof IOperand.Address, opShared), opShared, opOut);
+				instrNewMov.setParameterAssignment (instruction.getParameterAssignment ());
+				translateInstruction (instrNewMov);
 			}
 		}
 		
@@ -522,11 +524,14 @@ public class InstructionListTranslator
 							// mov arg_i, tmp
 							mapSubstitutions.put (rgSourceOps[i], rgDestOps[rgPermSourceToDest[i]]);
 							
-							translateInstruction (new Instruction (
+							Instruction instrNewMov = new Instruction (
 								getMovFpr (rgSourceOps[i] instanceof IOperand.Address, rgSourceOps[i]),
 								rgSourceOps[i],
-								rgDestOps[rgPermSourceToDest[i]])
+								rgDestOps[rgPermSourceToDest[i]]
 							);
+							instrNewMov.setParameterAssignment (instruction.getParameterAssignment ());
+							
+							translateInstruction (instrNewMov);
 						}
 					}
 				}
@@ -554,17 +559,21 @@ public class InstructionListTranslator
 				strInstruction = i.getName ();
 		}
 		
-		m_ilOut.addInstruction (new Instruction (
-			strInstruction,
-			instruction.getIntrinsic (),
-			rgDestOps
-		));
+		Instruction instrNew = new Instruction (strInstruction, instruction.getIntrinsic (), rgDestOps);
+		instrNew.setParameterAssignment (instruction.getParameterAssignment ());
+		m_ilOut.addInstruction (instrNew);
 		
 		// add a move-result instruction if needed
 		if (bHasNonCompatibleResultOperand)
 		{
 			// mov tmp, result
-			translateInstruction (new Instruction (getMovFpr (opTmpResultOperand instanceof IOperand.Address, opTmpResultOperand), opTmpResultOperand, rgSourceOps[rgSourceOps.length - 1]));
+			Instruction instrNewMov = new Instruction (
+				getMovFpr (opTmpResultOperand instanceof IOperand.Address, opTmpResultOperand),
+				opTmpResultOperand,
+				rgSourceOps[rgSourceOps.length - 1]
+			);
+			instrNewMov.setParameterAssignment (instruction.getParameterAssignment ());
+			translateInstruction (instrNewMov);
 		}
 	}
 	

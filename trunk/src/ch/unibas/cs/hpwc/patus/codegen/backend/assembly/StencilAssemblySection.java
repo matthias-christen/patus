@@ -754,6 +754,27 @@ public class StencilAssemblySection extends AssemblySection
 	 */
 	public OperandWithInstructions getGrid (StencilNode node, int nElementsShift)
 	{
+		return getGrid (node, nElementsShift, false);
+	}
+	
+	/**
+	 * Returns the address to access the stencil node <code>node</code> shifted
+	 * in unit stride direction by <code>nElementsShift</code>.
+	 * 
+	 * @param node
+	 *            The stencil node for which to retrieve the address operand
+	 * @param nElementsShift
+	 *            The number of elements by which the node is shifted to the
+	 *            right for unrolling
+	 * @param bAlwaysLoadGrid
+	 *            If set to <code>true</code>, if the grid isn't directly an
+	 *            input (and consequentially has to be loaded from the input
+	 *            grids pointer), always issues and instruction to load the
+	 *            grid's address from the input pointer array.
+	 * @return The address operand to access <code>node</code>
+	 */
+	public OperandWithInstructions getGrid (StencilNode node, int nElementsShift, boolean bAlwaysLoadGrid)
+	{
 		if (LOGGER.isDebugEnabled ())
 			LOGGER.debug (StringUtil.concat ("Requesting operand for stencil node ", node.toString ()));
 
@@ -778,7 +799,7 @@ public class StencilAssemblySection extends AssemblySection
 		IInstruction[] rgPreInstructions = null;
 		if (IOperand.PseudoRegister.isPseudoRegisterOfType (opBase, TypeRegisterType.GPR))
 		{
-			if (!m_mapGridLoaded.containsKey (opBase))
+			if (bAlwaysLoadGrid || !m_mapGridLoaded.containsKey (opBase))
 			{
 				rgPreInstructions = new IInstruction[] {
 					new Instruction (

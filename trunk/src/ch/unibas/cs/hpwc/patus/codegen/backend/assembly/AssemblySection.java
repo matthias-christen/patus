@@ -305,8 +305,10 @@ public class AssemblySection
 	
 	public InstructionList translate (InstructionList ilInstructions, Specifier specDatatype)
 	{
-		return translate (ilInstructions, specDatatype,
-			new IInstructionListOptimizer[] { }, new IInstructionListOptimizer[] { }, new IInstructionListOptimizer[] { });
+		return translate (
+			ilInstructions,	specDatatype,
+			new IInstructionListOptimizer[] { }, new IInstructionListOptimizer[] { }, new IInstructionListOptimizer[] { }
+		);
 	}
 
 	/**

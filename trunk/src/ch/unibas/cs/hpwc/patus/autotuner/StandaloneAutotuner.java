@@ -195,6 +195,7 @@ public class StandaloneAutotuner
 		return true;
 	}
 	
+	@Deprecated
 	private boolean parseRange (String strParam)
 	{
 		try

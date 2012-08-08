@@ -563,6 +563,21 @@ public class InstructionList implements Iterable<IInstruction>
 		return sb.toString ();
 	}
 	
+	public String toStringWithoutComments ()
+	{
+		StringBuilder sb = new StringBuilder ();
+		for (IInstruction i : this)
+		{
+			if (!(i instanceof Comment))
+			{
+				sb.append (i.toString ());
+				sb.append ("\n");
+			}
+		}
+		
+		return sb.toString ();		
+	}
+	
 	public String toJavaCode ()
 	{
 		Map<IOperand, String> mapOperands = new HashMap<> ();

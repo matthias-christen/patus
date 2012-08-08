@@ -16,6 +16,7 @@ import ch.unibas.cs.hpwc.patus.arch.TypeRegisterType;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Comment;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IInstruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.IOperand;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.Instruction;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InstructionList;
@@ -91,6 +92,7 @@ public class X86_64PrefetchingCodeGenerator
 		{
 			// no offset register could be found/computed
 			LOGGER.warn ("No y_stride register found in the stencil (stencil does not contain a [x,y+1,...] node) or y_stride is not an address (%basereg,%offsetreg). Unable to create prefetching code.");
+			m_mapGeneratedCode.put (config, l);
 			return l;
 		}
 
@@ -100,6 +102,7 @@ public class X86_64PrefetchingCodeGenerator
 		if (regYOffset == null)
 		{
 			LOGGER.warn ("No y_stride (offset) register found. Unable to create prefetching code.");
+			m_mapGeneratedCode.put (config, l);
 			return l;
 		}
 					
@@ -385,12 +388,22 @@ public class X86_64PrefetchingCodeGenerator
 		if (nodeOffset == null)
 			return null;
 		
-		StencilAssemblySection.OperandWithInstructions op = m_as.getGrid (nodeOffset, 0);
+		StencilAssemblySection.OperandWithInstructions op = m_as.getGrid (nodeOffset, 0, true);
 		if (!bAllowPreAndPostInstructions)
 		{
 			if (op.getInstrPre () != null && op.getInstrPre ().length > 0)
 				return null;
 			if (op.getInstrPost () != null && op.getInstrPost ().length > 0)
+				return null;
+		}
+		else
+		{
+			// we don't allow pre/post instructions that involve pseudo registers (i.e., require register allocation)
+			// this messes up the translation...
+			
+			if (op.getInstrPre () != null && containsPseudoRegister (op.getInstrPre ()))
+				return null;
+			if (op.getInstrPost () != null && containsPseudoRegister (op.getInstrPost ()))
 				return null;
 		}
 		
@@ -602,6 +615,40 @@ public class X86_64PrefetchingCodeGenerator
 		reg.setName ("rsp");
 
 		return new IOperand.Register (reg);
+	}
+	
+	/**
+	 * Determines whether one of the operands of one of the instructions in
+	 * <code>rgInstructions</code> contains a pseudo-register.
+	 * 
+	 * @param rgInstructions
+	 *            The array of instructions to examine
+	 * @return <code>true</code> iff <code>rgInstructions</code> contains an
+	 *         instruction with a pseudo-register as an operand
+	 */
+	private static boolean containsPseudoRegister (IInstruction[] rgInstructions)
+	{
+		for (IInstruction instr : rgInstructions)
+		{
+			if (instr instanceof Instruction)
+			{
+				for (IOperand op : ((Instruction) instr).getOperands ())
+				{
+					if (op instanceof IOperand.PseudoRegister)
+						return true;
+					if (op instanceof IOperand.Address)
+					{
+						IOperand.Address opAddr = (IOperand.Address) op;
+						if (opAddr.getRegBase () instanceof IOperand.PseudoRegister)
+							return true;
+						if (opAddr.getRegIndex () != null && opAddr.getRegIndex () instanceof IOperand.PseudoRegister)
+							return true;
+					}
+				}
+			}
+		}
+		
+		return false;
 	}
 	
 	/**

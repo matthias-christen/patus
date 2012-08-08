@@ -29,7 +29,6 @@ public class KernelSourceFile
 
 	protected File m_file;
 	protected TranslationUnit m_unit;
-	//protected 
 
 	// configuration
 	protected CodeGenerationOptions.ECompatibility m_compatibility;

@@ -90,8 +90,18 @@ public class LiveAnalysis
 			if (instr instanceof Instruction)
 			{
 				for (IOperand op : ((Instruction) instr).getOperands ())
+				{
 					if (op instanceof IOperand.PseudoRegister)
 						nMaxIdx = Math.max (nMaxIdx, ((IOperand.PseudoRegister) op).getNumber ());
+					else if (op instanceof IOperand.Address)
+					{
+						IOperand.Address opAddr = (IOperand.Address) op;
+						if (opAddr.getRegBase () instanceof IOperand.PseudoRegister)
+							nMaxIdx = Math.max (nMaxIdx, ((IOperand.PseudoRegister) opAddr.getRegBase ()).getNumber ());
+						if (opAddr.getRegIndex () != null && opAddr.getRegIndex () instanceof IOperand.PseudoRegister)
+							nMaxIdx = Math.max (nMaxIdx, ((IOperand.PseudoRegister) opAddr.getRegIndex ()).getNumber ());
+					}
+				}
 			}
 		}
 		

@@ -26,6 +26,7 @@ public class CommandLineOptions
 	// Member Variables
 
 	private File m_fileStencil;
+	private int m_nStencilDSLVersion;
 	private File m_fileStrategy;
 	private File m_fileArchitecture;
 	private File m_fileOutDir;
@@ -41,6 +42,7 @@ public class CommandLineOptions
 	{
 		// parse the command line
 		m_fileStencil = null;
+		m_nStencilDSLVersion = 1;
 		m_fileStrategy = null;
 		m_fileArchitecture = null;
 		m_fileOutDir = null;
@@ -58,6 +60,7 @@ public class CommandLineOptions
 	public CommandLineOptions (CommandLineOptions options)
 	{
 		m_fileStencil = options.getStencilFile () == null ? null : new File (options.getStencilFile ().getAbsolutePath ());
+		m_nStencilDSLVersion = options.getStencilDSLVersion ();
 		m_fileStrategy = options.getStrategyFile () == null ? null : new File (options.getStrategyFile ().getAbsolutePath ());
 		m_fileArchitecture = options.getArchitectureDescriptionFile () == null ? null : new File (options.getArchitectureDescriptionFile ().getAbsolutePath ());
 		m_fileOutDir = options.getOutputDir () == null ? null : new File (options.getOutputDir ().getAbsolutePath ());
@@ -84,6 +87,11 @@ public class CommandLineOptions
 
 			if ("stencil".equals (strOption))
 				m_fileStencil = new File (strValue);
+			if ("stencil2".equals (strOption))
+			{
+				m_fileStencil = new File (strValue);
+				m_nStencilDSLVersion = 2;
+			}
 			else if ("strategy".equals (strOption))
 				m_fileStrategy = new File (strValue);
 			else if ("architecture".equals (strOption))
@@ -271,6 +279,11 @@ public class CommandLineOptions
 	public final File getStencilFile ()
 	{
 		return m_fileStencil;
+	}
+	
+	public final int getStencilDSLVersion ()
+	{
+		return m_nStencilDSLVersion;
 	}
 
 	public final File getStrategyFile ()

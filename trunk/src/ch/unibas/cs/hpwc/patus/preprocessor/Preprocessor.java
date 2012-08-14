@@ -176,7 +176,7 @@ public class Preprocessor
 	protected CodeGeneratorSharedObjects generateCode (String strStencilSpecification, CommandLineOptions options)
 	{
 		// parse the stencil specification
-		StencilCalculation stencil = StencilCalculation.parse (strStencilSpecification, options.getOptions ());
+		StencilCalculation stencil = StencilCalculation.parse (strStencilSpecification, StencilCalculation.DEFAULT_DSL_VERSION, options.getOptions ());
 
 		// try to parse the strategy file
 		if (m_strategy == null)

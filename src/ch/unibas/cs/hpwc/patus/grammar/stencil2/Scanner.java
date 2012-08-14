@@ -312,9 +312,9 @@ public class Scanner {
 		literals.put("iterate", new Integer(14));
 		literals.put("while", new Integer(15));
 		literals.put("domainsize", new Integer(16));
-		literals.put("operation", new Integer(19));
-		literals.put("boundaries", new Integer(20));
-		literals.put("initial", new Integer(21));
+		literals.put("operation", new Integer(17));
+		literals.put("boundaries", new Integer(18));
+		literals.put("initial", new Integer(19));
 		literals.put("const", new Integer(22));
 		literals.put("float", new Integer(23));
 		literals.put("double", new Integer(24));
@@ -491,9 +491,9 @@ public class Scanner {
 				case 11:
 					{t.kind = 12; break loop;}
 				case 12:
-					{t.kind = 17; break loop;}
+					{t.kind = 20; break loop;}
 				case 13:
-					{t.kind = 18; break loop;}
+					{t.kind = 21; break loop;}
 				case 14:
 					{t.kind = 29; break loop;}
 				case 15:

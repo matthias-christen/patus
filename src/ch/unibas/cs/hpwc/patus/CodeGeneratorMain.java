@@ -239,7 +239,7 @@ public class CodeGeneratorMain
 
 		// try to parse the stencil file
 		CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Reading stencil specification ", options.getStencilFile ().getName (), "..."));
-		StencilCalculation stencil = StencilCalculation.load (options.getStencilFile ().getAbsolutePath (), options.getOptions ());
+		StencilCalculation stencil = StencilCalculation.load (options.getStencilFile ().getAbsolutePath (), options.getStencilDSLVersion (), options.getOptions ());
 		options.getOptions ().checkSettings (stencil);
 
 		// try to parse the strategy file

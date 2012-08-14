@@ -45,6 +45,12 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
 public class StencilCalculation
 {
 	///////////////////////////////////////////////////////////////////
+	// Constants
+
+	public static final int DEFAULT_DSL_VERSION = 1;
+
+	
+	///////////////////////////////////////////////////////////////////
 	// Inner Types
 
 	public enum EArgumentType
@@ -162,17 +168,47 @@ public class StencilCalculation
 	 * @param strFilename The file to load
 	 * @return The stencil calculation object described in <code>strFilename</code>
 	 */
-	public static StencilCalculation load (String strFilename, CodeGenerationOptions options)
+	public static StencilCalculation load (String strFilename, int nStencilDSLVersion, CodeGenerationOptions options)
 	{
-		return parse (new Parser (new Scanner (strFilename)), options);
+		switch (nStencilDSLVersion)
+		{
+		case 1:
+			return parse1 (new Parser (new Scanner (strFilename)), options);
+			
+		case 2:
+			return parse2 (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Parser (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Scanner (strFilename)), options);
+			
+		default:
+			throw new RuntimeException (StringUtil.concat ("Unsupported stencil DSL version: ", nStencilDSLVersion));
+		}
 	}
 
-	public static StencilCalculation parse (String strStencilSpecification, CodeGenerationOptions options)
+	public static StencilCalculation parse (String strStencilSpecification, int nStencilDSLVersion, CodeGenerationOptions options)
 	{
-		return parse (new Parser (new Scanner (new ByteArrayInputStream (strStencilSpecification.getBytes ()))), options);
+		switch (nStencilDSLVersion)
+		{
+		case 1:
+			return parse1 (new Parser (new Scanner (new ByteArrayInputStream (strStencilSpecification.getBytes ()))), options);
+			
+		case 2:
+			return parse2 (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Parser (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Scanner (new ByteArrayInputStream (strStencilSpecification.getBytes ()))), options);
+			
+		default:
+			throw new RuntimeException (StringUtil.concat ("Unsupported stencil DSL version: ", nStencilDSLVersion));
+		}
 	}
 
-	private static StencilCalculation parse (Parser parser, CodeGenerationOptions options)
+	private static StencilCalculation parse1 (Parser parser, CodeGenerationOptions options)
+	{
+		parser.setOptions (options);
+		parser.Parse ();
+		if (parser.hasErrors ())
+			throw new RuntimeException ("Parsing the stencil specification failed.");
+
+		return parser.getStencilCalculation ();
+	}
+	
+	private static StencilCalculation parse2 (ch.unibas.cs.hpwc.patus.grammar.stencil2.Parser parser, CodeGenerationOptions options)
 	{
 		parser.setOptions (options);
 		parser.Parse ();
@@ -217,11 +253,23 @@ public class StencilCalculation
 	 */
 	private StencilNodeSet m_stencilNodeSetBaseOutput;
 
+	
 	/**
-	 * The actual stencil
+	 * The stencil operation (the regular stencil computation)
 	 */
 	private StencilBundle m_stencil;
+	
+	/**
+	 * The collection of boundary stencils
+	 */
+	private StencilBundle m_stencilBoundaries;
+	
+	/**
+	 * The collection of initialization expressions
+	 */
+	private StencilBundle m_stencilInitialization;
 
+	
 	/**
 	 * The maximum number of iterations
 	 */
@@ -299,6 +347,11 @@ public class StencilCalculation
 	{
 		return m_stencil;
 	}
+	
+	public StencilBundle getOperation ()
+	{
+		return m_stencil;
+	}
 
 	/**
 	 *
@@ -311,6 +364,31 @@ public class StencilCalculation
 		ProjectionMask mask = new ProjectionMask (Vector.getZeroVector (getDimensionality ()));
 		m_stencilNodeSetBaseInput = new StencilNodeSet (m_stencil.getFusedStencil (), StencilNodeSet.ENodeTypes.INPUT_NODES).applyMask (mask);
 		m_stencilNodeSetBaseOutput = new StencilNodeSet (m_stencil.getFusedStencil (), StencilNodeSet.ENodeTypes.OUTPUT_NODES).applyMask (mask);
+	}
+	
+	public void setOperation (StencilBundle stencil)
+	{
+		setStencil (stencil);
+	}
+	
+	public StencilBundle getBoundaries ()
+	{
+		return m_stencilBoundaries;
+	}
+	
+	public void setBoundaries (StencilBundle stencilBoundaries)
+	{
+		m_stencilBoundaries = stencilBoundaries;
+	}
+	
+	public StencilBundle getInitialization ()
+	{
+		return m_stencilInitialization;
+	}
+	
+	public void setInitialization (StencilBundle stencilInitialization)
+	{
+		m_stencilInitialization = stencilInitialization;
 	}
 
 	/**

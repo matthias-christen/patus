@@ -709,6 +709,7 @@ PRODUCTIONS                                                                    /
     //         u[x,y,z; 0] = 0;
     //         u[x,y,z; 0] = sin(x)*sin(y)*sin(z);
     //         u[0 <= x <= x_max/2, y, z; 0] = 5;
+    //           u[x,y,z; 0 : 0<=x<=x_max/2] = 5;
     //         u[x,y,z; 0 : x^2+y^2+z^2 <= x_max/5] = 10;
     //     }
     // }
@@ -734,9 +735,9 @@ PRODUCTIONS                                                                    /
         	|
         	StencilOperation<out StencilBundle bundle>                         (. if (m_stencil.getStencilBundle () != null) errors.SemErr (la.line, la.col, "Found multiple stencil definitions. All but the first are ignored."); else m_stencil.setStencil (bundle); .)
         	|
-        	StencilBoundaries<out StencilBundle bundle>                        (. .)
+        	StencilBoundaries<out StencilBundle bundle>                        (. if (m_stencil.getBoundaries () != null) errors.SemErr ("Found multiple boundaries definitions. All but the first are ignored."); else m_stencil.setBoundaries (bundle); .)
         	|
-       		StencilInitial<out StencilBundle bundle>                           (.  .)
+       		StencilInitial<out StencilBundle bundle>                           (. if (m_stencil.getInitialization () != null) errors.SemErr ("Found multiple initializations. All but the first are ignored."); else m_stencil.setInitialization (bundle); .)
         }
         '}'                                                                    (. setStencilOperationArguments (); checkDefinitions (); .)
         .
@@ -770,6 +771,41 @@ PRODUCTIONS                                                                    /
     StencilDomainSize<out Box boxGrid> =
     	SYNC "domainsize" '=' StencilBox<out boxGrid> ';'.
     	
+    /**
+     * The stencil operation.
+     */    
+	StencilOperation<out StencilBundle bundle> =                               (. bundle = new StencilBundle (m_stencil); .)
+		SYNC "operation"
+		'{'
+		{
+			AssignmentStatement<bundle>
+		}
+        '}'.
+        
+    /**
+     * The boundaries definition.
+     * This can be used to define special stencils for boundary points.
+     */
+	StencilBoundaries<out StencilBundle bundle> =                              (. bundle = new StencilBundle (m_stencil); .)
+	 	SYNC "boundaries"
+    	'{'
+    	{
+    		AssignmentStatement<bundle>
+    	}
+		'}'.
+		
+	/**
+	 * Defines the initial condition, i.e., initializes the grids.
+	 */
+	StencilInitial<out StencilBundle bundle> =                                 (. bundle = new StencilBundle (m_stencil); .)
+		SYNC "initial"
+		'{'
+		{
+			AssignmentStatement<bundle>
+		}
+		'}'.
+
+
     StencilBox<out Box box> =
         '('                                                                    (. List<Expression> listMin = new ArrayList<Expression> (); List<Expression> listMax = new ArrayList<Expression> (); .)
         StencilBoxCoordinate<out Box box1>                                     (. listMin.add (box1.getMin ().getCoord (0)); listMax.add (box1.getMax ().getCoord (0)); .)
@@ -785,39 +821,6 @@ PRODUCTIONS                                                                    /
     	".."
     	StencilExpression<out ExpressionData edMax, null, true, true>          (. box = new Box (new Point (edMin.getExpression ()), new Point (edMax.getExpression ())); .)
     	.
-    	    	
-    /**
-     * The stencil operation.
-     */    
-	StencilOperation<out StencilBundle bundle> =
-		SYNC "operation"                                              
-        '{' StencilOperationImplementation<out bundle> '}'                                                                    
-        .
-        
-    /**
-     * The boundaries definition.
-     * This can be used to define special stencils for boundary points.
-     */
-	StencilBoundaries<out StencilBundle bundle> =                              (. bundle = new StencilBundle (m_stencil); .)
-	 	SYNC "boundaries"
-    	'{'
-    	{
-    		AssignmentStatement<bundle>
-    	}
-		'}'
-    	.
-		
-	/**
-	 * Defines the initial condition, i.e., initializes the grids.
-	 */
-	StencilInitial<out StencilBundle bundle> =                                 (. bundle = null; .)
-		SYNC "initial"
-		'{'
-		{
-			AssignmentStatement<bundle>
-		}
-		'}'
-		.
 
     
 	// -------- Stencil Operation --------
@@ -874,15 +877,6 @@ PRODUCTIONS                                                                    /
                                                                                (. } .)
         .
         
-    /**
-     * The body of the stencil procedure.
-     */
-    StencilOperationImplementation<out StencilBundle bundle> =                 (. bundle = new StencilBundle (m_stencil); .)
-        AssignmentStatement<bundle>
-        {
-        	AssignmentStatement<bundle>
-        }.
-        
         
     // -------- Stencil Statements/Expressions --------
 
@@ -923,103 +917,30 @@ PRODUCTIONS                                                                    /
 	 * The assignment expression in the stencil operation method.
 	 */
     StencilAssignment<out ExpressionData exprAssignment, Stencil stencil> =
-    	LeftHandStencilIdentifier<out StencilNode nodeLHS>                     (. stencil.addOutputNode (nodeLHS); .)
+    	StencilIdentifier<out StencilNode nodeLHS>                             (. stencil.addOutputNode (nodeLHS); .)
     	'='
     	StencilExpression<out ExpressionData exprRHS, stencil, false, false>   (. exprAssignment = (nodeLHS == null || exprRHS == null) ? null : new ExpressionData (new AssignmentExpression (nodeLHS, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
     	.
-
+    	
 	/**
-	 * Reference to a grid variable on the left hand side of the
-	 * equals sign of a stencil expression within the stencil's
-	 * operation method.
+	 * Reference to a grid variable.
 	 */
-	LeftHandStencilIdentifier<out StencilNode node> =                          // creates <ident>[0][0][0][nOffsetT] (the first three accesses are spatial subscripts, the fourth is the temporal index)
-		ident                                                                  (. String strIdentifier = t.val; node = null; Index index = new Index (); .)
-		'['
-			ident                                                              (. int nIdx = 0; if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); .)
-			{
-				SYNC ',' ident                                                 (. nIdx++; if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); .)
-			}
-			SYNC ';' ident                                                     (. index.setSpaceIndex (IntArray.getArray (nIdx + 1, 0)); if (!t.val.equals ("t")) errors.SemErr (la.line, la.col, "\"t\" expected"); .)
-			[
-				OffsetExpression<out int nValue>                               (. index.setTimeIndex (nValue); .)
-			]                                                                  (. List<Integer> listVectorComponents = new ArrayList<Integer> (); .) //(. exprIdLHS = new ArrayAccess (new ArrayAccess (new ArrayAccess (new ArrayAccess (ident, new IntegerLiteral (0)), new IntegerLiteral (0)), new IntegerLiteral (0)), new IntegerLiteral (nOffsetT)); .)
-			[                                                                  // creates additional accesses
-				SYNC ';'
-				StencilExpression<out ExpressionData exprIdx, null,false,true> (. if (exprIdx.getExpression () instanceof IntegerLiteral) listVectorComponents.add ((int) ((IntegerLiteral) exprIdx.getExpression ()).getValue ()); .)
-				                                                               (. else if (exprIdx.getExpression () instanceof FloatLiteral) listVectorComponents.add ((int) ((FloatLiteral) exprIdx.getExpression ()).getValue ()); .)
-				                                                               (. else errors.SemErr (la.line, la.col, "Indices must evaluate to constant numbers"); .)//(. exprIdLHS = new ArrayAccess ((Expression) exprIdLHS.clone (), exprIdx); .)
-				{                                                                  
-					SYNC ',' StencilExpression<out exprIdx, null, false, true> (. if (exprIdx.getExpression () instanceof IntegerLiteral) listVectorComponents.add ((int) ((IntegerLiteral) exprIdx.getExpression ()).getValue ()); .)
-				                                                               (. else if (exprIdx.getExpression () instanceof FloatLiteral) listVectorComponents.add ((int) ((FloatLiteral) exprIdx.getExpression ()).getValue ()); .)
-				                                                               (. else errors.SemErr (la.line, la.col, "Indices must evaluate to constant numbers"); .)//(. exprIdLHS = new ArrayAccess ((Expression) exprIdLHS.clone (), exprIdx); .)
-				}
-			]
-		']'                                                                    (. index.setVectorIndex (getStreamIndex (strIdentifier, listVectorComponents, EStreamDirection.OUTPUT)); .)
-		                                                                       (. node = new StencilNode (strIdentifier, m_mapOutputStreams.get (strIdentifier).getSpecifier (), index); .)
-		.
-		
-	/**
-	 * Reference to a grid variable on the right hand side of the
-	 * equals sign of the stencil expression within the stencil's
-	 * operation method.
-	 */
-	RightHandStencilIdentifier<out StencilNode node> =
-		ident                                                                  (. String strIdentifier = t.val; node = null; Index index = new Index (); .)
-        '['
-        	ident                                                              (. int nIdx = 0; List<Integer> listOffsets = new ArrayList<Integer> (); listOffsets.add (0); if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); .)
-        	[
-        		OffsetExpression<out int nValue>                               (. listOffsets.set (nIdx, nValue); .)
-        	]
-        	{
-       			SYNC ',' ident                                                 (. nIdx++; listOffsets.add (0); if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); .)
-        		[
-        			OffsetExpression<out int nValue>                           (. listOffsets.set (nIdx, nValue); .)
-        		]
-        	}                                                                  (. index.setSpaceIndex (listOffsets); .)
-        	SYNC ';' ident                                                     (. if (!t.val.equals ("t")) errors.SemErr (la.line, la.col, "\"t\" expected"); .)
-        	[
-        		OffsetExpression<out int nValue>                               (. index.setTimeIndex (nValue); .)
-        	]                                                                  (. List<Integer> listVectorComponents = new ArrayList<Integer> (); .)
-        	[
-        		SYNC ';'
-        		StencilExpression<out ExpressionData exprIdx, null,false,true> (. listVectorComponents.add (getInteger (exprIdx.getExpression ())); .)
-        		{
-        			SYNC ',' StencilExpression<out exprIdx, null, false, true> (. listVectorComponents.add (getInteger (exprIdx.getExpression ())); .)
-        		}
-        	]
-        ']'                                                                    (. index.setVectorIndex (getStreamIndex (strIdentifier, listVectorComponents, EStreamDirection.INPUT)); .)
-		                                                                       (. node = new StencilNode (strIdentifier, m_mapInputStreams.get (strIdentifier).getSpecifier (), index); .)
-        .
-        
-	/**
-	 * Reference to a const grid variable on the right hand side of the
-	 * equals sign of the stencil expression within the stencil's
-	 * operation method.
-	 */
-	RightHandStencilConstIdentifier<out StencilNode node> =
-		ident                                                                  (. String strIdentifier = t.val; node = null; Index index = new Index (0, 0, false); .)
-        '['
-        	ident                                                              (. int nIdx = 0; List<Integer> listOffsets = new ArrayList<> (); listOffsets.add (0); if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); .)
-        	[
-        		OffsetExpression<out int nValue>                               (. listOffsets.set (nIdx, nValue); .)
-        	]
-        	{
-	        	SYNC ',' ident                                                 (. nIdx++; listOffsets.add (0); if (!t.val.equals (CodeGeneratorUtil.getDimensionName (nIdx))) errors.SemErr (la.line, la.col, StringUtil.concat ("\"", CodeGeneratorUtil.getDimensionName (nIdx), "\" expected")); .)
-	        	[
-	        		OffsetExpression<out int nValue>                           (. listOffsets.set (nIdx, nValue); .)
-	        	]
-	        }                                                                  (. index.setSpaceIndex (listOffsets); List<Integer> listVectorComponents = new ArrayList<> (); .)
-        	[
-        		SYNC ';'
-        		StencilExpression<out ExpressionData exprIdx, null,false,true> (. listVectorComponents.add (getInteger (exprIdx.getExpression ())); .)
-        		{
-        			SYNC ',' StencilExpression<out exprIdx, null, false, true> (. listVectorComponents.add (getInteger (exprIdx.getExpression ())); .)
-        		}
-        	]
-        ']'                                                                    (. index.setVectorIndex (getStreamIndex (strIdentifier, listVectorComponents, EStreamDirection.INPUT)); .)
-		                                                                       (. node = new StencilNode (strIdentifier, m_mapInputStreams.get (strIdentifier).getSpecifier (), index); .)
-        .
+    StencilIdentifier<out StencilNode node> =
+    	ident                                                                  (. String strIdentifier = t.val; node = null; Index index = new Index (); .)
+    	'['
+    		StencilExpression<out ExpressionData exprIdx0,null,false,true>     (. int nMode = 0; List<Expression> listIndices = new ArrayList<> (); listIndices.add (exprIdx0); .)
+    		{
+    			SYNC
+    			(
+    				','
+    				|
+    				';'                                                        (. switch (nMode) { case 0: index.setSpaceIndex (listIndices); break; case 1: index.setTimeIndex (listIndices); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, EStreamDirection.XXX)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } nMode++; listIndices = new ArrayList<> (); .)
+    			)
+    			StencilExpression<out ExpressionData exprIdx1,null,false,true> (. listIndices.add (exprIdx1); .)
+    		}
+    	']'                                                                    (. switch (nMode) { case 0: index.setSpaceIndex (listIndices); break; case 1: index.setTimeIndex (listIndices); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, EStreamDirection.XXX)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } .)
+    	                                                                       (. node = new StencilNode (strIdentifier, m_mapOutputStreams.get (strIdentifier).getSpecifier (), index); .)
+    	.
 
     /**
      * A scalar.
@@ -1210,14 +1131,9 @@ PRODUCTIONS                                                                    /
         (
         	NumberLiteral<out double fValue, bIsInteger>                       (. expr = new ExpressionData (createLiteral (fValue, bIsInteger), 0, Symbolic.EExpressionType.EXPRESSION); .)
         	|
-        	IF(isConstGridVariable ())
-        		RightHandStencilConstIdentifier<out StencilNode node>          (. expr = new ExpressionData (node, 0, Symbolic.EExpressionType.EXPRESSION); stencil.addInputNode (node); .)
-        	| 
         	IF(isGridVariable ())
-        		RightHandStencilIdentifier<out StencilNode node>               (. expr = new ExpressionData (node, 0, Symbolic.EExpressionType.EXPRESSION); stencil.addInputNode (node); .) 
+        		StencilIdentifier<out StencilNode node>                        (. expr = new ExpressionData (node, 0, Symbolic.EExpressionType.EXPRESSION); stencil.addInputNode (node); .) 
         	|
-//        	IF(isScalar ()) ScalarIdentifier<out Expression exprParam>         (. expr = bIsNegative ? new ExpressionData (new UnaryExpression (UnaryOperator.MINUS, exprParam), 1, Symbolic.EExpressionType.EXPRESSION) : new ExpressionData (exprParam, 0, Symbolic.EExpressionType.EXPRESSION); .)
-//        	|
         	BracketedExpression<out ExpressionData exprBracketed, stencil, bIsDecl, bIsInteger>
         	                                                                   (. expr = exprBracketed; .)
         	|

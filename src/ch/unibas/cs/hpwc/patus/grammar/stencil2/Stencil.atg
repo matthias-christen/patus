@@ -119,7 +119,7 @@ COMPILER StencilSpecification
 		/**
 		 * Returns the index.
 		 */
-		public int getLinearIndex (List<Integer> listIndices)
+		public int getLinearIndex (List<Expression> listIndices)
 		{
 			if (listIndices.size () != m_rgDimensions.length)
 			{
@@ -129,8 +129,12 @@ COMPILER StencilSpecification
 			
 			int nIdx = 0;
 			int i = 0;
-			for (int nIdxValue : listIndices)
+			for (Expression exprIdxValue : listIndices)
 			{
+				Integer nIdxValue = ExpressionUtil.getIntegerValueEx ();
+				if (nIdxValue == null)
+					errors.SemErr (la.line, la.col, "Value does not evaluate to an integer number");
+				
 				// check whether the indices are within the defined bounds
 				if (nIdxValue < 0 || nIdxValue >= m_rgDimensions[i])
 				{
@@ -456,7 +460,7 @@ COMPILER StencilSpecification
 	 * @param sd The stream direction specifying whether this is an input or an output stream, i.e. is read from or written to
 	 * @return The internal stream index
 	 */
-	private int getStreamIndex (String strIdentifier, List<Integer> listIndices, EStreamDirection sd)
+	private int getStreamIndex (String strIdentifier, List<Expression> listIndices, EStreamDirection sd)
 	{
 		Map<String, StreamIndex> map = sd == EStreamDirection.INPUT ? m_mapInputStreams : m_mapOutputStreams;
 		StreamIndex idx = map.get (strIdentifier);
@@ -917,7 +921,7 @@ PRODUCTIONS                                                                    /
 	 * The assignment expression in the stencil operation method.
 	 */
     StencilAssignment<out ExpressionData exprAssignment, Stencil stencil> =
-    	StencilIdentifier<out StencilNode nodeLHS>                             (. stencil.addOutputNode (nodeLHS); .)
+    	StencilIdentifier<out StencilNode nodeLHS, EStreamDirection.OUTPUT>    (. stencil.addOutputNode (nodeLHS); .)
     	'='
     	StencilExpression<out ExpressionData exprRHS, stencil, false, false>   (. exprAssignment = (nodeLHS == null || exprRHS == null) ? null : new ExpressionData (new AssignmentExpression (nodeLHS, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
     	.
@@ -925,20 +929,20 @@ PRODUCTIONS                                                                    /
 	/**
 	 * Reference to a grid variable.
 	 */
-    StencilIdentifier<out StencilNode node> =
+    StencilIdentifier<out StencilNode node, EStreamDirection dir> =
     	ident                                                                  (. String strIdentifier = t.val; node = null; Index index = new Index (); .)
     	'['
-    		StencilExpression<out ExpressionData exprIdx0,null,false,true>     (. int nMode = 0; List<Expression> listIndices = new ArrayList<> (); listIndices.add (exprIdx0); .)
+    		StencilExpression<out ExpressionData exprIdx0,null,false,true>     (. int nMode = 0; List<Expression> listIndices = new ArrayList<> (); listIndices.add (exprIdx0.getExpression ()); .)
     		{
     			SYNC
     			(
     				','
     				|
-    				';'                                                        (. switch (nMode) { case 0: index.setSpaceIndex (listIndices); break; case 1: index.setTimeIndex (listIndices); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, EStreamDirection.XXX)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } nMode++; listIndices = new ArrayList<> (); .)
+    				';'                                                        (. switch (nMode) { case 0: index.setSpaceIndex (listIndices); break; case 1: index.setTimeIndex (listIndices); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } nMode++; listIndices = new ArrayList<> (); .)
     			)
-    			StencilExpression<out ExpressionData exprIdx1,null,false,true> (. listIndices.add (exprIdx1); .)
+    			StencilExpression<out ExpressionData exprIdx1,null,false,true> (. listIndices.add (exprIdx1.getExpression ()); .)
     		}
-    	']'                                                                    (. switch (nMode) { case 0: index.setSpaceIndex (listIndices); break; case 1: index.setTimeIndex (listIndices); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, EStreamDirection.XXX)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } .)
+    	']'                                                                    (. switch (nMode) { case 0: index.setSpaceIndex (listIndices); break; case 1: index.setTimeIndex (listIndices); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } .)
     	                                                                       (. node = new StencilNode (strIdentifier, m_mapOutputStreams.get (strIdentifier).getSpecifier (), index); .)
     	.
 
@@ -1132,7 +1136,7 @@ PRODUCTIONS                                                                    /
         	NumberLiteral<out double fValue, bIsInteger>                       (. expr = new ExpressionData (createLiteral (fValue, bIsInteger), 0, Symbolic.EExpressionType.EXPRESSION); .)
         	|
         	IF(isGridVariable ())
-        		StencilIdentifier<out StencilNode node>                        (. expr = new ExpressionData (node, 0, Symbolic.EExpressionType.EXPRESSION); stencil.addInputNode (node); .) 
+        		StencilIdentifier<out StencilNode node, EStreamDirection.INPUT>(. expr = new ExpressionData (node, 0, Symbolic.EExpressionType.EXPRESSION); stencil.addInputNode (node); .) 
         	|
         	BracketedExpression<out ExpressionData exprBracketed, stencil, bIsDecl, bIsInteger>
         	                                                                   (. expr = exprBracketed; .)

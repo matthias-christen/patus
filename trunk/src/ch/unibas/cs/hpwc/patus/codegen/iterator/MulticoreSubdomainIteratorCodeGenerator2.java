@@ -148,7 +148,8 @@ public class MulticoreSubdomainIteratorCodeGenerator2 extends AbstractIteratorCo
 		// TODO: transfer data back
 
 		// synchronize
-		Statement stmtBarrier = data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());
+//		Statement stmtBarrier = data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());
+		Statement stmtBarrier = data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel () - 1); // TODO: check this!
 		if (stmtBarrier != null)
 			getOutputStatement ().addStatement (stmtBarrier);
 	}

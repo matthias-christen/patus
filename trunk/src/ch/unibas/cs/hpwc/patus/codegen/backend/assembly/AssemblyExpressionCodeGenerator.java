@@ -14,6 +14,7 @@ import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.FunctionCall;
 import cetus.hir.IDExpression;
+import cetus.hir.IntegerLiteral;
 import cetus.hir.Literal;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
@@ -26,6 +27,7 @@ import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.StencilAssemblySection.OperandWithInstructions;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -441,7 +443,9 @@ public class AssemblyExpressionCodeGenerator
 		StencilNode nodeTest = new StencilNode (node);
 		for (int i = 0; i < nUnrollFactor; i++)
 		{
-			nodeTest.getSpaceIndex ()[0] = node.getSpaceIndex ()[0] + i;
+//			nodeTest.getSpaceIndex ()[0] = node.getSpaceIndex ()[0] + i;
+			nodeTest.getIndex ().setSpaceIndex (0, ExpressionUtil.add (node.getIndex ().getSpaceIndex (0), new IntegerLiteral (i)));
+			
 			IOperand.IRegisterOperand op = m_mapReuseNodesToRegisters.get (nodeTest);
 			if (op == null)
 			{

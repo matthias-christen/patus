@@ -10,7 +10,16 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.representation;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+
+import cetus.hir.BinaryExpression;
+import cetus.hir.BinaryOperator;
+import cetus.hir.Expression;
+import cetus.hir.IntegerLiteral;
+import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 
 
 /**
@@ -30,7 +39,7 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 	/**
 	 * The spatial index
 	 */
-	private int[] m_rgSpaceIndex;
+	private Expression[] m_rgSpaceIndex;
 
 	/**
 	 * The vector index
@@ -190,8 +199,30 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 			m_rgSpaceIndex = null;
 		else
 		{
-			m_rgSpaceIndex = new int[rgSpaceIndex.length];
-			System.arraycopy (rgSpaceIndex, 0, m_rgSpaceIndex, 0, rgSpaceIndex.length);
+			m_rgSpaceIndex = new Expression[rgSpaceIndex.length];
+			for (int i = 0; i < rgSpaceIndex.length; i++)
+				m_rgSpaceIndex[i] = new IntegerLiteral (rgSpaceIndex[i]);
+		}
+
+		// copy the vector index
+		m_nVectorIndex = nVectorIndex;
+
+		m_bIsAdvanceableInTime = bIsAdvanceableInTime;
+	}
+	
+	public Index (int nTimeIndex, Expression[] rgSpaceIndex, int nVectorIndex, boolean bIsAdvanceableInTime)
+	{
+		// copy the time index
+		m_nTimeIndex = nTimeIndex;
+
+		// copy the spatial index
+		if (rgSpaceIndex == null)
+			m_rgSpaceIndex = null;
+		else
+		{
+			m_rgSpaceIndex = new Expression[rgSpaceIndex.length];
+			for (int i = 0; i < rgSpaceIndex.length; i++)
+				m_rgSpaceIndex[i] = rgSpaceIndex[i].clone ();
 		}
 
 		// copy the vector index
@@ -208,7 +239,7 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 	 */
 	public Index (Index index)
 	{
-		this (index.getTimeIndex (), index.getSpaceIndex (), index.getVectorIndex (), index.isAdvanceableInTime ());
+		this (index.getTimeIndex (), index.getSpaceIndexEx (), index.getVectorIndex (), index.isAdvanceableInTime ());
 	}
 
 	/**
@@ -233,6 +264,41 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 	}
 
 	/**
+	 * Sets the index's temporal index. The list must have exactly one entry,
+	 * which must be either a number or an expression evaluating to a number.
+	 * Otherwise an exception will be thrown.
+	 * 
+	 * @param listTimeIndex
+	 *            The list of temporal indices
+	 */
+	public void setTimeIndex (List<?> listTimeIndex)
+	{
+		if (listTimeIndex == null || listTimeIndex.size () == 0)
+			return;
+		if (listTimeIndex.size () > 1)
+			throw new RuntimeException ("The list of time indices must have exactly one entry");
+		
+		Object oIdx = listTimeIndex.iterator ().next ();
+		if (oIdx instanceof Number)
+			setTimeIndex (((Number) oIdx).intValue ());
+		else if (oIdx instanceof Expression)
+		{
+			Integer nIdx = ExpressionUtil.getIntegerValueEx ((Expression) oIdx);
+			if (nIdx == null)
+				throw new RuntimeException ("The time index must be either a number or an expression evaluating to a number.");
+			
+			setTimeIndex (nIdx);
+		}
+		else
+			throw new RuntimeException ("The time index must be either a number or an expression evaluating to a number.");
+	}
+	
+	public void setTimeIndex (List<?> listTimeIndex, List<Expression> listOffset)
+	{
+		setTimeIndex (offsetIndex (listTimeIndex, listOffset));
+	}
+
+	/**
 	 * Returns the spatial component of the index.
 	 * 
 	 * @return The part describing the location of the plane in space
@@ -240,7 +306,73 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 	@Override
 	public int[] getSpaceIndex ()
 	{
+		int[] rgIdx = new int[m_rgSpaceIndex.length];
+		for (int i = 0; i < m_rgSpaceIndex.length; i++)
+		{
+			if (!(m_rgSpaceIndex[i] instanceof IntegerLiteral))
+			{
+				m_rgSpaceIndex[i] = Symbolic.simplify (m_rgSpaceIndex[i]);
+				if (!(m_rgSpaceIndex[i] instanceof IntegerLiteral))
+					throw new RuntimeException ("Not all indices are integer literals");
+			}
+			
+			rgIdx[i] = (int) ((IntegerLiteral) m_rgSpaceIndex[i]).getValue ();
+		}
+		
+		return rgIdx;
+	}
+	
+	public Expression[] getSpaceIndexEx ()
+	{
 		return m_rgSpaceIndex;
+	}
+
+	/**
+	 * Retrieves one coordinate of the spatial index.
+	 * 
+	 * @param nDim
+	 *            The dimension for which to retrieve the spatial index
+	 *            coordinate
+	 * @return The spatial index in dimension <code>nDim</code>
+	 * @throws IndexOutOfBoundsException
+	 */
+	public Expression getSpaceIndex (int nDim)
+	{
+		return m_rgSpaceIndex[nDim];
+	}
+	
+	public void setSpaceIndex (int nDim, int nIdxValue)
+	{
+		Expression[] rgSpaceIdxOld = m_rgSpaceIndex;
+		if (m_rgSpaceIndex == null || nDim >= m_rgSpaceIndex.length)
+		{
+			m_rgSpaceIndex = new Expression[nDim + 1];
+			if (rgSpaceIdxOld != null)
+			{
+				System.arraycopy (rgSpaceIdxOld, 0, m_rgSpaceIndex, 0, rgSpaceIdxOld.length);
+				for (int i = rgSpaceIdxOld.length; i <= nDim; i++)
+					m_rgSpaceIndex[i] = new IntegerLiteral (0);
+			}
+		}
+		
+		m_rgSpaceIndex[nDim] = new IntegerLiteral (nIdxValue);
+	}
+	
+	public void setSpaceIndex (int nDim, Expression exprIdxValue)
+	{
+		Expression[] rgSpaceIdxOld = m_rgSpaceIndex;
+		if (m_rgSpaceIndex == null || nDim >= m_rgSpaceIndex.length)
+		{
+			m_rgSpaceIndex = new Expression[nDim + 1];
+			if (rgSpaceIdxOld != null)
+			{
+				System.arraycopy (rgSpaceIdxOld, 0, m_rgSpaceIndex, 0, rgSpaceIdxOld.length);
+				for (int i = rgSpaceIdxOld.length; i <= nDim; i++)
+					m_rgSpaceIndex[i] = new IntegerLiteral (0);
+			}
+		}
+		
+		m_rgSpaceIndex[nDim] = exprIdxValue;		
 	}
 
 	/**
@@ -258,8 +390,10 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 		}
 
 		if (m_rgSpaceIndex == null || m_rgSpaceIndex.length != rgSpaceIndex.length)
-			m_rgSpaceIndex = new int[rgSpaceIndex.length];
-		System.arraycopy (rgSpaceIndex, 0, m_rgSpaceIndex, 0, rgSpaceIndex.length);
+			m_rgSpaceIndex = new Expression[rgSpaceIndex.length];
+		
+		for (int i = 0; i < rgSpaceIndex.length; i++)
+			m_rgSpaceIndex[i] = new IntegerLiteral (rgSpaceIndex[i]);
 	}
 
 	/**
@@ -268,7 +402,7 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 	 * @param listSpaceIndex
 	 *            The new spatial index
 	 */
-	public void setSpaceIndex (List<Integer> listSpaceIndex)
+	public void setSpaceIndex (List<?> listSpaceIndex)
 	{
 		if (listSpaceIndex == null)
 		{
@@ -277,15 +411,35 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 		}
 
 		if (m_rgSpaceIndex == null || m_rgSpaceIndex.length != listSpaceIndex.size ())
-			m_rgSpaceIndex = new int[listSpaceIndex.size ()];
+			m_rgSpaceIndex = new Expression[listSpaceIndex.size ()];
 		int i = 0;
-		for (int n : listSpaceIndex)
+		for (Object oIdx : listSpaceIndex)
 		{
-			m_rgSpaceIndex[i] = n;
+			if (oIdx instanceof Number)
+				m_rgSpaceIndex[i] = new IntegerLiteral (((Number) oIdx).intValue ());
+			else if (oIdx instanceof Expression)
+				m_rgSpaceIndex[i] = Symbolic.simplify ((Expression) oIdx);
+			else
+				throw new RuntimeException ("Entries in the index space list must be either numbers or expressions.");
+			
 			i++;
 		}
 	}
-
+	
+	/**
+	 * Sets the index's spatial coordinates to <code>listSpaceInex</code> +
+	 * <code>listOffsets</code> (elementwise addition).
+	 * 
+	 * @param listSpaceIndex
+	 *            The list of indices
+	 * @param listOffsets
+	 *            The list of offsets
+	 */
+	public void setSpaceIndex (List<?> listSpaceIndex, List<Expression> listOffsets)
+	{
+		setSpaceIndex (offsetIndex (listSpaceIndex, listOffsets));
+	}
+	
 	/**
 	 * Returns the vector component of the index.
 	 * 
@@ -361,14 +515,40 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 		// ensure that the space index array is large enough
 		if (rgSpaceOffset.length > m_rgSpaceIndex.length)
 		{
-			int[] rgTmpSpaceIndex = new int[rgSpaceOffset.length];
+			Expression[] rgTmpSpaceIndex = new Expression[rgSpaceOffset.length];
 			System.arraycopy (m_rgSpaceIndex, 0, rgTmpSpaceIndex, 0, m_rgSpaceIndex.length);
+			
+			for (int i = m_rgSpaceIndex.length; i < rgSpaceOffset.length; i++)
+				rgTmpSpaceIndex[i] = new IntegerLiteral (0);
+
 			m_rgSpaceIndex = rgTmpSpaceIndex;
 		}
 
 		// offset the spatial index
 		for (int i = 0; i < rgSpaceOffset.length; i++)
-			m_rgSpaceIndex[i] += rgSpaceOffset[i];
+			m_rgSpaceIndex[i] = ExpressionUtil.add (m_rgSpaceIndex[i], new IntegerLiteral (rgSpaceOffset[i]));
+	}
+	
+	public void offsetInSpace (Expression[] rgSpaceOffset)
+	{
+		if (m_rgSpaceIndex == null || m_rgSpaceIndex.length == 0)
+			return;
+
+		// ensure that the space index array is large enough
+		if (rgSpaceOffset.length > m_rgSpaceIndex.length)
+		{
+			Expression[] rgTmpSpaceIndex = new Expression[rgSpaceOffset.length];
+			System.arraycopy (m_rgSpaceIndex, 0, rgTmpSpaceIndex, 0, m_rgSpaceIndex.length);
+			
+			for (int i = m_rgSpaceIndex.length; i < rgSpaceOffset.length; i++)
+				rgTmpSpaceIndex[i] = new IntegerLiteral (0);
+
+			m_rgSpaceIndex = rgTmpSpaceIndex;
+		}
+
+		// offset the spatial index
+		for (int i = 0; i < rgSpaceOffset.length; i++)
+			m_rgSpaceIndex[i] = ExpressionUtil.add (m_rgSpaceIndex[i], rgSpaceOffset[i].clone ());		
 	}
 
 	/**
@@ -388,13 +568,55 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 		// ensure that the space index array is large enough
 		if (nDirection >= m_rgSpaceIndex.length)
 		{
-			int[] rgTmpSpaceIndex = new int[nSpaceOffset + 1];
+			Expression[] rgTmpSpaceIndex = new Expression[nDirection + 1];
 			System.arraycopy (m_rgSpaceIndex, 0, rgTmpSpaceIndex, 0, m_rgSpaceIndex.length);
+			
+			for (int i = m_rgSpaceIndex.length; i <= nDirection; i++)
+				rgTmpSpaceIndex[i] = new IntegerLiteral (0);
+
 			m_rgSpaceIndex = rgTmpSpaceIndex;
 		}
 
 		// offset the spatial index
-		m_rgSpaceIndex[nDirection] += nSpaceOffset;
+		m_rgSpaceIndex[nDirection] = ExpressionUtil.add (m_rgSpaceIndex[nDirection], new IntegerLiteral (nSpaceOffset));
+	}
+	
+	private static List<Expression> offsetIndex (List<?> listSpaceIndex, List<Expression> listOffsets)
+	{
+		List<Expression> listResult = new ArrayList<> (listSpaceIndex.size ());
+
+		Iterator<?> itSpaceIdx = listSpaceIndex.iterator ();
+		Iterator<Expression> itOffset = listOffsets == null ? null : listOffsets.iterator ();
+		
+		while (itSpaceIdx.hasNext () && itOffset != null && itOffset.hasNext ())
+		{
+			Object oIdx = itSpaceIdx.next ();
+			Expression exprOffset = itOffset.next ();
+			
+			Expression exprIdx = null;
+			if (oIdx instanceof Number)
+				exprIdx = new IntegerLiteral (((Number) oIdx).longValue ());
+			else if (oIdx instanceof Expression)
+				exprIdx = (Expression) oIdx;
+			else
+				throw new RuntimeException ("Entries in the index space list must be either numbers or expressions.");
+
+			listResult.add (new BinaryExpression (exprIdx.clone (), BinaryOperator.ADD, exprOffset.clone ()));
+		}
+		
+		while (itSpaceIdx.hasNext ())
+		{
+			Object oIdx = itSpaceIdx.next ();
+			
+			if (oIdx instanceof Number)
+				listResult.add (new IntegerLiteral (((Number) oIdx).longValue ()));
+			else if (oIdx instanceof Expression)
+				listResult.add ((Expression) oIdx);
+			else
+				throw new RuntimeException ("Entries in the index space list must be either numbers or expressions.");
+		}
+
+		return listResult;
 	}
 
 
@@ -459,7 +681,7 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 			if (m_rgSpaceIndex.length != idx.m_rgSpaceIndex.length)
 				return false;
 			for (int i = 0; i < m_rgSpaceIndex.length; i++)
-				if (m_rgSpaceIndex[i] != idx.m_rgSpaceIndex[i])
+				if (!m_rgSpaceIndex[i].equals (idx.m_rgSpaceIndex[i]))
 					return false;
 		}
 
@@ -475,9 +697,9 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 		if (m_rgSpaceIndex != null)
 		{
 			int nMultiplicator = 10;
-			for (int m : m_rgSpaceIndex)
+			for (Expression expr : m_rgSpaceIndex)
 			{
-				nHashCode += m * nMultiplicator;
+				nHashCode += expr.hashCode () * nMultiplicator;
 				nMultiplicator *= 3;
 			}
 		}
@@ -494,7 +716,7 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 	{
 		if (m_nTimeIndex != idx.getTimeIndex ())
 			return m_nTimeIndex - idx.getTimeIndex ();
-		int nResult = IndexSetUtil.SPACE_INDEX_COMPARATOR.compare (m_rgSpaceIndex, idx.getSpaceIndex ());
+		int nResult = IndexSetUtil.SPACE_INDEX_COMPARATOR.compare (m_rgSpaceIndex, idx.getSpaceIndexEx ());
 		if (nResult != 0)
 			return nResult;
 		if (m_nVectorIndex != idx.getVectorIndex ())

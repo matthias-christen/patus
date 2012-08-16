@@ -32,6 +32,8 @@ import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Traversable;
 import cetus.hir.Typecast;
+import cetus.hir.UnaryExpression;
+import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.analysis.HIRAnalyzer;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.symbolic.ExpressionData;
@@ -140,15 +142,16 @@ public class ExpressionUtil
 			return ((IntegerLiteral) literal).getValue () == nValue;
 		return false;
 	}
-
+	
 	/**
 	 * Tries to extract an integer constant from <code>expr</code>.
 	 * 
 	 * @param expr
 	 *            The expression from which to extract an integer constant
-	 * @return The integer represented by <code>expr</code>
+	 * @return The integer represented by <code>expr</code> or <code>null</code>
+	 *         if <code>expr</code> is no integer
 	 */
-	public static int getIntegerValue (Expression expr)
+	public static Integer getIntegerValueEx (Expression expr)
 	{
 		if (expr instanceof IntegerLiteral)
 			return (int) ((IntegerLiteral) expr).getValue ();
@@ -162,9 +165,51 @@ public class ExpressionUtil
 		if (exprSimple instanceof FloatLiteral)
 			return (int) ((FloatLiteral) exprSimple).getValue ();
 
-        throw new RuntimeException ("Cannot extract integer value");
+		return null;
 	}
 
+	/**
+	 * Tries to extract an integer constant from <code>expr</code>.
+	 * 
+	 * @param expr
+	 *            The expression from which to extract an integer constant
+	 * @return The integer represented by <code>expr</code>
+	 * @throws RuntimeException if <code>expr</code> is no integer
+	 */
+	public static int getIntegerValue (Expression expr)
+	{
+		Integer nResult = ExpressionUtil.getIntegerValueEx (expr);
+
+		if (nResult == null)
+			throw new RuntimeException ("Cannot extract integer value");
+		return nResult;
+	}
+
+	/**
+	 * Tries to extract a numerical value from the expression <code>expr</code>.
+	 * 
+	 * @param expr
+	 *            The expression from which to extract a numerical value
+	 * @return The numerical value of expression <code>expr</code> or <code>null</code>
+	 *         if <code>expr</code> is no float value
+	 */
+	public static Double getFloatValueEx (Expression expr)
+	{
+		if (expr instanceof IntegerLiteral)
+			return new Double (((IntegerLiteral) expr).getValue ());
+		if (expr instanceof FloatLiteral)
+			return ((FloatLiteral) expr).getValue ();
+
+		// try to simplify the expression
+		Expression exprSimple = Symbolic.simplify (expr);
+		if (exprSimple instanceof IntegerLiteral)
+			return new Double (((IntegerLiteral) exprSimple).getValue ());
+		if (exprSimple instanceof FloatLiteral)
+			return ((FloatLiteral) exprSimple).getValue ();
+
+		return null;
+	}
+	
 	/**
 	 * Tries to extract a numerical value from the expression <code>expr</code>.
 	 * If the expression contains an essential variable, a runtime exception is
@@ -173,22 +218,15 @@ public class ExpressionUtil
 	 * @param expr
 	 *            The expression from which to extract a numerical value
 	 * @return The numerical value of expression <code>expr</code>
+	 * @throws RuntimeException if <code>expr</code> is no float value
 	 */
 	public static double getFloatValue (Expression expr)
 	{
-		if (expr instanceof IntegerLiteral)
-			return ((IntegerLiteral) expr).getValue ();
-		if (expr instanceof FloatLiteral)
-			return ((FloatLiteral) expr).getValue ();
-
-		// try to simplify the expression
-		Expression exprSimple = Symbolic.simplify (expr);
-		if (exprSimple instanceof IntegerLiteral)
-			return ((IntegerLiteral) exprSimple).getValue ();
-		if (exprSimple instanceof FloatLiteral)
-			return ((FloatLiteral) exprSimple).getValue ();
-
-        throw new RuntimeException ("Cannot extract float value");
+		Double fResult = ExpressionUtil.getFloatValueEx (expr);
+		
+		if (fResult == null)
+	        throw new RuntimeException ("Cannot extract float value");
+		return fResult;
 	}
 
 	/**
@@ -438,11 +476,14 @@ public class ExpressionUtil
 		double fMin = Double.MAX_VALUE;
 		for (Expression expr : rgExprs)
 		{
+			if (expr == null)
+				continue;
+			
 			if (expr instanceof IntegerLiteral)
 				nMin = Math.min (nMin, ((IntegerLiteral) expr).getValue ());
 			else if (expr instanceof FloatLiteral)
 				fMin = Math.min (fMin, ((FloatLiteral) expr).getValue ());
-			else
+			else if (!listArgs.contains (expr))	// avoid duplicates
 				listArgs.add (expr.clone ());
 		}
 
@@ -507,11 +548,14 @@ public class ExpressionUtil
 		double fMax = Double.MIN_VALUE;
 		for (Expression expr : rgExprs)
 		{
+			if (expr == null)
+				continue;
+			
 			if (expr instanceof IntegerLiteral)
 				nMax = Math.max (nMax, ((IntegerLiteral) expr).getValue ());
 			else if (expr instanceof FloatLiteral)
 				fMax = Math.max (fMax, ((FloatLiteral) expr).getValue ());
-			else
+			else if (!listArgs.contains (expr))
 				listArgs.add (expr.clone ());
 		}
 
@@ -848,8 +892,7 @@ public class ExpressionUtil
 	}
 	
 	/**
-	 * Creates a {@link FloatLiteral} for the datatype <code>specDatatype</code>
-	 * .
+	 * Creates a {@link FloatLiteral} for the datatype <code>specDatatype</code>.
 	 * 
 	 * @param fValue
 	 *            The value of the literal
@@ -861,5 +904,85 @@ public class ExpressionUtil
 	public static FloatLiteral createFloatLiteral (double fValue, Specifier specDatatype)
 	{
 		return new FloatLiteral (fValue, specDatatype.equals (Specifier.FLOAT) ? "f" : "");
+	}
+
+	/**
+	 * Computes <code>a</code> % <code>b</code>.
+	 * 
+	 * @param a
+	 * @param b
+	 * @return An expression implementing <code>a</code> % <code>b</code> or the
+	 *         value if both <code>a</code> and <code>b</code> are
+	 *         {@link IntegerLiteral}s
+	 */
+	public static Expression mod (Expression a, Expression b)
+	{
+		try
+		{
+			int nValA = ExpressionUtil.getIntegerValue (a);
+			int nValB = ExpressionUtil.getIntegerValue (b);
+			
+			return new IntegerLiteral (nValA % nValB);
+		}
+		catch (RuntimeException e)
+		{
+			return new BinaryExpression (a.clone (), BinaryOperator.MODULUS, b.clone ());
+		}
+	}
+
+	/**
+	 * Computes <code>a</code> + <code>b</code>.
+	 * 
+	 * @param a
+	 * @param b
+	 * @return An expression implementing <code>a</code> + <code>b</code> or the
+	 *         value if both <code>a</code> and <code>b</code> are
+	 *         {@link IntegerLiteral}s
+	 */
+	public static Expression add (Expression a, Expression b)
+	{
+		Integer nValA = ExpressionUtil.getIntegerValueEx (a);
+		Integer nValB = ExpressionUtil.getIntegerValueEx (b);
+		
+		if (nValA != null)
+		{
+			if (nValB != null)
+				return new IntegerLiteral (nValA + nValB);
+			if (nValA == 0)
+				return b;
+			return new BinaryExpression (a.clone (), BinaryOperator.ADD, b.clone ());				
+		}
+
+		if (nValB != null && nValB == 0)
+			return a;
+		return new BinaryExpression (a.clone (), BinaryOperator.ADD, b.clone ());
+	}
+
+	/**
+	 * Computes <code>a</code> - <code>b</code>.
+	 * 
+	 * @param a
+	 * @param b
+	 * @return An expression implementing <code>a</code> - <code>b</code> or the
+	 *         value if both <code>a</code> and <code>b</code> are
+	 *         {@link IntegerLiteral}s
+	 */
+	public static Expression subtract (Expression a, Expression b)
+	{
+		Integer nValA = ExpressionUtil.getIntegerValueEx (a);
+		Integer nValB = ExpressionUtil.getIntegerValueEx (b);
+		
+		if (nValA != null)
+		{
+			if (nValB != null)
+				return new IntegerLiteral (nValA - nValB);
+			if (nValA == 0)
+				return new UnaryExpression (UnaryOperator.MINUS, b.clone ());
+			return new BinaryExpression (a.clone (), BinaryOperator.SUBTRACT, b.clone ());				
+		}
+
+		if (nValB != null && nValB == 0)
+			return a;
+		return new BinaryExpression (a.clone (), BinaryOperator.SUBTRACT, b.clone ());
 	}
 }

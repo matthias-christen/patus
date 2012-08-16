@@ -21,33 +21,36 @@ public class FindMinNonparallelSet
 	 */
 	private static int[] isParallel (StencilNode node1, StencilNode node2)
 	{
-		if (node1.getSpaceIndex ().length != node2.getSpaceIndex ().length)
+		int[] rgSpaceIdx1 = node1.getSpaceIndex ();
+		int[] rgSpaceIdx2 = node2.getSpaceIndex ();
+		
+		if (rgSpaceIdx1.length != rgSpaceIdx2.length)
 			throw new RuntimeException ("Stencil nodes must have spatial indices of equal dimensions.");
 		
-		final int nDim = node1.getSpaceIndex ().length;
+		final int nDim = rgSpaceIdx1.length;
 		if (nDim <= 0)
 			throw new RuntimeException ("The spatial indices of stencil nodes must be at least one-dimensional.");
 				
 		int nIdx = 0;
-		while (nIdx < nDim && node1.getSpaceIndex ()[nIdx] == 0 && node2.getSpaceIndex ()[nIdx] == 0)
+		while (nIdx < nDim && rgSpaceIdx1[nIdx] == 0 && rgSpaceIdx2[nIdx] == 0)
 			nIdx++;
 		if (nIdx >= nDim)
 			return new int[nDim];	// all entries are 0
-		if (node1.getSpaceIndex ()[nIdx] == 0 || node2.getSpaceIndex ()[nIdx] == 0)
+		if (rgSpaceIdx1[nIdx] == 0 || rgSpaceIdx2[nIdx] == 0)
 			return null;	// not parallel if component nIdx of one vector is 0 and the other isn't 
 		
 		int[] rgResult = new int[nDim];
 
-		int nNumerator = node2.getSpaceIndex ()[nIdx];
-		int nDenominator = node1.getSpaceIndex ()[nIdx];
+		int nNumerator = rgSpaceIdx2[nIdx];
+		int nDenominator = rgSpaceIdx1[nIdx];
 		int nGCD = MathUtil.getGCD (nNumerator, nDenominator);
 		rgResult[nIdx] = Math.min (Math.abs (nNumerator), Math.abs (nDenominator)) / nGCD;
 		
 		for (int i = nIdx + 1; i < nDim; i++)
 		{
-			if (node2.getSpaceIndex ()[i] * nDenominator != node1.getSpaceIndex ()[i] * nNumerator)
+			if (rgSpaceIdx2[i] * nDenominator != rgSpaceIdx1[i] * nNumerator)
 				return null;	// not parallel
-			rgResult[i] = Math.min (node1.getSpaceIndex ()[i], node2.getSpaceIndex ()[i]) / nGCD;
+			rgResult[i] = Math.min (rgSpaceIdx1[i], rgSpaceIdx2[i]) / nGCD;
 		}
 		
 		return rgResult;

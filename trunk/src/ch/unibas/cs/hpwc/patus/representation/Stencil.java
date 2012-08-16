@@ -128,8 +128,8 @@ public class Stencil implements IStencilStructure, IStencilOperations
 		for (int i = m_listInputNodeSets.size (); i <= node.getIndex ().getVectorIndex (); i++)
 			m_listInputNodeSets.add (new StencilNodeSet ());
 
-		if (node.getIndex ().getSpaceIndex ().length > m_nDimensionality)
-			m_nDimensionality = (byte) node.getIndex ().getSpaceIndex ().length;
+		if (node.getIndex ().getSpaceIndexEx ().length > m_nDimensionality)
+			m_nDimensionality = (byte) node.getIndex ().getSpaceIndexEx ().length;
 
 		// add the index to the sets
 		// NOTE that the sets don't contain any duplicate nodes (even if added twice)
@@ -213,28 +213,23 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	}
 
 	@Override
-	public int[] getSpatialOutputIndex ()
+	public Expression[] getSpatialOutputIndex ()
 	{
-		int[] rgPreviousSpaceIndex = null;
+		Expression[] rgPreviousSpaceIndex = null;
 		for (StencilNode node : m_setOutputNodes)
 		{
 			// if the spatial indices differ, throw an exception
 			if (rgPreviousSpaceIndex != null)
 			{
-				if (!Arrays.equals (node.getIndex ().getSpaceIndex (), rgPreviousSpaceIndex))
+				if (!Arrays.equals (node.getIndex ().getSpaceIndexEx (), rgPreviousSpaceIndex))
 					throw new IllegalArgumentException ("The stencil can only have an output in a single output location.");
 			}
 			else
-				rgPreviousSpaceIndex = new int[node.getIndex ().getSpaceIndex ().length];
+				rgPreviousSpaceIndex = new Expression[node.getIndex ().getSpaceIndexEx ().length];
 
 			// copy the spatial index to the temporary array
-			System.arraycopy (
-				node.getIndex ().getSpaceIndex (),
-				0,
-				rgPreviousSpaceIndex,
-				0,
-				Math.min (node.getIndex ().getSpaceIndex ().length,
-				rgPreviousSpaceIndex.length));
+			for (int i = 0; i < Math.min (node.getIndex ().getSpaceIndexEx ().length, rgPreviousSpaceIndex.length); i++)
+				rgPreviousSpaceIndex[i] = node.getIndex ().getSpaceIndex (i).clone ();
 		}
 
 		return rgPreviousSpaceIndex;
@@ -361,6 +356,15 @@ public class Stencil implements IStencilStructure, IStencilOperations
 			node.getIndex ().offsetInSpace (rgSpaceOffset);
 		for (StencilNode node : m_setOutputNodes)
 			node.getIndex ().offsetInSpace (rgSpaceOffset);
+	}
+	
+	@Override
+	public void offsetInSpace (Expression[] rgSpaceOffset)
+	{
+		for (StencilNode node : m_setAllInputNodes)
+			node.getIndex ().offsetInSpace (rgSpaceOffset);
+		for (StencilNode node : m_setOutputNodes)
+			node.getIndex ().offsetInSpace (rgSpaceOffset);		
 	}
 
 	@Override
@@ -508,8 +512,8 @@ public class Stencil implements IStencilStructure, IStencilOperations
 			{
 				StencilNode node = (StencilNode) obj;
 				List<Expression> listIndices = new ArrayList<> ();
-				for (int i : node.getSpaceIndex ())
-					listIndices.add (new IntegerLiteral (i));
+				for (Expression e : node.getIndex ().getSpaceIndexEx ())
+					listIndices.add (e.clone ());
 				listIndices.add (new IntegerLiteral (node.getIndex ().getTimeIndex ()));
 				listIndices.add (new IntegerLiteral (node.getIndex ().getVectorIndex ()));
 				node.swapWith (new ArrayAccess (new NameID (node.getName ()), listIndices));

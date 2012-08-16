@@ -6,6 +6,7 @@ package ch.unibas.cs.hpwc.patus.representation;
 import java.util.Iterator;
 import java.util.Set;
 
+import cetus.hir.Expression;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 
 /**
@@ -74,7 +75,7 @@ public interface IStencilStructure extends Iterable<StencilNode>
 	 * is thrown.
 	 * @return The spatial location of the output index.
 	 */
-	public abstract int[] getSpatialOutputIndex ();
+	public abstract Expression[] getSpatialOutputIndex ();
 
 	/**
 	 * Returns the output indices of the stencil structure.

@@ -17,8 +17,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import cetus.hir.BinaryExpression;
+import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.FloatLiteral;
+import cetus.hir.IDExpression;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.PointerSpecifier;
@@ -34,6 +37,7 @@ import ch.unibas.cs.hpwc.patus.geometry.Vector;
 import ch.unibas.cs.hpwc.patus.grammar.stencil.Parser;
 import ch.unibas.cs.hpwc.patus.grammar.stencil.Scanner;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -276,11 +280,6 @@ public class StencilCalculation
 	private Expression m_exprMaxIter;
 
 	/**
-	 * The domain filter
-	 */
-	private DomainFilter m_filter;
-
-	/**
 	 * The symbolic size of the grid on which the stencil is executed
 	 */
 	private Box m_boxDomain;
@@ -391,30 +390,6 @@ public class StencilCalculation
 		m_stencilInitialization = stencilInitialization;
 	}
 
-	/**
-	 *
-	 * @param filter
-	 */
-	public void setDomainFilter (DomainFilter filter)
-	{
-		m_filter = filter;
-	}
-
-	public DomainFilter getDomainFilter ()
-	{
-		return m_filter;
-	}
-
-	public void setBoundaryTreatment ()
-	{
-
-	}
-
-//	public void setStoppingCriteria ()
-//	{
-//
-//	}
-
 	public void setMaxIterations (Expression exprMaxIter)
 	{
 		if (exprMaxIter == null)
@@ -426,6 +401,37 @@ public class StencilCalculation
 			else
 				m_exprMaxIter = exprMaxIter.clone ();
 		}
+	}
+	
+	public void setIterateWhile (Expression exprIterateWhile)
+	{
+		// TODO: implement stopping criterion / reductions
+		
+		if (exprIterateWhile instanceof BinaryExpression)
+		{
+			BinaryExpression bexprIterateWhile = (BinaryExpression) exprIterateWhile;
+			if (bexprIterateWhile.getLHS () instanceof IDExpression && ((IDExpression) bexprIterateWhile.getLHS ()).getName ().equals ("t"))
+			{
+				Integer nMaxIter = ExpressionUtil.getIntegerValueEx (bexprIterateWhile.getRHS ());
+				if (nMaxIter != null)
+				{
+					BinaryOperator op = ((BinaryExpression) exprIterateWhile).getOperator ();
+					if (op.equals (BinaryOperator.COMPARE_LT))
+					{
+						m_exprMaxIter = new IntegerLiteral (nMaxIter);
+						return;
+					}
+					else if (op.equals (BinaryOperator.COMPARE_LE))
+					{
+						m_exprMaxIter = new IntegerLiteral (nMaxIter + 1);
+						return;
+					}
+				}
+			}
+				
+		}
+
+		throw new RuntimeException ("Currently, only 'iterate while {condition}' statements are supported where {condition} is of the form 't < {value}', where {value} evaluates to an integer number");
 	}
 
 	/**
@@ -634,11 +640,11 @@ public class StencilCalculation
 	public String toString ()
 	{
 		return StringUtil.concat (
-			"> Stencil \"", m_strName, "\":\n",
-			m_stencil,
-			"\n\n> Filter:\n",
-			"\n\n> Boundary Treatment:\n",
-			"\n\n> Stopping Criteria:\n");
+			"> Stencil \"", m_strName, "\":\n",	m_stencil,
+			"\n\n> Boundaries:\n",
+			"\n\n> Initialization:\n",
+			"\n\n> Iterate while:\n"
+		);
 	}
 
 	public String getStencilExpressions ()

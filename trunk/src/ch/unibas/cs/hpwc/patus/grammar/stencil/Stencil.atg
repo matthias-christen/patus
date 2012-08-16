@@ -29,7 +29,6 @@ import cetus.hir.FunctionCall;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.Literal;
 import cetus.hir.NameID;
-import cetus.hir.Procedure;
 import cetus.hir.Specifier;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
@@ -37,7 +36,6 @@ import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
 import ch.unibas.cs.hpwc.patus.geometry.Point;
-import ch.unibas.cs.hpwc.patus.representation.DomainFilter;
 import ch.unibas.cs.hpwc.patus.representation.Index;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilBundle;
@@ -716,12 +714,6 @@ PRODUCTIONS                                                                     
         	StencilMaxIter<out Expression exprMaxIter>                         (. if (m_bMaxIterSet) errors.SemErr (la.line, la.col, "Found multiple t_max definitions. All but the first one are ignored."); else { m_stencil.setMaxIterations (exprMaxIter); m_bMaxIterSet = true; }.)
         	|
         	StencilOperation<out StencilBundle bundle>                         (. if (m_stencil.getStencilBundle () != null) errors.SemErr (la.line, la.col, "Found multiple stencil definitions. All but the first are ignored."); else m_stencil.setStencil (bundle); .)
-        	//|
-        	//[ StencilBoundary<out proc> ]
-        	//|
-       		//StencilFilter<out DomainFilter filter>                           (. m_stencil.setDomainFilter (filter); .)
-        	//|
-        	//StencilStoppingCriteria<out Procedure procStoppingCriteria>      (. m_stencil.setStoppingCriteria (); .)
         }
         '}'                                                                    (. setStencilOperationArguments (); checkDefinitions (); .)
         .
@@ -787,41 +779,6 @@ PRODUCTIONS                                                                     
         '}'                                                                    
         .
         
-	//StencilBoundary<out Procedure proc> =
-	// 	"boundary"
-	//	'('
-	//		...
-	//	')'
-    //	'{'
-    //		...
-    //	'}'
-    //	.
-
-	/**
-	 * Domain point filter: which grid points are selected, given a iteration number (time) t0.
-	 * E.g., the standard implementation selects all the grid points for each time step,
-	 * Red Black alternates between points with "odd" and "even" spatial indices, etc.
-	 */
-	StencilFilter<out DomainFilter filter> =                                   (. filter = null; .)
-		SYNC "filter"
-		'('
-		')'
-		'{'
-		'}'
-		.
-		
-	/**
-	 * Defines stopping criteria for the stencil operation.
-	 * Could either be some fixed number of timesteps or based on some convergence check.
-	 */
-	StencilStoppingCriteria<out Procedure proc> =                              (. proc = null; .)
-		SYNC "stoppingcriteria"
-		'('
-		')'
-		'{'
-		'}'
-		.
-
     
 	// -------- Stencil Operation --------
         
@@ -907,7 +864,7 @@ PRODUCTIONS                                                                     
     		ScalarAssignment<out ExpressionData exprAssign, stencil>           (. if (exprAssign != null) stencil.setExpression (exprAssign); .)
     	)
     	SYNC ';'                                                               (. try { if (!stencil.isEmpty ()) bundle.addStencil (stencil); } catch (NoSuchMethodException e) { e.printStackTrace (); }.)
-    	. 
+    	.
     	
     ScalarAssignment<out ExpressionData exprAssignment, Stencil stencil> =     (. exprAssignment = null; Specifier specType = Specifier.FLOAT; .)
     	(

@@ -15,6 +15,7 @@ import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.backend.BackendFactory;
 import ch.unibas.cs.hpwc.patus.codegen.backend.IBackend;
+import ch.unibas.cs.hpwc.patus.codegen.computation.StencilCalculationCodeGenerator;
 
 /**
  *

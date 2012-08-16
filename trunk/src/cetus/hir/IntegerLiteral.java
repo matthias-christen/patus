@@ -1,8 +1,7 @@
 package cetus.hir;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.util.*;
+import java.io.PrintWriter;
+import java.lang.reflect.Method;
 
 /** Represents an integer literal in the program. */
 public class IntegerLiteral extends Literal

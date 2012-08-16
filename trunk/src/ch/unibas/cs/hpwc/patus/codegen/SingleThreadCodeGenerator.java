@@ -23,6 +23,7 @@ import cetus.hir.IfStatement;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.analysis.StrategyAnalyzer;
+import ch.unibas.cs.hpwc.patus.ast.Loop;
 import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
@@ -128,21 +129,31 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 			return new StatementListBundle ((Statement) trvInput);
 		return new StatementListBundle ();
 	}
+	
+	private boolean isOuterMostTemporalLoop (RangeIterator it)
+	{
+		return it.getLoopIndex ().equals (m_data.getCodeGenerators ().getStrategyAnalyzer ().getTimeIndexVariable ());		
+	}
 
 	/**
-	 * Executes a range iterator.
+	 * Generates code for a range iterator.
 	 * @param it
 	 */
 	protected StatementListBundle generateRangeIterator (RangeIterator it, CodeGeneratorRuntimeOptions options)
 	{
+		boolean bIsIteratorNeeded = !options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_INITIALIZE) ||
+			!isOuterMostTemporalLoop (it);
+		
 		if (!it.getNumberOfThreads ().equals (Globals.ONE))
 			throw new RuntimeException ("Parallel loops are not supported");
 
-		StatementListBundle slbGenerated = new StatementListBundle (new ArrayList<Statement> ());
-		slbGenerated.addStatement (new AnnotationStatement (new CommentAnnotation (it.getLoopHeadAnnotation ())));
-
 		// generate the code for the loop body
 		StatementListBundle slbLoopBody = generate (it.getLoopBody ().clone (), options);
+		if (!bIsIteratorNeeded)
+			return slbLoopBody;
+
+		StatementListBundle slbGenerated = new StatementListBundle (new ArrayList<Statement> ());
+		slbGenerated.addStatement (new AnnotationStatement (new CommentAnnotation (it.getLoopHeadAnnotation ())));
 
 		// generate the pointer swapping code if this is the inner most temporal loop
 		if (m_data.getCodeGenerators ().getStrategyAnalyzer ().isInnerMostTemporalLoop (it) ||
@@ -155,7 +166,7 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 	}
 
 	/**
-	 * Executes a subdomain iterator.
+	 * Generates code for a subdomain iterator.
 	 * @param it
 	 */
 	protected StatementListBundle generateSubdomainIterator (SubdomainIterator it, CodeGeneratorRuntimeOptions options)

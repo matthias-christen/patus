@@ -7,9 +7,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import cetus.hir.BinaryExpression;
+import cetus.hir.BinaryOperator;
+import cetus.hir.Expression;
+import cetus.hir.IntegerLiteral;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.representation.Index;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 
 /**
  * Finds sets of nodes which can be cyclically reused along a specific dimension. 
@@ -163,11 +168,28 @@ public class ReuseNodesCollector
 			// only every m_nSIMDVectorLengthInReuseDirection-th node falls into the same vector
 			
 			Index idx = new Index (node.getIndex ());
-			idx.getSpaceIndex ()[m_nReuseDirection] %= m_nSIMDVectorLengthInReuseDirection;
 			
+//			idx.getSpaceIndex ()[m_nReuseDirection] %= m_nSIMDVectorLengthInReuseDirection;
+//			if (idx.getSpaceIndex ()[m_nReuseDirection] < 0)
+//				idx.getSpaceIndex ()[m_nReuseDirection] += m_nSIMDVectorLengthInReuseDirection;
+			
+			Expression exprMod = ExpressionUtil.mod (idx.getSpaceIndex (m_nReuseDirection), new IntegerLiteral (m_nSIMDVectorLengthInReuseDirection));
 			// make the modulus positive
-			if (idx.getSpaceIndex ()[m_nReuseDirection] < 0)
-				idx.getSpaceIndex ()[m_nReuseDirection] += m_nSIMDVectorLengthInReuseDirection;
+			if (exprMod instanceof IntegerLiteral)
+			{
+				if (((IntegerLiteral) exprMod).getValue () < 0)
+					exprMod = new IntegerLiteral (((IntegerLiteral) exprMod).getValue () + m_nSIMDVectorLengthInReuseDirection);
+			}
+			else
+			{
+				exprMod = new BinaryExpression (
+					new BinaryExpression (exprMod, BinaryOperator.ADD, new IntegerLiteral (m_nSIMDVectorLengthInReuseDirection)),
+					BinaryOperator.MODULUS,
+					new IntegerLiteral (m_nSIMDVectorLengthInReuseDirection)
+				);
+			}
+			idx.setSpaceIndex (m_nReuseDirection, exprMod);
+			
 			
 			Map<Index, StencilNodeSet> map = mapSets.get (node.getName ());
 			if (map == null)
@@ -183,7 +205,7 @@ public class ReuseNodesCollector
 			}
 			
 			set.add (node);
-			((StencilNodeSetInfo) set.getData ()).addCoord (node.getSpaceIndex ()[m_nReuseDirection]);
+			((StencilNodeSetInfo) set.getData ()).addCoord (ExpressionUtil.getIntegerValue (node.getIndex ().getSpaceIndex (m_nReuseDirection)));
 		}
 				
 		return listSets;
@@ -246,7 +268,9 @@ public class ReuseNodesCollector
 			for (int i = 1; i < nUnrollFactor; i++)
 			{
 				StencilNode nodeNew = new StencilNode (nodePrototype);
-				nodeNew.getSpaceIndex ()[nReuseDimension] = info.getMaxCoord () + i;
+//				nodeNew.getSpaceIndex ()[nReuseDimension] = info.getMaxCoord () + i;
+				nodeNew.getIndex ().setSpaceIndex (nReuseDimension, info.getMaxCoord () + i);
+				
 				set.add (nodeNew);
 			}
 			

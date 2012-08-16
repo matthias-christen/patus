@@ -6,6 +6,8 @@ package ch.unibas.cs.hpwc.patus.representation;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import cetus.hir.Expression;
+
 /**
  * @author Matthias-M. Christen
  *
@@ -20,6 +22,8 @@ public interface IStencilOperations
 	 * @param rgSpaceOffset The spatial offset
 	 */
 	public abstract void offsetInSpace (int[] rgSpaceOffset);
+	
+	public abstract void offsetInSpace (Expression[] rgSpaceOffset);
 
 	/**
 	 * Advances the stencil by one step in space.

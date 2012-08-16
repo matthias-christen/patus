@@ -11,6 +11,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import cetus.hir.Expression;
 import cetus.hir.IDExpression;
 import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -64,30 +65,6 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 		m_listStencils = new LinkedList<> ();
 		m_setConstantOutputNodes = new HashSet<> ();
 	}
-
-//	/**
-//	 * Copy constructor.
-//	 * @param bundle The bundle from which to create a new stencil bundle
-//	 */
-//	public StencilBundle (StencilBundle bundle)
-//	{
-//		this ();
-//
-//		try
-//		{
-//			m_stencilFused = StencilBundle.createStencilFromTemplate (bundle.getFusedStencil (), true);
-//			for (Stencil stencil : bundle)
-//				addStencilToList (StencilBundle.createStencilFromTemplate (stencil, true));
-//		}
-//		catch (SecurityException e)
-//		{
-//			e.printStackTrace();
-//		}
-//		catch (NoSuchMethodException e)
-//		{
-//			e.printStackTrace();
-//		}
-//	}
 
 	/**
 	 * Returns the fused stencil containing all the nodes of the stencils
@@ -169,8 +146,8 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 		// aligned. Note that the stencils in the list will be shifted too.
 
 		ensureFusedStencilCreated (stencil);
-		int[] rgSpaceIndexFusedStencil = m_stencilFused.getSpatialOutputIndex ();
-		int[] rgSpaceIdxNewStencil = stencil.getSpatialOutputIndex ();
+		Expression[] rgSpaceIndexFusedStencil = m_stencilFused.getSpatialOutputIndex ();
+		Expression[] rgSpaceIdxNewStencil = stencil.getSpatialOutputIndex ();
 
 		// offset the new stencil so that the output index is at the origin
 		m_stencilFused.offsetInSpace (VectorUtil.negate (rgSpaceIndexFusedStencil));
@@ -183,11 +160,11 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 
 		// TODO: check output node
 		for (StencilNode node : stencil.getOutputNodes ())
-			if (node.getSpaceIndex ().length > 0)
+			if (node.getIndex ().getSpaceIndexEx ().length > 0)
 				m_stencilFused.addOutputNode (new StencilNode (node));
 
 		// offset the stencils that are in the bundle
-		int[] rgMinSpaceIndex = VectorUtil.getMinimum (rgSpaceIndexFusedStencil, rgSpaceIdxNewStencil);
+		Expression[] rgMinSpaceIndex = VectorUtil.getMinimum (rgSpaceIndexFusedStencil, rgSpaceIdxNewStencil);
 		m_stencilFused.offsetInSpace (rgMinSpaceIndex);
 		for (Stencil s : m_listStencils)
 			s.offsetInSpace (rgMinSpaceIndex);
@@ -287,6 +264,17 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 
 	@Override
 	public void offsetInSpace (int[] rgSpaceOffset)
+	{
+		if (m_stencilFused == null)
+			return;
+
+		m_stencilFused.offsetInSpace (rgSpaceOffset);
+		for (Stencil stencil : m_listStencils)
+			stencil.offsetInSpace (rgSpaceOffset);
+	}
+	
+	@Override
+	public void offsetInSpace (Expression[] rgSpaceOffset)
 	{
 		if (m_stencilFused == null)
 			return;

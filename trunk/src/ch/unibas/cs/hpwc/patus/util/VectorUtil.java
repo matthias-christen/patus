@@ -10,6 +10,11 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.util;
 
+import cetus.hir.Expression;
+import cetus.hir.IntegerLiteral;
+import cetus.hir.UnaryExpression;
+import cetus.hir.UnaryOperator;
+
 
 /**
  * This class implements some elementwise vector operations.
@@ -39,6 +44,21 @@ public class VectorUtil
 		return nDimension;
 	}
 
+	public static <T> int getDimension (T[]... rgVectors)
+	{
+		int nDimension = Integer.MAX_VALUE;
+		for (T[] rgVector : rgVectors)
+		{
+			if (rgVector == null)
+				continue;
+			nDimension = Math.min (nDimension, rgVector.length);
+		}
+
+		if (nDimension == Integer.MAX_VALUE)
+			return 0;
+		return nDimension;
+	}
+
 	/**
 	 * Returns the minimum values in the array <code>rgVectors</code>
 	 * in the sense of an upper bound, i.e. the method computes an elementwise
@@ -55,7 +75,7 @@ public class VectorUtil
 		for (int i = 0; i < nDimension; i++)
 			rgMinimum[i] = Integer.MAX_VALUE;
 
-		// find maximum values
+		// find minimum values
 		for (int[] rgVector : rgVectors)
 		{
 			if (rgVector == null)
@@ -69,6 +89,24 @@ public class VectorUtil
 		for (int i = 0; i < nDimension; i++)
 			if (rgMinimum[i] == Integer.MAX_VALUE)
 				rgMinimum[i] = 0;
+
+		return rgMinimum;
+	}
+	
+	public static Expression[] getMinimum (Expression[]... rgVectors)
+	{
+		// get the dimension of the vectors
+		int nDimension = VectorUtil.getDimension (rgVectors);
+
+		// create the index that will contain the maximum values
+		Expression[] rgMinimum = new Expression[nDimension];
+		for (int i = 0; i < nDimension; i++)
+		{
+			Expression[] rgArgs = new Expression[rgVectors.length];
+			for (int j = 0; j < rgVectors.length; j++)
+				rgArgs[j] = rgVectors[j] == null ? null : rgVectors[j][i];
+			rgMinimum[i] = ExpressionUtil.min (rgArgs);
+		}
 
 		return rgMinimum;
 	}
@@ -153,6 +191,17 @@ public class VectorUtil
 	public static int[] negate (int[] rgVector)
 	{
 		return VectorUtil.subtract (null, rgVector);
+	}
+	
+	public static Expression[] negate (Expression[] rgVector)
+	{
+		if (rgVector == null)
+			return null;
+		
+		Expression[] rgResult = new Expression[rgVector.length];
+		for (int i = 0; i < rgVector.length; i++)
+			rgResult[i] = new UnaryExpression (UnaryOperator.MINUS, rgVector[i].clone ());
+		return rgResult;
 	}
 
 	/**

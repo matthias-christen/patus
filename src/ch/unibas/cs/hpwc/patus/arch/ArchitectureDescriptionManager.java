@@ -238,7 +238,7 @@ public class ArchitectureDescriptionManager
 		{
 			// get the parallelism level from the list; if nIdx exceeds the size of
 			// the list, this hardware doesn't have that many parallelism levels, i.e.,
-			// there are also no explicit data copies -- return false
+			// there are also no explicit data copies -- return null
 
 			for (Level level : m_type.getParallelism ().getLevel ())
 				if (level.getNumber () == nParallelismLevel)

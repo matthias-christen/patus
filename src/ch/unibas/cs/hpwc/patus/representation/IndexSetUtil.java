@@ -10,14 +10,13 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.representation;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
+
+import cetus.hir.Expression;
+import cetus.hir.IntegerLiteral;
 
 /**
  * Some utility functions used to find information and manipulate
@@ -32,7 +31,33 @@ public class IndexSetUtil
 	/**
 	 * A comparator for space indices.
 	 */
-	public static class SpaceIndexComparator implements Comparator<int[]>
+	public static class SpaceIndexComparator implements Comparator<Expression[]>
+	{
+		@Override
+		public int compare (Expression[] rgIdx1, Expression[] rgIdx2)
+		{
+			for (int i = 0; i < Math.min (rgIdx1.length, rgIdx2.length); i++)
+			{
+				if ((rgIdx1[i] instanceof IntegerLiteral) && (rgIdx2[i] instanceof IntegerLiteral))
+				{
+					long v1 = ((IntegerLiteral) rgIdx1[i]).getValue ();
+					long v2 = ((IntegerLiteral) rgIdx2[i]).getValue ();
+					
+					if (v1 < v2)
+						return -1;
+					else if (v1 > v2)
+						return 1;
+				}
+			}
+
+			return 0;
+		}
+	}
+
+	/**
+	 * A comparator for space indices.
+	 */
+	public static class SpaceIndexComparatorOld implements Comparator<int[]>
 	{
 		@Override
 		public int compare (int[] rgIdx1, int[] rgIdx2)
@@ -49,80 +74,80 @@ public class IndexSetUtil
 		}
 	}
 
-	/**
-	 * A class encapsulating an <code>int[]</code> space index.
-	 */
-	private static class SpaceIndex
-	{
-		private int[] m_rgIndex;
-
-//		public SpaceIndex (int[] rgIndex)
+//	/**
+//	 * A class encapsulating an <code>int[]</code> space index.
+//	 */
+//	private static class SpaceIndex
+//	{
+//		private int[] m_rgIndex;
+//
+////		public SpaceIndex (int[] rgIndex)
+////		{
+////			this (rgIndex, rgIndex.length);
+////		}
+//
+//		public SpaceIndex (int[] rgIndex, int nDimension)
 //		{
-//			this (rgIndex, rgIndex.length);
+//			setIndex (rgIndex, nDimension);
 //		}
-
-		public SpaceIndex (int[] rgIndex, int nDimension)
-		{
-			setIndex (rgIndex, nDimension);
-		}
-
-		public void setIndex (int[] rgIndex, int nDimension)
-		{
-			if (rgIndex.length == nDimension)
-				m_rgIndex = rgIndex;
-			else
-			{
-				m_rgIndex = new int[nDimension];
-				System.arraycopy (rgIndex, 0, m_rgIndex, 0, Math.min (rgIndex.length, nDimension));
-			}
-		}
-
-//		public int[] getIndex ()
+//
+//		public void setIndex (int[] rgIndex, int nDimension)
 //		{
-//			return m_rgIndex;
+//			if (rgIndex.length == nDimension)
+//				m_rgIndex = rgIndex;
+//			else
+//			{
+//				m_rgIndex = new int[nDimension];
+//				System.arraycopy (rgIndex, 0, m_rgIndex, 0, Math.min (rgIndex.length, nDimension));
+//			}
 //		}
-
-		@Override
-		public boolean equals (Object obj)
-		{
-			if (obj instanceof SpaceIndex)
-				return Arrays.equals (m_rgIndex, ((SpaceIndex) obj).m_rgIndex);
-			else if (obj instanceof int[])
-				return Arrays.equals (m_rgIndex, (int[]) obj);
-			return false;
-		}
-
-		@Override
-		public int hashCode ()
-		{
-			int nHashCode = 0;
-			int nMultiplicator = 1;
-			for (int m : m_rgIndex)
-			{
-				nHashCode += m * nMultiplicator;
-				nMultiplicator *= 3;
-			}
-
-			return nHashCode;
-		}
-
-		@Override
-		public String toString ()
-		{
-			StringBuffer sb = new StringBuffer ("(");
-			boolean bFirst = true;
-			for (int m : m_rgIndex)
-			{
-				if (!bFirst)
-					sb.append (", ");
-				sb.append (m);
-				bFirst = false;
-			}
-			sb.append (')');
-
-			return sb.toString ();
-		}
-	}
+//
+////		public int[] getIndex ()
+////		{
+////			return m_rgIndex;
+////		}
+//
+//		@Override
+//		public boolean equals (Object obj)
+//		{
+//			if (obj instanceof SpaceIndex)
+//				return Arrays.equals (m_rgIndex, ((SpaceIndex) obj).m_rgIndex);
+//			else if (obj instanceof int[])
+//				return Arrays.equals (m_rgIndex, (int[]) obj);
+//			return false;
+//		}
+//
+//		@Override
+//		public int hashCode ()
+//		{
+//			int nHashCode = 0;
+//			int nMultiplicator = 1;
+//			for (int m : m_rgIndex)
+//			{
+//				nHashCode += m * nMultiplicator;
+//				nMultiplicator *= 3;
+//			}
+//
+//			return nHashCode;
+//		}
+//
+//		@Override
+//		public String toString ()
+//		{
+//			StringBuffer sb = new StringBuffer ("(");
+//			boolean bFirst = true;
+//			for (int m : m_rgIndex)
+//			{
+//				if (!bFirst)
+//					sb.append (", ");
+//				sb.append (m);
+//				bFirst = false;
+//			}
+//			sb.append (')');
+//
+//			return sb.toString ();
+//		}
+//	}
 
 
 	///////////////////////////////////////////////////////////////////
@@ -622,48 +647,48 @@ public class IndexSetUtil
 		return true;
 	}
 
-	/**
-	 * Returns a <code>String</code> representation of the indices contained
-	 * in <code>set</code>.
-	 * @param set The index set to represent as a string
-	 * @return A string representing the indices in <code>set</code>
-	 */
-	public static String getSpaceIndicesString (Set<Index> set)
-	{
-		// sort the indices
-		List<int[]> listIndices = new LinkedList<> ();
-		for (Index idx : set)
-			listIndices.add (idx.getSpaceIndex ());
-		Collections.sort (listIndices, IndexSetUtil.SPACE_INDEX_COMPARATOR);
-
-		// create a string buffer with the indices
-		StringBuffer sb = new StringBuffer ();
-		boolean bFirst = true;
-
-		for (int[] rgIdx : listIndices)
-		{
-			if (!bFirst)
-				sb.append (", ");
-
-			if (rgIdx.length == 1)
-				sb.append (rgIdx[0]);
-			else
-			{
-				sb.append ('(');
-				for (int i = 0; i < rgIdx.length; i++)
-				{
-					if (i > 0)
-						sb.append (", ");
-					sb.append (rgIdx[i]);
-				}
-				sb.append (')');
-			}
-
-			bFirst = false;
-		}
-
-		return sb.toString ();
-	}
+//	/**
+//	 * Returns a <code>String</code> representation of the indices contained
+//	 * in <code>set</code>.
+//	 * @param set The index set to represent as a string
+//	 * @return A string representing the indices in <code>set</code>
+//	 */
+//	public static String getSpaceIndicesString (Set<Index> set)
+//	{
+//		// sort the indices
+//		List<int[]> listIndices = new LinkedList<> ();
+//		for (Index idx : set)
+//			listIndices.add (idx.getSpaceIndex ());
+//		Collections.sort (listIndices, IndexSetUtil.SPACE_INDEX_COMPARATOR);
+//
+//		// create a string buffer with the indices
+//		StringBuffer sb = new StringBuffer ();
+//		boolean bFirst = true;
+//
+//		for (int[] rgIdx : listIndices)
+//		{
+//			if (!bFirst)
+//				sb.append (", ");
+//
+//			if (rgIdx.length == 1)
+//				sb.append (rgIdx[0]);
+//			else
+//			{
+//				sb.append ('(');
+//				for (int i = 0; i < rgIdx.length; i++)
+//				{
+//					if (i > 0)
+//						sb.append (", ");
+//					sb.append (rgIdx[i]);
+//				}
+//				sb.append (')');
+//			}
+//
+//			bFirst = false;
+//		}
+//
+//		return sb.toString ();
+//	}
 
 	/**
 	 * Returns the dimension of the spatial indices in <code>set</code>.
@@ -714,59 +739,59 @@ public class IndexSetUtil
 		return rgNextIndex;
 	}
 
-	/**
-	 * Determines whether the index set <code>set</code> constitutes a contiguous
-	 * space, i.e. no index in the hypercube spanned by the indices in the set
-	 * is omitted.
-	 * @param set The set to test
-	 * @return <code>true</code> if and only if all the indices in the hypercube
-	 * 	spanned by the indices in <code>set</code> are actually contained in the
-	 * 	<code>set</code>.
-	 */
-	public static boolean isContiguousIntervalInSpace (Set<Index> set)
-	{
-		// find the dimension of the index in space
-		int nSpaceIndexDimension = IndexSetUtil.getSpaceDimension (set);
-
-		int[] rgMinIndex = new int[nSpaceIndexDimension];
-		int[] rgMaxIndex = new int[nSpaceIndexDimension];
-
-		for (int i = 0; i < nSpaceIndexDimension; i++)
-		{
-			rgMinIndex[i] = Integer.MAX_VALUE;
-			rgMaxIndex[i] = Integer.MIN_VALUE;
-		}
-
-		// find minimum and maximum indices
-		for (Index idx : set)
-		{
-			for (int i = 0; i < idx.getSpaceIndex ().length; i++)
-			{
-				if (idx.getSpaceIndex ()[i] < rgMinIndex[i])
-					rgMinIndex[i] = idx.getSpaceIndex ()[i];
-				if (idx.getSpaceIndex ()[i] > rgMaxIndex[i])
-					rgMaxIndex[i] = idx.getSpaceIndex ()[i];
-			}
-		}
-
-		// calculate the number of index points that have to lie within the hypercube
-		int nProductSpaceDimension = 1;
-		for (int i = 0; i < nSpaceIndexDimension; i++)
-			nProductSpaceDimension *= rgMaxIndex[i] - rgMinIndex[i] + 1;
-
-		// if there are less index points in the set than in the product space, the set
-		// obviously doesn't contain all the points
-		if (set.size () < nProductSpaceDimension)
-			return false;
-
-		// create the set with all the indices that have to be present
-		// and add the indices of the set to the test set
-		Set<SpaceIndex> setFullSpaceIndices = new TreeSet<> ();
-		for (Index idx : set)
-			setFullSpaceIndices.add (new SpaceIndex (idx.getSpaceIndex (), nSpaceIndexDimension));
-
-		// if the number of indices in the test set equals the number of
-		// expected indices, return true, false otherwise
-		return setFullSpaceIndices.size () == nProductSpaceDimension;
-	}
+//	/**
+//	 * Determines whether the index set <code>set</code> constitutes a contiguous
+//	 * space, i.e. no index in the hypercube spanned by the indices in the set
+//	 * is omitted.
+//	 * @param set The set to test
+//	 * @return <code>true</code> if and only if all the indices in the hypercube
+//	 * 	spanned by the indices in <code>set</code> are actually contained in the
+//	 * 	<code>set</code>.
+//	 */
+//	public static boolean isContiguousIntervalInSpace (Set<Index> set)
+//	{
+//		// find the dimension of the index in space
+//		int nSpaceIndexDimension = IndexSetUtil.getSpaceDimension (set);
+//
+//		int[] rgMinIndex = new int[nSpaceIndexDimension];
+//		int[] rgMaxIndex = new int[nSpaceIndexDimension];
+//
+//		for (int i = 0; i < nSpaceIndexDimension; i++)
+//		{
+//			rgMinIndex[i] = Integer.MAX_VALUE;
+//			rgMaxIndex[i] = Integer.MIN_VALUE;
+//		}
+//
+//		// find minimum and maximum indices
+//		for (Index idx : set)
+//		{
+//			for (int i = 0; i < idx.getSpaceIndex ().length; i++)
+//			{
+//				if (idx.getSpaceIndex ()[i] < rgMinIndex[i])
+//					rgMinIndex[i] = idx.getSpaceIndex ()[i];
+//				if (idx.getSpaceIndex ()[i] > rgMaxIndex[i])
+//					rgMaxIndex[i] = idx.getSpaceIndex ()[i];
+//			}
+//		}
+//
+//		// calculate the number of index points that have to lie within the hypercube
+//		int nProductSpaceDimension = 1;
+//		for (int i = 0; i < nSpaceIndexDimension; i++)
+//			nProductSpaceDimension *= rgMaxIndex[i] - rgMinIndex[i] + 1;
+//
+//		// if there are less index points in the set than in the product space, the set
+//		// obviously doesn't contain all the points
+//		if (set.size () < nProductSpaceDimension)
+//			return false;
+//
+//		// create the set with all the indices that have to be present
+//		// and add the indices of the set to the test set
+//		Set<SpaceIndex> setFullSpaceIndices = new TreeSet<> ();
+//		for (Index idx : set)
+//			setFullSpaceIndices.add (new SpaceIndex (idx.getSpaceIndex (), nSpaceIndexDimension));
+//
+//		// if the number of indices in the test set equals the number of
+//		// expected indices, return true, false otherwise
+//		return setFullSpaceIndices.size () == nProductSpaceDimension;
+//	}
 }

@@ -24,6 +24,7 @@ import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.StencilAssemblySection;
 import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.StencilAssemblySection.OperandWithInstructions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.MathUtil;
 
@@ -141,9 +142,11 @@ public class X86_64PrefetchingCodeGenerator
 				if (!bCanPrefetch)
 					continue;
 				
-				// stencil node is parallel to the prefetching direction
-				
-				int nCoord = node.getSpaceIndex ()[1] + 1;
+				// stencil node is parallel to the prefetching direction				
+				Integer nCoordEx = ExpressionUtil.getIntegerValueEx (node.getIndex ().getSpaceIndex (1));
+				if (nCoordEx == null)
+					continue;
+				int nCoord = nCoordEx + 1;
 				int nScale = 1;
 
 				if (isParallelToYDirection (nodePrev))
@@ -288,7 +291,10 @@ public class X86_64PrefetchingCodeGenerator
 									continue;
 							}
 							
-							int nCoord = node.getSpaceIndex ()[nCurDir];
+							Integer nCoordEx = ExpressionUtil.getIntegerValueEx (node.getIndex ().getSpaceIndex (nCurDir));
+							if (nCoordEx == null)
+								continue;
+							int nCoord = nCoordEx;
 							if (nPrevCoord > nCoord)
 							{
 								for (int i = 0; i > nCoord; i--)
@@ -366,7 +372,10 @@ public class X86_64PrefetchingCodeGenerator
 			if (!isParallelToDirection (node, nDirection))
 				continue;
 			
-			int nCoord = node.getSpaceIndex ()[nDirection];
+			Integer nCoordEx =  ExpressionUtil.getIntegerValue (node.getIndex ().getSpaceIndex (nDirection));
+			if (nCoordEx == null)
+				continue;
+			int nCoord = nCoordEx;
 			if (nCoord == 1)
 			{
 				// we're done as soon as we've found a node that has the coordinates (0,...,0,1,0,...,0)
@@ -415,12 +424,15 @@ public class X86_64PrefetchingCodeGenerator
 		l.addInstructions (op.getInstrPre ());
 
 		// if the coordinate was not 1, compute the right offset
-		int nCoord = nodeOffset.getSpaceIndex ()[nDirection];
-		if (nCoord != 1)
+		Integer nCoord =  ExpressionUtil.getIntegerValue (nodeOffset.getIndex ().getSpaceIndex (nDirection));
+		if (nCoord != null)
 		{
-			if (nCoord < 0)
-				l.addInstruction (new Instruction ("neg", op.getOp ()));
-			l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (Math.abs (nCoord))), op.getOp ()));
+			if (nCoord != 1)
+			{
+				if (nCoord < 0)
+					l.addInstruction (new Instruction ("neg", op.getOp ()));
+				l.addInstruction (new Instruction ("shl", new IOperand.Immediate (MathUtil.log2 (Math.abs (nCoord))), op.getOp ()));
+			}
 		}
 		
 		return op;
@@ -445,13 +457,13 @@ public class X86_64PrefetchingCodeGenerator
 				// sort by ascending x, y, z, ... directions
 				// if not parallel to a direction, the order doesn't matter
 				
-				int nDim = Math.min (n1.getSpaceIndex ().length, n2.getSpaceIndex ().length);
+				int nDim = Math.min (n1.getIndex ().getSpaceIndexEx ().length, n2.getIndex ().getSpaceIndexEx ().length);
 				for (int nDir = 0; nDir < nDim; nDir++)
 				{
 					if (isParallelToDirection (n1, nDir))
 					{
 						if (isParallelToDirection (n2, nDir))
-							return n1.getSpaceIndex ()[nDir] - n2.getSpaceIndex ()[nDir];
+							return ExpressionUtil.getIntegerValue (n1.getIndex ().getSpaceIndex (nDir)) - ExpressionUtil.getIntegerValue (n2.getIndex ().getSpaceIndex (nDir));
 						
 						// n1 is parallel to the direction nDir, but n2 is not => n1 comes before n2
 						return -1;	// n1 < n2
@@ -486,10 +498,10 @@ public class X86_64PrefetchingCodeGenerator
 	
 	private static boolean isParallelToDirection (StencilNode n, int nDir)
 	{
-		if (n == null || n.getSpaceIndex ().length <= nDir)
+		if (n == null || n.getIndex ().getSpaceIndexEx ().length <= nDir)
 			return false;
-		for (int i = 0; i < n.getSpaceIndex ().length; i++)
-			if (i != nDir && n.getSpaceIndex ()[i] != 0)
+		for (int i = 0; i < n.getIndex ().getSpaceIndexEx ().length; i++)
+			if (i != nDir && !ExpressionUtil.isZero (n.getIndex ().getSpaceIndex (i)))
 				return false;
 		return true;			
 	}
@@ -506,9 +518,10 @@ public class X86_64PrefetchingCodeGenerator
 	private static int getParallelAxisDirection (StencilNode node)
 	{
 		int nDir = -1;
-		for (int i = 0; i < node.getSpaceIndex ().length; i++)
+		for (int i = 0; i < node.getIndex ().getSpaceIndexEx ().length; i++)
 		{
-			if (node.getSpaceIndex ()[i] != 0)
+//			if (node.getSpaceIndex ()[i] != 0)
+			if (!ExpressionUtil.isZero (node.getIndex ().getSpaceIndex (i)))
 			{
 				if (nDir != -1)
 				{
@@ -567,22 +580,24 @@ public class X86_64PrefetchingCodeGenerator
 			
 			for (StencilNode node : setInput.restrict (t, null))
 			{
-				if (node.getSpaceIndex ().length == 0)
+				int[] rgSpaceIdx = node.getSpaceIndex ();
+				
+				if (rgSpaceIdx.length == 0)
 					continue;
 				
-				if (node.getSpaceIndex ()[0] < nLowestX)
+				if (rgSpaceIdx[0] < nLowestX)
 				{
-					nLowestX = node.getSpaceIndex ()[0];
+					nLowestX = rgSpaceIdx[0];
 					nodeLowestX = node;
 				}
-				if (node.getSpaceIndex ()[0] > nHighestX)
+				if (rgSpaceIdx[0] > nHighestX)
 				{
-					nHighestX = node.getSpaceIndex ()[0];
+					nHighestX = rgSpaceIdx[0];
 					nodeHighestX= node;
 				}
 				
-				for (int i = 1; i < node.getSpaceIndex ().length; i++)
-					if ((i == 1 && node.getSpaceIndex ()[i] > 0) || (i > 1 && node.getSpaceIndex ()[i] != 0))
+				for (int i = 1; i < rgSpaceIdx.length; i++)
+					if ((i == 1 && rgSpaceIdx[i] > 0) || (i > 1 && rgSpaceIdx[i] != 0))
 					{
 						setOutput.add (node);
 						break;

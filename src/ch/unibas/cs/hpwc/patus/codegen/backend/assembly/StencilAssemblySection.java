@@ -680,12 +680,12 @@ public class StencilAssemblySection extends AssemblySection
 	 */
 	private static boolean isNodeCompatible (StencilNode node, StencilNode nodeRef)
 	{
-		if (nodeRef.getSpaceIndex ().length != node.getSpaceIndex ().length)
+		if (nodeRef.getIndex ().getSpaceIndexEx ().length != node.getIndex ().getSpaceIndexEx ().length)
 			return false;
 		
 		// compare all the coordinates except in the first dimension (i==0)
-		for (int i = 1; i < nodeRef.getSpaceIndex ().length; i++)
-			if (node.getSpaceIndex ()[i] != nodeRef.getSpaceIndex ()[i])
+		for (int i = 1; i < nodeRef.getIndex ().getSpaceIndexEx ().length; i++)
+			if (!(node.getIndex ().getSpaceIndex (i).equals (nodeRef.getIndex ().getSpaceIndex (i))))
 				return false;
 		
 		return true;
@@ -781,6 +781,8 @@ public class StencilAssemblySection extends AssemblySection
 		StencilNode nodeLocal = node;
 		int nElementsShiftLocal = nElementsShift;
 		
+		int nNodeLocalIdx0 = ExpressionUtil.getIntegerValue (nodeLocal.getIndex ().getSpaceIndex (0));
+		
 		IOperand.IRegisterOperand opBase = m_mapGrids.get (nodeLocal);
 		if (opBase == null)
 		{
@@ -790,7 +792,7 @@ public class StencilAssemblySection extends AssemblySection
 			if (nodeRef == null)
 				return null;
 			
-			nElementsShiftLocal += nodeLocal.getSpaceIndex ()[0] - nodeRef.getSpaceIndex ()[0];
+			nElementsShiftLocal += nNodeLocalIdx0 - ExpressionUtil.getIntegerValue (nodeRef.getIndex ().getSpaceIndex (0));
 			nodeLocal = nodeRef;
 			opBase = m_mapGrids.get (nodeLocal);
 		}
@@ -817,8 +819,9 @@ public class StencilAssemblySection extends AssemblySection
 		boolean bHasOffsetInNonUnitStride = false || (nElementsShiftLocal > 0);
 		if (!bHasOffsetInNonUnitStride)
 		{
-			for (int i = 1; i < nodeLocal.getSpaceIndex ().length; i++)
-				if (nodeLocal.getSpaceIndex ()[i] != 0)
+			int[] rgSpaceIdx = nodeLocal.getSpaceIndex ();
+			for (int i = 1; i < rgSpaceIdx.length; i++)
+				if (rgSpaceIdx[i] != 0)
 				{
 					bHasOffsetInNonUnitStride = true;
 					break;
@@ -831,7 +834,7 @@ public class StencilAssemblySection extends AssemblySection
 		// get the offset in unit stride direction (will become the displacement in inline assembly)
 		Specifier specDatatype = getDatatype ();
 		int nSIMDVectorLength = m_data.getArchitectureDescription ().getSIMDVectorLength (specDatatype);
-		int nUnitStrideOffset = (nodeLocal.getSpaceIndex ()[0] + nElementsShiftLocal * nSIMDVectorLength) *
+		int nUnitStrideOffset = (nNodeLocalIdx0 + nElementsShiftLocal * nSIMDVectorLength) *
 			ArchitectureDescriptionManager.getTypeSize (specDatatype);
 		
 		if (!bHasOffsetInNonUnitStride)

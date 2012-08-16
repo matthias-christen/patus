@@ -172,7 +172,7 @@ public class DatatransferCodeGenerator
 				rgBorderMin[i] = -(int) ((IntegerLiteral) rgExprBorderMin[i]).getValue ();
 			}
 			else
-				rgBorderMin[i] = node.getSpaceIndex ()[i];
+				rgBorderMin[i] = node.getSpaceIndex ()[i];	// TODO: this is inefficient
 		}
 
 		nodeRef.getIndex ().setSpaceIndex (rgBorderMin);

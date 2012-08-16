@@ -8,6 +8,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import cetus.hir.Expression;
+import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Traversable;
@@ -371,7 +373,11 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 					@Override
 					public int compare (StencilNode n1, StencilNode n2)
 					{
-						return n1.getSpaceIndex ()[0] - n2.getSpaceIndex ()[0];
+//						return n1.getSpaceIndex ()[0] - n2.getSpaceIndex ()[0];
+						Expression expr = ExpressionUtil.subtract (n1.getIndex ().getSpaceIndex (0), n2.getIndex ().getSpaceIndex (0));
+						if (expr instanceof IntegerLiteral)
+							return (int) ((IntegerLiteral) expr).getValue ();
+						return 1;
 					}
 				});
 				
@@ -382,16 +388,18 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 				int nPrevCoord = Integer.MIN_VALUE;
 				for (StencilNode node : listNodes)
 				{
+					int nIdxMax = ExpressionUtil.getIntegerValue (node.getIndex ().getSpaceIndex (0));
+					
 					// add missing intermediates
 					if (nPrevCoord != Integer.MIN_VALUE)
 					{
-						for (int i = nPrevCoord + 1; i < node.getSpaceIndex ()[0]; i++)
+						for (int i = nPrevCoord + 1; i < nIdxMax; i++)
 						{
 							IOperand.IRegisterOperand opReg = m_assemblySection.getFreeRegister (TypeRegisterType.SIMD);
 							listSet.add (opReg);
 							
 							// load the value into the register
-							StencilAssemblySection.OperandWithInstructions opGrid = m_assemblySection.getGrid (node, i - node.getSpaceIndex ()[0]);
+							StencilAssemblySection.OperandWithInstructions opGrid = m_assemblySection.getGrid (node, i - nIdxMax);
 							il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED, opGrid.getOp (), opReg), opGrid);
 						}
 					}
@@ -411,7 +419,7 @@ public abstract class InnermostLoopCodeGenerator implements IInnermostLoopCodeGe
 					if (true) throw new RuntimeException ("Handle pre and post instructions");
 					il.addInstruction (new Instruction (TypeBaseIntrinsicEnum.LOAD_FPR_UNALIGNED, opGrid.getOp (), opReg), opGrid);
 					
-					nPrevCoord = node.getSpaceIndex ()[0];
+					nPrevCoord = nIdxMax;
 				}
 			}
 		}

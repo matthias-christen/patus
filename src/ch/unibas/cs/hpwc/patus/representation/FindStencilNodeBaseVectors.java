@@ -350,6 +350,8 @@ public class FindStencilNodeBaseVectors
 			}
 			else
 			{
+				int[] rgSpaceIdx = node.getSpaceIndex ();
+				
 				// find the index that requires the least base index additions
 				int nNonAdmissibleMin = Integer.MAX_VALUE;
 				IntArray arrBest = null;
@@ -357,11 +359,11 @@ public class FindStencilNodeBaseVectors
 				for (IntArray arr : listAdmissibleVectors)
 				{
 					int nOldBaseCoord = FindStencilNodeBaseVectors.getFirstNonZero (arr.get ());
-					int nNodeCoord = FindStencilNodeBaseVectors.getFirstNonZero (node.getSpaceIndex ());
+					int nNodeCoord = FindStencilNodeBaseVectors.getFirstNonZero (rgSpaceIdx);
 					
 					int nNewBaseCoord = getAdmissibleBaseCoord (nOldBaseCoord, nNodeCoord);
 					
-					int nIdxNonZero = FindStencilNodeBaseVectors.getFirstNonZeroIndex (node.getSpaceIndex ());
+					int nIdxNonZero = FindStencilNodeBaseVectors.getFirstNonZeroIndex (rgSpaceIdx);
 					
 					int nNonAdmissibleCount = 0;
 					List<StencilNode> listDependentVectors = m_mapBaseVectors2StencilNodes.get (arr);
@@ -396,9 +398,10 @@ public class FindStencilNodeBaseVectors
 	 */
 	private void addNewBaseVector (StencilNode node)
 	{
-		m_setBaseVector.add (new IntArray (node.getSpaceIndex ()));
-		m_mapNodes.put (new IntArray (node.getSpaceIndex ()), new BaseVectorWithScalingFactor (node.getSpaceIndex (), 1));
-		addToBaseVectorMap (new IntArray (node.getSpaceIndex ()), node);
+		int[] rgSpaceIdx = node.getSpaceIndex ();
+		m_setBaseVector.add (new IntArray (rgSpaceIdx));
+		m_mapNodes.put (new IntArray (rgSpaceIdx), new BaseVectorWithScalingFactor (rgSpaceIdx, 1));
+		addToBaseVectorMap (new IntArray (rgSpaceIdx), node);
 	}
 	
 	/**
@@ -441,9 +444,10 @@ public class FindStencilNodeBaseVectors
 				
 				for (StencilNode n : listNodes)
 				{
-					if (getAdmissibleBaseCoord (nFirstNonzeroCoordNew, getFirstNonZero (n.getSpaceIndex ())) != 0)
+					int[] rgSpaceIdx = n.getSpaceIndex ();
+					if (getAdmissibleBaseCoord (nFirstNonzeroCoordNew, getFirstNonZero (rgSpaceIdx)) != 0)
 					{
-						BaseVectorWithScalingFactor m = m_mapNodes.get (new IntArray (n.getSpaceIndex ()));
+						BaseVectorWithScalingFactor m = m_mapNodes.get (new IntArray (rgSpaceIdx));
 						if (m != null)
 							m.set (rgVectorNew, m.getScalingFactor () * nDenominator);
 					}
@@ -460,7 +464,8 @@ public class FindStencilNodeBaseVectors
 				rgVector = arrBest.get ();
 			
 			// add the new stencil node
-			m_mapNodes.put (new IntArray (node.getSpaceIndex ()), new BaseVectorWithScalingFactor (rgVector, getFirstNonZero (node.getSpaceIndex ()) / nNewBaseCoord));
+			int[] rgSpaceIdx = node.getSpaceIndex ();
+			m_mapNodes.put (new IntArray (rgSpaceIdx), new BaseVectorWithScalingFactor (rgVector, getFirstNonZero (rgSpaceIdx) / nNewBaseCoord));
 			addToBaseVectorMap (new IntArray (rgVector), node);
 		}
 	}
@@ -521,9 +526,10 @@ public class FindStencilNodeBaseVectors
 		// for k in m_rgAdmissibleScalingFactors (and v representing a coordinate of the vector)
 		
 		int nCoordIdx = 0;
+		int[] rgSpaceIdx = node.getSpaceIndex ();
 		
 		// skip zeros
-		while (nCoordIdx < m_nDimension && node.getSpaceIndex ()[nCoordIdx] == 0)
+		while (nCoordIdx < m_nDimension && rgSpaceIdx[nCoordIdx] == 0)
 			nCoordIdx++;
 		
 		if (nCoordIdx >= m_nDimension)
@@ -550,7 +556,7 @@ public class FindStencilNodeBaseVectors
 
 			// test whether the first non-zero coordinate is admissible (i.e., satisfies (*))
 			int nCoord = arr.get (nCoordIdx);
-			int nNodeCoord = node.getSpaceIndex ()[nCoordIdx];
+			int nNodeCoord = rgSpaceIdx[nCoordIdx];
 			if (getAdmissibleBaseCoord (nCoord, nNodeCoord) == 0)
 				continue;
 
@@ -559,7 +565,7 @@ public class FindStencilNodeBaseVectors
 			boolean bIsAdmissible = true;
 			for ( ; nCoordIdx < m_nDimension; nCoordIdx++)
 			{
-				if (arr.get (nCoordIdx) * nNodeCoord != node.getSpaceIndex ()[nCoordIdx] * nCoord)
+				if (arr.get (nCoordIdx) * nNodeCoord != rgSpaceIdx[nCoordIdx] * nCoord)
 				{
 					bIsAdmissible = false;
 					break;

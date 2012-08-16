@@ -45,7 +45,6 @@ import ch.unibas.cs.hpwc.patus.symbolic.ExpressionData;
 import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
-import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 
@@ -119,11 +118,11 @@ COMPILER StencilSpecification
 		/**
 		 * Returns the index.
 		 */
-		public int getLinearIndex (List<Expression> listIndices)
+		public int getLinearIndex (String strIdentifier, List<Expression> listIndices)
 		{
 			if (listIndices.size () != m_rgDimensions.length)
 			{
-				errors.SemErr (la.line, la.col, "Parameter dimension does not agree with its definition (should be " + listIndices.size () + ")");
+				errors.SemErr (la.line, la.col, StringUtil.concat ("Parameter dimension of ", strIdentifier, " does not agree with its definition (should be ", listIndices.size (), ")"));
 				return -1;
 			}
 			
@@ -131,9 +130,12 @@ COMPILER StencilSpecification
 			int i = 0;
 			for (Expression exprIdxValue : listIndices)
 			{
-				Integer nIdxValue = ExpressionUtil.getIntegerValueEx ();
+				Integer nIdxValue = ExpressionUtil.getIntegerValueEx (exprIdxValue);
 				if (nIdxValue == null)
-					errors.SemErr (la.line, la.col, "Value does not evaluate to an integer number");
+				{
+					errors.SemErr (la.line, la.col, StringUtil.concat ("Value ", exprIdxValue.toString (), " does not evaluate to an integer number"));
+					continue;
+				}
 				
 				// check whether the indices are within the defined bounds
 				if (nIdxValue < 0 || nIdxValue >= m_rgDimensions[i])
@@ -250,7 +252,7 @@ COMPILER StencilSpecification
 		return m_stencil;
 	}
 	
-	private Literal createLiteral (double fValue, boolean bIsIntegerLiteral)
+	private static Literal createLiteral (double fValue, boolean bIsIntegerLiteral)
 	{
 		return bIsIntegerLiteral ? new IntegerLiteral ((long) fValue) : new FloatLiteral (fValue);
 	}
@@ -330,7 +332,7 @@ COMPILER StencilSpecification
 			Symbolic.EExpressionType.EXPRESSION);
 	}
 	
-	private ExpressionData leftToRightBinaryExpression (List<ExpressionData> listOperands, BinaryOperator op)
+	private static ExpressionData leftToRightBinaryExpression (List<ExpressionData> listOperands, BinaryOperator op)
 	{
 		Expression exprSum = null;
 		int nFlops = 0;
@@ -349,7 +351,7 @@ COMPILER StencilSpecification
 		return new ExpressionData (exprSum, nFlops, Symbolic.EExpressionType.EXPRESSION);	
 	}
 	
-	private ExpressionData subtract (ExpressionData expr1, ExpressionData expr2, boolean bIsInteger)
+	private static ExpressionData subtract (ExpressionData expr1, ExpressionData expr2, boolean bIsInteger)
 	{
 		if (ExpressionUtil.isNumberLiteral (expr1.getExpression ()) && ExpressionUtil.isNumberLiteral (expr2.getExpression ()))
 		{
@@ -365,7 +367,7 @@ COMPILER StencilSpecification
 			Symbolic.EExpressionType.EXPRESSION);
 	}
 	
-	private ExpressionData divide (ExpressionData expr1, ExpressionData expr2, boolean bIsInteger)
+	private static ExpressionData divide (ExpressionData expr1, ExpressionData expr2, boolean bIsInteger)
 	{
 		if (ExpressionUtil.isNumberLiteral (expr1.getExpression ()) && ExpressionUtil.isNumberLiteral (expr2.getExpression ()))
 		{
@@ -381,7 +383,7 @@ COMPILER StencilSpecification
 			Symbolic.EExpressionType.EXPRESSION);
 	}
 	
-	private ExpressionData modulus (ExpressionData expr1, ExpressionData expr2, boolean bIsInteger)
+	private static ExpressionData modulus (ExpressionData expr1, ExpressionData expr2, boolean bIsInteger)
 	{
 		if (ExpressionUtil.isNumberLiteral (expr1.getExpression ()) && ExpressionUtil.isNumberLiteral (expr2.getExpression ()))
 		{
@@ -425,8 +427,7 @@ COMPILER StencilSpecification
 	
 	private void registerScalar (String strIdentifier, Specifier specType, List<Integer> listDimensions, boolean bIsStencilArgument)
 	{
-		if (m_mapScalars == null)
-			m_mapScalars = new HashMap<> ();
+		ensureScalarsMapCreated ();
 		if (m_listStencilOperationArguments == null)
 			m_listStencilOperationArguments = new ArrayList<> ();
 			
@@ -466,18 +467,38 @@ COMPILER StencilSpecification
 		StreamIndex idx = map.get (strIdentifier);
 		
 		if (idx != null)
-			return idx.getLinearIndex (listIndices);
+			return idx.getLinearIndex (strIdentifier, listIndices);
 			
 		errors.SemErr (la.line, la.col, "Variable '" + strIdentifier + "' has not been defined");
 		return -1;		
 	}
 	
+	private void ensureScalarsMapCreated ()
+	{
+		if (m_mapScalars == null)
+		{
+			m_mapScalars = new HashMap<> ();
+		
+			// add constants
+			List<Integer> listDimensions = new ArrayList<> (0);
+			
+			m_mapScalars.put ("PI", new StencilCalculation.ParamType (Specifier.DOUBLE, listDimensions));
+		} 
+	}
+	
 	private void checkParameterIndices (String strIdentifier, Expression exprParam)
 	{
-		StencilCalculation.ParamType param = m_mapScalars == null ? null : m_mapScalars.get (strIdentifier);
+		ensureScalarsMapCreated ();
+		StencilCalculation.ParamType param = m_mapScalars.get (strIdentifier);
 		if (param == null)
 		{
 			// the key hasn't been found => parameter is not defined
+			// check whether it is a built-in dimension identifier
+			if ("t".equals (strIdentifier))
+				return;
+			if (CodeGeneratorUtil.getDimensionFromName (strIdentifier) >= 0)
+				return;	// error if getDimensionFromName returns -1
+			
 			errors.SemErr (la.line, la.col, "Parameter '" + strIdentifier + "' has not been defined");
 			return;
 		}
@@ -490,7 +511,7 @@ COMPILER StencilSpecification
 			// check whether the dimensions agree
 			if (param.getDimensionsCount () != arr.getNumIndices ())
 			{
-				errors.SemErr (la.line, la.col, "Parameter dimension does not agree with its definition (should be " + param.getDimensionsCount () + ")");
+				errors.SemErr (la.line, la.col, StringUtil.concat ("Parameter dimension of ", strIdentifier, " does not agree with its definition (should be ", param.getDimensionsCount (), ")"));
 				return;
 			}
 			
@@ -511,7 +532,7 @@ COMPILER StencilSpecification
 		{
 			// not an array access => the number of dimensions must be 0
 			if (param.getDimensionsCount () != 0)
-				errors.SemErr (la.line, la.col, "Parameter dimension does not agree with its definition (should be 0)");
+				errors.SemErr (la.line, la.col, StringUtil.concat ("Parameter dimension of ", strIdentifier, " does not agree with its definition (should be 0)"));
 		}
 	}
 	
@@ -531,7 +552,7 @@ COMPILER StencilSpecification
 			if (o instanceof NameID)
 			{
 				if (m_listSizeParameters == null)
-					m_listSizeParameters = new LinkedList<NameID> ();
+					m_listSizeParameters = new LinkedList<> ();
 			
 				if (!m_listSizeParameters.contains (o))				
 					m_listSizeParameters.add ((NameID) o);
@@ -541,16 +562,12 @@ COMPILER StencilSpecification
 	
 	private int getInteger (Expression expr)
 	{
-		try
-		{
-			return ExpressionUtil.getIntegerValue (expr);
-		}
-		catch (RuntimeException e)
-		{
-        	errors.SemErr (la.line, la.col, "Indices must evaluate to constant numbers");
-        }
-        
-        return 0;
+		Integer n = ExpressionUtil.getIntegerValueEx (expr);
+		if (n != null)
+			return n;
+
+		errors.SemErr (la.line, la.col, "Indices must evaluate to constant numbers");
+		return 0;
 	}
 
 	/**
@@ -587,12 +604,27 @@ COMPILER StencilSpecification
 			errors.SemErr ("No stencil operation defined in the stencil specification.");
 	}
 	
-	private boolean containsStencilNode (Expression expr)
+	private static boolean containsStencilNode (Expression expr)
 	{
 		for (DepthFirstIterator it = new DepthFirstIterator (expr); it.hasNext (); )
 			if (it.next () instanceof StencilNode)
 				return true;
 		return false;
+	}
+	
+	private static List<Expression> getNegSpatialCoords (int nDimensionality)
+	{
+		List<Expression> l = new ArrayList<> (nDimensionality);
+		for (int i = 0; i < nDimensionality; i++)
+			l.add (new UnaryExpression (UnaryOperator.MINUS, new NameID (CodeGeneratorUtil.getDimensionName (i))));
+		return l;
+	}
+	
+	private static List<Expression> getNegTemporalCoord ()
+	{
+		List<Expression> l = new ArrayList<> (1);
+		l.add (new UnaryExpression (UnaryOperator.MINUS, new NameID ("t")));
+		return l;
 	}
 	
 
@@ -620,9 +652,8 @@ COMPILER StencilSpecification
 	 * Determines whether the next token is a const grid variable.
 	 * @return <code>true</code> iff the next token is a const grid variable
 	 */
-	private boolean isConstGridVariable ()
+	private boolean isConstGridVariable (String strIdentifier)
 	{
-		String strIdentifier = la.val;
 		boolean bResult = m_mapInputStreams == null ? false : m_mapInputStreams.containsKey (strIdentifier);
 		if (bResult)
 		{
@@ -632,29 +663,15 @@ COMPILER StencilSpecification
 			
 		return false;
 	}
-	
-	/**
-	 * Determines whether the next token is a scalar: either a stencil operation parameter or a
-	 * temporary variable defined within the stencil operation body.
-	 * @return <code>true</code> iff the next token is parameter
-	 */
-	private boolean isScalar ()
-	{
-		if (m_mapScalars == null)
-			return false;
-
-		String strIdentifier = la.val;
-		return m_mapScalars.containsKey (strIdentifier);
-	}
 
 	/**
 	 * LL1 conflict resolver for function calls.
 	 */
 	private boolean isFunctionCall ()
 	{
-		Token t = scanner.Peek ();
+		Token token = scanner.Peek ();
 		scanner.ResetPeek ();
-		return t.val.equals ("(");
+		return token.val.equals ("(");
 	}
 
 
@@ -733,7 +750,7 @@ PRODUCTIONS                                                                    /
         {
         	StencilOptions
         	|
-        	StencilIterateWhile<out Expression exprIterateWhile>               (. if (m_bIterateWhileSet) errors.SemErr (la.line, la.col, "Found multiple 'iterate while ...' definitions. All but the first one are ignored."); else m_bIterateWhileSet = true; .)
+        	StencilIterateWhile<out Expression exprIterateWhile>               (. if (m_bIterateWhileSet) errors.SemErr (la.line, la.col, "Found multiple 'iterate while ...' definitions. All but the first one are ignored."); else { m_stencil.setIterateWhile (exprIterateWhile); m_bIterateWhileSet = true; } .)
         	|
         	StencilDomainSize<out Box boxGrid>                                 (. if (m_stencil.getDomainSize () != null) errors.SemErr (la.line, la.col, "Found multiple grid size definitions. All but the first one are ignored."); else m_stencil.setDomainSize (boxGrid); .)
         	|
@@ -743,7 +760,7 @@ PRODUCTIONS                                                                    /
         	|
        		StencilInitial<out StencilBundle bundle>                           (. if (m_stencil.getInitialization () != null) errors.SemErr ("Found multiple initializations. All but the first are ignored."); else m_stencil.setInitialization (bundle); .)
         }
-        '}'                                                                    (. setStencilOperationArguments (); checkDefinitions (); .)
+        '}'                                                                    (. setStencilOperationArguments (); checkDefinitions (); if (!m_bIterateWhileSet) m_stencil.setMaxIterations (new IntegerLiteral (1)); .)
         .
 
 	StencilOptions =
@@ -766,7 +783,8 @@ PRODUCTIONS                                                                    /
      */
     StencilIterateWhile<out Expression exprIterateWhile> =
     	SYNC "iterate" "while"
-    	LogicalExpression<out ExpressionData edIterateWhile,null,true,true> (. exprIterateWhile = edIterateWhile.getExpression (); .)
+    	LogicalExpression<out ExpressionData edIterateWhile, null, true, true, true, true>
+    	                                                                       (. exprIterateWhile = edIterateWhile.getExpression (); .)
     	';'.
       
     /**
@@ -779,39 +797,33 @@ PRODUCTIONS                                                                    /
      * The stencil operation.
      */    
 	StencilOperation<out StencilBundle bundle> =                               (. bundle = new StencilBundle (m_stencil); .)
-		SYNC "operation"
-		'{'
-		{
-			AssignmentStatement<bundle>
-		}
-        '}'.
+		SYNC "operation" Body<bundle, true, true>.
         
     /**
      * The boundaries definition.
      * This can be used to define special stencils for boundary points.
      */
 	StencilBoundaries<out StencilBundle bundle> =                              (. bundle = new StencilBundle (m_stencil); .)
-	 	SYNC "boundaries"
-    	'{'
-    	{
-    		AssignmentStatement<bundle>
-    	}
-		'}'.
+	 	SYNC "boundaries" Body<bundle, false, true>                            (. StencilSpecificationAnalyzer.normalizeStencilNodesForBoundariesAndIntial (bundle); .)
+	 	.
 		
 	/**
 	 * Defines the initial condition, i.e., initializes the grids.
 	 */
 	StencilInitial<out StencilBundle bundle> =                                 (. bundle = new StencilBundle (m_stencil); .)
-		SYNC "initial"
+		SYNC "initial" Body<bundle, false, false>                              (. StencilSpecificationAnalyzer.normalizeStencilNodesForBoundariesAndIntial (bundle); .)
+		.
+		
+	Body<StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime> =
 		'{'
 		{
-			AssignmentStatement<bundle>
+			AssignmentStatement<bundle, bOffsetInSpace, bOffsetInTime>
 		}
 		'}'.
 
 
     StencilBox<out Box box> =
-        '('                                                                    (. List<Expression> listMin = new ArrayList<Expression> (); List<Expression> listMax = new ArrayList<Expression> (); .)
+        '('                                                                    (. List<Expression> listMin = new ArrayList<> (); List<Expression> listMax = new ArrayList<> (); .)
         StencilBoxCoordinate<out Box box1>                                     (. listMin.add (box1.getMin ().getCoord (0)); listMax.add (box1.getMax ().getCoord (0)); .)
         {
             ','
@@ -821,9 +833,9 @@ PRODUCTIONS                                                                    /
         .
         
     StencilBoxCoordinate<out Box box> =
-    	StencilExpression<out ExpressionData edMin, null, true, true>
+    	StencilExpression<out ExpressionData edMin, null, true, true, false, false>
     	".."
-    	StencilExpression<out ExpressionData edMax, null, true, true>          (. box = new Box (new Point (edMin.getExpression ()), new Point (edMax.getExpression ())); .)
+    	StencilExpression<out ExpressionData edMax,null,true,true,false,false> (. box = new Box (new Point (edMin.getExpression ()), new Point (edMax.getExpression ())); .)
     	.
 
     
@@ -859,7 +871,7 @@ PRODUCTIONS                                                                    /
    			|
     		"param"                                                            (. bIsGridVariable = false; .)
     	)
-        ident                                                                  (. String strIdentifier = t.val; List<Integer> listDimensions = new ArrayList<Integer> (); .)
+        ident                                                                  (. String strIdentifier = t.val; List<Integer> listDimensions = new ArrayList<> (); .)
         [
             StencilBox<out boxGrid>                                            (. if (!bIsGridVariable) errors.SemErr (la.line, la.col, "Parameters cannot have a box size declaration"); .)
         ]
@@ -887,16 +899,20 @@ PRODUCTIONS                                                                    /
 	/**
 	 * An assignment statement in the stencil operation method.
 	 */
-    AssignmentStatement<StencilBundle bundle> =                                (. Stencil stencil = new Stencil (); .)
+    AssignmentStatement<StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime> =
+                                                                               (. Stencil stencil = new Stencil (); .)
     	(
-    		StencilAssignment<out ExpressionData exprAssign, stencil>          (. stencil.setExpression (exprAssign); .)
+    		StencilAssignment<out ExpressionData exprAssign, stencil, bOffsetInSpace, bOffsetInTime>
+    		                                                                   (. stencil.setExpression (exprAssign); .)
     		|
-    		ScalarAssignment<out ExpressionData exprAssign, stencil>           (. if (exprAssign != null) stencil.setExpression (exprAssign); .)
+    		ScalarAssignment<out ExpressionData exprAssign, stencil, bOffsetInSpace, bOffsetInTime>
+    		                                                                   (. if (exprAssign != null) stencil.setExpression (exprAssign); .)
     	)
     	SYNC ';'                                                               (. try { if (!stencil.isEmpty ()) bundle.addStencil (stencil); } catch (NoSuchMethodException e) { e.printStackTrace (); }.)
     	. 
     	
-    ScalarAssignment<out ExpressionData exprAssignment, Stencil stencil> =     (. exprAssignment = null; Specifier specType = Specifier.FLOAT; .)
+    ScalarAssignment<out ExpressionData exprAssignment, Stencil stencil, boolean bOffsetInSpace, boolean bOffsetInTime> =
+                                                                               (. exprAssignment = null; Specifier specType = Specifier.FLOAT; .)
     	(
     		"float"
     		|
@@ -904,7 +920,8 @@ PRODUCTIONS                                                                    /
     	)
     	ident                                                                  (. String strIdentifier = t.val; .)
     	'='
-    	StencilExpression<out ExpressionData exprRHS, stencil, false, false>   (. Expression exprSimplified = null; .)
+    	StencilExpression<out ExpressionData exprRHS, stencil, false, false, bOffsetInSpace, bOffsetInTime>
+    	                                                                       (. Expression exprSimplified = null; .)
                                                                                (. if (exprRHS.getExpression () instanceof FloatLiteral) .)
                                                                                (.     exprSimplified = exprRHS.getExpression (); .)
                                                                                (. else if (!containsStencilNode (exprRHS.getExpression ())) .)
@@ -916,34 +933,49 @@ PRODUCTIONS                                                                    /
     	                                                                       (.     exprAssignment = new ExpressionData (new AssignmentExpression (node, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
     	                                                                       (. } .)
     	.
-            
+
 	/**
 	 * The assignment expression in the stencil operation method.
 	 */
-    StencilAssignment<out ExpressionData exprAssignment, Stencil stencil> =
-    	StencilIdentifier<out StencilNode nodeLHS, EStreamDirection.OUTPUT>    (. stencil.addOutputNode (nodeLHS); .)
+    StencilAssignment<out ExpressionData exprAssignment, Stencil stencil, boolean bOffsetInSpace, boolean bOffsetInTime> =
+    	StencilIdentifier<out StencilNode nodeLHS, EStreamDirection.OUTPUT, bOffsetInSpace, bOffsetInTime>
+    	                                                                       (. stencil.addOutputNode (nodeLHS); .)
     	'='
-    	StencilExpression<out ExpressionData exprRHS, stencil, false, false>   (. exprAssignment = (nodeLHS == null || exprRHS == null) ? null : new ExpressionData (new AssignmentExpression (nodeLHS, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
+    	StencilExpression<out ExpressionData exprRHS, stencil, false, false, bOffsetInSpace, bOffsetInTime>
+    	                                                                       (. exprAssignment = (nodeLHS == null || exprRHS == null) ? null : new ExpressionData (new AssignmentExpression (nodeLHS, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
     	.
-    	
+
 	/**
 	 * Reference to a grid variable.
 	 */
-    StencilIdentifier<out StencilNode node, EStreamDirection dir> =
+    StencilIdentifier<out StencilNode node, EStreamDirection dir, boolean bOffsetInSpace, boolean bOffsetInTime> =
     	ident                                                                  (. String strIdentifier = t.val; node = null; Index index = new Index (); .)
     	'['
-    		StencilExpression<out ExpressionData exprIdx0,null,false,true>     (. int nMode = 0; List<Expression> listIndices = new ArrayList<> (); listIndices.add (exprIdx0.getExpression ()); .)
-    		{
-    			SYNC
-    			(
-    				','
-    				|
-    				';'                                                        (. switch (nMode) { case 0: index.setSpaceIndex (listIndices); break; case 1: index.setTimeIndex (listIndices); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } nMode++; listIndices = new ArrayList<> (); .)
-    			)
-    			StencilExpression<out ExpressionData exprIdx1,null,false,true> (. listIndices.add (exprIdx1.getExpression ()); .)
-    		}
-    	']'                                                                    (. switch (nMode) { case 0: index.setSpaceIndex (listIndices); break; case 1: index.setTimeIndex (listIndices); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } .)
+    	StencilExpression<out ExpressionData exprIdx0, null, false, true, false, false>
+    		                                                                   (. int nMode = 0; List<Expression> listIndices = new ArrayList<> (); listIndices.add (exprIdx0.getExpression ()); .)
+    	{
+    		SYNC
+    		(
+    			','
+    			|
+    			';'                                                            (. switch (nMode) { case 0: index.setSpaceIndex (listIndices, bOffsetInSpace ? getNegSpatialCoords (listIndices.size ()) : null); if (isConstGridVariable (strIdentifier)) nMode++; break; case 1: index.setTimeIndex (listIndices, bOffsetInTime ? getNegTemporalCoord () : null); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } nMode++; listIndices = new ArrayList<> (); .)
+    		)
+    		StencilExpression<out ExpressionData exprIdx1, null, false, true, false, false>
+    			                                                               (. listIndices.add (exprIdx1.getExpression ()); .)
+    	}
+    	                                                                       (. switch (nMode) { case 0: index.setSpaceIndex (listIndices, bOffsetInSpace ? getNegSpatialCoords (listIndices.size ()) : null); break; case 1: index.setTimeIndex (listIndices, bOffsetInTime ? getNegTemporalCoord () : null); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } .)
     	                                                                       (. node = new StencilNode (strIdentifier, m_mapOutputStreams.get (strIdentifier).getSpecifier (), index); .)
+    	[	/* constraints specification (set-builder notation) */
+    		':'
+    		LogicalExpression<out ExpressionData exprConstr0, null, false, true, false, false>
+    		                                                                   (. node.setConstraint (exprConstr0.getExpression ()); .)
+    		{
+    			','
+    			LogicalExpression<out ExpressionData exprConstr1, null, false, true, false, false>
+    			                                                               (. node.addConstraint (exprConstr1.getExpression ()); .)
+    		}
+    	]
+		']'    	                                                                       
     	.
 
     /**
@@ -953,11 +985,12 @@ PRODUCTIONS                                                                    /
 		ident                                                                  (. String strIdentifier = t.val; Literal litValue = getConstantValue (strIdentifier); exprParam = litValue == null ? new NameID (strIdentifier) : litValue; .)
 		[
 	        '['                                                                (. if ((exprParam instanceof FloatLiteral) || (exprParam instanceof IntegerLiteral)) errors.SemErr (la.line, la.col, "Cannot subscript a scalar value"); .)
-	        	StencilExpression<out ExpressionData exprIdx, null, bIsDecl, true>
+	        	StencilExpression<out ExpressionData exprIdx, null, bIsDecl, true, false, false>
 	        	                                                               (. exprParam = new ArrayAccess (exprParam.clone (), new IntegerLiteral (getInteger (exprIdx.getExpression ()))); .)
 	        	{
 	        		SYNC ','
-	        		StencilExpression<out exprIdx, null, bIsDecl, true>        (. ((ArrayAccess) exprParam).addIndex (new IntegerLiteral (getInteger (exprIdx.getExpression ()))); .)
+	        		StencilExpression<out exprIdx, null, bIsDecl, true, false, false>
+	        		                                                           (. ((ArrayAccess) exprParam).addIndex (new IntegerLiteral (getInteger (exprIdx.getExpression ()))); .)
 	        	}
 	        ']'
 		]                                                                      (. if (!(exprParam instanceof FloatLiteral) && !(exprParam instanceof IntegerLiteral) && !bIsDecl) checkParameterIndices (strIdentifier, exprParam); .)
@@ -966,49 +999,54 @@ PRODUCTIONS                                                                    /
 	/**
 	 * An expression within the stencil's operation method using stencil grid variables.
 	 */
-	StencilExpression<out ExpressionData expr, Stencil stencil, boolean bIsDeclaration, boolean bIsInteger> =
-		AdditiveExpression<out ExpressionData exprAdd, stencil, bIsDeclaration, bIsInteger>
+	StencilExpression<out ExpressionData expr, Stencil stencil, boolean bIsDeclaration, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
+		AdditiveExpression<out ExpressionData exprAdd, stencil, bIsDeclaration, bIsInteger, bOffsetInSpace, bOffsetInTime>
 		                                                                       (. expr = exprAdd; /*expr = exprAdd == null ? null : NormalExpression.simplify (exprAdd);*/ .)
 		.
 		
 	/**
 	 * A logical expression using stencil grid variables.
 	 */
-	LogicalExpression<out ExpressionData expr, Stencil stencil, boolean bIsDeclaration, boolean bIsInteger> =
-		OrExpression<out expr, stencil, bIsDeclaration, bIsInteger>.
+	LogicalExpression<out ExpressionData expr, Stencil stencil, boolean bIsDeclaration, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
+		OrExpression<out expr, stencil, bIsDeclaration, bIsInteger, bOffsetInSpace, bOffsetInTime>.
 		
-	OrExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
-		AndExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger>  (. expr = expr0; .)
+	OrExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
+		AndExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
+		                                                                       (. expr = expr0; .)
 		{
 			(
 				"||"
 				|
 				"or"
 			)
-			AndExpression<out ExpressionData expr1,stencil,bIsDecl,bIsInteger> (. expr = new ExpressionData (new BinaryExpression (expr.getExpression (), BinaryOperator.LOGICAL_OR, expr1.getExpression ()), expr.getFlopsCount () + expr1.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
+			AndExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
+			                                                                   (. expr = new ExpressionData (new BinaryExpression (expr.getExpression (), BinaryOperator.LOGICAL_OR, expr1.getExpression ()), expr.getFlopsCount () + expr1.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
 		} 
 		.
 		
-	AndExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
-		NotExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger>  (. expr = expr0; .)
+	AndExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
+		NotExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
+		                                                                       (. expr = expr0; .)
 		{
 			(
 				"&&"
 				|
 				"and"
 			)
-			NotExpression<out ExpressionData expr1,stencil,bIsDecl,bIsInteger> (. expr = new ExpressionData (new BinaryExpression (expr.getExpression (), BinaryOperator.LOGICAL_AND, expr1.getExpression ()), expr.getFlopsCount () + expr1.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
+			NotExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
+			                                                                   (. expr = new ExpressionData (new BinaryExpression (expr.getExpression (), BinaryOperator.LOGICAL_AND, expr1.getExpression ()), expr.getFlopsCount () + expr1.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
 		} 
 		.
 		
-	NotExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
+	NotExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
 	                                                                           (. UnaryOperator op = null; .)
 		[
 			"!"                                                                (. op = UnaryOperator.LOGICAL_NEGATION; .)
 			|
 			"not"                                                              (. op = UnaryOperator.LOGICAL_NEGATION; .)
 		]
-		ComparisonExpression<out expr, stencil, bIsDecl, bIsInteger>           (. if (op != null) expr = new ExpressionData (new UnaryExpression (op, expr.getExpression ()), expr.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
+		ComparisonExpression<out expr, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
+		                                                                       (. if (op != null) expr = new ExpressionData (new UnaryExpression (op, expr.getExpression ()), expr.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
 		.
 		
 	/**
@@ -1019,17 +1057,17 @@ PRODUCTIONS                                                                    /
 	 * where {op} is one of '<', '<=', '==', '>=', '>', '!='.
 	 * The second form translates to "(a1 {op} b) and (b {op} a2)"
 	 */
-	ComparisonExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
+	ComparisonExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
 	                                                                           (. BinaryOperator op0 = null; BinaryOperator op1 = null; .)
-		AdditiveExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger>
+		AdditiveExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
 		                                                                       (. expr = expr0; .)
 		[
 			ComparisonOperator<out op0>
-			AdditiveExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger>
+			AdditiveExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
 			                                                                   (. expr = new ExpressionData (new BinaryExpression (expr.getExpression (), op0, expr1.getExpression ()), expr.getFlopsCount () + expr1.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
 			[
 				ComparisonOperator<out op1>
-				AdditiveExpression<out ExpressionData expr2, stencil, bIsDecl, bIsInteger>
+				AdditiveExpression<out ExpressionData expr2, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
 				                                                               (. expr = new ExpressionData (new BinaryExpression (expr.getExpression (), BinaryOperator.LOGICAL_AND, new BinaryExpression (expr1.getExpression ().clone (), op1, expr2.getExpression ())), expr.getFlopsCount () + expr2.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
 			]
 		]
@@ -1055,9 +1093,9 @@ PRODUCTIONS                                                                    /
 	/**
 	 * An additive expression. Supports addition and subtraction.
 	 */
-    AdditiveExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
-                                                                               (. List<ExpressionData> listSummands = new LinkedList<ExpressionData> (); boolean bAdd = true; expr = null; .)
-        MultiplicativeExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger>
+    AdditiveExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
+                                                                               (. List<ExpressionData> listSummands = new LinkedList<> (); boolean bAdd = true; expr = null; .)
+        MultiplicativeExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
                                                                                (. listSummands.add (expr0); .)
         {
         	(
@@ -1065,7 +1103,7 @@ PRODUCTIONS                                                                    /
         		|
         		'-'                                                            (. bAdd = false; expr = sum (listSummands, bIsInteger); listSummands.clear (); .)
         	)
-        	MultiplicativeExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger>
+        	MultiplicativeExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
         	                                                                   (. if (bAdd) listSummands.add (expr1); else listSummands.add (subtract (expr.clone (), expr1, bIsInteger)); .)
         }                                                                      (. expr = sum (listSummands, bIsInteger); .)
         .
@@ -1074,9 +1112,9 @@ PRODUCTIONS                                                                    /
      * A multiplicative expression. Supports (floating point)
      * multiplication and division.
      */
-    MultiplicativeExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
-                                                                               (. List<ExpressionData> listFactors = new LinkedList<ExpressionData> (); BinaryOperator op = null; expr = null; .)
-        UnarySignExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger>
+    MultiplicativeExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
+                                                                               (. List<ExpressionData> listFactors = new LinkedList<> (); BinaryOperator op = null; expr = null; .)
+        UnarySignExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
                                                                                (. listFactors.add (expr0); .)                      
         {
         	(
@@ -1087,7 +1125,7 @@ PRODUCTIONS                                                                    /
         		'%'                                                            (. if (!bIsInteger) { errors.SemErr (la.line, la.col, "'%' is only defined for integers"); } .)
         		                                                               (. else { op = BinaryOperator.MODULUS; expr = product (listFactors, bIsInteger); listFactors.clear (); } .)
         	)
-        	UnarySignExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger>
+        	UnarySignExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
         	                                                                   (. if (op == BinaryOperator.MULTIPLY) listFactors.add (expr1); .)
         	                                                                   (. else if (op == BinaryOperator.DIVIDE) { .)
         	                                                                   (.	if (expr1.getExpression () instanceof Literal) .)
@@ -1102,14 +1140,14 @@ PRODUCTIONS                                                                    /
         }                                                                      (. expr = product (listFactors, bIsInteger); .)
         .
         
-    UnarySignExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
+    UnarySignExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
                                                                                (. boolean bIsNegative = false; .) 
         [
             '+'
             |
             '-'                                                                (. bIsNegative = true; .)
         ]
-        ExponentExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger>
+        ExponentExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
                                                                                (. if (!bIsNegative) expr = expr1; else { .)
                                                                                (.     if (expr1.getExpression () instanceof FloatLiteral) expr = new ExpressionData (new FloatLiteral (-((FloatLiteral) expr1.getExpression ()).getValue ()), 0, Symbolic.EExpressionType.EXPRESSION); .)
                                                                                (.     else if (expr1.getExpression () instanceof IntegerLiteral) expr = new ExpressionData (new IntegerLiteral (-((IntegerLiteral) expr1.getExpression ()).getValue ()), 0, Symbolic.EExpressionType.EXPRESSION); .)
@@ -1120,29 +1158,31 @@ PRODUCTIONS                                                                    /
     /**
      * The power operator.
      */ 
-    ExponentExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
-        UnaryExpression<out expr, stencil, bIsDecl, bIsInteger>
+    ExponentExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
+        UnaryExpression<out expr, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
         {
         	'^'
-        	UnaryExpression<out ExpressionData expr1,stencil,bIsDecl,bIsInteger>(. expr = expr == null ? null : ExpressionUtil.createExponentExpression (expr.clone (), expr1); .)
+        	UnaryExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
+        	                                                                   (. expr = expr == null ? null : ExpressionUtil.createExponentExpression (expr.clone (), expr1); .)
         }.
         
     /**
      * A unary expression involving stencil variables.
      */
-    UnaryExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
+    UnaryExpression<out ExpressionData expr, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
                                                                                (. expr = null; .)
         (
         	NumberLiteral<out double fValue, bIsInteger>                       (. expr = new ExpressionData (createLiteral (fValue, bIsInteger), 0, Symbolic.EExpressionType.EXPRESSION); .)
         	|
         	IF(isGridVariable ())
-        		StencilIdentifier<out StencilNode node, EStreamDirection.INPUT>(. expr = new ExpressionData (node, 0, Symbolic.EExpressionType.EXPRESSION); stencil.addInputNode (node); .) 
+        		StencilIdentifier<out StencilNode node, EStreamDirection.INPUT, bOffsetInSpace, bOffsetInTime>
+        		                                                               (. expr = new ExpressionData (node, 0, Symbolic.EExpressionType.EXPRESSION); stencil.addInputNode (node); .) 
         	|
-        	BracketedExpression<out ExpressionData exprBracketed, stencil, bIsDecl, bIsInteger>
+        	BracketedExpression<out ExpressionData exprBracketed, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
         	                                                                   (. expr = exprBracketed; .)
         	|
         	IF(isFunctionCall ())
-        	    FunctionCall<out ExpressionData exprFnxValue, stencil, bIsDecl, bIsInteger>
+        	    FunctionCall<out ExpressionData exprFnxValue, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
         	                                                                   (. expr = exprFnxValue; .)
         	|
         	ScalarIdentifier<out Expression exprParam, bIsDecl, bIsInteger>    (. expr = new ExpressionData (exprParam, 0, Symbolic.EExpressionType.EXPRESSION); .)
@@ -1151,40 +1191,27 @@ PRODUCTIONS                                                                    /
     /**
      * A bracketed expression.
      */
-    BracketedExpression<out ExpressionData expr, Stencil stencil, boolean bIsDeclaration, boolean bIsInteger> =
+    BracketedExpression<out ExpressionData expr, Stencil stencil, boolean bIsDeclaration, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
         '('
-        	StencilExpression<out expr, stencil, bIsDeclaration, bIsInteger>
+        	StencilExpression<out expr, stencil, bIsDeclaration, bIsInteger, bOffsetInSpace, bOffsetInTime>
         ')'.
         
     /**
      * A function call.
      */
-    FunctionCall<out ExpressionData fnx, Stencil stencil, boolean bIsDecl, boolean bIsInteger> =
+    FunctionCall<out ExpressionData fnx, Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime> =
         ident                                                                  (. String strFunctionName = t.val; .)
-        '('                                                                    (. List<Expression> listArgs = new ArrayList<Expression> (); int nFlopsCount = 0; .)
+        '('                                                                    (. List<Expression> listArgs = new ArrayList<> (); int nFlopsCount = 0; .)
         	[
-        		StencilExpression<out ExpressionData expr, stencil, bIsDecl, bIsInteger>
+        		StencilExpression<out ExpressionData expr, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
         		                                                               (. listArgs.add (expr.getExpression ()); nFlopsCount += expr.getFlopsCount (); .)
         		{
-        			SYNC ',' StencilExpression<out expr, stencil, bIsDecl, bIsInteger>
+        			SYNC ',' StencilExpression<out expr, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
         			                                                           (. listArgs.add (expr.getExpression ()); nFlopsCount += expr.getFlopsCount (); .)
         		}
         	]
         ')'                                                                    (. fnx = new ExpressionData (new FunctionCall (new NameID (strFunctionName), listArgs), nFlopsCount + 1, Symbolic.EExpressionType.EXPRESSION); .)
         .
-		
-    /**
-     * An integer offset.
-     */
-    OffsetExpression<out int nValue> =                                         (. boolean bIsNegative = false; .) 
-    	(
-    		'+'
-    		|
-    		'-'                                                                (. bIsNegative = true; .)
-    	)
-    	integer                                                                (. nValue = Integer.parseInt (t.val); if (bIsNegative) nValue = -nValue; .)
-    	.
-
 
 
     ///////////////////////////////////////////////////////////////////////
@@ -1214,15 +1241,14 @@ PRODUCTIONS                                                                    /
 				integer                                                        (. sb.append (t.val); .)
 			]
 		]
-		/*[
-			'e'                                                                (. sb.append (t.val); .)
-			[
-				'+'                                                            (. sb.append (t.val); .)
+		[
+			(
+				"e+"                                                           (. sb.append (t.val); .)
 				|
-				'-'                                                            (. sb.append (t.val); .)
-			]
+				"e-"                                                           (. sb.append (t.val); .)
+			)
 			integer                                                            (. sb.append (t.val); .)
-		]*/                                                                      (. fValue = Double.parseDouble (sb.toString ()); .)
+		]                                                                      (. fValue = Double.parseDouble (sb.toString ()); .)
 		.
 		
 END StencilSpecification.

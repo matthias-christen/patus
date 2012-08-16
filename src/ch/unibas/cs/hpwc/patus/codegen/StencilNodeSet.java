@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import cetus.hir.Expression;
+import cetus.hir.IntegerLiteral;
 import ch.unibas.cs.hpwc.patus.representation.Index;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
@@ -52,26 +54,30 @@ public class StencilNodeSet implements Iterable<StencilNode>
 			if (n1.getIndex ().getTimeIndex () != n2.getIndex ().getTimeIndex ())
 				return n1.getIndex ().getTimeIndex () - n2.getIndex ().getTimeIndex ();
 
-			if (n1.getSpaceIndex ().length != n2.getSpaceIndex ().length)
+			if (n1.getIndex ().getSpaceIndexEx ().length != n2.getIndex ().getSpaceIndexEx ().length)
 			{
 				//throw new RuntimeException ("Only nodes of same spatial dimension can be compared");
-				return n1.getSpaceIndex ().length - n2.getSpaceIndex ().length;
+				return n1.getIndex ().getSpaceIndexEx ().length - n2.getIndex ().getSpaceIndexEx ().length;
 			}
 			
-			if (n1.getSpaceIndex ().length == 0)
+			if (n1.getIndex ().getSpaceIndexEx ().length == 0)
 				return 0;
 
 			int nIdx = 0;
-			while (n1.getSpaceIndex ()[nIdx] == n2.getSpaceIndex ()[nIdx])
+			while (n1.getIndex ().getSpaceIndex (nIdx).equals (n2.getIndex ().getSpaceIndex (nIdx)))
 			{
 				nIdx++;
 
 				// if the end is reached and all entries have been equal, the arrays are equal
-				if (nIdx == n1.getSpaceIndex ().length)
+				if (nIdx == n1.getIndex ().getSpaceIndexEx ().length)
 					return 0;
 			}
 
-			return n1.getSpaceIndex ()[nIdx] - n2.getSpaceIndex ()[nIdx];
+			Expression exprN1Idx = n1.getIndex ().getSpaceIndex (nIdx);
+			Expression exprN2Idx = n2.getIndex ().getSpaceIndex (nIdx);
+			if ((exprN1Idx instanceof IntegerLiteral) && (exprN2Idx instanceof IntegerLiteral))
+				return (int) ((IntegerLiteral) exprN1Idx).getValue () - (int) ((IntegerLiteral) exprN2Idx).getValue ();
+			return exprN1Idx.compareTo (exprN2Idx);
 		}
 	};
 
@@ -113,7 +119,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 	}
 
 	/**
-	 * Builds a new {@linke StencilNodeSet} from an array of stencil nodes.
+	 * Builds a new {@link StencilNodeSet} from an array of stencil nodes.
 	 * @param rgNodes
 	 */
 	public StencilNodeSet (StencilNode... rgNodes)
@@ -241,9 +247,10 @@ public class StencilNodeSet implements Iterable<StencilNode>
 
 		for (StencilNode node : this)
 		{
-			int[] rgEquivClass = mask.apply (node.getSpaceIndex ());
+			int[] rgCoords = node.getSpaceIndex ();
+			int[] rgEquivClass = mask.apply (rgCoords);
 
-			if (Arrays.equals (rgEquivClass, node.getSpaceIndex ()))
+			if (Arrays.equals (rgEquivClass, rgCoords))
 				setResult.m_set.add (node);
 			else
 			{
@@ -321,7 +328,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 				setPivots.remove (nodePivot);
 
 				// make sure the node has sufficient dimensions, otherwise get another pivot
-				if (nDimension < nodePivot.getSpaceIndex ().length)
+				if (nDimension < nodePivot.getIndex ().getSpaceIndexEx ().length)
 					break;
 			}
 
@@ -375,7 +382,8 @@ public class StencilNodeSet implements Iterable<StencilNode>
 					if (!setExistingCoords.contains (i))
 					{
 						StencilNode nodeNew = new StencilNode (nodePivot);
-						nodeNew.getIndex ().getSpaceIndex ()[nDimension] = i;
+//						nodeNew.getIndex ().getSpaceIndex ()[nDimension] = i;
+						nodeNew.getIndex ().setSpaceIndex (nDimension, new IntegerLiteral (i));
 						setResult.m_set.add (nodeNew);
 					}
 			}
@@ -410,7 +418,7 @@ public class StencilNodeSet implements Iterable<StencilNode>
 				setPivots.remove (nodePivot);
 
 				// make sure the node has sufficient dimensions, otherwise get another pivot
-				if (nDimension >= nodePivot.getSpaceIndex ().length)
+				if (nDimension >= nodePivot.getIndex ().getSpaceIndexEx ().length)
 					nodePivot = null;
 			}
 

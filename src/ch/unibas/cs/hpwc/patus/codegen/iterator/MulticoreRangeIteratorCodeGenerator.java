@@ -97,7 +97,8 @@ public class MulticoreRangeIteratorCodeGenerator extends AbstractIteratorCodeGen
 		));
 
 		// add synchronization point
-		Statement stmtBarrier = data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());
+//		Statement stmtBarrier = data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel ());
+		Statement stmtBarrier = data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (loop.getParallelismLevel () - 1);	// TODO: check this!
 		if (stmtBarrier != null)
 			cmpstmtOutput.addStatement (stmtBarrier);
 	}

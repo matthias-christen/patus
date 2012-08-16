@@ -3,6 +3,8 @@
  */
 package ch.unibas.cs.hpwc.patus.representation;
 
+import cetus.hir.BinaryExpression;
+import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.Identifier;
 import cetus.hir.Specifier;
@@ -28,6 +30,11 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 	 * (0, 0, 0) of the stencil
 	 */
 	private Index m_index;
+	
+	/**
+	 * A constraint expression for identifying points in the boundary/initialization specifications
+	 */
+	private Expression m_exprConstraint;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -46,8 +53,10 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 	public StencilNode (String strIdentifier, Specifier specType, Index index)
 	{
 		super (strIdentifier);
+		
 		m_specType = specType;
 		m_index = index == null ? new Index () : new Index (index);
+		m_exprConstraint = null;
 	}
 
 	public StencilNode (StencilNode node)
@@ -83,38 +92,35 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 	 */
 	public boolean isScalar ()
 	{
-		return m_index.getSpaceIndex ().length == 0 && m_index.getTimeIndex () == 0 && m_index.getVectorIndex () == 0;
+		return m_index.getSpaceIndexEx ().length == 0 && m_index.getTimeIndex () == 0 && m_index.getVectorIndex () == 0;
 	}
-
-//	/**
-//	 * Returns the name of the grid corresponding to this stencil node.
-//	 * @return The grid identifier to which this stencil node corresponds
-//	 */
-//	public String getGridIdentifier ()
-//	{
-//		StringBuilder sb = new StringBuilder ();
-//		sb.append (getName ());
-//		if (m_index.getTimeIndex () < 0)
-//			sb.append ('_');
-//		sb.append (Math.abs (m_index.getTimeIndex ()));
-//
-//		///
-//		// TODO check whether this still works with vector index in the name
-//		sb.append ('_');
-//		sb.append (m_index.getVectorIndex ());
-//		///
-//
-//		return sb.toString ();
-//	}
+	
+	public Expression getConstraint ()
+	{
+		return m_exprConstraint;
+	}
+	
+	public void setConstraint (Expression exprConstraint)
+	{
+		m_exprConstraint = exprConstraint;
+	}
+	
+	public void addConstraint (Expression exprConstraint)
+	{
+		if (m_exprConstraint == null)
+			m_exprConstraint = exprConstraint;
+		else
+			m_exprConstraint = new BinaryExpression (m_exprConstraint, BinaryOperator.LOGICAL_AND, exprConstraint);
+	}
 
 	@Override
 	public boolean equals (Object obj)
 	{
 		if (obj instanceof StencilNode)
 		{
-			if (m_index.getSpaceIndex ().length == 0)
+			if (m_index.getSpaceIndexEx ().length == 0)
 			{
-				if (((StencilNode) obj).getIndex ().getSpaceIndex ().length != 0)
+				if (((StencilNode) obj).getIndex ().getSpaceIndexEx ().length != 0)
 					return false;
 				return getName ().equals (((StencilNode) obj).getName ());
 			}
@@ -130,7 +136,7 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 	@Override
 	public int hashCode ()
 	{
-		if (m_index.getSpaceIndex ().length == 0)
+		if (m_index.getSpaceIndexEx ().length == 0)
 			return getName ().hashCode ();
 		return m_index.hashCode ();
 	}

@@ -184,7 +184,9 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		 */
 		private StatementListBundle generateInner (int nStartDim, StatementListBundle slbGeneratedParent)
 		{
-			Parameter param = new Parameter (StringUtil.concat ("_unroll_", m_sdIterator.getIterator ().getName ()));
+			Parameter param = m_bIsEligibleForStencilLoopUnrolling ?
+				new Parameter (StringUtil.concat ("_unroll_", m_sdIterator.getIterator ().getName ())) :
+				null;
 
 			// create a code branch for each unrolling configuration
 			for (StencilLoopUnrollingConfiguration config :	m_data.getOptions ().getStencilLoopUnrollingConfigurations (
@@ -196,15 +198,10 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 
 				recursiveGenerateInner (slbLoopNest, nStartDim - 1, false, config);
 
-//				TODO: is this correct? what if there are more than 1 codes with new params?
 				if (slbLoopNest.size () == 1)
 					slbGeneratedParent.addStatement (slbLoopNest.getDefault (), param, config.toInteger ());
 				else
-//					StatementListBundleUtil.addToLoopBody (slbGeneratedParent, slbLoopNest);
-//
-//				new code:
-				
-				slbGeneratedParent.addStatements (slbLoopNest, param, config.toInteger ());
+					slbGeneratedParent.addStatements (slbLoopNest, param, config.toInteger ());
 			}
 
 			return slbGeneratedParent;
@@ -532,6 +529,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 			// create and set the new named maximum point
 			if (m_bHasNestedLoops)
 				cmpstmtMainLoopBody.addStatement (generateNamedMaximumIdentifier (nDim));
+			
 			return slbStatements;
 		}
 		
@@ -561,7 +559,8 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 				nDim == 0 &&
 				m_data.getArchitectureDescription ().useSIMD () &&
 				!m_data.getOptions ().useNativeSIMDDatatypes () &&
-				isStencilCalculation ();
+				isStencilCalculation () &&
+				!m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, false);
 		}
 		
 		/**
@@ -575,7 +574,8 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		{
 			return m_bContainsStencilCall &&
 				m_data.getCodeGenerators ().getInnermostLoopCodeGenerator () != null &&
-				isStencilCalculation ();
+				isStencilCalculation () &&
+				!m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, false);
 		}
 		
 		/**
@@ -626,7 +626,8 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 				slbInnerLoop.addStatementAtTop (new ExpressionStatement (new AssignmentExpression (
 					m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (sdidIterator, 0).clone (),
 					AssignmentOperator.NORMAL,
-					getLowerLoopBound (0))));
+					getLowerLoopBound (0)
+				)));
 
 				if (bHasParentLoop)
 					StatementListBundleUtil.addToLoopBody (slbParent, slbInnerLoop);
@@ -985,6 +986,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		 *
 		 * @param cmpstmtOuter
 		 */
+		@SuppressWarnings("unused")
 		private void generateAsynchronousIterator (StatementListBundle slOuter)
 		{
 			if (true)

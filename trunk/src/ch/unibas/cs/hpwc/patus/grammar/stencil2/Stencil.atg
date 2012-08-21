@@ -140,7 +140,7 @@ COMPILER StencilSpecification
 				// check whether the indices are within the defined bounds
 				if (nIdxValue < 0 || nIdxValue >= m_rgDimensions[i])
 				{
-					errors.SemErr (la.line, la.col, "Index out of bounds (should be 0.." + (m_rgDimensions[i] - 1) + ")");
+					errors.SemErr (la.line, la.col, StringUtil.concat ("Index out of bounds (should be 0..", m_rgDimensions[i] - 1, ")"));
 					return -1;
 				}
 				
@@ -417,9 +417,17 @@ COMPILER StencilSpecification
 		if (m_listStencilOperationArguments == null)
 			m_listStencilOperationArguments = new ArrayList<> ();
 		
+		if (CodeGeneratorUtil.isDimensionIdentifier (strIdentifier))
+		{
+			errors.SemErr (StringUtil.concat ("The identifier '", strIdentifier, "' represents a dimension and cannot be used as a grid identifier."));
+			return;
+		}
+		
 		Map<String, StreamIndex> map = sd == EStreamDirection.INPUT ? m_mapInputStreams : m_mapOutputStreams;
 		if (!map.containsKey (strIdentifier))
 			map.put (strIdentifier, new StreamIndex (strIdentifier, specType, bIsConstant, box, listDimensions, sd));
+		else
+			errors.SemErr (la.line, la.col, StringUtil.concat ("Duplicate declaration of grid '", strIdentifier, "'"));
 			
 		if (sd == EStreamDirection.INPUT)
 			m_listStencilOperationArguments.add (strIdentifier);
@@ -431,6 +439,12 @@ COMPILER StencilSpecification
 		if (m_listStencilOperationArguments == null)
 			m_listStencilOperationArguments = new ArrayList<> ();
 			
+		if (CodeGeneratorUtil.isDimensionIdentifier (strIdentifier))
+		{
+			errors.SemErr (StringUtil.concat ("The identifier '", strIdentifier, "' represents a dimension and cannot be used as a scalar identifier."));
+			return;
+		}
+
 		if (!m_mapScalars.containsKey (strIdentifier))
 			m_mapScalars.put (strIdentifier, new StencilCalculation.ParamType (specType, listDimensions));
 			
@@ -440,18 +454,25 @@ COMPILER StencilSpecification
 	
 	private void registerConstant (String strIdentifier, Literal litValue)
 	{
-	   if (m_mapConstants == null)
-	       m_mapConstants = new HashMap<> ();
-	   m_mapConstants.put (strIdentifier, litValue.clone ());
+		if (m_mapConstants == null)
+			m_mapConstants = new HashMap<> ();
+	       
+		if (CodeGeneratorUtil.isDimensionIdentifier (strIdentifier))
+		{
+			errors.SemErr (StringUtil.concat ("The identifier '", strIdentifier, "' represents a dimension and cannot be used as a constant identifier."));
+			return;
+		}
+	       
+		m_mapConstants.put (strIdentifier, litValue.clone ());
 	}
 	
 	private Literal getConstantValue (String strIdentifier)
 	{
-	   if (m_mapConstants == null)
-	       return null;
+		if (m_mapConstants == null)
+			return null;
 	       
-	   Literal litValue = m_mapConstants.get (strIdentifier);
-	   return litValue == null ? null : litValue.clone ();
+		Literal litValue = m_mapConstants.get (strIdentifier);
+		return litValue == null ? null : litValue.clone ();
 	}
 	
 	/**
@@ -469,8 +490,22 @@ COMPILER StencilSpecification
 		if (idx != null)
 			return idx.getLinearIndex (strIdentifier, listIndices);
 			
-		errors.SemErr (la.line, la.col, "Variable '" + strIdentifier + "' has not been defined");
+		errors.SemErr (la.line, la.col, StringUtil.concat ("Variable '", strIdentifier, "' has not been defined"));
 		return -1;		
+	}
+	
+	private StreamIndex getOutputStream (String strIdentifier)
+	{
+		StreamIndex si = m_mapOutputStreams.get (strIdentifier);
+		if (si == null)
+		{
+			if (m_mapInputStreams.containsKey (strIdentifier))
+				errors.SemErr (la.line, la.col, StringUtil.concat ("In order to assign a value to the grid '", strIdentifier, "', it must not be declared as 'const'"));
+			else
+				errors.SemErr (la.line, la.col, StringUtil.concat ("The grid '", strIdentifier, "' has not been defined"));
+		}
+		
+		return si;
 	}
 	
 	private void ensureScalarsMapCreated ()
@@ -499,7 +534,7 @@ COMPILER StencilSpecification
 			if (CodeGeneratorUtil.getDimensionFromName (strIdentifier) >= 0)
 				return;	// error if getDimensionFromName returns -1
 			
-			errors.SemErr (la.line, la.col, "Parameter '" + strIdentifier + "' has not been defined");
+			errors.SemErr (la.line, la.col, StringUtil.concat ("Parameter '", strIdentifier, "' has not been defined"));
 			return;
 		}
 		
@@ -522,7 +557,7 @@ COMPILER StencilSpecification
 				int nIdx = getInteger (arr.getIndex (i));
 				if (nIdx < 0 || nIdx >= nDim)
 				{
-					errors.SemErr (la.line, la.col, "Index out of bounds (should be 0.." + (nDim - 1) + ")");
+					errors.SemErr (la.line, la.col, StringUtil.concat ("Index out of bounds (should be 0..", nDim - 1, ")"));
 					return;
 				}
 				i++;
@@ -688,7 +723,7 @@ CHARACTERS
 TOKENS
 	ident = letter { letter | digit }.
     integer = digit { digit }.
-    //float = digit { digit } '.' [ digit { digit } [ 'e' [ '+' | '-' ] digit { digit } ] ].
+    pi = "π".
 
 COMMENTS FROM "/*" TO "*/" NESTED
 COMMENTS FROM "//" TO lf
@@ -908,7 +943,7 @@ PRODUCTIONS                                                                    /
     		ScalarAssignment<out ExpressionData exprAssign, stencil, bOffsetInSpace, bOffsetInTime>
     		                                                                   (. if (exprAssign != null) stencil.setExpression (exprAssign); .)
     	)
-    	SYNC ';'                                                               (. try { if (!stencil.isEmpty ()) bundle.addStencil (stencil); } catch (NoSuchMethodException e) { e.printStackTrace (); }.)
+    	SYNC ';'                                                               (. try { if (!stencil.isEmpty ()) bundle.addStencil (stencil, bOffsetInSpace); } catch (NoSuchMethodException e) { e.printStackTrace (); }.)
     	. 
     	
     ScalarAssignment<out ExpressionData exprAssignment, Stencil stencil, boolean bOffsetInSpace, boolean bOffsetInTime> =
@@ -964,7 +999,7 @@ PRODUCTIONS                                                                    /
     			                                                               (. listIndices.add (exprIdx1.getExpression ()); .)
     	}
     	                                                                       (. switch (nMode) { case 0: index.setSpaceIndex (listIndices, bOffsetInSpace ? getNegSpatialCoords (listIndices.size ()) : null); break; case 1: index.setTimeIndex (listIndices, bOffsetInTime ? getNegTemporalCoord () : null); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } .)
-    	                                                                       (. node = new StencilNode (strIdentifier, m_mapOutputStreams.get (strIdentifier).getSpecifier (), index); .)
+    	                                                                       (. StreamIndex si = getOutputStream (strIdentifier); node = new StencilNode (strIdentifier, si == null ? Specifier.DOUBLE : si.getSpecifier (), index); .)
     	[	/* constraints specification (set-builder notation) */
     		':'
     		LogicalExpression<out ExpressionData exprConstr0, null, false, true, false, false>
@@ -1231,24 +1266,29 @@ PRODUCTIONS                                                                    /
 		integer                                                                (. nValue = Integer.parseInt (t.val); .)
 		.
 		
-	FloatLiteral<out double fValue> =                                          (. StringBuilder sb = new StringBuilder (); .)
-		[
-			integer                                                            (. sb.append (t.val); .)
-		]
-		[
-			'.'                                                                (. sb.append (t.val); .)
-			[
-				integer                                                        (. sb.append (t.val); .)
-			]
-		]
-		[
-			(
-				"e+"                                                           (. sb.append (t.val); .)
-				|
-				"e-"                                                           (. sb.append (t.val); .)
+	FloatLiteral<out double fValue> =                                          (. fValue = 0.0; .)
+		(
+			pi                                                                 (. fValue = Math.PI; .)
+			|
+			(                                                                  (. StringBuilder sb = new StringBuilder (); .)
+				[
+					integer                                                    (. sb.append (t.val); .)
+				]
+				[
+					'.'                                                        (. sb.append (t.val); .)
+					[
+						integer                                                (. sb.append (t.val); .)
+					]
+				]
+				[
+					(
+						"e+"                                                   (. sb.append (t.val); .)
+						|
+						"e-"                                                   (. sb.append (t.val); .)
+					)
+					integer                                                    (. sb.append (t.val); .)
+				]                                                              (. fValue = Double.parseDouble (sb.toString ()); .)
 			)
-			integer                                                            (. sb.append (t.val); .)
-		]                                                                      (. fValue = Double.parseDouble (sb.toString ()); .)
-		.
+		).
 		
 END StencilSpecification.

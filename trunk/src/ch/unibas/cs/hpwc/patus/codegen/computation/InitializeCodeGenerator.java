@@ -10,9 +10,12 @@ import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.FloatLiteral;
+import cetus.hir.IfStatement;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
+import cetus.hir.Traversable;
+import ch.unibas.cs.hpwc.patus.ast.IStatementList;
 import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
@@ -20,6 +23,7 @@ import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -70,11 +74,15 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 						
 						// replace the stencil nodes in the expression with the indexed memory object instances
 						Expression exprMOStencil = replaceStencilNodes (exprStencil, specDatatype, rgOffsetIndex, slGenerated);
-						Expression exprLHS = replaceStencilNodes (nodeOutput, specDatatype, rgOffsetIndex, slGenerated);
+						Expression exprLHS = replaceStencilNodes (nodeOutput, specDatatype, rgOffsetIndex, slGenerated);							
 		
 						// create the calculation statement
 						Statement stmtStencil = new ExpressionStatement (new AssignmentExpression (exprLHS, AssignmentOperator.NORMAL, exprMOStencil));
 	
+						// check if there are any constraints
+						if (nodeOutput.getConstraint () != null)
+							stmtStencil = new IfStatement (getConstraintCondition (nodeOutput), stmtStencil);
+
 						if (StencilCalculationCodeGenerator.LOGGER.isDebugEnabled ())
 							StencilCalculationCodeGenerator.LOGGER.debug (StringUtil.concat ("Adding stencil ", stmtStencil.toString ()));
 	
@@ -84,7 +92,7 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 			}
 		}
 	}
-
+	
 	/**
 	 * Default initialization.
 	 */
@@ -149,5 +157,23 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 
 			slGenerated.addStatement (new ExpressionStatement (new AssignmentExpression (exprLHS, AssignmentOperator.NORMAL, exprRHS)));
 		}
+	}
+	
+	/**
+	 * Alternate implementation of
+	 * {@link AbstractStencilCalculationCodeGenerator#replaceStencilNodes(Expression, Specifier, int[], IStatementList)}
+	 * which also replaces dimension identifiers by the appropriate iterator
+	 * variables.
+	 */
+	@Override
+	protected Expression recursiveReplaceStencilNodes (Expression exprMain, Traversable trv, Specifier specDatatype, int[] rgOffsetIndex, IStatementList slGenerated)
+	{
+		// check whether trv is an identifier corresponding to one of the dimension identifiers
+		int nDim = CodeGeneratorUtil.getDimensionFromIdentifier (trv);
+		if (nDim >= 0)
+			return getDimensionIndexIdentifier (nDim);
+		
+		// default
+		return super.recursiveReplaceStencilNodes (exprMain, trv, specDatatype, rgOffsetIndex, slGenerated);
 	}
 }

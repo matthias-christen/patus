@@ -15,6 +15,7 @@
 		<intrinsics/>
 		<includes>
 			<include file="omp.h"/>
+			<include file="math.h"/>
 		</includes>
 		<build compiler-command="make" harness-template-dir="CPU_OpenMP"/>
 	</architectureType>
@@ -98,6 +99,7 @@
 			<include file="xmmintrin.h"/>
 			<include file="emmintrin.h"/>
 			<include file="ssemathlib.h"/>
+			<include file="math.h"/>
 		</includes>
 		<build compiler-command="make" harness-template-dir="CPU_OpenMP"/>
 	</architectureType>
@@ -351,6 +353,7 @@
 			<include file="immintrin.h"/>
 			<include file="x86intrin.h"/>
 			<include file="avxmathlib.h"/>
+			<include file="math.h"/>
 		</includes>
 		<build compiler-command="make" harness-template-dir="CPU_OpenMP_AVX"/>
 	</architectureType>
@@ -879,6 +882,7 @@
 			<include file="omp.h"/>
 			<include file="immintrin.h"/>
 			<include file="zmmintrin.h"/>
+			<include file="math.h"/>
 		</includes>
 		<build compiler-command="make" harness-template-dir="MIC_OpenMP"/>
 	</architectureType>

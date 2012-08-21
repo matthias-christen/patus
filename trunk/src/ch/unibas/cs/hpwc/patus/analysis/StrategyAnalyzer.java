@@ -36,6 +36,7 @@ import cetus.hir.Traversable;
 import cetus.hir.VariableDeclaration;
 import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.ast.BoundaryCheck;
 import ch.unibas.cs.hpwc.patus.ast.Loop;
 import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
@@ -794,6 +795,13 @@ public class StrategyAnalyzer
 			if (trvChild instanceof CompoundStatement && !(trvChild instanceof Loop))
 			{
 				if (StrategyAnalyzer.directlyContainsStencilCall (trvChild))
+					return true;
+			}
+			else if (trvChild instanceof BoundaryCheck)
+			{
+				if (StrategyAnalyzer.directlyContainsStencilCall (((BoundaryCheck) trvChild).getWithChecks ()))
+					return true;
+				if (StrategyAnalyzer.directlyContainsStencilCall (((BoundaryCheck) trvChild).getWithoutChecks ()))
 					return true;
 			}
 			else if (StrategyAnalyzer.isStencilCall (trvChild))

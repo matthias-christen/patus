@@ -14,13 +14,16 @@ import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.StringLiteral;
+import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
+import ch.unibas.cs.hpwc.patus.codegen.BoundaryCheckCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
+import ch.unibas.cs.hpwc.patus.util.StatementListBundleUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
@@ -28,6 +31,26 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 	public StencilCodeGenerator (CodeGeneratorSharedObjects data, Expression exprStrategy, int nLcmSIMDVectorLengths, StatementListBundle slGenerated, CodeGeneratorRuntimeOptions options)
 	{
 		super (data, exprStrategy, nLcmSIMDVectorLengths, slGenerated, options);
+	}
+	
+	@Override
+	public void generate ()
+	{
+		boolean bDoBoundaryChecks = m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, false) &&
+			m_data.getStencilCalculation ().getBoundaries () != null;
+
+		// don't vectorize if there are boundary checks
+		boolean bNoVectorize = m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, false);
+		if (bDoBoundaryChecks)
+			m_options.setOption (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, true);
+			
+		// generate code
+		super.generate ();
+		if (bDoBoundaryChecks)
+			generateBoundaryChecks ();
+		
+		// restore the option
+		m_options.setOption (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, bNoVectorize);
 	}
 
 	/**
@@ -45,11 +68,6 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 		{
 			// replace identifiers in the stencil expression
 			exprStencil = exprStencil.clone ();
-
-			// check whether the hardware / programming model supports explicit FMAs
-			// TODO: support FMA when not vectorizing? (need to distinguish between non-vectorizing and vectorizing in HardwareDescription#getIntrinsicName)
-//				if (m_hw.getIntrinsicName (Globals.FNX_FMA.getName (), specDatatype) != null)
-//					exprStencil = m_data.getCodeGenerators ().getFMACodeGenerator ().applyFMAs (exprStencil, specDatatype);
 
 			boolean bSuppressVectorization = m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, false);
 			boolean bFirst = true;
@@ -116,7 +134,7 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 		}
 
 		if (exprIdx == null)
-			exprIdx = new IntegerLiteral (0x1D000DEF);	// IDx_unDEF
+			exprIdx = new IntegerLiteral ("0x1D000DEF");	// IDx_unDEF
 
 		int nSIMDVectorLengthToPrint =
 			!bNoVectorize && !m_data.getOptions ().useNativeSIMDDatatypes () && m_data.getArchitectureDescription ().useSIMD () ?
@@ -132,5 +150,41 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 				)
 			)));
 		}
+	}
+	
+	protected void generateBoundaryChecks ()
+	{
+		// generate the code for the boundary stencils (create them in reverse order, since we
+		// create the "else" branch first and append it to the next (previous in the list of boundaries) "if"
+
+		// the last "else" is the stencil computation
+		StatementListBundle slbElse = m_slbGenerated;
+		
+		Stencil[] rgBoundaries = new Stencil[m_data.getStencilCalculation ().getBoundaries ().getStencilsCount ()];
+		int i = 0;
+		for (Stencil stcBoundary : m_data.getStencilCalculation ().getBoundaries ())
+			rgBoundaries[i++] = stcBoundary;
+			
+		for (i = rgBoundaries.length - 1; i >= 0; i--)
+		{
+			Expression exprConstraint = null;
+			for (StencilNode nodeOutput : rgBoundaries[i].getOutputNodes ())
+				if (nodeOutput.getConstraint () != null)
+					exprConstraint = BoundaryCheckCodeGenerator.addExpression (exprConstraint, getConstraintCondition (nodeOutput));
+			
+			if (exprConstraint != null)
+			{
+				StatementListBundle slbThen = new StatementListBundle ();
+				for (ParameterAssignment pa : m_slbGenerated)
+					generateSingleCalculation (rgBoundaries[i], getDatatype (rgBoundaries[i].getExpression ()), getDefaultOffset (), slbThen.getStatementList (pa));
+				
+				slbElse = StatementListBundleUtil.createIfStatement (exprConstraint, slbThen, slbElse);
+			}
+			else
+				throw new RuntimeException (StringUtil.concat (rgBoundaries[i].toString (), " is not a boundary."));	// TODO: handle this somewhere else...
+		}
+		
+		// TODO: this doesn't work... => use special statement lists for the actual stencils (and others for the index calc...)
+		m_slbGenerated.replaceStatementLists (slbElse);
 	}
 }

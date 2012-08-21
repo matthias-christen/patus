@@ -34,6 +34,7 @@ import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.codegen.options.StencilLoopUnrollingConfiguration;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -83,7 +84,7 @@ abstract class AbstractStencilCalculationCodeGenerator
 	 * The (0,...,0) offset
 	 */
 	private int[] m_rgDefaultOffset;
-
+	
 
 	///////////////////////////////////////////////////////////////////
 	// Implementation
@@ -121,7 +122,7 @@ abstract class AbstractStencilCalculationCodeGenerator
 		m_rgDefaultOffset = new int[m_data.getStencilCalculation ().getDimensionality ()];
 		Arrays.fill (m_rgDefaultOffset, 0);
 	}
-
+	
 	/**
 	 * Generates the code for the stencil computation.
 	 */
@@ -134,6 +135,7 @@ abstract class AbstractStencilCalculationCodeGenerator
 		StencilLoopUnrollingConfiguration configUnroll =
 			((StencilLoopUnrollingConfiguration) m_options.getObjectValue (CodeGeneratorRuntimeOptions.OPTION_STENCILLOOPUNROLLINGFACTOR));
 		byte nDimensionality = m_sdidStencilArg.getDimensionality ();
+		
 		boolean bSuppressVectorization = m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, false);
 		boolean bUseNativeSIMDDatatypes = m_data.getOptions ().useNativeSIMDDatatypes () && m_data.getArchitectureDescription ().useSIMD ();
 		
@@ -226,6 +228,11 @@ abstract class AbstractStencilCalculationCodeGenerator
 		}
 
 		return Specifier.FLOAT;
+	}
+	
+	protected int[] getDefaultOffset ()
+	{
+		return m_rgDefaultOffset;
 	}
 
 	/**
@@ -526,5 +533,40 @@ abstract class AbstractStencilCalculationCodeGenerator
 		m_slbGenerated.addStatement (new ExpressionStatement (new AssignmentExpression (idTmpVar.clone (), AssignmentOperator.NORMAL, exprShuffle)));
 
 		return idTmpVar;
+	}
+
+	/**
+	 * Returns the constraint of a stencil node, which can be used in generated
+	 * code (i.e., it has all dimension identifiers replaced by the correct
+	 * iterator variables).
+	 * 
+	 * @param node
+	 *            The stencil node for which to return the constraint. If the
+	 *            node doesn't have a constraint, the method will return
+	 *            <code>null</code>.
+	 * @return The ready-to-use node constraint or <code>null</code> if the node
+	 *         doesn't have a constraint
+	 */
+	protected Expression getConstraintCondition (StencilNode node)
+	{
+		Expression exprResult = node.getConstraint ();
+		if (exprResult == null)
+			return null;
+		exprResult = exprResult.clone ();
+		
+		for (DepthFirstIterator it = new DepthFirstIterator (exprResult); it.hasNext (); )
+		{
+			Traversable trv = (Traversable) it.next ();
+			int nDim = CodeGeneratorUtil.getDimensionFromIdentifier (trv);
+			if (nDim >= 0)
+				((Expression) trv).swapWith (getDimensionIndexIdentifier (nDim));
+		}
+		
+		return exprResult;
+	}
+	
+	protected Expression getDimensionIndexIdentifier (int nDim)
+	{
+		return m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (m_sdidStencilArg, nDim).clone ();
 	}
 }

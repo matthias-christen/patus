@@ -19,6 +19,7 @@ import cetus.hir.Statement;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.analysis.LoopAnalyzer;
 import ch.unibas.cs.hpwc.patus.analysis.StrategyAnalyzer;
+import ch.unibas.cs.hpwc.patus.ast.BoundaryCheck;
 import ch.unibas.cs.hpwc.patus.ast.IndexBoundsCalculationInsertionAnnotation;
 import ch.unibas.cs.hpwc.patus.ast.Loop;
 import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
@@ -178,14 +179,29 @@ public class ThreadCodeGenerator
 	protected void generateSubdomainIterator (
 		SubdomainIterator loop, Statement stmtInput, CompoundStatement cmpstmtOutput, CodeGeneratorRuntimeOptions options)
 	{
+		boolean bDoBoundaryChecks = options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, false);
+		
 		// create the code for the children
 		CompoundStatement cmpstmtLoopBody = new CompoundStatement ();
 		cmpstmtLoopBody.setParent (cmpstmtOutput);
-		generateLoop (loop, cmpstmtLoopBody, options);
+		if (bDoBoundaryChecks)
+		{
+			CompoundStatement cmpstmtWithBndChecks = new CompoundStatement ();
+			generateLoop (loop, cmpstmtWithBndChecks, options);
+			
+			CompoundStatement cmpstmtWithoutBndChecks = new CompoundStatement ();
+			CodeGeneratorRuntimeOptions optionsNoBndChecks = options.clone ();
+			optionsNoBndChecks.setOption (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, false);
+			generateLoop (loop, cmpstmtWithoutBndChecks, optionsNoBndChecks);
+			
+			cmpstmtLoopBody.addStatement (new BoundaryCheck (loop, cmpstmtWithBndChecks, cmpstmtWithoutBndChecks));
+		}
+		else
+			generateLoop (loop, cmpstmtLoopBody, options);
 
 		// add the annotation telling where to add index bounds calculations
 		CodeGeneratorUtil.addStatementAtTop (cmpstmtLoopBody, new AnnotationStatement (new IndexBoundsCalculationInsertionAnnotation (loop)));
-
+		
 		// determine whether the loop contains a stencil call
 		boolean bContainsStencilCall = StrategyAnalyzer.directlyContainsStencilCall (loop);
 
@@ -226,5 +242,5 @@ public class ThreadCodeGenerator
 			loopGenerated.setLoopBody (cmpstmtLoopBody);
 			cmpstmtOutput.addStatement (loopGenerated);
 		}
-	}
+	}	
 }

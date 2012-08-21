@@ -293,11 +293,11 @@ public class Box extends Primitive
 	 * Moves the box by <code>szOffset</code>.
 	 * @param sizeOffset The box movement
 	 */
-	public void offset (Size sizeOffset)
+	public void offset (Vector vecOffset)
 	{
-		ensureDimensionality (sizeOffset.getDimensionality ());
-		m_ptMin.add (sizeOffset);
-		m_ptMax.add (sizeOffset);
+		ensureDimensionality (vecOffset.getDimensionality ());
+		m_ptMin.add (vecOffset);
+		m_ptMax.add (vecOffset);
 
 		// (don't touch size!)
 	}
@@ -305,16 +305,16 @@ public class Box extends Primitive
 	/**
 	 * Offsets the box, but remembers the old coordinates.
 	 * The offset can be undone by invoking {@link Box#undoOffset()}.
-	 * @param sizeOffset
+	 * @param vecOffset
 	 */
-	public void offsetTentatively (Size sizeOffset)
+	public void offsetTentatively (Vector vecOffset)
 	{
 		m_ptMinOld = m_ptMin.clone ();
 		m_ptMaxOld = m_ptMax.clone ();
 
-		ensureDimensionality (sizeOffset.getDimensionality ());
-		m_ptMin.add (sizeOffset);
-		m_ptMax.add (sizeOffset);
+		ensureDimensionality (vecOffset.getDimensionality ());
+		m_ptMin.add (vecOffset);
+		m_ptMax.add (vecOffset);
 	}
 
 	/**

@@ -282,6 +282,7 @@ public class CodeGenerator
 		m_data.getData ().setCreatingInitialization (false);
 		CodeGeneratorRuntimeOptions optionsStencil = new CodeGeneratorRuntimeOptions ();
 		optionsStencil.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
+		optionsStencil.setOption (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, m_data.getStencilCalculation ().getBoundaries () != null);
 
 		CompoundStatement cmpstmtStrategyKernelThreadBody = m_cgThreadCode.generate (m_data.getStrategy ().getBody (), optionsStencil);
 		m_data.getData ().capture ();

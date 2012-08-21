@@ -23,7 +23,7 @@ import cetus.hir.IfStatement;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.analysis.StrategyAnalyzer;
-import ch.unibas.cs.hpwc.patus.ast.Loop;
+import ch.unibas.cs.hpwc.patus.ast.BoundaryCheck;
 import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
@@ -55,6 +55,8 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 	 * The code generator that generates C code for subdomain iterators
 	 */
 	private SubdomainIteratorCodeGenerator m_cgSubdomain;
+	
+	private BoundaryCheckCodeGenerator m_cgBoundaryCheck;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -67,7 +69,9 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 	public SingleThreadCodeGenerator (CodeGeneratorSharedObjects data)
 	{
 		m_data = data;
+		
 		m_cgSubdomain = new SubdomainIteratorCodeGenerator (this, m_data);
+		m_cgBoundaryCheck = new BoundaryCheckCodeGenerator (m_data);
 	}
 
 	/**
@@ -89,36 +93,16 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 		// process the subdomain iterator
 		if (trvInput instanceof SubdomainIterator)
 			return generateSubdomainIterator ((SubdomainIterator) trvInput, options);
+		
+		if (trvInput instanceof BoundaryCheck)
+			return generateBoundaryCheck ((BoundaryCheck) trvInput, options);
 
 		if (trvInput instanceof CompoundStatement)
-		{
-			StatementListBundle slbGenerated = new StatementListBundle (new ArrayList<Statement> ());
-
-			// process all the children of the compound statement
-			for (Traversable trvChild : ((CompoundStatement) trvInput).getChildren ())
-				if (trvChild instanceof Statement)
-					slbGenerated.addStatements (generate (trvChild, options));
-
-			return slbGenerated;
-		}
+			return generateCompoundStatement ((CompoundStatement) trvInput, options);
 		
 		// process if statements
 		if (trvInput instanceof IfStatement)
-		{
-			IfStatement stmtIf = (IfStatement) trvInput;
-
-			StatementListBundle slbThen = new StatementListBundle (new ArrayList<Statement> ());
-			slbThen.addStatements (generate (stmtIf.getThenStatement (), options));
-			
-			StatementListBundle slbElse = null;
-			if (stmtIf.getElseStatement () != null)
-			{
-				slbElse = new StatementListBundle (new ArrayList<Statement> ());
-				slbThen.addStatements (generate (stmtIf.getElseStatement (), options));
-			}
-			
-			return StatementListBundleUtil.createIfStatement (stmtIf.getControlExpression (), slbThen, slbElse);
-		}
+			return generateIfStatement ((IfStatement) trvInput, options);
 
 		// process an expression statement
 		if (trvInput instanceof ExpressionStatement)
@@ -127,6 +111,7 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 		// Other statement...
 		if (trvInput instanceof Statement)
 			return new StatementListBundle ((Statement) trvInput);
+		
 		return new StatementListBundle ();
 	}
 	
@@ -179,6 +164,56 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 		slGenerated.addStatements (m_cgSubdomain.generate (it, options));
 
 		return slGenerated;
+	}
+	
+	protected StatementListBundle generateBoundaryCheck (BoundaryCheck bc, CodeGeneratorRuntimeOptions options)
+	{
+		// generate the control expression to check whether we're in a boundary region
+		Expression exprCheck = m_cgBoundaryCheck.generate (bc, options);
+		
+		// create the calculations with the boundary checks
+		StatementListBundle slbWithChecks = new StatementListBundle (new ArrayList<Statement> ());
+		CodeGeneratorRuntimeOptions optionsWithChecks = options.clone ();
+		optionsWithChecks.setOption (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, true);
+		slbWithChecks.addStatements (generate (bc.getWithChecks (), optionsWithChecks));
+
+		// exprCheck is null if no checks are required, but since we're in a boundary check, we need to return the "with checks" statement
+		if (exprCheck == null)
+			return slbWithChecks;
+
+		StatementListBundle slbWithoutChecks = new StatementListBundle (new ArrayList<Statement> ());
+		CodeGeneratorRuntimeOptions optionsWithoutChecks = options.clone ();
+		optionsWithoutChecks.setOption (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, false);
+		slbWithoutChecks.addStatements (generate (bc.getWithoutChecks (), optionsWithoutChecks));
+
+		return StatementListBundleUtil.createIfStatement (exprCheck, slbWithChecks, slbWithoutChecks);
+	}
+	
+	protected StatementListBundle generateCompoundStatement (CompoundStatement cmpstmt, CodeGeneratorRuntimeOptions options)
+	{
+		StatementListBundle slbGenerated = new StatementListBundle (new ArrayList<Statement> ());
+
+		// process all the children of the compound statement
+		for (Traversable trvChild : cmpstmt.getChildren ())
+			if (trvChild instanceof Statement)
+				slbGenerated.addStatements (generate (trvChild, options));
+
+		return slbGenerated;
+	}
+	
+	protected StatementListBundle generateIfStatement (IfStatement stmtIf, CodeGeneratorRuntimeOptions options)
+	{
+		StatementListBundle slbThen = new StatementListBundle (new ArrayList<Statement> ());
+		slbThen.addStatements (generate (stmtIf.getThenStatement (), options));
+		
+		StatementListBundle slbElse = null;
+		if (stmtIf.getElseStatement () != null)
+		{
+			slbElse = new StatementListBundle (new ArrayList<Statement> ());
+			slbThen.addStatements (generate (stmtIf.getElseStatement (), options));
+		}
+		
+		return StatementListBundleUtil.createIfStatement (stmtIf.getControlExpression (), slbThen, slbElse);
 	}
 
 	/**

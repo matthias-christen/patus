@@ -942,7 +942,7 @@ public class Parser {
 		} else SynErr(44);
 		while (!(la.kind == 0 || la.kind == 7)) {SynErr(45); Get();}
 		Expect(7);
-		try { if (!stencil.isEmpty ()) bundle.addStencil (stencil); } catch (NoSuchMethodException e) { e.printStackTrace (); }
+		try { if (!stencil.isEmpty ()) bundle.addStencil (stencil, true); } catch (NoSuchMethodException e) { e.printStackTrace (); }
 	}
 
 	ExpressionData  StencilAssignment(Stencil stencil) {

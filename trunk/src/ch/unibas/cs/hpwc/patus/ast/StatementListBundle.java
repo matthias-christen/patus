@@ -133,7 +133,8 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 
 	/**
 	 * Returns an iterable over all the parameters.
-	 * @return
+	 * 
+	 * @return An iterable over all statement list bundle parameters
 	 */
 	public Iterable<Parameter> getParameters ()
 	{
@@ -141,15 +142,30 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	}
 
 	/**
-	 *
+	 * Retrieves the statement list belonging to the parameter assignment
+	 * <code>pa</code>.
+	 * 
 	 * @param pa
-	 * @return
+	 *            The parameter assignment for which to retrieve the list of
+	 *            statements
+	 * @return The statement list belonging to <code>pa</code>
 	 */
 	public StatementList getStatementList (ParameterAssignment pa)
 	{
 		return m_mapStatementLists.get (pa);
 	}
 
+	/**
+	 * Replaces the statement list at the parameter assignment <code>pa</code>
+	 * by the new statement list, <code>slNew</code>.
+	 * 
+	 * @param pa
+	 *            The parameter assigment whose statement list to replace
+	 * @param slNew
+	 *            The new statement list, which will be replace the current
+	 *            statements belonging to the parameter assignment
+	 *            <code>pa</code>
+	 */
 	public void replaceStatementList (ParameterAssignment pa, StatementList slNew)
 	{
 		// add missing parameters to list
@@ -159,6 +175,20 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 					m_listParameters.add (param);
 		
 		m_mapStatementLists.put (pa, slNew);
+	}
+
+	/**
+	 * Replaces the statement lists at all available parameter assignments of
+	 * the replacing statement list bundle, <code>slb</code>.
+	 * 
+	 * @param slb
+	 *            The statement list bundle which replaces statement lists of
+	 *            <code>this</code> bundle
+	 */
+	public void replaceStatementLists (StatementListBundle slb)
+	{
+		for (ParameterAssignment pa : slb)
+			replaceStatementList (pa, slb.getStatementList (pa));
 	}
 
 	/**
@@ -181,8 +211,13 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	 */
 	public void addDeclaration (Declaration declaration, Parameter param, int nParamValue)
 	{
-		for (StatementList sl : getStatementLists (param, nParamValue))
-			sl.addDeclaration (declaration);
+		if (param == null)
+			addDeclaration (declaration);
+		else
+		{
+			for (StatementList sl : getStatementLists (param, nParamValue))
+				sl.addDeclaration (declaration);
+		}
 	}
 
 	/**
@@ -207,20 +242,35 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	 * creates a new code branch or adds the statements to all the branches that
 	 * have the parameter <code>param</code> set to <code>nParamValue</code> (if
 	 * the code branch(es) already exist(s)).
+	 * 
 	 * @param stmt
+	 *            The statement to add
 	 * @param param
+	 *            The parameter
 	 * @param nParamValue
+	 *            The parameter value defining to which statement list of the
+	 *            bundle the statement <code>stmt</code> is added
 	 */
 	public void addStatement (Statement stmt, Parameter param, int nParamValue)
 	{
-		for (StatementList sl : getStatementLists (param, nParamValue))
-			sl.addStatement (stmt);
+		if (param == null)
+			addStatement (stmt);
+		else
+		{
+			for (StatementList sl : getStatementLists (param, nParamValue))
+				sl.addStatement (stmt);
+		}
 	}
 
 	public void addStatement (Statement stmt, String strTag, Parameter param, int nParamValue)
 	{
-		for (StatementList sl : getStatementLists (param, nParamValue))
-			sl.addStatement (stmt, strTag);
+		if (param == null)
+			addStatement (stmt, strTag);
+		else
+		{
+			for (StatementList sl : getStatementLists (param, nParamValue))
+				sl.addStatement (stmt, strTag);
+		}
 	}
 
 	/**
@@ -248,14 +298,24 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 	 */
 	public void addStatementAtTop (Statement stmt, Parameter param, int nParamValue)
 	{
-		for (StatementList sl : getStatementLists (param, nParamValue))
-			sl.addStatementAtTop (stmt);
+		if (param == null)
+			addStatementAtTop (stmt);
+		else
+		{
+			for (StatementList sl : getStatementLists (param, nParamValue))
+				sl.addStatementAtTop (stmt);
+		}
 	}
 
 	public void addStatementAtTop (Statement stmt, String strTag, Parameter param, int nParamValue)
 	{
-		for (StatementList sl : getStatementLists (param, nParamValue))
-			sl.addStatementAtTop (stmt, strTag);
+		if (param == null)
+			addStatement (stmt, strTag);
+		else
+		{
+			for (StatementList sl : getStatementLists (param, nParamValue))
+				sl.addStatementAtTop (stmt, strTag);
+		}
 	}
 
 	public void addStatements (List<Statement> listStatements)
@@ -272,14 +332,24 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 
 	public void addStatements (List<Statement> listStatements, Parameter param, int nParamValue)
 	{
-		for (StatementList sl : getStatementLists (param, nParamValue))
-			sl.addStatements (listStatements);
+		if (param == null)
+			addStatements (listStatements);
+		else
+		{
+			for (StatementList sl : getStatementLists (param, nParamValue))
+				sl.addStatements (listStatements);
+		}
 	}
 
 	public void addStatements (List<Statement> listStatements, String strTag, Parameter param, int nParamValue)
 	{
-		for (StatementList sl : getStatementLists (param, nParamValue))
-			sl.addStatements (listStatements, strTag);
+		if (param == null)
+			addStatements (listStatements, strTag);
+		else
+		{
+			for (StatementList sl : getStatementLists (param, nParamValue))
+				sl.addStatements (listStatements, strTag);
+		}
 	}
 	
 	public void addStatementsAtTop (List<Statement> listStatements)
@@ -296,14 +366,24 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 
 	public void addStatementsAtTop (List<Statement> listStatements, Parameter param, int nParamValue)
 	{
-		for (StatementList sl : getStatementLists (param, nParamValue))
-			sl.addStatementsAtTop (listStatements);
+		if (param == null)
+			addStatementsAtTop (listStatements);
+		else
+		{
+			for (StatementList sl : getStatementLists (param, nParamValue))
+				sl.addStatementsAtTop (listStatements);
+		}
 	}
 
 	public void addStatementsAtTop (List<Statement> listStatements, String strTag, Parameter param, int nParamValue)
 	{
-		for (StatementList sl : getStatementLists (param, nParamValue))
-			sl.addStatementsAtTop (listStatements, strTag);
+		if (param == null)
+			addStatementsAtTop (listStatements, strTag);
+		else
+		{
+			for (StatementList sl : getStatementLists (param, nParamValue))
+				sl.addStatementsAtTop (listStatements, strTag);
+		}
 	}
 	
 	/**
@@ -349,23 +429,28 @@ public class StatementListBundle implements Iterable<ParameterAssignment>, IStat
 		if (slb.isEmpty ())
 			return;
 		
-		// make sure that the param is contained in "this" statement list bundle
-		ensureParamExists (param, rgParamValues);
-
-		compatibilize (slb);
-		
-		for (ParameterAssignment pa : this)
+		if (param == null)
+			addStatements (slb);
+		else
 		{
-			if (pa.isDeprecated ())
-				continue;
+			// make sure that the param is contained in "this" statement list bundle
+			ensureParamExists (param, rgParamValues);
+	
+			compatibilize (slb);
 			
-			// add the statement list once to the pa's statement list if one of the values in rgParamValues matches
-			for (int nParamValue : rgParamValues)
+			for (ParameterAssignment pa : this)
 			{
-				if (pa.matches (param, nParamValue))
+				if (pa.isDeprecated ())
+					continue;
+				
+				// add the statement list once to the pa's statement list if one of the values in rgParamValues matches
+				for (int nParamValue : rgParamValues)
 				{
-					getStatementList (pa).addStatements (slb.getStatementList (pa));
-					break;
+					if (pa.matches (param, nParamValue))
+					{
+						getStatementList (pa).addStatements (slb.getStatementList (pa));
+						break;
+					}
 				}
 			}
 		}

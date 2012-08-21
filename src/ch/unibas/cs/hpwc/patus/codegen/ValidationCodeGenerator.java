@@ -215,7 +215,7 @@ public class ValidationCodeGenerator
 				sb.append (",");
 			sb.append ("%d");
 		}
-		sb.append ("] (index %d). Expected: %f, was: %f\\n");
+		sb.append ("] (index %d). Expected: %e, was: %e\\n");
 
 		List<Expression> listPrintArgs = new ArrayList<> (4 + nDim);
 		listPrintArgs.add (new StringLiteral (sb.toString ()));

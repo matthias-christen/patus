@@ -10,7 +10,7 @@ CFLAGS = -O3 -g -msse2 -fopenmp -I.
 
 
 bench: kernel.o driver.o ssemathlib.o $(PATUS_RUNTIME_OBJECT_FILES)
-	$(CC) $(CFLAGS) -o $@ $+
+	$(CC) $(CFLAGS) -o $@ $+ -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<

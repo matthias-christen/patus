@@ -38,6 +38,7 @@ import cetus.hir.VariableDeclaration;
 import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 
 /**
  * Common Cetus patterns that occur during code generation.
@@ -60,9 +61,14 @@ public class CodeGeneratorUtil
 
 	/**
 	 * Creates a variable declaration.
-	 * @param spec The specifier
-	 * @param strVarName The name of the variable
-	 * @param exprInit The expression with which the variable is initialized. Can be <code>null</code> if no initialization is desired
+	 * 
+	 * @param spec
+	 *            The specifier
+	 * @param strVarName
+	 *            The name of the variable
+	 * @param exprInit
+	 *            The expression with which the variable is initialized. Can be
+	 *            <code>null</code> if no initialization is desired
 	 * @return A {@link VariableDeclaration} object
 	 */
 	public static Declaration createVariableDeclaration (Specifier spec, String strVarName, Expression exprInit)
@@ -72,9 +78,14 @@ public class CodeGeneratorUtil
 
 	/**
 	 * Creates a variable declaration.
-	 * @param spec The specifier
-	 * @param idVarName The identifier
-	 * @param exprInit The expression with which the variable is initialized. Can be <code>null</code> if no initialization is desired
+	 * 
+	 * @param spec
+	 *            The specifier
+	 * @param idVarName
+	 *            The identifier
+	 * @param exprInit
+	 *            The expression with which the variable is initialized. Can be
+	 *            <code>null</code> if no initialization is desired
 	 * @return A {@link VariableDeclaration} object
 	 */
 	public static Declaration createVariableDeclaration (Specifier spec, IDExpression idVarName, Expression exprInit)
@@ -127,7 +138,9 @@ public class CodeGeneratorUtil
 
 	/**
 	 * Returns the dimension name for the numbered dimension <code>nDim</code>.
-	 * @param nDim The number of the dimension
+	 * 
+	 * @param nDim
+	 *            The number of the dimension
 	 * @return A name ("x", "y", ...) corresponding to <code>nDim</code>
 	 */
 	public static String getDimensionName (int nDim)
@@ -146,10 +159,31 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Gets the dimension from a dimension name, such as <code>x</code>, <code>y</code>, <code>x0</code>, <code>x4</code>, ...
-	 * If <code>strDim</code> doesn't represent a valid dimension, -1 is returned.
-	 * @param strDim The name of the dimension
-	 * @return The dimension of -1 if <code>strDim</code> doesn't represent a valid dimension
+	 * Returns the alternate dimension name for the numbered dimension
+	 * <code>nDim</code>, i.e., one of x0, x1, x2, ...
+	 * 
+	 * @param nDim
+	 *            The number of the dimension
+	 * @return A alternate name for the dimension <code>nDim</code>: one of x0,
+	 *         x1, x2, ...
+	 */
+	public static String getAltDimensionName (int nDim)
+	{
+		if (nDim < 0)
+			throw new RuntimeException ("Dimensions < 0 are not supported");
+		return StringUtil.concat ("x", nDim);
+	}
+
+	/**
+	 * Gets the dimension from a dimension name, such as <code>x</code>,
+	 * <code>y</code>, <code>x0</code>, <code>x4</code>, ...
+	 * If <code>strDim</code> doesn't represent a valid dimension, -1 is
+	 * returned.
+	 * 
+	 * @param strDim
+	 *            The name of the dimension
+	 * @return The dimension of -1 if <code>strDim</code> doesn't represent a
+	 *         valid dimension
 	 */
 	public static int getDimensionFromName (String strDim)
 	{
@@ -175,6 +209,27 @@ public class CodeGeneratorUtil
 
 		return -1;
 	}
+	
+	public static int getDimensionFromIdentifier (Traversable trv)
+	{
+		if ((trv instanceof IDExpression) && !(trv instanceof StencilNode))
+			return CodeGeneratorUtil.getDimensionFromName (((IDExpression) trv).getName ());
+		return -1;
+	}
+	
+	/**
+	 * Determines whether <code>strDim</code> is a identifier name used to
+	 * identify a dimension.
+	 * 
+	 * @param strDim
+	 *            The name to check
+	 * @return <code>true</code> iff <code>strDim</code> is the name of a
+	 *         dimension identifier
+	 */
+	public static boolean isDimensionIdentifier (String strDim)
+	{
+		return CodeGeneratorUtil.getDimensionFromName (strDim) >= 0;
+	}
 
 	/**
 	 *
@@ -195,12 +250,19 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Creates a forward declaration for a function named <code>idFunctionName</code> with parameters <code>rgParams</code>
-	 * and return value <code>specReturn</code>
-	 * @param specReturn The return value specifier
-	 * @param idFunctionName The name of the function
-	 * @param rgParams The function parameters
-	 * @return A forward declaration for the function specified by <code>specReturn</code>, <code>idFunctionName</code>, <code>rgParams</code>
+	 * Creates a forward declaration for a function named
+	 * <code>idFunctionName</code> with parameters <code>rgParams</code> and
+	 * return value <code>specReturn</code>
+	 * 
+	 * @param specReturn
+	 *            The return value specifier
+	 * @param idFunctionName
+	 *            The name of the function
+	 * @param rgParams
+	 *            The function parameters
+	 * @return A forward declaration for the function specified by
+	 *         <code>specReturn</code>, <code>idFunctionName</code>,
+	 *         <code>rgParams</code>
 	 */
 	public static Declaration createForwardDeclaration (Specifier specReturn, IDExpression idFunctionName, Expression... rgParams)
 	{
@@ -213,12 +275,19 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Creates a forward declaration for a function named <code>idFunctionName</code> with parameters <code>rgParams</code>
-	 * and return value <code>listSpecifiersReturn</code>
-	 * @param listSpecifiersReturn The return value specifiers
-	 * @param idFunctionName The name of the function
-	 * @param rgParams The function parameters
-	 * @return A forward declaration for the function specified by <code>listSpecifiersReturn</code>, <code>idFunctionName</code>, <code>rgParams</code>
+	 * Creates a forward declaration for a function named
+	 * <code>idFunctionName</code> with parameters <code>rgParams</code> and
+	 * return value <code>listSpecifiersReturn</code>
+	 * 
+	 * @param listSpecifiersReturn
+	 *            The return value specifiers
+	 * @param idFunctionName
+	 *            The name of the function
+	 * @param rgParams
+	 *            The function parameters
+	 * @return A forward declaration for the function specified by
+	 *         <code>listSpecifiersReturn</code>, <code>idFunctionName</code>,
+	 *         <code>rgParams</code>
 	 */
 	public static Declaration createForwardDeclaration (List<Specifier> listSpecifiersReturn, IDExpression idFunctionName, Expression... rgParams)
 	{
@@ -233,7 +302,9 @@ public class CodeGeneratorUtil
 
 	/**
 	 * Creates a list of specifiers from <code>rgSpecifiers</code>.
-	 * @param rgSpecifiers The specifiers
+	 * 
+	 * @param rgSpecifiers
+	 *            The specifiers
 	 * @return A list of specifiers
 	 */
 	public static List<Specifier> specifiers (Specifier... rgSpecifiers)
@@ -247,7 +318,9 @@ public class CodeGeneratorUtil
 
 	/**
 	 * Creates a list of expressions from <code>rgExpressions</code>.
-	 * @param rgSpecifiers The expressions
+	 * 
+	 * @param rgSpecifiers
+	 *            The expressions
 	 * @return A list of expressions
 	 */
 	public static List<Expression> expressions (Expression... rgExpressions)
@@ -282,8 +355,11 @@ public class CodeGeneratorUtil
 
 	/**
 	 * Finds the first statement in a compound statement.
-	 * @param cmpstmt The compound statement in which to look for statements
-	 * @return The first statement within <code>cmpstmt</code> or <code>null</code> if there are no statements
+	 * 
+	 * @param cmpstmt
+	 *            The compound statement in which to look for statements
+	 * @return The first statement within <code>cmpstmt</code> or
+	 *         <code>null</code> if there are no statements
 	 */
 	public static Statement getFirstStatement (CompoundStatement cmpstmt)
 	{
@@ -295,9 +371,14 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Appends the statements in <code>rgStatementsToAdd</code> to the compound statement <code>cmpstmt</code>.
-	 * @param cmpstmt The compound statement to which to add the statements in <code>rgStatementsToAdd</code>
-	 * @param rgStatementsToAdd The statements to add to <code>cmpstmt</code>
+	 * Appends the statements in <code>rgStatementsToAdd</code> to the compound
+	 * statement <code>cmpstmt</code>.
+	 * 
+	 * @param cmpstmt
+	 *            The compound statement to which to add the statements in
+	 *            <code>rgStatementsToAdd</code>
+	 * @param rgStatementsToAdd
+	 *            The statements to add to <code>cmpstmt</code>
 	 */
 	public static void addStatements (CompoundStatement cmpstmt, Statement... rgStatementsToAdd)
 	{
@@ -306,9 +387,14 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Appends the statements in <code>listStatementsToAdd</code> to the compound statement <code>cmpstmt</code>.
-	 * @param cmpstmt The compound statement to which to add the statements in <code>rgStatementsToAdd</code>
-	 * @param listStatementsToAdd The list of statements to add to <code>cmpstmt</code>
+	 * Appends the statements in <code>listStatementsToAdd</code> to the
+	 * compound statement <code>cmpstmt</code>.
+	 * 
+	 * @param cmpstmt
+	 *            The compound statement to which to add the statements in
+	 *            <code>rgStatementsToAdd</code>
+	 * @param listStatementsToAdd
+	 *            The list of statements to add to <code>cmpstmt</code>
 	 */
 	public static void addStatements (CompoundStatement cmpstmt, List<Statement> listStatementsToAdd)
 	{
@@ -317,9 +403,14 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Adds the statements in <code>slToAdd</code> to the compound statement <code>cmpstmt</code>.
-	 * @param cmpstmt The compound statement to which to add the statements in <code>slToAdd</code>
-	 * @param slToAdd The list of statements to add to <code>cmpstmt</code>
+	 * Adds the statements in <code>slToAdd</code> to the compound statement
+	 * <code>cmpstmt</code>.
+	 * 
+	 * @param cmpstmt
+	 *            The compound statement to which to add the statements in
+	 *            <code>slToAdd</code>
+	 * @param slToAdd
+	 *            The list of statements to add to <code>cmpstmt</code>
 	 */
 	public static void addStatements (CompoundStatement cmpstmt, StatementList slToAdd)
 	{
@@ -328,9 +419,14 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Adds the statement <code>stmtToAdd</code> at the top of <code>cmpstmt</code>.
-	 * @param cmpstmt The compound statement to which the statement <code>stmtToAdd</code> is added
-	 * @param stmtToAdd The statement to add
+	 * Adds the statement <code>stmtToAdd</code> at the top of
+	 * <code>cmpstmt</code>.
+	 * 
+	 * @param cmpstmt
+	 *            The compound statement to which the statement
+	 *            <code>stmtToAdd</code> is added
+	 * @param stmtToAdd
+	 *            The statement to add
 	 */
 	public static void addStatementAtTop (CompoundStatement cmpstmt, Statement stmtToAdd)
 	{
@@ -345,9 +441,14 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Adds the statements in <code>rgStatementsToAdd</code> at the top of <code>cmpstmt</code>.
-	 * @param cmpstmt The compound statement to which to add the statements in <code>rgStatementsToAdd</code>
-	 * @param rgStatementsToAdd The statements to add at the top of <code>cmpstmt</code>
+	 * Adds the statements in <code>rgStatementsToAdd</code> at the top of
+	 * <code>cmpstmt</code>.
+	 * 
+	 * @param cmpstmt
+	 *            The compound statement to which to add the statements in
+	 *            <code>rgStatementsToAdd</code>
+	 * @param rgStatementsToAdd
+	 *            The statements to add at the top of <code>cmpstmt</code>
 	 */
 	public static void addStatementsAtTop (CompoundStatement cmpstmt, Statement... rgStatementsToAdd)
 	{
@@ -386,10 +487,13 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Adds the statements in the list <code>listStatementsToAdd</code> to the compound statement
-	 * <code>cmpstmt</code>.
-	 * @param cmpstmt The compound statement to which to add the list of statements
-	 * @param listStatementsToAdd The list of statements to add to <code>cmpstmt</code>
+	 * Adds the statements in the list <code>listStatementsToAdd</code> to the
+	 * compound statement <code>cmpstmt</code>.
+	 * 
+	 * @param cmpstmt
+	 *            The compound statement to which to add the list of statements
+	 * @param listStatementsToAdd
+	 *            The list of statements to add to <code>cmpstmt</code>
 	 */
 	public static void addStatementsAtTop (CompoundStatement cmpstmt, List<Statement> listStatementsToAdd)
 	{
@@ -399,9 +503,13 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Adds the comment <code>strComment</code> to the compound statement <code>cmpstmt</code>.
-	 * @param cmpstmt The compound statement to which to add the comment
-	 * @param strComment The comment to add to <code>cmpstmt</code>
+	 * Adds the comment <code>strComment</code> to the compound statement
+	 * <code>cmpstmt</code>.
+	 * 
+	 * @param cmpstmt
+	 *            The compound statement to which to add the comment
+	 * @param strComment
+	 *            The comment to add to <code>cmpstmt</code>
 	 */
 	public static void addComment (CompoundStatement cmpstmt, String strComment)
 	{
@@ -412,7 +520,9 @@ public class CodeGeneratorUtil
 
 	/**
 	 * Clones a Cetus HIR object or a list of HIR objects.
-	 * @param obj The HIR object of list of HIR objects
+	 * 
+	 * @param obj
+	 *            The HIR object of list of HIR objects
 	 * @return A copy of <code>obj</code>
 	 */
 	public static Object clone (Object obj)
@@ -459,8 +569,10 @@ public class CodeGeneratorUtil
 	}
 
 	/**
-	 * Returns the statement <code>stmt</code> wrapped in a {@link CompoundStatement}
-	 * or cast to a {@link CompoundStatement} if it is already a compound statement.
+	 * Returns the statement <code>stmt</code> wrapped in a
+	 * {@link CompoundStatement} or cast to a {@link CompoundStatement} if it is
+	 * already a compound statement.
+	 * 
 	 * @param stmt
 	 * @return
 	 */

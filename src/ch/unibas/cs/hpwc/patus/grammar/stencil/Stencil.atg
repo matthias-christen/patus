@@ -863,7 +863,7 @@ PRODUCTIONS                                                                     
     		|
     		ScalarAssignment<out ExpressionData exprAssign, stencil>           (. if (exprAssign != null) stencil.setExpression (exprAssign); .)
     	)
-    	SYNC ';'                                                               (. try { if (!stencil.isEmpty ()) bundle.addStencil (stencil); } catch (NoSuchMethodException e) { e.printStackTrace (); }.)
+    	SYNC ';'                                                               (. try { if (!stencil.isEmpty ()) bundle.addStencil (stencil, true); } catch (NoSuchMethodException e) { e.printStackTrace (); }.)
     	.
     	
     ScalarAssignment<out ExpressionData exprAssignment, Stencil stencil> =     (. exprAssignment = null; Specifier specType = Specifier.FLOAT; .)

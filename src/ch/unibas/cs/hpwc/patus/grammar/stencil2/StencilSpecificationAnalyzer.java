@@ -24,21 +24,21 @@ public class StencilSpecificationAnalyzer
 	{
 		for (Stencil stencil : bundle)
 		{
-			for (StencilNode node : stencil)
+			for (StencilNode node : stencil.getAllNodes ())
 			{
 				Expression[] rgIdx = node.getIndex ().getSpaceIndexEx ();
 				Expression[] rgIdxNew = new Expression[rgIdx.length];
 				
 				for (int i = 0; i < rgIdx.length; i++)
 				{
-					NameID nidDimId = new NameID (CodeGeneratorUtil.getDimensionName (i));
+					String strDimId = StencilSpecificationAnalyzer.getContainedDimensionIdentifier (rgIdx[i], i);
 					
-					if (containsDimensionIdentifier (rgIdx[i], i))
+					if (strDimId != null)
 					{
 						// if an entry I contains the corresponding dimension identifier id, compute I-id
 						// we expect this to be an integer value
 						
-						rgIdxNew[i] = Symbolic.simplify (new BinaryExpression (rgIdx[i].clone (), BinaryOperator.SUBTRACT, nidDimId));
+						rgIdxNew[i] = Symbolic.simplify (new BinaryExpression (rgIdx[i].clone (), BinaryOperator.SUBTRACT, new NameID (strDimId)));
 						if (!(rgIdxNew[i] instanceof IntegerLiteral))
 						{
 							throw new RuntimeException (StringUtil.concat ("Illegal coordinate ", rgIdx[i].toString (),
@@ -53,9 +53,11 @@ public class StencilSpecificationAnalyzer
 						// corresponding subdomain index (dimension identifier) to the expression of the index entry
 						
 						rgIdxNew[i] = new IntegerLiteral (0);
-						node.addConstraint (new BinaryExpression (nidDimId, BinaryOperator.COMPARE_EQ, rgIdx[i]));
+						node.addConstraint (new BinaryExpression (new NameID (CodeGeneratorUtil.getDimensionName (i)), BinaryOperator.COMPARE_EQ, rgIdx[i]));
 					}
 				}
+				
+				node.getIndex ().setSpaceIndex (rgIdxNew);
 			}
 		}
 	}
@@ -89,16 +91,23 @@ public class StencilSpecificationAnalyzer
 	 * @return <code>true</code> iff <code>expr</code> contains a dimension
 	 *         identifier corresponding to the dimension <code>nDim</code>
 	 */
-	public static boolean containsDimensionIdentifier (Expression expr, int nDim)
+	public static String getContainedDimensionIdentifier (Expression expr, int nDim)
 	{
 		String strId = CodeGeneratorUtil.getDimensionName (nDim);
+		String strIdAlt = CodeGeneratorUtil.getAltDimensionName (nDim);
+		
 		for (DepthFirstIterator it = new DepthFirstIterator (Symbolic.simplify (expr)); it.hasNext (); )
 		{
 			Object o = it.next ();
-			if (o instanceof IDExpression && ((IDExpression) o).getName ().equals (strId))
-				return true;
+			if (o instanceof IDExpression)
+			{
+				if (((IDExpression) o).getName ().equals (strId))
+					return strId;
+				if (((IDExpression) o).getName ().equals (strIdAlt))
+					return strIdAlt;
+			}
 		}
 		
-		return false;
+		return null;
 	}
 }

@@ -10,6 +10,7 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.util;
 
+import cetus.hir.BinaryOperator;
 import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
@@ -60,5 +61,12 @@ public class AnalyzeTools
 				return true;
 
 		return false;
+	}
+	
+	public static boolean isComparisonOperator (BinaryOperator op)
+	{
+		return op.equals (BinaryOperator.COMPARE_EQ) || op.equals (BinaryOperator.COMPARE_NE) ||
+			op.equals (BinaryOperator.COMPARE_LT) || op.equals (BinaryOperator.COMPARE_LE) ||
+			op.equals (BinaryOperator.COMPARE_GT) || op.equals (BinaryOperator.COMPARE_GE);
 	}
 }

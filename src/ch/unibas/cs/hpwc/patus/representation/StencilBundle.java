@@ -112,13 +112,13 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	 * @throws NoSuchMethodException
 	 * @throws SecurityException
 	 */
-	public void addStencil (Stencil stencil) throws NoSuchMethodException, SecurityException
+	public void addStencil (Stencil stencil, boolean bAllowOffsetInSpace) throws NoSuchMethodException, SecurityException
 	{
 		// add the stencil to the list
 		addStencilToList (stencil);
 
 		// add the stencil nodes to the fused stencil
-		addStencilToFused (stencil);
+		addStencilToFused (stencil, bAllowOffsetInSpace);
 	}
 	
 	private void addStencilToList (Stencil stencil)
@@ -139,8 +139,9 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	 * @param stencil
 	 *            The stencil to add
 	 */
-	private void addStencilToFused (Stencil stencil) throws NoSuchMethodException, SecurityException
+	private void addStencilToFused (Stencil stencil, boolean bAllowOffsetInSpace) throws NoSuchMethodException, SecurityException
 	{
+/*		
 		// Determine whether we need to shift the stencils in space: Shifting is necessary
 		// if the output indices of the fused stencil and the stencil to add are not
 		// aligned. Note that the stencils in the list will be shifted too.
@@ -164,10 +165,27 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 				m_stencilFused.addOutputNode (new StencilNode (node));
 
 		// offset the stencils that are in the bundle
+		// TODO: do we really need this??
 		Expression[] rgMinSpaceIndex = VectorUtil.getMinimum (rgSpaceIndexFusedStencil, rgSpaceIdxNewStencil);
 		m_stencilFused.offsetInSpace (rgMinSpaceIndex);
 		for (Stencil s : m_listStencils)
 			s.offsetInSpace (rgMinSpaceIndex);
+*/
+		
+		// shift stencil indices so that the spatial coordinate of the center point is always at (0,...,0)
+		ensureFusedStencilCreated (stencil);
+		if (bAllowOffsetInSpace)
+			stencil.offsetInSpace (VectorUtil.negate (stencil.getSpatialOutputIndex ()));
+		
+		// add the new stencil to the fused stencil
+		for (int i = 0; i < stencil.getNumberOfVectorComponents (); i++)
+			for (StencilNode node : stencil.getNodeIteratorForVectorComponent (i))
+				m_stencilFused.addInputNode (new StencilNode (node));
+
+		// TODO: check output node
+		for (StencilNode node : stencil.getOutputNodes ())
+			if (node.getIndex ().getSpaceIndexEx ().length > 0)
+				m_stencilFused.addOutputNode (new StencilNode (node));		
 	}
 
 	/**
@@ -177,11 +195,11 @@ public class StencilBundle implements IStencilOperations, Iterable<Stencil>
 	 * {@link StencilBundle} class).
 	 * </p>
 	 */
-	public void rebuild () throws NoSuchMethodException, SecurityException
+	public void rebuild (boolean bAllowOffsetInSpace) throws NoSuchMethodException, SecurityException
 	{
 		m_stencilFused.clear ();
 		for (Stencil stencil : m_listStencils)
-			addStencilToFused (stencil);
+			addStencilToFused (stencil, bAllowOffsetInSpace);
 	}
 
 	/**

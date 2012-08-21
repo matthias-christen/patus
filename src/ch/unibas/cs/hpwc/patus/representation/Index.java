@@ -395,6 +395,21 @@ public class Index implements Comparable<Index>, ISpaceIndexable
 		for (int i = 0; i < rgSpaceIndex.length; i++)
 			m_rgSpaceIndex[i] = new IntegerLiteral (rgSpaceIndex[i]);
 	}
+	
+	public void setSpaceIndex (Expression[] rgSpaceIndex)
+	{
+		if (rgSpaceIndex == null)
+		{
+			m_rgSpaceIndex = null;
+			return;
+		}
+		
+		if (m_rgSpaceIndex == null || m_rgSpaceIndex.length != rgSpaceIndex.length)
+			m_rgSpaceIndex = new Expression[rgSpaceIndex.length];
+		
+		for (int i = 0; i < rgSpaceIndex.length; i++)
+			m_rgSpaceIndex[i] = rgSpaceIndex[i].clone ();
+	}
 
 	/**
 	 * Sets the index's space index.

@@ -46,6 +46,12 @@ public class CodeGeneratorRuntimeOptions implements Cloneable
 	 */
 	public static final String OPTION_INNER_UNROLLINGCONFIGURATION = "InnerMostUnrollingConfig";
 
+	/**
+	 * Specifies whether in the current code branch boundary checks are generated.
+	 * The value is boolean.
+	 */
+	public static final String OPTION_DOBOUNDARYCHECKS = "DoBoundaryChecks";
+
 
 	///////////////////////////////////////////////////////////////////
 	// Member Variables

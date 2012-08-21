@@ -60,7 +60,7 @@ public class AssemblyExpressionCodeGenerator
 
 	
 	///////////////////////////////////////////////////////////////////
-	// Member Variables
+	// Member Variables	
 
 	private CodeGeneratorSharedObjects m_data;
 	

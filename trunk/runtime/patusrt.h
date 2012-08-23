@@ -25,6 +25,19 @@ void tic ();
 void toc (long nFlopsPerStencil, long nStencilComputationsCount, long nBytesTransferred);
 
 
+/*************************************************************************/
+/* Utility Functions                                                     */
+/*************************************************************************/
+
+/**
+ * Determines whether the command line argument szArg was passed to the program.
+ */
+int has_arg (char* szArg, int argc, char** argv);
+
+void write_data_f (char* szFilename, int nDim, float* pData, ...);
+void write_data_d (char* szFilename, int nDim, float* pData, ...);
+
+
 #ifndef __cplusplus
 /*
 inline int min (int a, int b)

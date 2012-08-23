@@ -239,11 +239,13 @@ public class ExpressionUtil
 	 *            The exponent
 	 * @return An expression that calculates <code>exprBase</code>^<code>exprExponent</code>
 	 */
-	public static Expression createExponentExpression (Expression exprBase, Expression exprExponent)
+	public static Expression createExponentExpression (Expression exprBase, Expression exprExponent, Specifier specDatatype)
 	{
 		return ExpressionUtil.createExponentExpression (
 			new ExpressionData (exprBase, 0, Symbolic.EExpressionType.EXPRESSION),
-			new ExpressionData (exprExponent, 0, Symbolic.EExpressionType.EXPRESSION)).getExpression ();
+			new ExpressionData (exprExponent, 0, Symbolic.EExpressionType.EXPRESSION),
+			specDatatype
+		).getExpression ();
 	}
 
 	/**
@@ -256,7 +258,7 @@ public class ExpressionUtil
 	 *            The exponent
 	 * @return An expression that calculates <code>exprBase</code>^<code>nExponent</code>
 	 */
-	private static ExpressionData createExponentExpression (ExpressionData exprBase, int nExponent)
+	private static ExpressionData createExponentExpression (ExpressionData exprBase, int nExponent, Specifier specDatatype)
 	{
 		if (exprBase.getExpression () instanceof IDExpression && ((IDExpression) exprBase.getExpression ()).getName ().equals ("%e"))
 			return new ExpressionData (new FloatLiteral (Math.exp (nExponent)), 0, Symbolic.EExpressionType.EXPRESSION);
@@ -298,8 +300,9 @@ public class ExpressionUtil
 			}
 		}
 
+		boolean bIsFloat = Specifier.FLOAT.equals (specDatatype);
 		return new ExpressionData (
-			new FunctionCall (new NameID ("pow"), CodeGeneratorUtil.expressions (exprBase.getExpression (), new IntegerLiteral (nExponent))),
+			new FunctionCall (new NameID (bIsFloat ? "powf" : "pow"), CodeGeneratorUtil.expressions (exprBase.getExpression (), new IntegerLiteral (nExponent))),
 			exprBase.getFlopsCount () + 1,
 			Symbolic.EExpressionType.EXPRESSION);
 	}
@@ -314,22 +317,24 @@ public class ExpressionUtil
 	 *            The exponent
 	 * @return An expression that calculates <code>edBase</code>^<code>edExponent</code>
 	 */
-	public static ExpressionData createExponentExpression (ExpressionData edBase, ExpressionData edExponent)
+	public static ExpressionData createExponentExpression (ExpressionData edBase, ExpressionData edExponent, Specifier specDatatype)
 	{
+		boolean bIsFloat = Specifier.FLOAT.equals (specDatatype);
+		
 		if (ExpressionUtil.isZero (edBase.getExpression ()))
 			return new ExpressionData (new IntegerLiteral (0), 0, Symbolic.EExpressionType.EXPRESSION);
 		if (ExpressionUtil.isValue (edExponent.getExpression (), 1))
 			return new ExpressionData (new IntegerLiteral (1), 0, Symbolic.EExpressionType.EXPRESSION);
 
 		if (edExponent.getExpression () instanceof IntegerLiteral)
-			return ExpressionUtil.createExponentExpression (edBase, (int) ((IntegerLiteral) edExponent.getExpression ()).getValue ());
+			return ExpressionUtil.createExponentExpression (edBase, (int) ((IntegerLiteral) edExponent.getExpression ()).getValue (), specDatatype);
 
 		if (edExponent.getExpression () instanceof FloatLiteral)
 		{
 			double fExponent = ((FloatLiteral) edExponent.getExpression ()).getValue ();
 
 			if (Math.floor (fExponent) == fExponent)
-				return ExpressionUtil.createExponentExpression (edBase, (int) fExponent);
+				return ExpressionUtil.createExponentExpression (edBase, (int) fExponent, specDatatype);
 
 			// exp
 			if (edBase.getExpression () instanceof IDExpression && ((IDExpression) edBase.getExpression ()).getName ().equals ("%e"))
@@ -338,7 +343,7 @@ public class ExpressionUtil
 			if (fExponent == 0.5)
 			{
 				return new ExpressionData (
-					new FunctionCall (new NameID ("sqrt"), CodeGeneratorUtil.expressions (edBase.getExpression ())),
+					new FunctionCall (new NameID (bIsFloat ? "sqrtf" : "sqrt"), CodeGeneratorUtil.expressions (edBase.getExpression ())),
 					edBase.getFlopsCount () + 1,
 					Symbolic.EExpressionType.EXPRESSION);
 			}
@@ -348,14 +353,14 @@ public class ExpressionUtil
 		if (edBase.getExpression () instanceof IDExpression && ((IDExpression) edBase.getExpression ()).getName ().equals ("%e"))
 		{
 			return new ExpressionData (
-				new FunctionCall (new NameID ("exp"), CodeGeneratorUtil.expressions (edExponent.getExpression ())),
+				new FunctionCall (new NameID (bIsFloat ? "expf" : "exp"), CodeGeneratorUtil.expressions (edExponent.getExpression ())),
 				edExponent.getFlopsCount () + 1,
 				Symbolic.EExpressionType.EXPRESSION);
 		}
 
 		// the generic case
 		return new ExpressionData (
-			new FunctionCall (new NameID ("pow"), CodeGeneratorUtil.expressions (edBase.getExpression (), edExponent.getExpression ())),
+			new FunctionCall (new NameID (bIsFloat ? "powf" : "pow"), CodeGeneratorUtil.expressions (edBase.getExpression (), edExponent.getExpression ())),
 			edBase.getFlopsCount () + edExponent.getFlopsCount () + 1,
 			Symbolic.EExpressionType.EXPRESSION);
 	}

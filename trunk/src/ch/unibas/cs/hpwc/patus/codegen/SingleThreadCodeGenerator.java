@@ -159,11 +159,11 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 		if (!it.getNumberOfThreads ().equals (Globals.ONE))
 			throw new RuntimeException ("Parallel loops are not supported");
 
-		StatementListBundle slGenerated = new StatementListBundle (new ArrayList<Statement> ());
-		slGenerated.addStatement (new AnnotationStatement (new CommentAnnotation (it.getLoopHeadAnnotation ())));
-		slGenerated.addStatements (m_cgSubdomain.generate (it, options));
+		StatementListBundle slbGenerated = new StatementListBundle (new ArrayList<Statement> ());
+		slbGenerated.addStatement (new AnnotationStatement (new CommentAnnotation (it.getLoopHeadAnnotation ())));
+		slbGenerated.addStatements (m_cgSubdomain.generate (it, options));
 
-		return slGenerated;
+		return slbGenerated;
 	}
 	
 	protected StatementListBundle generateBoundaryCheck (BoundaryCheck bc, CodeGeneratorRuntimeOptions options)

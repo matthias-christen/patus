@@ -38,6 +38,7 @@ import ch.unibas.cs.hpwc.patus.grammar.stencil.Parser;
 import ch.unibas.cs.hpwc.patus.grammar.stencil.Scanner;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
+import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -68,6 +69,7 @@ public class StencilCalculation
 	{
 		protected EArgumentType m_type;
 		protected Specifier m_specType;
+		
 
 		@SuppressWarnings("unused")
 		private ArgumentType ()
@@ -94,7 +96,7 @@ public class StencilCalculation
 		public List<Specifier> getSpecifiers ()
 		{
 			return CodeGeneratorUtil.specifiers (m_specType, m_type != EArgumentType.PARAMETER ? PointerSpecifier.UNQUALIFIED : null);
-		}
+		}		
 	}
 
 	public static class GridType extends ArgumentType
@@ -127,7 +129,9 @@ public class StencilCalculation
 	public static class ParamType extends ArgumentType
 	{
 		private int[] m_rgDimensions;
+		protected Map<IntArray, Expression> m_mapDefaultValues;
 
+		
 		public ParamType (Specifier specType, List<Integer> listDimensions)
 		{
 			super (EArgumentType.PARAMETER, specType);
@@ -147,6 +151,16 @@ public class StencilCalculation
 		public int getDimensionsCount ()
 		{
 			return m_rgDimensions.length;
+		}
+
+		public void setDefaultValues (Map<IntArray, Expression> mapDefaultValues)
+		{
+			m_mapDefaultValues = mapDefaultValues;
+		}
+		
+		public Map<IntArray, Expression> getDefaultValues ()
+		{
+			return m_mapDefaultValues;
 		}
 	}
 
@@ -524,7 +538,7 @@ public class StencilCalculation
 	{
 		m_mapArguments.put (strArgumentName, new ArgumentType (EArgumentType.PARAMETER, specType));
 	}
-
+	
 	public void addSizeParameter (NameID nidSizeParam)
 	{
 		m_listSizeParameters.add (nidSizeParam);

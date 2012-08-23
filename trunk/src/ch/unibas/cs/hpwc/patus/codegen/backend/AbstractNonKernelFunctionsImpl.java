@@ -24,18 +24,21 @@ import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
+import cetus.hir.CharLiteral;
 import cetus.hir.CompoundStatement;
 import cetus.hir.DeclarationStatement;
 import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.FloatLiteral;
+import cetus.hir.ForLoop;
 import cetus.hir.FunctionCall;
 import cetus.hir.IDExpression;
 import cetus.hir.Identifier;
 import cetus.hir.IfStatement;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
+import cetus.hir.PointerSpecifier;
 import cetus.hir.ReturnStatement;
 import cetus.hir.SizeofExpression;
 import cetus.hir.Specifier;
@@ -173,7 +176,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		m_mapCommandLineParamIndices = new HashMap<> ();
 		m_listCommandLineParams = new ArrayList<> ();
 
-		int nIdx = 1;
+		int nIdx = 0;
 		for (GlobalGeneratedIdentifiers.Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
 		{
 			switch (var.getType ())
@@ -357,6 +360,129 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 
 		return sl;
 	}
+	
+	public StatementList parseCommandLine ()
+	{
+		initialize ();
+		
+		// Generate this code:
+		//
+		// int nParamArgsCount = 0;
+		// char** rgArgs = (char**) malloc (argc * sizeof (char*));
+		// for (int i = 1; i < argc; i++)
+		//     if (*(argv[i]) != '-')
+		//     {
+		//         rgArgs[nParamArgsCount] = argv[i];
+		//         nParamArgsCount++;
+		//     }
+		// if (nParamArgsCount != #args)
+		// {
+		//     puts ("Syntax: [progname] {{ <arg[i]> : i=0..#args-1 }}");
+		//     exit (-1);
+		// }
+		// <paramname> = atoi (rgArgs[i]); : i=0..#args-1
+		// free (rgArgs);
+	
+		StatementList sl = new StatementList (new ArrayList<Statement> ());
+
+		// int nParamArgsCount = 0;
+		VariableDeclarator declParamArgsCount = new VariableDeclarator (new NameID ("nParamArgsCount"));
+		declParamArgsCount.setInitializer (new ValueInitializer (Globals.ZERO.clone ()));
+		sl.addStatement (new DeclarationStatement (new VariableDeclaration (Specifier.INT, declParamArgsCount)));
+		
+		// char** rgArgs = (char**) malloc (argc * sizeof (char*));
+		VariableDeclarator declArgs = new VariableDeclarator (new NameID ("rgArgs"));
+		declArgs.setInitializer (new ValueInitializer (new Typecast (
+			CodeGeneratorUtil.specifiers (Specifier.CHAR, PointerSpecifier.UNQUALIFIED, PointerSpecifier.UNQUALIFIED),
+			new FunctionCall (
+				new NameID ("malloc"),
+				CodeGeneratorUtil.expressions (new BinaryExpression (
+					new NameID ("argc"),
+					BinaryOperator.MULTIPLY,
+					new SizeofExpression (CodeGeneratorUtil.specifiers (Specifier.CHAR, PointerSpecifier.UNQUALIFIED))
+				))
+			)
+		)));
+		sl.addStatement (new DeclarationStatement (new VariableDeclaration (
+			CodeGeneratorUtil.specifiers (Specifier.CHAR, PointerSpecifier.UNQUALIFIED, PointerSpecifier.UNQUALIFIED),
+			declArgs
+		)));
+
+		// create the "if" within the "for", then the "for"
+		//         rgArgs[nParamArgsCount] = argv[i];
+		//         nParamArgsCount++;
+		VariableDeclarator declI = new VariableDeclarator (new NameID ("ii"));
+		sl.addStatement (new DeclarationStatement (new VariableDeclaration (Specifier.INT, declI)));
+		CompoundStatement cmpstmtIfBody1 = new CompoundStatement ();
+		cmpstmtIfBody1.addStatement (new ExpressionStatement (new AssignmentExpression (
+			new ArrayAccess (new Identifier (declArgs), new Identifier (declParamArgsCount)),
+			AssignmentOperator.NORMAL,
+			new ArrayAccess (new NameID ("argv"), new Identifier (declI))
+		)));
+		// for (int i = 1; i < argc; i++)
+		//     if (*(argv[i]) != '-') ...
+		cmpstmtIfBody1.addStatement (new ExpressionStatement (new UnaryExpression (UnaryOperator.PRE_INCREMENT, new Identifier (declParamArgsCount))));
+		sl.addStatement (new ForLoop (
+			new ExpressionStatement (new AssignmentExpression (new Identifier (declI), AssignmentOperator.NORMAL, Globals.ONE.clone ())),
+			new BinaryExpression (new Identifier (declI), BinaryOperator.COMPARE_LT, new NameID ("argc")),
+			new UnaryExpression (UnaryOperator.PRE_INCREMENT, new Identifier (declI)),
+			new IfStatement (
+				new BinaryExpression (
+					new UnaryExpression (UnaryOperator.DEREFERENCE, new ArrayAccess (new NameID ("argv"), new Identifier (declI))),
+					BinaryOperator.COMPARE_NE,
+					new CharLiteral ('-')
+				),
+				cmpstmtIfBody1
+			)
+		));
+		
+		// if (nParamArgsCount != #args)
+		// {
+		//     puts ("Syntax: [progname] {{ <arg[i]> : i=1..#args }}");
+		//     exit (-1);
+		// }
+		CompoundStatement cmpstmtIfBody2 = new CompoundStatement ();
+
+		StringBuilder sbMsg = new StringBuilder ("Wrong number of parameters. Syntax:\\n%s");
+		for (Variable v : m_listCommandLineParams)
+		{
+			sbMsg.append (" <");
+			sbMsg.append (v.getName ());
+			sbMsg.append (">");
+		}
+		sbMsg.append ("\\n");
+
+		cmpstmtIfBody2.addStatement (new ExpressionStatement (new FunctionCall (
+			new NameID ("printf"),
+			CodeGeneratorUtil.expressions (new StringLiteral (sbMsg.toString ()), new ArrayAccess (new NameID ("argv"), new IntegerLiteral (0))))));
+		cmpstmtIfBody2.addStatement (new ExpressionStatement (new FunctionCall (
+			new NameID ("exit"),
+			CodeGeneratorUtil.expressions (new IntegerLiteral (-1)))));
+
+		sl.addStatement (new IfStatement (
+			new BinaryExpression (new Identifier (declParamArgsCount), BinaryOperator.COMPARE_NE, new IntegerLiteral (m_mapCommandLineParamIndices.size ())),
+			cmpstmtIfBody2
+		));
+
+		// <paramname> = atoi (rgArgs[i]); : i=1..#args
+		for (Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
+			GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER.mask () |
+			GlobalGeneratedIdentifiers.EVariableType.AUTOTUNE_PARAMETER.mask () |
+			GlobalGeneratedIdentifiers.EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask () |
+			GlobalGeneratedIdentifiers.EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask ()))
+		{
+			VariableDeclarator decl = new VariableDeclarator (new NameID (var.getName ()));
+			decl.setInitializer (new ValueInitializer (new FunctionCall (
+				new NameID ("atoi"),
+				CodeGeneratorUtil.expressions (new ArrayAccess (new Identifier (declArgs), new IntegerLiteral (m_mapCommandLineParamIndices.get (var)))))));
+			sl.addStatement (new DeclarationStatement (new VariableDeclaration (Globals.SPECIFIER_SIZE, decl)));
+		}
+		
+		// free (rgArgs);
+		sl.addStatement (new ExpressionStatement (new FunctionCall (new NameID ("free"), CodeGeneratorUtil.expressions (new Identifier (declArgs)))));
+
+		return sl;
+	}
 
 	/**
 	 * Parses the command line parameters and stores the arguments in an array.
@@ -365,7 +491,8 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	 * @return A statement list that provides the code for parsing the command line or <code>null</code>
 	 * 	if no parsing is required
 	 */
-	public StatementList parseCommandLine ()
+	@Deprecated
+	public StatementList parseCommandLine_Old ()
 	{
 		initialize ();
 
@@ -787,6 +914,44 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 
 		return sl;
 	}
+	
+	@Override
+	public StatementList writeGrids (String strFilenameFormat, String strType)
+	{
+		initialize ();
+
+		StatementList sl = new StatementList (new ArrayList<Statement> ());
+		
+		byte nDimensionality = m_data.getStencilCalculation ().getDimensionality ();
+		
+		// determine the type of grid to write
+		GlobalGeneratedIdentifiers.EVariableType type = GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID;
+		if ("input".equals (strType))
+			type = GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID;
+		
+		// add a function call for each grid
+		for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (type))
+		{
+			Specifier specType = varGrid.getSpecifiers ().get (0);
+			NameID nidWriteFnx = new NameID (specType.equals (Specifier.FLOAT) ? "write_data_f" : "write_data_d");
+			
+			String strFilename = strFilenameFormat.replace ("%s", varGrid.getName ());
+			
+			// build the list of arguments
+			List<Expression> listArgs = new ArrayList<> (3 + nDimensionality);
+			listArgs.add (new StringLiteral (strFilename));
+			listArgs.add (new IntegerLiteral (nDimensionality));
+			listArgs.add (new NameID (varGrid.getName ()));
+			
+			for (int i = 0; i < nDimensionality; i++)
+				listArgs.add (varGrid.getBoxSize ().getCoord (i).clone ());
+			
+			// add the function call
+			sl.addStatement (new ExpressionStatement (new FunctionCall (nidWriteFnx, listArgs)));
+		}
+
+		return sl;
+	}
 
 	@Override
 	public Expression getFlopsPerStencil ()
@@ -925,23 +1090,28 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	@Override
 	public String getExeParams ()
 	{
-		StringBuilder sb = new StringBuilder ();
-		int nIdx = 0;
-		Map<String, Integer> mapArgName2ArgIdx = new HashMap<> ();
-		
-		for (Variable var : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
+		List<Variable> listVariables = m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
 			GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER.mask () |
 			GlobalGeneratedIdentifiers.EVariableType.AUTOTUNE_PARAMETER.mask () |
 			GlobalGeneratedIdentifiers.EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask () |
-			GlobalGeneratedIdentifiers.EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask ()))
+			GlobalGeneratedIdentifiers.EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask ()
+		);
+		
+		// build a map variable name => variable index
+		Map<String, Integer> mapArgName2ArgIdx = new HashMap<> ();
+		int nIdx = 0;
+		for (Variable var : listVariables)
+			mapArgName2ArgIdx.put (var.getName (), nIdx++);
+		
+		// build the command line
+		StringBuilder sb = new StringBuilder ();
+		for (Variable var : listVariables)
 		{
 			if (var.getType ().equals (GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER))
 			{
 				sb.append ("$(");
 				sb.append (var.getName ());
 				sb.append (')');
-				
-				mapArgName2ArgIdx.put (var.getName (), nIdx);
 			}
 			else
 			{
@@ -960,6 +1130,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 				}
 				else
 				{
+					// no auto-tune specification found; just add the variable to the command line
 					sb.append ("$(");
 					sb.append (var.getName ());
 					sb.append (')');
@@ -967,7 +1138,6 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 			}
 						
 			sb.append (' ');
-			nIdx++;
 		}
 
 		return sb.toString ();

@@ -22,6 +22,11 @@ public class BoundaryCheck extends Statement
 		m_sdit = it;
 		m_stmtWithChecks = stmtWithChecks;
 		m_stmtWithoutChecks = stmtWithoutChecks;
+		
+		if (stmtWithChecks != null)
+			addChild (stmtWithChecks);
+		if (stmtWithoutChecks != null)
+			addChild (stmtWithoutChecks);
 	}
 
 	public SubdomainIterator getSubdomainIterator ()

@@ -123,6 +123,7 @@ public class ValidationCodeGenerator
 		m_options = new CodeGeneratorRuntimeOptions ();
 		m_options.setOption (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, true);
 		m_options.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE);
+		m_options.setOption (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, true);
 	}
 
 	/**

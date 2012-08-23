@@ -71,6 +71,8 @@ public interface INonKernelFunctions
 	 */
 	public abstract StatementList validateComputation ();
 
+	public abstract StatementList writeGrids (String strFilenameFormat, String strType);
+
 	/**
 	 * Creates the code to free the data.
 	 */

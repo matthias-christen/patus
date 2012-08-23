@@ -1087,7 +1087,7 @@ PRODUCTIONS                                                                     
         UnaryExpression<out ExpressionData expr0, stencil, bIsDecl, bIsInteger>(. expr = expr0; .)
         {
         	'^' UnaryExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger>(. /*expr = new BinaryExpression ((Expression) expr.clone (), BinaryOperator.BITWISE_EXCLUSIVE_OR, expr1);*/ .)
-        	                                                                   (. expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1); .)
+        	                                                                   (. expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1, null); .)
         }.
         
     /**

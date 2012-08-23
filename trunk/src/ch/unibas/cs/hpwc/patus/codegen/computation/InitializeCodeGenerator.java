@@ -33,9 +33,9 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  */
 class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 {
-	public InitializeCodeGenerator (CodeGeneratorSharedObjects data, Expression exprStrategy, int nLcmSIMDVectorLengths, StatementListBundle slGenerated, CodeGeneratorRuntimeOptions options)
+	public InitializeCodeGenerator (CodeGeneratorSharedObjects data, Expression exprStrategy, int nLcmSIMDVectorLengths, StatementListBundle slbGenerated, CodeGeneratorRuntimeOptions options)
 	{
-		super (data, exprStrategy, nLcmSIMDVectorLengths, slGenerated, options);
+		super (data, exprStrategy, nLcmSIMDVectorLengths, slbGenerated, options);
 	}
 	
 	@Override
@@ -97,7 +97,7 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 	 * Default initialization.
 	 */
 	@Override
-	protected void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated)
+	protected void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slStencil, StatementList slAuxiliary)
 	{
 		if (stencil.getExpression () == null)
 			return;
@@ -120,8 +120,8 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 		for (StencilNode node : listNodesToInitialize)
 		{
 			Expression exprLHS = bVectorize ?
-				createSIMDStencilNode (node, specDatatype, rgOffsetIndex, slGenerated) :
-				replaceStencilNodes (node, specDatatype, rgOffsetIndex, slGenerated);
+				createSIMDStencilNode (node, specDatatype, rgOffsetIndex, slAuxiliary) :
+				replaceStencilNodes (node, specDatatype, rgOffsetIndex, slAuxiliary);
 
 			// initialize with some arbitrary value
 			Expression exprValue = new FloatLiteral (10 * node.getIndex ().getTimeIndex () + (node.getIndex ().getVectorIndex () + 1));
@@ -155,7 +155,7 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 				m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalar (exprValue, specDatatype, m_slbGenerated, m_options) :
 				exprValue;
 
-			slGenerated.addStatement (new ExpressionStatement (new AssignmentExpression (exprLHS, AssignmentOperator.NORMAL, exprRHS)));
+			slStencil.addStatement (new ExpressionStatement (new AssignmentExpression (exprLHS, AssignmentOperator.NORMAL, exprRHS)));
 		}
 	}
 	

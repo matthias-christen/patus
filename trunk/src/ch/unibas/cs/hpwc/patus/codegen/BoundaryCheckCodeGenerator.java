@@ -231,9 +231,9 @@ public class BoundaryCheckCodeGenerator
 		for (int i = 0; i < box1.getDimensionality (); i++)
 		{
 			if (ptLeft1.getCoord (i) != INFINITY && ptRight2.getCoord (i) != INFINITY)
-				exprCheck = BoundaryCheckCodeGenerator.addExpression (exprCheck, new BinaryExpression (ptLeft1.getCoord (i), BinaryOperator.COMPARE_LE, ptRight2.getCoord (i)));
+				exprCheck = BoundaryCheckCodeGenerator.addExpression (exprCheck, new BinaryExpression (ptLeft1.getCoord (i).clone (), BinaryOperator.COMPARE_LE, ptRight2.getCoord (i).clone ()));
 			if (ptLeft2.getCoord (i) != INFINITY && ptRight1.getCoord (i) != INFINITY)
-				exprCheck = BoundaryCheckCodeGenerator.addExpression (exprCheck, new BinaryExpression (ptLeft2.getCoord (i), BinaryOperator.COMPARE_LE, ptRight1.getCoord (i)));			
+				exprCheck = BoundaryCheckCodeGenerator.addExpression (exprCheck, new BinaryExpression (ptLeft2.getCoord (i).clone (), BinaryOperator.COMPARE_LE, ptRight1.getCoord (i).clone ()));			
 		}
 		
 		return exprCheck;

@@ -174,19 +174,21 @@ abstract class AbstractStencilCalculationCodeGenerator
 					// avoid creating the statement multiple times
 					// (loop-invariant code motion)
 					
-					generateSingleCalculation (
-						stencil, specDatatype, m_rgDefaultOffset,
-						m_data.getData ().getInitializationStatements (paComputationType)
-					);
+					StatementList sl = m_data.getData ().getInitializationStatements (paComputationType);
+					generateSingleCalculation (stencil, specDatatype, m_rgDefaultOffset, sl, sl);
 				}
 				else
 				{
 					// regular, non-constant stencils
 					// add the statement to the loop body
 					
-					for (int[] rgOffset : (configUnroll == null ?
-						StencilLoopUnrollingConfiguration.getDefaultSpace (nDimensionality) :
-						configUnroll.getConfigurationSpace (nDimensionality)))
+					Iterable<int[]> itOffsets = null;
+					if (configUnroll == null)
+						itOffsets = StencilLoopUnrollingConfiguration.getDefaultSpace (nDimensionality);
+					else
+						itOffsets = configUnroll.getConfigurationSpace (nDimensionality);
+					
+					for (int[] rgOffset : itOffsets)
 					{
 						int nOffsetDim0 = rgOffset[0];
 						if (!bUseNativeSIMDDatatypes && !bSuppressVectorization)
@@ -195,7 +197,11 @@ abstract class AbstractStencilCalculationCodeGenerator
 						for (int nOffset = 0; nOffset < nEndOffset; nOffset += nOffsetStep)
 						{
 							rgOffset[0] = nOffsetDim0 + nOffset;
-							generateSingleCalculation (stencil, specDatatype, rgOffset, m_slbGenerated.getStatementList (pa));
+							
+							generateSingleCalculation (
+								stencil, specDatatype, rgOffset,
+								getStencilComputationStatementList (pa), getAuxiliaryCalculationStatementList (pa)
+							);
 						}
 					}
 				}
@@ -203,7 +209,18 @@ abstract class AbstractStencilCalculationCodeGenerator
 		}
 	}
 	
-	protected abstract void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated);
+	protected StatementList getStencilComputationStatementList (ParameterAssignment pa)
+	{
+		return m_slbGenerated.getStatementList (pa);
+	}
+	
+	protected StatementList getAuxiliaryCalculationStatementList (ParameterAssignment pa)
+	{
+		return m_slbGenerated.getStatementList (pa);
+	}
+	
+	protected abstract void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex,
+		StatementList slStencilComputation, StatementList slAuxiliaryCalculations);
 
 	/**
 	 * Determines the datatype of the expression <code>expr</code>.
@@ -350,7 +367,7 @@ abstract class AbstractStencilCalculationCodeGenerator
 	 * @param specDatatype
 	 * @return
 	 */
-	protected Expression createSIMDStencilNode (StencilNode nodeInput, Specifier specDatatype, int[] rgOffsetIndex, IStatementList slbGenerated)
+	protected Expression createSIMDStencilNode (StencilNode nodeInput, Specifier specDatatype, int[] rgOffsetIndex, IStatementList slGenerated)
 	{
 		StencilNode node = nodeInput;
 
@@ -423,7 +440,7 @@ abstract class AbstractStencilCalculationCodeGenerator
 				{
 					if (nShuffleOffset < 0)
 						nShuffleOffset += nSIMDVectorLength;
-					return getShuffledNode (nodeInput, node, rgOffsetIndex, nShuffleOffset, specDatatype, nSIMDVectorLength, slbGenerated);
+					return getShuffledNode (nodeInput, node, rgOffsetIndex, nShuffleOffset, specDatatype, nSIMDVectorLength, slGenerated);
 				}
 			}
 
@@ -434,7 +451,7 @@ abstract class AbstractStencilCalculationCodeGenerator
 		}
 
 		return m_data.getData ().getMemoryObjectManager ().getMemoryObjectExpression (
-			m_sdidStencilArg, node, null, true, true, false, slbGenerated, m_options);
+			m_sdidStencilArg, node, null, true, true, false, slGenerated, m_options);
 	}
 
 	private static String toCString (int[] rgIdx)

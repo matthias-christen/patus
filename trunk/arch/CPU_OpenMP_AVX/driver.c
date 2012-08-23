@@ -20,6 +20,12 @@ int main (int argc, char** argv)
 		#pragma patus initialize_grids
 	}
 
+	// write output
+	if (has_arg ("-o", argc, argv))
+	{
+		#pragma patus write_grids("%s.0.data", input)
+	}
+
 	long nFlopsPerStencil = PATUS_FLOPS_PER_STENCIL;
 	long nGridPointsCount = 5 * PATUS_GRID_POINTS_COUNT;
 	long nBytesTransferred = 5 * PATUS_BYTES_TRANSFERRED;
@@ -39,6 +45,18 @@ int main (int argc, char** argv)
 		#pragma omp barrier
 	}
 	toc (nFlopsPerStencil, nGridPointsCount, nBytesTransferred);
+	
+	// write output
+	if (has_arg ("-o", argc, argv))
+	{
+		#pragma omp parallel
+		{
+			#pragma patus initialize_grids
+			#pragma omp barrier
+			#pragma patus compute_stencil
+		}
+		#pragma patus write_grids("%s.1.data", output)
+	}
 	
 	// validate
 	if (PATUS_DO_VALIDATION)

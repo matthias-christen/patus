@@ -1212,7 +1212,7 @@ public class Parser {
 			Get();
 			ExpressionData expr1 = UnaryExpression(stencil, bIsDecl, bIsInteger);
 			
-			expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1); 
+			expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1, null); 
 		}
 		return expr;
 	}

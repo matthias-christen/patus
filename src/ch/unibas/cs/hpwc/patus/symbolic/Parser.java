@@ -346,7 +346,7 @@ public class Parser {
 		while (la.kind == 14) {
 			Get();
 			Expression expr1 = UnarySignExpression();
-			expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1); 
+			expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1, null); 
 		}
 		return expr;
 	}

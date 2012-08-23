@@ -1,5 +1,7 @@
 package ch.unibas.cs.hpwc.patus.codegen.computation;
 
+import java.util.ArrayList;
+
 import cetus.hir.ArrayAccess;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
@@ -28,9 +30,19 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 {
-	public StencilCodeGenerator (CodeGeneratorSharedObjects data, Expression exprStrategy, int nLcmSIMDVectorLengths, StatementListBundle slGenerated, CodeGeneratorRuntimeOptions options)
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
+	protected StatementListBundle m_slbGeneratedStencilComputation;
+
+	
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
+	public StencilCodeGenerator (CodeGeneratorSharedObjects data, Expression exprStrategy, int nLcmSIMDVectorLengths, StatementListBundle slbGenerated, CodeGeneratorRuntimeOptions options)
 	{
-		super (data, exprStrategy, nLcmSIMDVectorLengths, slGenerated, options);
+		super (data, exprStrategy, nLcmSIMDVectorLengths, slbGenerated, options);
+		m_slbGeneratedStencilComputation = new StatementListBundle (new ArrayList<Statement> ());
 	}
 	
 	@Override
@@ -48,6 +60,8 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 		super.generate ();
 		if (bDoBoundaryChecks)
 			generateBoundaryChecks ();
+		else
+			m_slbGenerated.addStatements (m_slbGeneratedStencilComputation);
 		
 		// restore the option
 		m_options.setOption (CodeGeneratorRuntimeOptions.OPTION_NOVECTORIZE, bNoVectorize);
@@ -61,7 +75,7 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 	 * @param slGenerated
 	 */
 	@Override
-	public void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slGenerated)
+	public void generateSingleCalculation (Stencil stencil, Specifier specDatatype, int[] rgOffsetIndex, StatementList slStencilComputation, StatementList slAuxiliaryCalculations)
 	{
 		Expression exprStencil = stencil.getExpression ();
 		if (exprStencil != null)
@@ -83,12 +97,12 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 					exprStencil.clone (), specDatatype, !bSuppressVectorization);
 
 				// replace the stencil nodes in the expression with the indexed memory object instances
-				Expression exprMOStencil = replaceStencilNodes (exprVectorizedStencil, specDatatype, rgOffsetIndex, slGenerated);
-				Expression exprLHS = replaceStencilNodes (nodeOutput, specDatatype, rgOffsetIndex, slGenerated);
+				Expression exprMOStencil = replaceStencilNodes (exprVectorizedStencil, specDatatype, rgOffsetIndex, slAuxiliaryCalculations);
+				Expression exprLHS = replaceStencilNodes (nodeOutput, specDatatype, rgOffsetIndex, slAuxiliaryCalculations);
 
 				// create a printf statement for debugging purposes
 				if (bFirst && m_data.getOptions ().isDebugPrintStencilIndices ())
-					createDebugPrint (exprLHS, specDatatype, slGenerated, bSuppressVectorization);
+					createDebugPrint (exprLHS, specDatatype, slAuxiliaryCalculations, bSuppressVectorization);
 				bFirst = false;
 
 				// create the calculation statement
@@ -104,7 +118,7 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 				if (StencilCalculationCodeGenerator.LOGGER.isDebugEnabled ())
 					StencilCalculationCodeGenerator.LOGGER.debug (StringUtil.concat ("Adding stencil ", stmtStencil.toString ()));
 
-				slGenerated.addStatement (stmtStencil);
+				slStencilComputation.addStatement (stmtStencil);
 			}
 		}
 	}
@@ -158,7 +172,7 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 		// create the "else" branch first and append it to the next (previous in the list of boundaries) "if"
 
 		// the last "else" is the stencil computation
-		StatementListBundle slbElse = m_slbGenerated;
+		StatementListBundle slbElse = m_slbGeneratedStencilComputation;
 		
 		Stencil[] rgBoundaries = new Stencil[m_data.getStencilCalculation ().getBoundaries ().getStencilsCount ()];
 		int i = 0;
@@ -176,7 +190,10 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 			{
 				StatementListBundle slbThen = new StatementListBundle ();
 				for (ParameterAssignment pa : m_slbGenerated)
-					generateSingleCalculation (rgBoundaries[i], getDatatype (rgBoundaries[i].getExpression ()), getDefaultOffset (), slbThen.getStatementList (pa));
+				{
+					StatementList sl = slbThen.getStatementList (pa);
+					generateSingleCalculation (rgBoundaries[i], getDatatype (rgBoundaries[i].getExpression ()), getDefaultOffset (), sl, sl);
+				}
 				
 				slbElse = StatementListBundleUtil.createIfStatement (exprConstraint, slbThen, slbElse);
 			}
@@ -184,7 +201,12 @@ class StencilCodeGenerator extends AbstractStencilCalculationCodeGenerator
 				throw new RuntimeException (StringUtil.concat (rgBoundaries[i].toString (), " is not a boundary."));	// TODO: handle this somewhere else...
 		}
 		
-		// TODO: this doesn't work... => use special statement lists for the actual stencils (and others for the index calc...)
-		m_slbGenerated.replaceStatementLists (slbElse);
+		m_slbGenerated.addStatements (slbElse);
+	}
+	
+	@Override
+	protected StatementList getStencilComputationStatementList (ParameterAssignment pa)
+	{
+		return m_slbGeneratedStencilComputation.getStatementList (pa);
 	}
 }

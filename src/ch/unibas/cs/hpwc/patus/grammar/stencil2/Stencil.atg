@@ -34,6 +34,7 @@ import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
 import ch.unibas.cs.hpwc.patus.geometry.Point;
 import ch.unibas.cs.hpwc.patus.representation.Index;
@@ -45,6 +46,7 @@ import ch.unibas.cs.hpwc.patus.symbolic.ExpressionData;
 import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
+import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 
@@ -452,6 +454,14 @@ COMPILER StencilSpecification
 			m_listStencilOperationArguments.add (strIdentifier);
 	}
 	
+	private void setParamDefaultValues (String strIdentifier, Map<IntArray, Expression> mapDefaultValues)
+	{
+		StencilCalculation.ParamType pt = m_mapScalars.get (strIdentifier);
+		if (pt == null)
+			errors.SemErr (StringUtil.concat ("The stencil parameter ", strIdentifier, " has not yet been registered."));
+		pt.setDefaultValues (mapDefaultValues);		
+	}
+	
 	private void registerConstant (String strIdentifier, Literal litValue)
 	{
 		if (m_mapConstants == null)
@@ -589,8 +599,13 @@ COMPILER StencilSpecification
 				if (m_listSizeParameters == null)
 					m_listSizeParameters = new LinkedList<> ();
 			
-				if (!m_listSizeParameters.contains (o))				
+				if (!m_listSizeParameters.contains (o))
+				{
 					m_listSizeParameters.add ((NameID) o);
+					
+					ensureScalarsMapCreated ();
+					m_mapScalars.put (((NameID) o).getName (), new StencilCalculation.ParamType (Globals.SPECIFIER_SIZE, new ArrayList<Integer> (0)));
+				}
 			}
 		}		
 	}
@@ -743,7 +758,7 @@ PRODUCTIONS                                                                    /
     // Example input:
     //
     // ----------------------------------------------------------------------------------------------
-    // stencil example_stencil (float grid u(0..x_max, 0..y_max, 0..z_max), float param epsilon)
+    // stencil example_stencil (float grid u(0..x_max, 0..y_max, 0..z_max), float param epsilon = 1e-5)
     // {
     //     iterate while sum((u[x,y,z;t+1]-u[x,y,z;t])^2) < epsilon;
     //
@@ -926,7 +941,28 @@ PRODUCTIONS                                                                    /
                                                                                (.     registerScalar (strIdentifier, specVarType, listDimensions, true); .)
                                                                                (.     m_stencil.preAddStencilOperationParameter (strIdentifier, specVarType); .)
                                                                                (. } .)
+        [
+        	// default value
+        	'='                                                                (. if (bIsGridVariable) errors.SemErr (la.line, la.col, "Grid variables can't be assigned a default value. To initialize grids, use the 'initial' method."); .)
+        	                                                                   (. Map<IntArray, Expression> mapInit = new HashMap<> (); .)
+        	ValueInitializer<mapInit, new IntArray (IntArray.getArray (listDimensions.size (), 0)), listDimensions.size () - 1>
+        	                                                                   (. setParamDefaultValues (strIdentifier, mapInit); .)
+        ]
         .
+        
+	ValueInitializer<. Map<IntArray, Expression> mapInitializer, IntArray arrCurrCoord, int nDim .> =
+		(
+			'{'                                                                (. IntArray arr = new IntArray (arrCurrCoord.get (), true); arr.set (nDim, 0); .)
+			ValueInitializer<mapInitializer, arr, nDim - 1>
+			{                                                                  (. arr = new IntArray (arr.get (), true); arr.set (nDim, arr.get (nDim) + 1); .)
+				',' ValueInitializer<mapInitializer, arr, nDim - 1>
+			}
+			'}'
+			|
+			StencilExpression<out ExpressionData ed, null, false, false, false, false>
+			                                                                   (. mapInitializer.put (arrCurrCoord, ed.getExpression ()); .)
+		).
+			
         
         
     // -------- Stencil Statements/Expressions --------
@@ -955,17 +991,17 @@ PRODUCTIONS                                                                    /
     	)
     	ident                                                                  (. String strIdentifier = t.val; .)
     	'='
-    	StencilExpression<out ExpressionData exprRHS, stencil, false, false, bOffsetInSpace, bOffsetInTime>
+    	StencilExpression<out ExpressionData edRHS, stencil, false, false, bOffsetInSpace, bOffsetInTime>
     	                                                                       (. Expression exprSimplified = null; .)
-                                                                               (. if (exprRHS.getExpression () instanceof FloatLiteral) .)
-                                                                               (.     exprSimplified = exprRHS.getExpression (); .)
-                                                                               (. else if (!containsStencilNode (exprRHS.getExpression ())) .)
-                                                                               (.     exprSimplified = Symbolic.simplify (exprRHS.getExpression ()); .)
+                                                                               (. if (edRHS.getExpression () instanceof FloatLiteral) .)
+                                                                               (.     exprSimplified = edRHS.getExpression (); .)
+                                                                               (. else if (!containsStencilNode (edRHS.getExpression ())) .)
+                                                                               (.     exprSimplified = Symbolic.simplify (edRHS.getExpression ()); .)
     	                                                                       (. if (exprSimplified instanceof FloatLiteral || exprSimplified instanceof IntegerLiteral) .)
     	                                                                       (.     registerConstant (strIdentifier, (Literal) exprSimplified); .)
     	                                                                       (. else { .)
     	                                                                       (.     registerScalar (strIdentifier, specType, new ArrayList<Integer> (), false); StencilNode node = new StencilNode (strIdentifier, specType, null); stencil.addOutputNode (node); .)
-    	                                                                       (.     exprAssignment = new ExpressionData (new AssignmentExpression (node, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
+    	                                                                       (.     exprAssignment = new ExpressionData (new AssignmentExpression (node, AssignmentOperator.NORMAL, edRHS.getExpression ()), edRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
     	                                                                       (. } .)
     	.
 
@@ -976,8 +1012,8 @@ PRODUCTIONS                                                                    /
     	StencilIdentifier<out StencilNode nodeLHS, EStreamDirection.OUTPUT, bOffsetInSpace, bOffsetInTime>
     	                                                                       (. stencil.addOutputNode (nodeLHS); .)
     	'='
-    	StencilExpression<out ExpressionData exprRHS, stencil, false, false, bOffsetInSpace, bOffsetInTime>
-    	                                                                       (. exprAssignment = (nodeLHS == null || exprRHS == null) ? null : new ExpressionData (new AssignmentExpression (nodeLHS, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
+    	StencilExpression<out ExpressionData edRHS, stencil, false, false, bOffsetInSpace, bOffsetInTime>
+    	                                                                       (. exprAssignment = (nodeLHS == null || edRHS == null) ? null : new ExpressionData (new AssignmentExpression (nodeLHS, AssignmentOperator.NORMAL, edRHS.getExpression ()), edRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); .)
     	.
 
 	/**
@@ -1198,7 +1234,9 @@ PRODUCTIONS                                                                    /
         {
         	'^'
         	UnaryExpression<out ExpressionData expr1, stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
-        	                                                                   (. expr = expr == null ? null : ExpressionUtil.createExponentExpression (expr.clone (), expr1); .)
+        	                                                                   (. expr = expr == null ? null : ExpressionUtil.createExponentExpression (expr.clone (), expr1, null); .)
+        	                                                                   /* Note: we don't use a data type specifier here, so the generic functions (exp, sqrt, pow) will be used. */
+        	                                                                   /* TODO: replace the generic function with the specific one (for double/single precision) later (at backend function mapping time)! */
         }.
         
     /**

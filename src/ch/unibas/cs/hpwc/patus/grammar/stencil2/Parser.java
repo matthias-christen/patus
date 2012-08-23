@@ -23,6 +23,7 @@ import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
 import ch.unibas.cs.hpwc.patus.geometry.Point;
 import ch.unibas.cs.hpwc.patus.representation.Index;
@@ -34,6 +35,7 @@ import ch.unibas.cs.hpwc.patus.symbolic.ExpressionData;
 import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
+import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 
@@ -455,6 +457,14 @@ public class Parser {
 			m_listStencilOperationArguments.add (strIdentifier);
 	}
 	
+	private void setParamDefaultValues (String strIdentifier, Map<IntArray, Expression> mapDefaultValues)
+	{
+		StencilCalculation.ParamType pt = m_mapScalars.get (strIdentifier);
+		if (pt == null)
+			errors.SemErr (StringUtil.concat ("The stencil parameter ", strIdentifier, " has not yet been registered."));
+		pt.setDefaultValues (mapDefaultValues);		
+	}
+	
 	private void registerConstant (String strIdentifier, Literal litValue)
 	{
 		if (m_mapConstants == null)
@@ -592,8 +602,13 @@ public class Parser {
 				if (m_listSizeParameters == null)
 					m_listSizeParameters = new LinkedList<> ();
 			
-				if (!m_listSizeParameters.contains (o))				
+				if (!m_listSizeParameters.contains (o))
+				{
 					m_listSizeParameters.add ((NameID) o);
+					
+					ensureScalarsMapCreated ();
+					m_mapScalars.put (((NameID) o).getName (), new StencilCalculation.ParamType (Globals.SPECIFIER_SIZE, new ArrayList<Integer> (0)));
+				}
 			}
 		}		
 	}
@@ -1016,6 +1031,13 @@ public class Parser {
 		registerScalar (strIdentifier, specVarType, listDimensions, true); 
 		m_stencil.preAddStencilOperationParameter (strIdentifier, specVarType); 
 		} 
+		if (la.kind == 12) {
+			Get();
+			if (bIsGridVariable) errors.SemErr (la.line, la.col, "Grid variables can't be assigned a default value. To initialize grids, use the 'initial' method."); 
+			Map<IntArray, Expression> mapInit = new HashMap<> (); 
+			ValueInitializer(mapInit, new IntArray (IntArray.getArray (listDimensions.size (), 0)), listDimensions.size () - 1);
+			setParamDefaultValues (strIdentifier, mapInit); 
+		}
 	}
 
 	int  IntegerLiteral() {
@@ -1025,13 +1047,30 @@ public class Parser {
 		return nValue;
 	}
 
+	void ValueInitializer(Map<IntArray, Expression> mapInitializer, IntArray arrCurrCoord, int nDim ) {
+		if (la.kind == 7) {
+			Get();
+			IntArray arr = new IntArray (arrCurrCoord.get (), true); arr.set (nDim, 0); 
+			ValueInitializer(mapInitializer, arr, nDim - 1);
+			while (la.kind == 21) {
+				arr = new IntArray (arr.get (), true); arr.set (nDim, arr.get (nDim) + 1); 
+				Get();
+				ValueInitializer(mapInitializer, arr, nDim - 1);
+			}
+			Expect(8);
+		} else if (StartOf(2)) {
+			ExpressionData ed = StencilExpression(null, false, false, false, false);
+			mapInitializer.put (arrCurrCoord, ed.getExpression ()); 
+		} else SynErr(69);
+	}
+
 	ExpressionData  StencilAssignment(Stencil stencil, boolean bOffsetInSpace, boolean bOffsetInTime) {
 		ExpressionData  exprAssignment;
 		StencilNode nodeLHS = StencilIdentifier(EStreamDirection.OUTPUT, bOffsetInSpace, bOffsetInTime);
 		stencil.addOutputNode (nodeLHS); 
 		Expect(12);
-		ExpressionData exprRHS = StencilExpression(stencil, false, false, bOffsetInSpace, bOffsetInTime);
-		exprAssignment = (nodeLHS == null || exprRHS == null) ? null : new ExpressionData (new AssignmentExpression (nodeLHS, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); 
+		ExpressionData edRHS = StencilExpression(stencil, false, false, bOffsetInSpace, bOffsetInTime);
+		exprAssignment = (nodeLHS == null || edRHS == null) ? null : new ExpressionData (new AssignmentExpression (nodeLHS, AssignmentOperator.NORMAL, edRHS.getExpression ()), edRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); 
 		return exprAssignment;
 	}
 
@@ -1043,21 +1082,21 @@ public class Parser {
 		} else if (la.kind == 25) {
 			Get();
 			specType = Specifier.DOUBLE; 
-		} else SynErr(69);
+		} else SynErr(70);
 		Expect(1);
 		String strIdentifier = t.val; 
 		Expect(12);
-		ExpressionData exprRHS = StencilExpression(stencil, false, false, bOffsetInSpace, bOffsetInTime);
+		ExpressionData edRHS = StencilExpression(stencil, false, false, bOffsetInSpace, bOffsetInTime);
 		Expression exprSimplified = null; 
-		if (exprRHS.getExpression () instanceof FloatLiteral) 
-		exprSimplified = exprRHS.getExpression (); 
-		else if (!containsStencilNode (exprRHS.getExpression ())) 
-		exprSimplified = Symbolic.simplify (exprRHS.getExpression ()); 
+		if (edRHS.getExpression () instanceof FloatLiteral) 
+		exprSimplified = edRHS.getExpression (); 
+		else if (!containsStencilNode (edRHS.getExpression ())) 
+		exprSimplified = Symbolic.simplify (edRHS.getExpression ()); 
 		if (exprSimplified instanceof FloatLiteral || exprSimplified instanceof IntegerLiteral) 
 		registerConstant (strIdentifier, (Literal) exprSimplified); 
 		else { 
 		registerScalar (strIdentifier, specType, new ArrayList<Integer> (), false); StencilNode node = new StencilNode (strIdentifier, specType, null); stencil.addOutputNode (node); 
-		exprAssignment = new ExpressionData (new AssignmentExpression (node, AssignmentOperator.NORMAL, exprRHS.getExpression ()), exprRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); 
+		exprAssignment = new ExpressionData (new AssignmentExpression (node, AssignmentOperator.NORMAL, edRHS.getExpression ()), edRHS.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); 
 		} 
 		return exprAssignment;
 	}
@@ -1070,7 +1109,7 @@ public class Parser {
 		ExpressionData exprIdx0 = StencilExpression(null, false, true, false, false);
 		int nMode = 0; List<Expression> listIndices = new ArrayList<> (); listIndices.add (exprIdx0.getExpression ()); 
 		while (la.kind == 10 || la.kind == 21) {
-			while (!(la.kind == 0 || la.kind == 10 || la.kind == 21)) {SynErr(70); Get();}
+			while (!(la.kind == 0 || la.kind == 10 || la.kind == 21)) {SynErr(71); Get();}
 			if (la.kind == 21) {
 				Get();
 			} else {
@@ -1106,7 +1145,7 @@ public class Parser {
 			ExpressionData exprIdx = StencilExpression(null, bIsDecl, true, false, false);
 			exprParam = new ArrayAccess (exprParam.clone (), new IntegerLiteral (getInteger (exprIdx.getExpression ()))); 
 			while (la.kind == 21) {
-				while (!(la.kind == 0 || la.kind == 21)) {SynErr(71); Get();}
+				while (!(la.kind == 0 || la.kind == 21)) {SynErr(72); Get();}
 				Get();
 				exprIdx = StencilExpression(null, bIsDecl, true, false, false);
 				((ArrayAccess) exprParam).addIndex (new IntegerLiteral (getInteger (exprIdx.getExpression ()))); 
@@ -1191,11 +1230,11 @@ public class Parser {
 		BinaryOperator op0 = null; BinaryOperator op1 = null; 
 		ExpressionData expr0 = AdditiveExpression(stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime);
 		expr = expr0; 
-		if (StartOf(2)) {
+		if (StartOf(3)) {
 			op0 = ComparisonOperator();
 			ExpressionData expr1 = AdditiveExpression(stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime);
 			expr = new ExpressionData (new BinaryExpression (expr.getExpression (), op0, expr1.getExpression ()), expr.getFlopsCount () + expr1.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); 
-			if (StartOf(2)) {
+			if (StartOf(3)) {
 				op1 = ComparisonOperator();
 				ExpressionData expr2 = AdditiveExpression(stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime);
 				expr = new ExpressionData (new BinaryExpression (expr.getExpression (), BinaryOperator.LOGICAL_AND, new BinaryExpression (expr1.getExpression ().clone (), op1, expr2.getExpression ())), expr.getFlopsCount () + expr2.getFlopsCount (), Symbolic.EExpressionType.EXPRESSION); 
@@ -1243,7 +1282,7 @@ public class Parser {
 			op = BinaryOperator.COMPARE_NE; 
 			break;
 		}
-		default: SynErr(72); break;
+		default: SynErr(73); break;
 		}
 		return op;
 	}
@@ -1308,7 +1347,7 @@ public class Parser {
 		while (la.kind == 51) {
 			Get();
 			ExpressionData expr1 = UnaryExpression(stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime);
-			expr = expr == null ? null : ExpressionUtil.createExponentExpression (expr.clone (), expr1); 
+			expr = expr == null ? null : ExpressionUtil.createExponentExpression (expr.clone (), expr1, null); 
 		}
 		return expr;
 	}
@@ -1316,7 +1355,7 @@ public class Parser {
 	ExpressionData  UnaryExpression(Stencil stencil, boolean bIsDecl, boolean bIsInteger, boolean bOffsetInSpace, boolean bOffsetInTime) {
 		ExpressionData  expr;
 		expr = null; 
-		if (StartOf(3)) {
+		if (StartOf(4)) {
 			double fValue = NumberLiteral(bIsInteger);
 			expr = new ExpressionData (createLiteral (fValue, bIsInteger), 0, Symbolic.EExpressionType.EXPRESSION); 
 		} else if (isGridVariable ()) {
@@ -1331,7 +1370,7 @@ public class Parser {
 		} else if (la.kind == 1) {
 			Expression exprParam = ScalarIdentifier(bIsDecl, bIsInteger);
 			expr = new ExpressionData (exprParam, 0, Symbolic.EExpressionType.EXPRESSION); 
-		} else SynErr(73);
+		} else SynErr(74);
 		return expr;
 	}
 
@@ -1343,7 +1382,7 @@ public class Parser {
 		} else if (la.kind == 2) {
 			Get();
 			fValue = Integer.parseInt (t.val); 
-		} else SynErr(74);
+		} else SynErr(75);
 		return fValue;
 	}
 
@@ -1361,11 +1400,11 @@ public class Parser {
 		String strFunctionName = t.val; 
 		Expect(5);
 		List<Expression> listArgs = new ArrayList<> (); int nFlopsCount = 0; 
-		if (StartOf(4)) {
+		if (StartOf(5)) {
 			ExpressionData expr = StencilExpression(stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime);
 			listArgs.add (expr.getExpression ()); nFlopsCount += expr.getFlopsCount (); 
 			while (la.kind == 21) {
-				while (!(la.kind == 0 || la.kind == 21)) {SynErr(75); Get();}
+				while (!(la.kind == 0 || la.kind == 21)) {SynErr(76); Get();}
 				Get();
 				expr = StencilExpression(stencil, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime);
 				listArgs.add (expr.getExpression ()); nFlopsCount += expr.getFlopsCount (); 
@@ -1382,7 +1421,7 @@ public class Parser {
 		if (la.kind == 3) {
 			Get();
 			fValue = Math.PI; 
-		} else if (StartOf(5)) {
+		} else if (StartOf(6)) {
 			StringBuilder sb = new StringBuilder (); 
 			if (la.kind == 2) {
 				Get();
@@ -1408,7 +1447,7 @@ public class Parser {
 				sb.append (t.val); 
 			}
 			fValue = Double.parseDouble (sb.toString ()); 
-		} else SynErr(76);
+		} else SynErr(77);
 		return fValue;
 	}
 
@@ -1426,10 +1465,11 @@ public class Parser {
 	private static final boolean[][] set = {
 		{T,x,x,x, T,x,x,x, x,T,T,T, x,x,x,T, x,T,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
 		{x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,T, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{x,T,T,T, x,T,T,x, T,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,T,T, T,T,T,x, x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x},
-		{x,x,T,T, x,x,T,x, x,x,T,x, x,x,x,x, x,x,x,x, x,T,T,x, x,x,x,x, x,x,x,T, T,T,T,T, T,x,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,x, x},
+		{x,x,T,T, x,x,T,x, T,x,T,x, x,x,x,x, x,x,x,x, x,T,T,x, x,x,x,x, x,x,x,T, T,T,T,T, T,x,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,x, x},
 		{x,T,T,T, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,T,T, T,T,T,x, x},
-		{x,x,T,x, x,x,T,x, x,x,T,x, x,x,x,x, x,x,x,x, x,T,T,x, x,x,x,x, x,x,x,T, T,T,T,T, T,x,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,x, x}
+		{x,x,T,x, x,x,T,x, T,x,T,x, x,x,x,x, x,x,x,x, x,T,T,x, x,x,x,x, x,x,x,T, T,T,T,T, T,x,x,T, T,T,T,T, T,T,T,T, T,T,T,T, T,T,T,x, x}
 
 	};
 } // end Parser
@@ -1522,14 +1562,15 @@ class Errors {
 			case 66: s = "this symbol not expected in AssignmentStatement"; break;
 			case 67: s = "invalid StencilOperationParam"; break;
 			case 68: s = "invalid StencilOperationParam"; break;
-			case 69: s = "invalid ScalarAssignment"; break;
-			case 70: s = "this symbol not expected in StencilIdentifier"; break;
-			case 71: s = "this symbol not expected in ScalarIdentifier"; break;
-			case 72: s = "invalid ComparisonOperator"; break;
-			case 73: s = "invalid UnaryExpression"; break;
-			case 74: s = "invalid NumberLiteral"; break;
-			case 75: s = "this symbol not expected in FunctionCall"; break;
-			case 76: s = "invalid FloatLiteral"; break;
+			case 69: s = "invalid ValueInitializer"; break;
+			case 70: s = "invalid ScalarAssignment"; break;
+			case 71: s = "this symbol not expected in StencilIdentifier"; break;
+			case 72: s = "this symbol not expected in ScalarIdentifier"; break;
+			case 73: s = "invalid ComparisonOperator"; break;
+			case 74: s = "invalid UnaryExpression"; break;
+			case 75: s = "invalid NumberLiteral"; break;
+			case 76: s = "this symbol not expected in FunctionCall"; break;
+			case 77: s = "invalid FloatLiteral"; break;
 			default: s = "error " + n; break;
 		}
 		printMsg(line, col, s);

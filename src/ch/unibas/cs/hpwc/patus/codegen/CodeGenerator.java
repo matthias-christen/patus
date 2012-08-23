@@ -748,7 +748,8 @@ public class CodeGenerator
 						{
 							VariableDeclaration declArg = createArgumentDeclaration (strArgument, false);
 
-							StencilCalculation.EArgumentType typeArg = m_data.getStencilCalculation ().getArgumentType (strArgument).getType ();
+							StencilCalculation.ArgumentType type = m_data.getStencilCalculation ().getArgumentType (strArgument);
+							StencilCalculation.EArgumentType typeArg = type.getType ();
 							GlobalGeneratedIdentifiers.EVariableType typeVar = StencilCalculation.EArgumentType.PARAMETER.equals (typeArg) ?
 								GlobalGeneratedIdentifiers.EVariableType.KERNEL_PARAMETER : GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID;
 
@@ -756,7 +757,8 @@ public class CodeGenerator
 							String strOrigName = node == null ? strArgument : node.getName ();
 
 							m_data.getData ().getGlobalGeneratedIdentifiers ().addStencilFunctionArguments (
-								new GlobalGeneratedIdentifiers.Variable (typeVar, declArg, strArgument, strOrigName, m_data));
+								new GlobalGeneratedIdentifiers.Variable (typeVar, declArg, strArgument, strOrigName, /*type.getDefaultValues (),*/ m_data)
+							);
 						}
 
 						// add size parameters (all variables used to specify domain size and the grid size arguments to the operation)

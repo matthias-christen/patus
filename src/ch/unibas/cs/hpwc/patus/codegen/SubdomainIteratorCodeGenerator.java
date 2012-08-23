@@ -234,13 +234,14 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		{			
 			// do we need prologue and epilogue loops?
 			// we don't need a clean up loop in the inner most loop if we have prologue and epilogue loops (bUseNativeSIMD == false)
-			boolean bHasProEpiLoops =
-				m_data.getArchitectureDescription ().useSIMD () && !m_data.getOptions ().useNativeSIMDDatatypes () && isStencilCalculation ();
+			boolean bDoBoundaryChecks = m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, false);
+			boolean bHasProEpiLoops = m_data.getArchitectureDescription ().useSIMD () && !m_data.getOptions ().useNativeSIMDDatatypes () &&
+				isStencilCalculation () && m_bContainsStencilCall && !bDoBoundaryChecks;
 			boolean bHasCleanupLoops = nDimension > 0 || (nDimension == 0 && !bHasProEpiLoops);
 
 			if (nDimension >= 0)
 			{
-				int nUnrollFactor = config.getUnrollingFactor (nDimension);
+				int nUnrollFactor = bDoBoundaryChecks ? 1 : config.getUnrollingFactor (nDimension);
 
 				// unrolled loop
 				StatementListBundle slbInnerLoop = generateIteratorForDimension (
@@ -456,6 +457,8 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 		{
 			Expression exprIteratorSize = m_sdIterator.getIteratorSubdomain ().getBox ().getSize ().getCoord (nDim);
 			Expression exprDomainSize = m_sdIterator.getDomainSubdomain ().getBox ().getSize ().getCoord (nDim);
+			
+			boolean bDoBoundaryChecks = m_options.getBooleanValue (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, false);
 
 			// prepare loop creation
 			Identifier idIdx = m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (m_sdIterator.getIterator (), nDim);
@@ -510,7 +513,7 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 
 			// account for SIMD
 			int nSIMDVectorLength = m_data.getCodeGenerators ().getStencilCalculationCodeGenerator ().getLcmSIMDVectorLengths ();
-			if (m_bContainsStencilCall && nDim == 0 && (isStencilCalculation () || m_data.getOptions ().useNativeSIMDDatatypes ()))
+			if (m_bContainsStencilCall && nDim == 0 && (isStencilCalculation () || m_data.getOptions ().useNativeSIMDDatatypes ()) && !bDoBoundaryChecks)
 				exprMainLoopStep = ExpressionUtil.product (exprMainLoopStep.clone (), new IntegerLiteral (nSIMDVectorLength));
 
 			// list to which the loop statements will be added
@@ -1117,9 +1120,9 @@ public class SubdomainIteratorCodeGenerator implements ICodeGenerator
 
 		CodeGenerator cg = new CodeGenerator ((SubdomainIterator) trvInput, options);
 
-		StatementListBundle slGenerated = cg.generate ();
+		StatementListBundle slbGenerated = cg.generate ();
 		m_data.getData ().getMemoryObjectManager ().resetIndices ();
 
-		return slGenerated;
+		return slbGenerated;
 	}
 }

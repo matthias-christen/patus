@@ -68,7 +68,7 @@ public abstract class AbstractBackend implements IBackend
 
 		m_mixinNonKernelFunctions = new AbstractNonKernelFunctionsImpl (m_data)
 		{
-		};		
+		};
 	}
 
 	@Override
@@ -256,13 +256,19 @@ public abstract class AbstractBackend implements IBackend
 	{
 		return m_mixinNonKernelFunctions.validateComputation ();
 	}
+	
+	@Override
+	public StatementList writeGrids (String strFilenameFormat, String strType)
+	{
+		return m_mixinNonKernelFunctions.writeGrids (strFilenameFormat, strType);
+	}
 
 	@Override
 	public StatementList deallocateGrids()
 	{
 		return m_mixinNonKernelFunctions.deallocateGrids ();
 	}
-
+	
 	@Override
 	public Expression getFlopsPerStencil ()
 	{
@@ -292,7 +298,7 @@ public abstract class AbstractBackend implements IBackend
 	{
 		return m_mixinNonKernelFunctions.getValidates ();
 	}
-		
+			
 	@Override
 	public String getTestNonautotuneExeParams ()
 	{

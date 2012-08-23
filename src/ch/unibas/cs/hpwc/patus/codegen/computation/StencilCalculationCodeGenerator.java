@@ -21,6 +21,7 @@ import cetus.hir.Statement;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.analysis.StencilAnalyzer;
 import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
+import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorData;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
@@ -110,11 +111,9 @@ public class StencilCalculationCodeGenerator implements ICodeGenerator
 		int[] rgDefaultOffset = new int[stencil.getDimensionality ()];
 		Arrays.fill (rgDefaultOffset, 0);
 		
-		cg.generateSingleCalculation (
-			stencil, specDatatype, rgDefaultOffset,
-			m_data.getData ().getInitializationStatements (
-				StencilCalculationCodeGenerator.createStencilCalculationParamAssignment (options))
-		);
+		StatementList slInit = m_data.getData ().getInitializationStatements (
+			StencilCalculationCodeGenerator.createStencilCalculationParamAssignment (options));
+		cg.generateSingleCalculation (stencil, specDatatype, rgDefaultOffset, slInit, slInit);
 	}
 	
 	/**

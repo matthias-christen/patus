@@ -19,6 +19,12 @@ int main (int argc, char** argv)
 	{
 		#pragma patus initialize_grids
 	}
+	
+	// write output
+	if (has_arg ("-o", argc, argv))
+	{
+		#pragma patus write_output_grids("%s.0.data")
+	}
 
 	long nFlopsPerStencil = PATUS_FLOPS_PER_STENCIL;
 	long nGridPointsCount = 5 * PATUS_GRID_POINTS_COUNT;
@@ -40,6 +46,18 @@ int main (int argc, char** argv)
 	}
 	toc (nFlopsPerStencil, nGridPointsCount, nBytesTransferred);
 	
+	// write output
+	if (has_arg ("-o", argc, argv))
+	{
+		#pragma omp parallel
+		{
+			#pragma patus initialize_grids
+			#pragma omp barrier
+			#pragma patus compute_stencil
+		}
+		#pragma patus write_output_grids("%s.1.data")
+	}
+	
 	// validate
 	if (PATUS_DO_VALIDATION)
 	{
@@ -58,7 +76,7 @@ int main (int argc, char** argv)
 			puts ("Validation failed.");
 			return -1;
 		}
-	}	
+	}
 
 	// free memory
 	#pragma patus deallocate_grids

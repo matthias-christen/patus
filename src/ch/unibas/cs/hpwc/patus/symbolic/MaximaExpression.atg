@@ -266,7 +266,7 @@ PRODUCTIONS                                                                    /
     ExponentExpression<out Expression expr> =
         UnaryExpression<out Expression expr0>                                  (. expr = expr0; .)
         {
-        	'^' UnarySignExpression<out Expression expr1>                      (. expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1); .)
+        	'^' UnarySignExpression<out Expression expr1>                      (. expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1, null); .)
         }.
         
 	/**

@@ -16,7 +16,7 @@ bench: kernel.o driver.o $(PATUS_RUNTIME_OBJECT_FILES)
 	
 tune:
 $(PATUS_TEST_NONAUTOTUNE_EXE_PARAMS)
-	$(PATUS_AUTOTUNER) bench $(PATUS_EXE_PARAMS)
+	$(PATUS_AUTOTUNER) bench $(PATUS_EXE_PARAMS) | tee `date +tune_%F_%H.%M.%S.txt`
 
 clean:
 	rm -rf *.o bench

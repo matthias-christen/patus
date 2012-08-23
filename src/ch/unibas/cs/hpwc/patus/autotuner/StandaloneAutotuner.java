@@ -21,8 +21,11 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import cetus.hir.BinaryExpression;
+import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.IntegerLiteral;
+import cetus.hir.NameID;
 import cetus.hir.Symbolic;
 import ch.unibas.cs.hpwc.patus.autotuner.HybridOptimizer.HybridRunExecutable;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
@@ -45,6 +48,17 @@ public class StandaloneAutotuner
 
 	private static final Logger LOGGER = Logger.getLogger (StandaloneAutotuner.class);
 
+
+	///////////////////////////////////////////////////////////////////
+	// Inner Types
+	
+	private enum EValuePosition
+	{
+		NONE,
+		START,
+		END
+	}
+	
 
 	///////////////////////////////////////////////////////////////////
 	// Member Variables
@@ -193,106 +207,7 @@ public class StandaloneAutotuner
 		}
 
 		return true;
-	}
-	
-	@Deprecated
-	private boolean parseRange (String strParam)
-	{
-		try
-		{
-			if (strParam.indexOf (':') >= 0)
-			{
-				// variant "startvalue:[[*]step:]endvalue"
-	
-				// parse the input
-				String[] rgValues = strParam.split (":");
-	
-				boolean bUseExhaustive = false;
-				if (rgValues[rgValues.length - 1].endsWith ("!"))
-				{
-					rgValues[rgValues.length - 1] = rgValues[rgValues.length - 1].substring (0, rgValues[rgValues.length - 1].length () - 1);
-					bUseExhaustive = true;
-				}
-	
-				int nStartValue = Integer.parseInt (rgValues[0]);
-				int nEndValue = 0;
-				int nStep = 1;
-				boolean bIsStepMultiplicative = false;
-	
-				if (rgValues.length == 2)
-					nEndValue = Integer.parseInt (rgValues[1]);
-				else if (rgValues.length == 3)
-				{
-					bIsStepMultiplicative = rgValues[1].charAt (0) == '*';
-					nStep = Integer.parseInt (bIsStepMultiplicative ? rgValues[1].substring (1) : rgValues[1]);
-					nEndValue = Integer.parseInt (rgValues[2]);
-				}
-				else
-					return false;
-	
-				// assign the parameter list
-				List<Integer> listValues = new LinkedList<> ();
-				int nParamsCount = 0;
-				for (int k = nStartValue; k <= nEndValue; k = bIsStepMultiplicative ? k * nStep : k + nStep)
-				{
-					if (nParamsCount > StandaloneAutotuner.MAX_PARAM_VALUES)
-						break;
-					listValues.add (k);
-					nParamsCount++;
-				}
-	
-				int[] rgParamSet = new int[listValues.size ()];
-				int j = 0;
-				for (int nValue : listValues)
-				{
-					rgParamSet[j] = nValue;
-					j++;
-				}
-				
-				ParamSet ps = new ParamSet (rgParamSet, bUseExhaustive);
-				LOGGER.info (ps.toString ());
-				m_listParamSets.add (ps);
-			}
-			else if (strParam.indexOf (',') >= 0)
-			{
-				// variant "value1[,value2[,value3...]]"
-	
-				String[] rgValues = strParam.split (",");
-	
-				boolean bUseExhaustive = false;
-				if (rgValues[rgValues.length - 1].endsWith ("!"))
-				{
-					rgValues[rgValues.length - 1] = rgValues[rgValues.length - 1].substring (0, rgValues[rgValues.length - 1].length () - 2);
-					bUseExhaustive = true;
-				}
-	
-				int[] rgParamSet = new int[rgValues.length];
-				int j = 0;
-				for (String strValue : rgValues)
-				{
-					rgParamSet[j] = Integer.parseInt (strValue);
-					j++;
-				}
-				
-				ParamSet ps = new ParamSet (rgParamSet, bUseExhaustive);
-				LOGGER.info (ps.toString ());
-				m_listParamSets.add (ps);
-			}
-			else
-			{
-				// assume this is only a single number
-				ParamSet ps = new ParamSet (new int[] { Integer.parseInt (strParam) }, false);
-				LOGGER.info (ps.toString ());
-				m_listParamSets.add (ps);
-			}
-		}
-		catch (NumberFormatException e)
-		{
-			return false;
-		}
-		
-		return true;
-	}
+	}	
 
 	/**
 	 * Parses the command line parameters.
@@ -341,18 +256,18 @@ public class StandaloneAutotuner
 						bUseExhaustive = true;
 					}
 
-					int nStartValue = getValue (rgValues[0], mapVariables);
+					int nStartValue = getValue (nIdxArgs, rgValues[0], mapVariables, EValuePosition.START);
 					int nEndValue = 0;
 					int nStep = 1;
 					boolean bIsStepMultiplicative = false;
 
 					if (rgValues.length == 2)
-						nEndValue = getValue (rgValues[1], mapVariables);
+						nEndValue = getValue (nIdxArgs, rgValues[1], mapVariables, EValuePosition.END);
 					else if (rgValues.length == 3)
 					{
 						bIsStepMultiplicative = rgValues[1].charAt (0) == '*';
-						nStep = getValue (bIsStepMultiplicative ? rgValues[1].substring (1) : rgValues[1], mapVariables);
-						nEndValue = getValue (rgValues[2], mapVariables);
+						nStep = getValue (nIdxArgs, bIsStepMultiplicative ? rgValues[1].substring (1) : rgValues[1], mapVariables, EValuePosition.NONE);
+						nEndValue = getValue (nIdxArgs, rgValues[2], mapVariables, EValuePosition.END);
 					}
 					else
 						throw new RuntimeException ("Malformed argument " + m_rgParams[i]);
@@ -400,7 +315,7 @@ public class StandaloneAutotuner
 					int j = 0;
 					for (String strValue : rgValues)
 					{
-						rgParamSet[j] = getValue (strValue, mapVariables);
+						rgParamSet[j] = getValue (nIdxArgs, strValue, mapVariables, EValuePosition.NONE);
 						j++;
 					}
 					
@@ -449,8 +364,9 @@ public class StandaloneAutotuner
 	 *            A map of variable names to their values
 	 * @return The value of <code>strVal</code>
 	 */
-	private static int getValue (String strVal, Map<String, Integer> mapVariables)
+	private int getValue (int nArgIdx, String strVal, Map<String, Integer> mapVariables, EValuePosition pos)
 	{
+		boolean bDependsOnOtherAutotuneParams = false;
 		String s = strVal;
 		for ( ; ; )
 		{
@@ -459,21 +375,72 @@ public class StandaloneAutotuner
 				break;
 			
 			int nEnd = nPos + 1;
-			while (Character.isDigit (s.charAt (nEnd)))
+			while (nEnd < s.length () && Character.isDigit (s.charAt (nEnd)))
 				nEnd++;
 			
 			String strVar = s.substring (nPos, nEnd);
-			Integer nVal = mapVariables.get (strVar);
-			if (nVal == null)
-				throw new RuntimeException ("");
+			int nVarIdx = Integer.parseInt (strVar.substring (1));
+
+			int nValue = 0;
+			if (mapVariables.containsKey (strVar))
+			{
+				// variable reference
+				Integer nVal = mapVariables.get (strVar);
+				if (nVal == null)
+					throw new RuntimeException (StringUtil.concat ("No variable ", strVar));
+				nValue = nVal;
+			}
+			else if (nVarIdx < m_listParamSets.size ())
+			{
+				// auto-tuning parameter reference
+				// use the min/max value of the auto-tuning parameter and add a constraint (see below)
+				ParamSet ps = m_listParamSets.get (nVarIdx);
+				switch (pos)
+				{
+				case START:
+					nValue = ps.getParams ()[0];
+					break;
+				case END:
+					nValue = ps.getParams ()[ps.getParams ().length - 1];
+					break;
+				default:
+					throw new RuntimeException ("If an auto-tuning parameter depends on another auto-tuning parameter, it must occur only within a start:step:end construct.");
+				}
+
+				bDependsOnOtherAutotuneParams = true;
+			}
+			else
+				throw new RuntimeException (StringUtil.concat (strVar, " is references neither a variable nor an auto-tuning parameter (or the definition of the reference does not occur before its use)"));
 			
-			s = StringUtil.concat (s.substring (0, nPos), String.valueOf (nVal), s.substring (nEnd));
+			s = StringUtil.concat (s.substring (0, nPos), String.valueOf (nValue), s.substring (nEnd));
 		}
 		
+		// add constraints if necessary
+		if (bDependsOnOtherAutotuneParams)
+		{
+			Expression exprConstraint = null;
+			switch (pos)
+			{
+			case START:
+				exprConstraint = new BinaryExpression (new NameID (StringUtil.concat ("$", nArgIdx)), BinaryOperator.COMPARE_GE, ExpressionParser.parse (strVal));
+				break;
+			case END:
+				exprConstraint = new BinaryExpression (new NameID (StringUtil.concat ("$", nArgIdx)), BinaryOperator.COMPARE_LE, ExpressionParser.parse (strVal));
+				break;
+			}
+			
+			if (exprConstraint != null)
+			{
+				m_listConstraints.add (exprConstraint);
+				LOGGER.info (StringUtil.concat ("Constraint ", exprConstraint.toString ()));
+			}
+		}
+
+		// calculate the result
 		Expression exprResult = Symbolic.simplify (ExpressionParser.parse (s));
 		if (exprResult instanceof IntegerLiteral)
 			return (int) ((IntegerLiteral) exprResult).getValue ();
-		
+				
 		return 0;
 	}
 	

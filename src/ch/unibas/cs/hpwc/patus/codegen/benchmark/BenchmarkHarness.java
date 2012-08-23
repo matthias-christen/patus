@@ -47,12 +47,12 @@ public class BenchmarkHarness
 	/**
 	 * Pattern for &quot;#pragma patus&quot; pragmas in C files
 	 */
-	private final static Pattern PATTERN_PRAGMA = Pattern.compile ("\\s*#pragma\\s+patus\\s+([A-Za-z0-9_]+)\\s*");
+	private final static Pattern PATTERN_PRAGMA = Pattern.compile ("\\s*#pragma\\s+patus\\s+([A-Za-z0-9_]+)\\s*(\\((.+)\\))?");
 	
 	/**
 	 * Pattern for &quot;PATUS_*&quot; variables in C files
 	 */
-	private final static Pattern PATTERN_CVAR = Pattern.compile ("PATUS_([A-Za-z0-9_]+)");
+	private final static Pattern PATTERN_CVAR = Pattern.compile ("PATUS_([A-Za-z0-9_]+)\\s*(\\((.+)\\))?");
 	
 	/**
 	 * Pattern for &quot;PATUS_*&quot; variables in Makefiles
@@ -337,7 +337,7 @@ public class BenchmarkHarness
 				out.print (strPragma);
 				out.println (" -->");
 
-				generateCodeForPragma (strPragma, out);
+				generateCodeForPragma (strPragma, matcherPragma.group (3), out);
 
 				out.print ("// <--\n\n");
 			}
@@ -352,7 +352,7 @@ public class BenchmarkHarness
 				while (matcherVar.find ())
 				{
 					String strVar = matcherVar.group (1);
-					String strCodeForVar = generateCodeForVar (strVar);
+					String strCodeForVar = generateCodeForVar (strVar, matcherVar.group (3));
 					if (strCodeForVar != null)
 						matcherVar.appendReplacement (sbLine, strCodeForVar);
 				}
@@ -364,30 +364,64 @@ public class BenchmarkHarness
 		in.close ();
 		out.close ();
 	}
+	
+	private static Object[] getArgs (String strArgList)
+	{
+		if (strArgList == null)
+			return new Object[] { };
+		
+		int nStart = 0;
+		int nEnd = strArgList.length () - 1;
+		
+		// trim leading and trailing brackets
+		while (nStart < strArgList.length () && strArgList.charAt (nStart) == '(')
+			nStart++;
+		while (nEnd >= 0 && strArgList.charAt (nEnd) == ')')
+			nEnd--;
+		
+		String[] rgStringArgs = strArgList.substring (nStart, nEnd + 1).split (",");
+		Object[] rgArgs = new Object[rgStringArgs.length];
+		for (int i = 0; i < rgStringArgs.length; i++)
+		{
+			// trim quotation marks
+			nStart = 0;
+			nEnd = rgStringArgs[i].length () - 1;
+			
+			while (nStart < rgStringArgs[i].length () && (rgStringArgs[i].charAt (nStart) == '"' || Character.isSpaceChar (rgStringArgs[i].charAt (nStart))))
+				nStart++;
+			while (nEnd >= 0 && (rgStringArgs[i].charAt (nEnd) == '"' || Character.isSpaceChar (rgStringArgs[i].charAt (nEnd))))
+				nEnd--;
+				
+			rgArgs[i] = rgStringArgs[i].substring (nStart, nEnd + 1);
+		}
+
+		return rgArgs;
+	}
 
 	/**
 	 * Generates code for the Patus pragma <code>strMethodName</code> and writes it to <code>out</code>.
 	 * @param strMethodName The Patus pragma
 	 * @param out The output print writer
 	 */
-	private void generateCodeForPragma (String strMethodName, PrintWriter out)
+	private void generateCodeForPragma (String strMethodName, String strArgList, PrintWriter out)
 	{
 		// try different naming conventions (with underscores: strMethodName) and with camel toes
 		String strMethodName1 = StringUtil.toCamelToe (strMethodName);
+		Object[] rgArgs = getArgs (strArgList);
 
 		// try to find the methods
-		Method method = findMethod (strMethodName, strMethodName1);
+		Method method = findMethod (rgArgs.length, strMethodName, strMethodName1);
 		if (method == null)
 		{
 			throw new RuntimeException (StringUtil.concat (
 				"Can't find a code generator method for the pragma \"patus ", strMethodName,
-				" on the backend ", m_data.getArchitectureDescription ().getBackend ()));
+				"\" on the backend ", m_data.getArchitectureDescription ().getBackend ()));
 		}
 
 		StatementList slResult = null;
 		try
 		{
-			slResult = (StatementList) method.invoke (m_data.getCodeGenerators ().getBackendCodeGenerator ());
+			slResult = (StatementList) method.invoke (m_data.getCodeGenerators ().getBackendCodeGenerator (), rgArgs);
 		}
 		catch (IllegalArgumentException e)
 		{
@@ -410,23 +444,25 @@ public class BenchmarkHarness
 			out.println (slResult.toStringWithDeclarations ());
 	}
 
-	private String generateCodeForVar (String strVar)
+	private String generateCodeForVar (String strVar, String strArgList)
 	{
+		Object[] rgArgs = getArgs (strArgList);
+		
 		String strMethodName = "get_" + strVar;
 		String strMethodName1 = StringUtil.toCamelToe (strMethodName);
 		String strMethodName2 = StringUtil.toCamelToe (strMethodName.toLowerCase ());
-		Method method = findMethod (strMethodName, strMethodName1, strMethodName2);
+		Method method = findMethod (rgArgs.length, strMethodName, strMethodName1, strMethodName2);
 
 		if (method == null)
 		{
 			throw new RuntimeException (StringUtil.concat (
 				"Can't find a code generator method for the Patus variable \"PATUS_", strVar,
-				" on the backend ", m_data.getArchitectureDescription ().getBackend ()));
+				"\" on the backend ", m_data.getArchitectureDescription ().getBackend ()));
 		}
 
 		try
 		{
-			return method.invoke (m_data.getCodeGenerators ().getBackendCodeGenerator ()).toString ();
+			return method.invoke (m_data.getCodeGenerators ().getBackendCodeGenerator (), rgArgs).toString ();
 		}
 		catch (IllegalArgumentException e)
 		{
@@ -454,13 +490,17 @@ public class BenchmarkHarness
 	 * @param rgMethodNames An array of method names
 	 * @return The first method that matches a name in <code>rgMethodNames</code>
 	 */
-	private Method findMethod (String... rgMethodNames)
+	private Method findMethod (int nParamsCount, String... rgMethodNames)
 	{
+		Class<?>[] rgParamTypes = new Class<?>[nParamsCount];
+		for (int i = 0; i < nParamsCount; i++)
+			rgParamTypes[i] = String.class;
+		
 		for (String strMethodName : rgMethodNames)
 		{
 			try
 			{
-				return m_data.getCodeGenerators ().getBackendCodeGenerator ().getClass ().getMethod (strMethodName);
+				return m_data.getCodeGenerators ().getBackendCodeGenerator ().getClass ().getMethod (strMethodName, rgParamTypes);
 			}
 			catch (SecurityException e)
 			{
@@ -511,7 +551,7 @@ public class BenchmarkHarness
 				else if ("RUNTIME_OBJECT_FILES".equals (strVar))
 					strReplacement = StringUtil.join (getRuntimeObjectFiles (), " ");
 				else
-					strReplacement = generateCodeForVar (strVar);
+					strReplacement = generateCodeForVar (strVar, null);
 
 				// do the replacements (and replace "$$" by "\$$" (we need a lot of backslashes because of Java and Regex escaping))
 				if (strReplacement != null)

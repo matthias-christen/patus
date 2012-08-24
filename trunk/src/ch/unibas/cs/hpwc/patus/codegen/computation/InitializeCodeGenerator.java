@@ -7,25 +7,33 @@ import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
+import cetus.hir.CompoundStatement;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.FloatLiteral;
+import cetus.hir.ForLoop;
 import cetus.hir.IfStatement;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.Traversable;
+import cetus.hir.UnaryExpression;
+import cetus.hir.UnaryOperator;
 import ch.unibas.cs.hpwc.patus.ast.IStatementList;
 import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
+import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
+import ch.unibas.cs.hpwc.patus.geometry.Box;
+import ch.unibas.cs.hpwc.patus.geometry.Point;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
+import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
-import ch.unibas.cs.hpwc.patus.util.IntArray;
+import ch.unibas.cs.hpwc.patus.util.StatementListBundleUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -47,49 +55,111 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 			super.generate ();
 		}
 		else
+		{
+			// custom initialization as defined in the stencil specification
 			generateInitialization ();
+		}
 	}
 	
+	/**
+	 * Generate the initialization code as specified in the stencil specification.
+	 */
 	protected void generateInitialization ()
 	{
-		int[] rgOffsetIndex = IntArray.getArray (m_data.getStencilCalculation ().getDimensionality (), 0);
-		
 		for (Stencil stencil : m_data.getStencilCalculation ().getInitialization ())
 		{
-			Expression exprStencil = stencil.getExpression ();
-			
+			Expression exprStencil = stencil.getExpression ();			
 			if (exprStencil != null)
-			{
-				Specifier specDatatype = getDatatype (exprStencil);
-
-				// replace identifiers in the stencil expression
-				exprStencil = exprStencil.clone ();
-
-				// add the stencil computation to the generated code
 				for (StencilNode nodeOutput : stencil.getOutputNodes ())
-				{
-					for (ParameterAssignment pa : m_slbGenerated)
-					{
-						StatementList slGenerated = m_slbGenerated.getStatementList (pa);
-						
-						// replace the stencil nodes in the expression with the indexed memory object instances
-						Expression exprMOStencil = replaceStencilNodes (exprStencil, specDatatype, rgOffsetIndex, slGenerated);
-						Expression exprLHS = replaceStencilNodes (nodeOutput, specDatatype, rgOffsetIndex, slGenerated);							
+					generateInitializationPerOutputNode (stencil, nodeOutput, exprStencil.clone (), getDatatype (exprStencil));
+		}				
+	}
+	
+	protected void generateInitializationPerOutputNode (Stencil stencil, StencilNode nodeOutput, Expression exprStencil, Specifier specDatatype)
+	{
+		// temporarily replace m_sdidStencilArg: replace the current coordinate (in dimension nDim) by the local one
+		SubdomainIdentifier sdidSave = m_sdidStencilArg;
+		m_sdidStencilArg = new SubdomainIdentifier (StringUtil.concat (m_sdidStencilArg.getName (), "_loc"), m_sdidStencilArg.getSubdomain ());
 		
-						// create the calculation statement
-						Statement stmtStencil = new ExpressionStatement (new AssignmentExpression (exprLHS, AssignmentOperator.NORMAL, exprMOStencil));
-	
-						// check if there are any constraints
-						if (nodeOutput.getConstraint () != null)
-							stmtStencil = new IfStatement (getConstraintCondition (nodeOutput), stmtStencil);
+		Box boxGridDimensions = ((StencilCalculation.GridType) m_data.getStencilCalculation ().getArgumentType (nodeOutput.getName ())).getBoxDimension ();
 
-						if (StencilCalculationCodeGenerator.LOGGER.isDebugEnabled ())
-							StencilCalculationCodeGenerator.LOGGER.debug (StringUtil.concat ("Adding stencil ", stmtStencil.toString ()));
+		// first check whether we're at the boundary of any of the grid coordinates
+		Point ptStart = m_data.getStencilCalculation ().getDomainSize ().getMin ();
+		Point ptEnd = m_data.getStencilCalculation ().getDomainSize ().getMax ();
+		
+		for (int nDim = 0; nDim < m_data.getStencilCalculation ().getDimensionality (); nDim++)
+		{
+			// are we at the start?
+			generateBoundaryInitialization (
+				nDim, nodeOutput, exprStencil, specDatatype,
+				ptStart.getCoord (nDim),
+				boxGridDimensions.getMin ().getCoord (nDim).clone (),
+				ExpressionUtil.decrement (ptStart.getCoord (nDim).clone ())
+			);
+			
+			// are we at the end?
+			generateBoundaryInitialization (
+				nDim, nodeOutput, exprStencil, specDatatype,
+				ptEnd.getCoord (nDim),
+				ExpressionUtil.increment (ptEnd.getCoord (nDim).clone ()),
+				boxGridDimensions.getMax ().getCoord (nDim).clone ()
+			);
+		}
+
+		// restore the subdomain identifier
+		m_sdidStencilArg = sdidSave;
+		
+		// then create the "usual" initialization
+		generateInitializationExpressions (m_slbGenerated, nodeOutput, exprStencil, specDatatype);
+		
+	}
 	
-						slGenerated.addStatement (stmtStencil);
-					}
-				}
-			}
+	protected void generateBoundaryInitialization (int nDim, StencilNode nodeOutput, Expression exprStencil, Specifier specDatatype, Expression exprDomainLimit, Expression exprStart, Expression exprEnd)
+	{
+		// control expression checking whether we're at the domain limit
+		Expression exprControlStart = new BinaryExpression (getDimensionIndexIdentifier (nDim), BinaryOperator.COMPARE_EQ, exprDomainLimit);
+		
+		Expression exprLoopIdx = getDimensionIndexIdentifier (nDim);
+		StatementListBundle slbFor = new StatementListBundle ();
+		slbFor.addStatement (new ForLoop (
+			new ExpressionStatement (new AssignmentExpression (exprLoopIdx, AssignmentOperator.NORMAL, exprStart)),
+			new BinaryExpression (exprLoopIdx.clone (), BinaryOperator.COMPARE_LE, exprEnd),
+			new UnaryExpression (UnaryOperator.PRE_INCREMENT, exprLoopIdx.clone ()),
+			new CompoundStatement ()
+		));
+		
+		StatementListBundle slbInit = new StatementListBundle ();
+		generateInitializationExpressions (slbInit, nodeOutput, exprStencil, specDatatype);
+		
+		StatementListBundleUtil.addToLoopBody (slbFor, slbInit);
+		
+		m_slbGenerated.addStatements (StatementListBundleUtil.createIfStatement (
+			replaceStencilNodes (exprControlStart, Specifier.FLOAT /* dummy */, getDefaultOffset (), m_slbGenerated),
+			slbFor, null
+		));		
+	}
+	
+	protected void generateInitializationExpressions (StatementListBundle slbGenerated, StencilNode nodeOutput, Expression exprStencil, Specifier specDatatype)
+	{
+		for (ParameterAssignment pa : slbGenerated)
+		{
+			StatementList slGenerated = slbGenerated.getStatementList (pa);
+			
+			// replace the stencil nodes in the expression with the indexed memory object instances
+			Expression exprMOStencil = replaceStencilNodes (exprStencil, specDatatype, getDefaultOffset (), slGenerated);
+			Expression exprLHS = replaceStencilNodes (nodeOutput, specDatatype, getDefaultOffset (), slGenerated);							
+
+			// create the calculation statement
+			Statement stmtStencil = new ExpressionStatement (new AssignmentExpression (exprLHS, AssignmentOperator.NORMAL, exprMOStencil));
+
+			// check if there are any constraints
+			if (nodeOutput.getConstraint () != null)
+				stmtStencil = new IfStatement (getConstraintCondition (nodeOutput), stmtStencil);
+
+			if (StencilCalculationCodeGenerator.LOGGER.isDebugEnabled ())
+				StencilCalculationCodeGenerator.LOGGER.debug (StringUtil.concat ("Adding stencil ", stmtStencil.toString ()));
+
+			slGenerated.addStatement (stmtStencil);
 		}
 	}
 	

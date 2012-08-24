@@ -237,7 +237,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 			}
 
 		case KERNEL_PARAMETER:
-			return new FloatLiteral (getParameterSampleValue (variable));
+			return getParameterSampleValue (variable);
 
 		case AUTOTUNE_PARAMETER:
 		case INTERNAL_AUTOTUNE_PARAMETER:
@@ -287,16 +287,20 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		return getExpressionsForVariables (listVariables, EOutputGridType.OUTPUTGRID_DEFAULT);
 	}
 
-	public double getParameterSampleValue (Variable variable)
+	public Expression getParameterSampleValue (Variable variable)
 	{
 		Double fValue = m_mapParamValues.get (variable.getName ());
 		if (fValue == null)
 		{
+			Expression exprDefault = variable.getDefaultValue ();
+			if (exprDefault != null)
+				return exprDefault;
+			
 			m_fSampleValue += 0.1;
 			m_mapParamValues.put (variable.getName (), fValue = m_fSampleValue);
 		}
 
-		return fValue;
+		return new FloatLiteral (fValue);
 	}
 
 	@Override
@@ -730,7 +734,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		StatementList sl = m_cgValidate.generate (getGridSet ());
 
 		// replace parameter variables by values
-		Map<String, Double> mapVariables = new HashMap<> ();
+		Map<String, Expression> mapVariables = new HashMap<> ();
 		for (Variable v : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables ())
 			if (v.getType () == EVariableType.KERNEL_PARAMETER)
 				mapVariables.put (v.getName (), getParameterSampleValue (v));
@@ -742,9 +746,9 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 				Object o = it.next ();
 				if (o instanceof IDExpression)
 				{
-					Double fValue = mapVariables.get (((IDExpression) o).getName ());
-					if (fValue != null)
-						((IDExpression) o).swapWith (new FloatLiteral (fValue));
+					Expression exprValue = mapVariables.get (((IDExpression) o).getName ());
+					if (exprValue != null)
+						((IDExpression) o).swapWith (exprValue.clone ());
 				}
 			}
 		}

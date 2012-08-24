@@ -34,6 +34,7 @@ import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.symbolic.ExpressionData;
 import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
+import ch.unibas.cs.hpwc.patus.util.DomainPointEnumerator;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -438,6 +439,18 @@ public class Parser {
 			m_listStencilOperationArguments.add (strIdentifier);
 	}
 	
+	private String getIndexedIdentifier (String strId, int[] rgIdx)
+	{
+		StringBuilder sb = new StringBuilder (strId);
+		for (int nIdx : rgIdx)
+		{
+			sb.append ('_');
+			sb.append (nIdx);
+		}
+		
+		return sb.toString ();
+	}
+	
 	private void registerScalar (String strIdentifier, Specifier specType, List<Integer> listDimensions, boolean bIsStencilArgument)
 	{
 		ensureScalarsMapCreated ();
@@ -451,18 +464,41 @@ public class Parser {
 		}
 
 		if (!m_mapScalars.containsKey (strIdentifier))
-			m_mapScalars.put (strIdentifier, new StencilCalculation.ParamType (specType, listDimensions));
+		{
+			m_mapScalars.put (strIdentifier, new StencilCalculation.ParamType (specType));
 			
-		if (bIsStencilArgument)
-			m_listStencilOperationArguments.add (strIdentifier);
+			DomainPointEnumerator dpe = new DomainPointEnumerator ();
+			for (int nDim : listDimensions)
+				dpe.addDimension (new DomainPointEnumerator.MinMax (0, nDim - 1));
+				
+			if (dpe.size () == 0)
+				m_listStencilOperationArguments.add (strIdentifier);
+			else
+			{
+				// convert multi-dimensional scalars to simple scalars with the index in their name
+				for (int[] rgIdx : dpe)
+				{
+					String strIndexedIdentifier = getIndexedIdentifier (strIdentifier, rgIdx);
+					m_mapScalars.put (strIndexedIdentifier, new StencilCalculation.ParamType (specType));
+					if (bIsStencilArgument)
+						m_listStencilOperationArguments.add (strIndexedIdentifier);
+				}
+			}
+		}
 	}
 	
 	private void setParamDefaultValues (String strIdentifier, Map<IntArray, Expression> mapDefaultValues)
 	{
-		StencilCalculation.ParamType pt = m_mapScalars.get (strIdentifier);
-		if (pt == null)
-			errors.SemErr (StringUtil.concat ("The stencil parameter ", strIdentifier, " has not yet been registered."));
-		pt.setDefaultValues (mapDefaultValues);		
+		for (IntArray arrIdx : mapDefaultValues.keySet ())
+		{
+			String strIndexedIdentifier = getIndexedIdentifier (strIdentifier, arrIdx.get ());
+			StencilCalculation.ParamType pt = m_mapScalars.get (strIndexedIdentifier);
+			
+			if (pt == null)
+				errors.SemErr (StringUtil.concat ("The stencil parameter ", strIndexedIdentifier, " has not yet been registered."));
+			else
+				pt.setDefaultValue (mapDefaultValues.get (arrIdx));
+		}
 	}
 	
 	private void registerConstant (String strIdentifier, Literal litValue)
@@ -528,9 +564,7 @@ public class Parser {
 			m_mapScalars = new HashMap<> ();
 		
 			// add constants
-			List<Integer> listDimensions = new ArrayList<> (0);
-			
-			m_mapScalars.put ("PI", new StencilCalculation.ParamType (Specifier.DOUBLE, listDimensions));
+			m_mapScalars.put ("PI", new StencilCalculation.ParamType (Specifier.DOUBLE));
 		} 
 	}
 	
@@ -607,7 +641,7 @@ public class Parser {
 					m_listSizeParameters.add ((NameID) o);
 					
 					ensureScalarsMapCreated ();
-					m_mapScalars.put (((NameID) o).getName (), new StencilCalculation.ParamType (Globals.SPECIFIER_SIZE, new ArrayList<Integer> (0)));
+					m_mapScalars.put (((NameID) o).getName (), new StencilCalculation.ParamType (Globals.SPECIFIER_SIZE));
 				}
 			}
 		}		
@@ -1141,16 +1175,17 @@ public class Parser {
 		String strIdentifier = t.val; Literal litValue = getConstantValue (strIdentifier); exprParam = litValue == null ? new NameID (strIdentifier) : litValue; 
 		if (la.kind == 30) {
 			Get();
-			if ((exprParam instanceof FloatLiteral) || (exprParam instanceof IntegerLiteral)) errors.SemErr (la.line, la.col, "Cannot subscript a scalar value"); 
-			ExpressionData exprIdx = StencilExpression(null, bIsDecl, true, false, false);
-			exprParam = new ArrayAccess (exprParam.clone (), new IntegerLiteral (getInteger (exprIdx.getExpression ()))); 
+			if ((exprParam instanceof FloatLiteral) || (exprParam instanceof IntegerLiteral)) errors.SemErr (la.line, la.col, "Cannot subscript a scalar value"); List<Integer> listIndices = new ArrayList<> (); 
+			int nIdx0 = IntegerLiteral();
+			listIndices.add (nIdx0); 
 			while (la.kind == 21) {
 				while (!(la.kind == 0 || la.kind == 21)) {SynErr(72); Get();}
 				Get();
-				exprIdx = StencilExpression(null, bIsDecl, true, false, false);
-				((ArrayAccess) exprParam).addIndex (new IntegerLiteral (getInteger (exprIdx.getExpression ()))); 
+				int nIdx1 = IntegerLiteral();
+				listIndices.add (nIdx1); 
 			}
 			Expect(31);
+			int[] rgIdx = new int[listIndices.size ()]; int j = 0; for (int nIdx : listIndices) rgIdx[j++] = nIdx; exprParam = new NameID (getIndexedIdentifier (strIdentifier, rgIdx)); 
 		}
 		if (!(exprParam instanceof FloatLiteral) && !(exprParam instanceof IntegerLiteral) && !bIsDecl) checkParameterIndices (strIdentifier, exprParam); 
 		return exprParam;

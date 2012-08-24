@@ -91,6 +91,7 @@ public class GlobalGeneratedIdentifiers
 		private String m_strName;
 		private String m_strOriginalName;
 
+		private Expression m_exprDefaultValue;
 
 		/**
 		 * Size of the array
@@ -120,11 +121,12 @@ public class GlobalGeneratedIdentifiers
 			m_exprSize = exprSize;
 			m_sizeBox = null;
 			m_autoparam = null;
+			m_exprDefaultValue = null;
 
 			m_declaration = new VariableDeclaration (listSpecifiers, new VariableDeclarator (new NameID (strName)));
 		}
 
-		public Variable (EVariableType type, VariableDeclaration decl, String strOriginalName, Expression exprSize, Size sizeBox)
+		public Variable (EVariableType type, VariableDeclaration decl, String strOriginalName, Expression exprDefaultValue, Expression exprSize, Size sizeBox)
 		{
 			m_type = type;
 			m_declaration = decl;
@@ -135,6 +137,7 @@ public class GlobalGeneratedIdentifiers
 			m_exprSize = exprSize;
 			m_sizeBox = sizeBox;
 			m_autoparam = null;
+			m_exprDefaultValue = exprDefaultValue;
 		}
 		
 		public Variable (EVariableType type, VariableDeclaration decl, String strOriginalName, Expression exprSize, IAutotunerParam autoparam)
@@ -148,6 +151,7 @@ public class GlobalGeneratedIdentifiers
 			m_exprSize = exprSize;
 			m_sizeBox = null;
 			m_autoparam = autoparam;
+			m_exprDefaultValue = null;
 		}
 
 		/**
@@ -158,12 +162,13 @@ public class GlobalGeneratedIdentifiers
 		 * @param strArgumentName The name of the variable
 		 * @param data
 		 */
-		public Variable (EVariableType type, VariableDeclaration decl, String strArgumentName, String strOriginalName, CodeGeneratorSharedObjects data)
+		public Variable (EVariableType type, VariableDeclaration decl, String strArgumentName, String strOriginalName, Expression exprDefaultValue, CodeGeneratorSharedObjects data)
 		{
 			this (
 				type,
 				decl,
 				strOriginalName,
+				exprDefaultValue,
 				type.isGrid () ?
 					GlobalGeneratedIdentifiers.getGridMemorySize (decl, strArgumentName, data) :
 					new SizeofExpression (decl.getSpecifiers ()),
@@ -212,6 +217,11 @@ public class GlobalGeneratedIdentifiers
 		public final String getOriginalName ()
 		{
 			return m_strOriginalName;
+		}
+		
+		public final Expression getDefaultValue ()
+		{
+			return m_exprDefaultValue;
 		}
 
 		public final Expression getSize ()

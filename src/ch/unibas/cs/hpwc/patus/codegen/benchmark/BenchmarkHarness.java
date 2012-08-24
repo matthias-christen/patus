@@ -249,8 +249,7 @@ public class BenchmarkHarness
 					}
 					catch (IOException e)
 					{
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+						LOGGER.error (StringUtil.concat ("Error while processing file ", f.getAbsolutePath (), " in benchmark harness creation."));
 					}
 				}
 			}

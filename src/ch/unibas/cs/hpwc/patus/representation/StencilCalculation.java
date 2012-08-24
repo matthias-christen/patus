@@ -128,39 +128,39 @@ public class StencilCalculation
 
 	public static class ParamType extends ArgumentType
 	{
-		private int[] m_rgDimensions;
-		protected Map<IntArray, Expression> m_mapDefaultValues;
+		private List<Integer> m_listDimensions;
+		protected Expression m_exprDefaultValue;
 
+		
+		public ParamType (Specifier specType)
+		{
+			this (specType, null);
+		}
 		
 		public ParamType (Specifier specType, List<Integer> listDimensions)
 		{
 			super (EArgumentType.PARAMETER, specType);
-
-			// copy the dimensions
-			m_rgDimensions = new int[listDimensions.size ()];
-			int i = 0;
-			for (int nDim : listDimensions)
-				m_rgDimensions[i++] = nDim;
+			m_listDimensions = listDimensions == null ? new ArrayList<Integer> (0) : listDimensions;
 		}
 
-		public int[] getDimensions ()
+		public Iterable<Integer> getDimensions ()
 		{
-			return m_rgDimensions;
+			return m_listDimensions;
 		}
 
 		public int getDimensionsCount ()
 		{
-			return m_rgDimensions.length;
+			return m_listDimensions.size ();
 		}
 
-		public void setDefaultValues (Map<IntArray, Expression> mapDefaultValues)
+		public void setDefaultValue (Expression exprDefaultValue)
 		{
-			m_mapDefaultValues = mapDefaultValues;
+			m_exprDefaultValue = exprDefaultValue;
 		}
 		
-		public Map<IntArray, Expression> getDefaultValues ()
+		public Expression getDefaultValue ()
 		{
-			return m_mapDefaultValues;
+			return m_exprDefaultValue;
 		}
 	}
 

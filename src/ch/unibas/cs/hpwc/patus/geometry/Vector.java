@@ -21,6 +21,7 @@ import cetus.hir.IntegerLiteral;
 import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.IntArray;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
  *
@@ -134,7 +135,7 @@ public class Vector extends Primitive implements Iterable<Expression>
 	public Expression getCoord (int nDim)
 	{
 		if (nDim >= getDimensionality ())
-			throw new NoSuchElementException ();
+			throw new NoSuchElementException (StringUtil.concat ("No entry in vector ", toString (), " at coordinate ", nDim));
 
 		simplify ();
 		return m_rgCoords[nDim];

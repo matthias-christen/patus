@@ -740,7 +740,7 @@ public class CodeGenerator
 
 							// set the variable as stencil function argument in the global generated identifiers
 							m_data.getData ().getGlobalGeneratedIdentifiers ().addStencilFunctionArguments (new GlobalGeneratedIdentifiers.Variable (
-								GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID, declArg, strArgOutput, strArgOutput, m_data));
+								GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID, declArg, strArgOutput, strArgOutput, null, m_data));
 						}
 
 						// add arguments (grids and parameters)
@@ -757,7 +757,10 @@ public class CodeGenerator
 							String strOrigName = node == null ? strArgument : node.getName ();
 
 							m_data.getData ().getGlobalGeneratedIdentifiers ().addStencilFunctionArguments (
-								new GlobalGeneratedIdentifiers.Variable (typeVar, declArg, strArgument, strOrigName, /*type.getDefaultValues (),*/ m_data)
+								new GlobalGeneratedIdentifiers.Variable (
+									typeVar, declArg, strArgument, strOrigName,
+									type instanceof StencilCalculation.ParamType ? ((StencilCalculation.ParamType) type).getDefaultValue () : null,
+									m_data)
 							);
 						}
 
@@ -770,8 +773,10 @@ public class CodeGenerator
 									GlobalGeneratedIdentifiers.EVariableType.SIZE_PARAMETER,
 									declSize,
 									nidSizeParam.getName (),
+									null,
 									new SizeofExpression (CodeGeneratorUtil.specifiers (Globals.SPECIFIER_SIZE)),
-									(Size) null)
+									(Size) null
+								)
 							);
 						}
 					}
@@ -787,8 +792,10 @@ public class CodeGenerator
 								GlobalGeneratedIdentifiers.EVariableType.AUTOTUNE_PARAMETER,
 								declAutoParam,
 								strParamName,
+								null,
 								new SizeofExpression (CodeGeneratorUtil.specifiers (Specifier.INT)),
-								(Size) null)
+								(Size) null
+							)
 						);
 					}
 				}

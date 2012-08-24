@@ -721,6 +721,7 @@ public abstract class AbstractCUDACodeGenerator extends AbstractBackend
 							new VariableDeclaration (Globals.SPECIFIER_SIZE, decl),
 							strBlockSizeName,
 							strBlockSizeName,
+							null,
 							m_data)
 					);
 				}

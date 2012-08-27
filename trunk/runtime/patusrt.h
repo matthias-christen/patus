@@ -35,7 +35,7 @@ void toc (long nFlopsPerStencil, long nStencilComputationsCount, long nBytesTran
 int has_arg (char* szArg, int argc, char** argv);
 
 void write_data_f (char* szFilename, int nDim, float* pData, ...);
-void write_data_d (char* szFilename, int nDim, float* pData, ...);
+void write_data_d (char* szFilename, int nDim, double* pData, ...);
 
 
 #ifndef __cplusplus

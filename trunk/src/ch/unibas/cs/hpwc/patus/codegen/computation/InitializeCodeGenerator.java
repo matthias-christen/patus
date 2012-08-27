@@ -130,13 +130,13 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 
 		// temporarily replace m_sdidStencilArg: replace the current coordinate (in dimension nDim) by the local one
 		SubdomainIdentifier sdidSave = m_sdidStencilArg;
-		m_sdidStencilArg = new SubdomainIdentifier (StringUtil.concat (m_sdidStencilArg.getName (), "_loc"), m_sdidStencilArg.getSubdomain ());
+		SubdomainIdentifier sdidTmp = new SubdomainIdentifier (StringUtil.concat (m_sdidStencilArg.getName (), "_loc"), m_sdidStencilArg.getSubdomain ());
 
 		for (int nDim = 0; nDim < m_data.getStencilCalculation ().getDimensionality (); nDim++)
 		{
 			// are we at the start?
 			generateBoundaryInitialization (
-				nDim, sdidSave, mapNodes,
+				nDim, sdidSave, sdidTmp, mapNodes,
 				ptStart.getCoord (nDim),
 				null,
 				ExpressionUtil.decrement (ptStart.getCoord (nDim).clone ())
@@ -144,7 +144,7 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 			
 			// are we at the end?
 			generateBoundaryInitialization (
-				nDim, sdidSave, mapNodes,
+				nDim, sdidSave, sdidTmp, mapNodes,
 				ptEnd.getCoord (nDim),
 				ExpressionUtil.increment (ptEnd.getCoord (nDim).clone ()),
 				null
@@ -178,9 +178,12 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 	 * @param exprStart
 	 * @param exprEnd
 	 */
-	protected void generateBoundaryInitialization (int nDim, SubdomainIdentifier sdidOrig, Map<Box, List<StencilNode2>> mapNodes, Expression exprDomainLimit, Expression exprStart, Expression exprEnd)
+	protected void generateBoundaryInitialization (int nDim, SubdomainIdentifier sdidOrig, SubdomainIdentifier sdidReplacement,
+		Map<Box, List<StencilNode2>> mapNodes, Expression exprDomainLimit, Expression exprStart, Expression exprEnd)
 	{
 		StatementListBundle slbBody = new StatementListBundle ();
+		
+		m_sdidStencilArg = sdidReplacement;
 		
 		// assign current values to the temporary subdomain identifier
 		for (int i = 0; i < m_data.getStencilCalculation ().getDimensionality (); i++)
@@ -200,11 +203,12 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 				nDim,
 				mapNodes.get (box),
 				exprStart == null ? box.getMin ().getCoord (nDim).clone () : exprStart,
-				exprEnd == null ? ExpressionUtil.decrement (box.getMax ().getCoord (nDim).clone ()) : exprEnd
+				exprEnd == null ? box.getMax ().getCoord (nDim).clone () : exprEnd
 			));
 		}
-		
+				
 		// create the if statement
+		m_sdidStencilArg = sdidOrig;	// we need the original identifier for the "if" control expression
 		Expression exprControlStart = new BinaryExpression (getDimensionIndexIdentifier (nDim), BinaryOperator.COMPARE_EQ, exprDomainLimit.clone ());
 		m_slbGenerated.addStatements (StatementListBundleUtil.createIfStatement (
 			replaceStencilNodes (exprControlStart, Specifier.FLOAT /* dummy */, getDefaultOffset (), m_slbGenerated),

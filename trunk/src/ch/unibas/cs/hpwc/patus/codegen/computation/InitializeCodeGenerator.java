@@ -1,7 +1,10 @@
 package ch.unibas.cs.hpwc.patus.codegen.computation;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
@@ -25,6 +28,7 @@ import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.MemoryObjectManager;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
 import ch.unibas.cs.hpwc.patus.geometry.Point;
@@ -41,6 +45,35 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  */
 class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 {
+	///////////////////////////////////////////////////////////////////
+	// Inner Types
+	
+	private static class StencilNode2
+	{
+		private Stencil m_stencil;
+		private StencilNode m_node;
+		
+		public StencilNode2 (Stencil stencil, StencilNode node)
+		{
+			m_stencil = stencil;
+			m_node = node;
+		}
+
+		public Stencil getStencil ()
+		{
+			return m_stencil;
+		}
+
+		public StencilNode getNode ()
+		{
+			return m_node;
+		}
+	}
+
+	
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
 	public InitializeCodeGenerator (CodeGeneratorSharedObjects data, Expression exprStrategy, int nLcmSIMDVectorLengths, StatementListBundle slbGenerated, CodeGeneratorRuntimeOptions options)
 	{
 		super (data, exprStrategy, nLcmSIMDVectorLengths, slbGenerated, options);
@@ -66,79 +99,167 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 	 */
 	protected void generateInitialization ()
 	{
+		// collect sets of nodes for which the corresponding base grid dimensions are the same
+		// (so that they can be grouped in "for" statements for the boundary initialization)
+		Map<Box, List<StencilNode2>> mapNodes = new HashMap<> ();
 		for (Stencil stencil : m_data.getStencilCalculation ().getInitialization ())
 		{
 			Expression exprStencil = stencil.getExpression ();			
 			if (exprStencil != null)
+			{
 				for (StencilNode nodeOutput : stencil.getOutputNodes ())
-					generateInitializationPerOutputNode (stencil, nodeOutput, exprStencil.clone (), getDatatype (exprStencil));
-		}				
-	}
-	
-	protected void generateInitializationPerOutputNode (Stencil stencil, StencilNode nodeOutput, Expression exprStencil, Specifier specDatatype)
-	{
+				{
+					String strArgName = MemoryObjectManager.createMemoryObjectName (null, nodeOutput, null, true);
+					Box boxGridDimensions = ((StencilCalculation.GridType) m_data.getStencilCalculation ().getArgumentType (strArgName)).getBoxDimension ();
+
+					List<StencilNode2> listNodes = mapNodes.get (boxGridDimensions);
+					if (listNodes == null)
+						mapNodes.put (boxGridDimensions, listNodes = new ArrayList<> ());
+					listNodes.add (new StencilNode2 (stencil, nodeOutput));
+				}
+			}
+		}
+		
+		
+		// generate the initialization for each node group
+		
+		// first check whether we're at the boundary of any of the grid coordinates
+		
+		Point ptStart = m_data.getStencilCalculation ().getDomainSize ().getMin ();
+		Point ptEnd = m_data.getStencilCalculation ().getDomainSize ().getMax ();
+
 		// temporarily replace m_sdidStencilArg: replace the current coordinate (in dimension nDim) by the local one
 		SubdomainIdentifier sdidSave = m_sdidStencilArg;
 		m_sdidStencilArg = new SubdomainIdentifier (StringUtil.concat (m_sdidStencilArg.getName (), "_loc"), m_sdidStencilArg.getSubdomain ());
-		
-		Box boxGridDimensions = ((StencilCalculation.GridType) m_data.getStencilCalculation ().getArgumentType (nodeOutput.getName ())).getBoxDimension ();
 
-		// first check whether we're at the boundary of any of the grid coordinates
-		Point ptStart = m_data.getStencilCalculation ().getDomainSize ().getMin ();
-		Point ptEnd = m_data.getStencilCalculation ().getDomainSize ().getMax ();
-		
 		for (int nDim = 0; nDim < m_data.getStencilCalculation ().getDimensionality (); nDim++)
 		{
 			// are we at the start?
 			generateBoundaryInitialization (
-				nDim, nodeOutput, exprStencil, specDatatype,
+				nDim, sdidSave, mapNodes,
 				ptStart.getCoord (nDim),
-				boxGridDimensions.getMin ().getCoord (nDim).clone (),
+				null,
 				ExpressionUtil.decrement (ptStart.getCoord (nDim).clone ())
 			);
 			
 			// are we at the end?
 			generateBoundaryInitialization (
-				nDim, nodeOutput, exprStencil, specDatatype,
+				nDim, sdidSave, mapNodes,
 				ptEnd.getCoord (nDim),
 				ExpressionUtil.increment (ptEnd.getCoord (nDim).clone ()),
-				boxGridDimensions.getMax ().getCoord (nDim).clone ()
+				null
 			);
 		}
 
 		// restore the subdomain identifier
 		m_sdidStencilArg = sdidSave;
+
 		
 		// then create the "usual" initialization
-		generateInitializationExpressions (m_slbGenerated, nodeOutput, exprStencil, specDatatype);
-		
+		for (Stencil stencil : m_data.getStencilCalculation ().getInitialization ())
+		{
+			Expression exprStencil = stencil.getExpression ();
+			Specifier specDatatype = getDatatype (exprStencil);
+			
+			if (exprStencil != null)
+			{
+				for (StencilNode nodeOutput : stencil.getOutputNodes ())
+					generateInitializationExpressions (m_slbGenerated, nodeOutput, exprStencil, specDatatype);
+			}
+		}
 	}
 	
-	protected void generateBoundaryInitialization (int nDim, StencilNode nodeOutput, Expression exprStencil, Specifier specDatatype, Expression exprDomainLimit, Expression exprStart, Expression exprEnd)
+	/**
+	 * Creates the boundary check <code>if</code> statement and invokes the code generation for the <code>for</code> loops iterating over the boundary
+	 * @param nDim
+	 * @param sdidOrig
+	 * @param mapNodes
+	 * @param exprDomainLimit
+	 * @param exprStart
+	 * @param exprEnd
+	 */
+	protected void generateBoundaryInitialization (int nDim, SubdomainIdentifier sdidOrig, Map<Box, List<StencilNode2>> mapNodes, Expression exprDomainLimit, Expression exprStart, Expression exprEnd)
 	{
-		// control expression checking whether we're at the domain limit
-		Expression exprControlStart = new BinaryExpression (getDimensionIndexIdentifier (nDim), BinaryOperator.COMPARE_EQ, exprDomainLimit);
+		StatementListBundle slbBody = new StatementListBundle ();
 		
-		Expression exprLoopIdx = getDimensionIndexIdentifier (nDim);
+		// assign current values to the temporary subdomain identifier
+		for (int i = 0; i < m_data.getStencilCalculation ().getDimensionality (); i++)
+		{
+			if (i != nDim)
+			{
+				slbBody.addStatement (new ExpressionStatement (new AssignmentExpression (
+					getDimensionIndexIdentifier (i), AssignmentOperator.NORMAL, getDimensionIndexIdentifier (sdidOrig, i)
+				)));
+			}
+		}
+
+		// create the for loops (one for each node set)
+		for (Box box : mapNodes.keySet ())
+		{
+			slbBody.addStatements (generateInitializationPerNodeSet (
+				nDim,
+				mapNodes.get (box),
+				exprStart == null ? box.getMin ().getCoord (nDim).clone () : exprStart,
+				exprEnd == null ? ExpressionUtil.decrement (box.getMax ().getCoord (nDim).clone ()) : exprEnd
+			));
+		}
+		
+		// create the if statement
+		Expression exprControlStart = new BinaryExpression (getDimensionIndexIdentifier (nDim), BinaryOperator.COMPARE_EQ, exprDomainLimit.clone ());
+		m_slbGenerated.addStatements (StatementListBundleUtil.createIfStatement (
+			replaceStencilNodes (exprControlStart, Specifier.FLOAT /* dummy */, getDefaultOffset (), m_slbGenerated),
+			slbBody,
+			null
+		));
+	}
+	
+	/**
+	 * Creates a <code>for</code> loop per node set (in <code>listNodes</code>)
+	 * to initialize the boundary parts of the grids corresponding to the
+	 * stencil nodes.
+	 * 
+	 * @param nDim
+	 *            The dimension for which to create the special initialization
+	 *            code
+	 * @param listNodes
+	 *            The list of nodes which to initialize
+	 * @param exprStart
+	 *            The start expression of the <code>for</code> loop
+	 * @param exprEnd
+	 *            The end expression of the <code>for</code> loop
+	 * @return The statement list bundle containing the generated
+	 *         <code>for</code> loop
+	 */
+	protected StatementListBundle generateInitializationPerNodeSet (int nDim, List<StencilNode2> listNodes, Expression exprStart, Expression exprEnd)
+	{
 		StatementListBundle slbFor = new StatementListBundle ();
+		
+		// create the for loop
+		Expression exprLoopIdx = getDimensionIndexIdentifier (nDim);
 		slbFor.addStatement (new ForLoop (
-			new ExpressionStatement (new AssignmentExpression (exprLoopIdx, AssignmentOperator.NORMAL, exprStart)),
-			new BinaryExpression (exprLoopIdx.clone (), BinaryOperator.COMPARE_LE, exprEnd),
+			new ExpressionStatement (new AssignmentExpression (exprLoopIdx, AssignmentOperator.NORMAL, exprStart.clone ())),
+			new BinaryExpression (exprLoopIdx.clone (), BinaryOperator.COMPARE_LE, exprEnd.clone ()),
 			new UnaryExpression (UnaryOperator.PRE_INCREMENT, exprLoopIdx.clone ()),
 			new CompoundStatement ()
 		));
+
+		// generate the initialization statements
+		StatementListBundle slbBody = new StatementListBundle ();
+		for (StencilNode2 n2 : listNodes)
+		{
+			Expression exprStencil = n2.getStencil ().getExpression ();
+			generateInitializationExpressions (slbBody, n2.getNode (), exprStencil.clone (), getDatatype (exprStencil));
+		}
 		
-		StatementListBundle slbInit = new StatementListBundle ();
-		generateInitializationExpressions (slbInit, nodeOutput, exprStencil, specDatatype);
-		
-		StatementListBundleUtil.addToLoopBody (slbFor, slbInit);
-		
-		m_slbGenerated.addStatements (StatementListBundleUtil.createIfStatement (
-			replaceStencilNodes (exprControlStart, Specifier.FLOAT /* dummy */, getDefaultOffset (), m_slbGenerated),
-			slbFor, null
-		));		
+		StatementListBundleUtil.addToLoopBody (slbFor, slbBody);
+
+		// reset indices for next for loop
+		m_data.getData ().getMemoryObjectManager ().resetIndices ();
+		m_data.getCodeGenerators ().getUnrollGeneratedIdentifiers ().reset ();
+
+		return slbFor;
 	}
-	
+		
 	protected void generateInitializationExpressions (StatementListBundle slbGenerated, StencilNode nodeOutput, Expression exprStencil, Specifier specDatatype)
 	{
 		for (ParameterAssignment pa : slbGenerated)

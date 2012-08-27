@@ -784,6 +784,80 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		
 		return nAlignRestrict;
 	}
+	
+	private Expression getArgumentExpressionFromVariable (Variable v, StatementList slAuxStatements, int nAlignRestrict, boolean bForceAlign)
+	{
+		boolean bIsPowerOfTwo = MathUtil.isPowerOfTwo (nAlignRestrict);
+		boolean bIsFortranCompatible = m_kernelSourceFile.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+
+		Expression exprArg = getExpressionForVariable (v, EOutputGridType.OUTPUTGRID_POINTER);
+		if (v.getType () == EVariableType.INPUT_GRID && nAlignRestrict > 1)
+		{
+			if (bForceAlign)
+			{
+				// force the array to be aligned at nAlignRestrict boundaries
+
+				if (bIsPowerOfTwo)
+				{
+					// (type*) (((uint_ptr) <ptr> + (align_restrict - 1)) & ~(align_restrict - 1))
+					return new Typecast (
+						v.getSpecifiers (),
+						new BinaryExpression (
+							new BinaryExpression (
+								new Typecast (CodeGeneratorUtil.specifiers (new UserSpecifier (new NameID ("uintptr_t"))), exprArg.clone ()),
+								BinaryOperator.ADD,
+								new IntegerLiteral (nAlignRestrict - 1)
+							),
+							BinaryOperator.BITWISE_AND,
+							new UnaryExpression (
+								UnaryOperator.BITWISE_COMPLEMENT,
+								new Typecast (CodeGeneratorUtil.specifiers (new UserSpecifier (new NameID ("uintptr_t"))), new IntegerLiteral (nAlignRestrict - 1))
+							)
+						)
+					);
+				}
+				else
+				{
+					// (type*) (((((uint_ptr) <ptr>) + (align_restrict - 1)) / align_restrict) * align_restrict)
+					//             \--------------- ceil (ptr/align_restrict) ---------------/
+
+					return new Typecast (
+						v.getSpecifiers (),
+						new BinaryExpression (
+							ExpressionUtil.ceil (
+								new Typecast (CodeGeneratorUtil.specifiers (new UserSpecifier (new NameID ("uintptr_t"))), exprArg.clone ()),
+								new IntegerLiteral (nAlignRestrict),
+								false),
+							BinaryOperator.MULTIPLY,
+							new IntegerLiteral (nAlignRestrict)
+						)
+					);
+				}
+			}
+			else
+			{
+				// no forcing alignment...
+				return exprArg.clone ();
+			}
+		}
+		else
+		{
+			if (bIsFortranCompatible)
+			{
+				if (!(exprArg instanceof IDExpression))
+				{
+					VariableDeclarator decl = new VariableDeclarator (new NameID (StringUtil.concat ("__tmparg_", m_nTmpArgCount++)));
+					decl.setInitializer (new ValueInitializer (exprArg.clone ()));
+					slAuxStatements.addStatement (new DeclarationStatement (new VariableDeclaration (v.getSpecifiers (), decl)));
+					exprArg = new Identifier (decl);
+				}
+
+				return new UnaryExpression (UnaryOperator.ADDRESS_OF, exprArg.clone ());
+			}
+			else
+				return exprArg.clone ();
+		}
+	}
 
 	/**
 	 * Creates a list of arguments to the <code>initialize</code> and the <code>kernel</code>
@@ -794,85 +868,11 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	{
 		// get alignment restrictions
 		int nAlignRestrict = getGlobalAlignmentRestriction (listVariables);		
-		boolean bIsPowerOfTwo = MathUtil.isPowerOfTwo (nAlignRestrict);
-		boolean bIsFortranCompatible = m_kernelSourceFile.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
 
 		// build the list of arguments; adjust the pointers so that the alignment restrictions are satisfied
 		List<Expression> listArgs = new ArrayList<> ();
 		for (Variable v : listVariables)
-		{
-			Expression exprArg = getExpressionForVariable (v, EOutputGridType.OUTPUTGRID_POINTER);
-			if (v.getType () == EVariableType.INPUT_GRID && nAlignRestrict > 1)
-			{
-				if (bForceAlign)
-				{
-					// force the array to be aligned at nAlignRestrict boundaries
-
-					if (bIsPowerOfTwo)
-					{
-						// (type*) (((uint_ptr) <ptr> + (align_restrict - 1)) & ~(align_restrict - 1))
-						listArgs.add (
-							new Typecast (
-								v.getSpecifiers (),
-								new BinaryExpression (
-									new BinaryExpression (
-										new Typecast (CodeGeneratorUtil.specifiers (new UserSpecifier (new NameID ("uintptr_t"))), exprArg.clone ()),
-										BinaryOperator.ADD,
-										new IntegerLiteral (nAlignRestrict - 1)
-									),
-									BinaryOperator.BITWISE_AND,
-									new UnaryExpression (
-										UnaryOperator.BITWISE_COMPLEMENT,
-										new Typecast (CodeGeneratorUtil.specifiers (new UserSpecifier (new NameID ("uintptr_t"))), new IntegerLiteral (nAlignRestrict - 1))
-									)
-								)
-							)
-						);
-					}
-					else
-					{
-						// (type*) (((((uint_ptr) <ptr>) + (align_restrict - 1)) / align_restrict) * align_restrict)
-						//             \--------------- ceil (ptr/align_restrict) ---------------/
-
-						listArgs.add (
-							new Typecast (
-								v.getSpecifiers (),
-								new BinaryExpression (
-									ExpressionUtil.ceil (
-										new Typecast (CodeGeneratorUtil.specifiers (new UserSpecifier (new NameID ("uintptr_t"))), exprArg.clone ()),
-										new IntegerLiteral (nAlignRestrict),
-										false),
-									BinaryOperator.MULTIPLY,
-									new IntegerLiteral (nAlignRestrict)
-								)
-							)
-						);
-					}
-				}
-				else
-				{
-					// no forcing alignment...
-					listArgs.add (exprArg.clone ());
-				}
-			}
-			else
-			{
-				if (bIsFortranCompatible)
-				{
-					if (!(exprArg instanceof IDExpression))
-					{
-						VariableDeclarator decl = new VariableDeclarator (new NameID (StringUtil.concat ("__tmparg_", m_nTmpArgCount++)));
-						decl.setInitializer (new ValueInitializer (exprArg.clone ()));
-						sl.addStatement (new DeclarationStatement (new VariableDeclaration (v.getSpecifiers (), decl)));
-						exprArg = new Identifier (decl);
-					}
-
-					listArgs.add (new UnaryExpression (UnaryOperator.ADDRESS_OF, exprArg.clone ()));
-				}
-				else
-					listArgs.add (exprArg.clone ());
-			}
-		}
+			listArgs.add (getArgumentExpressionFromVariable (v, sl, nAlignRestrict, bForceAlign));
 
 		return listArgs;
 	}
@@ -930,8 +930,13 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		
 		// determine the type of grid to write
 		GlobalGeneratedIdentifiers.EVariableType type = GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID;
-		if ("input".equals (strType))
+		boolean bIsInput = "input".equals (strType);
+		if (bIsInput)
 			type = GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID;
+		
+		boolean bIsFortran = m_kernelSourceFile.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
+		int nMask = bIsFortran ? ~EVariableType.OUTPUT_GRID.mask () : ~0;
+		int nAlignRestrict = getGlobalAlignmentRestriction (m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (~EVariableType.INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER.mask () & nMask));
 		
 		// add a function call for each grid
 		for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (type))
@@ -945,7 +950,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 			List<Expression> listArgs = new ArrayList<> (3 + nDimensionality);
 			listArgs.add (new StringLiteral (strFilename));
 			listArgs.add (new IntegerLiteral (nDimensionality));
-			listArgs.add (new NameID (varGrid.getName ()));
+			listArgs.add (bIsInput ? getArgumentExpressionFromVariable (varGrid, sl, nAlignRestrict, true) : new NameID (varGrid.getName ()));
 			
 			for (int i = 0; i < nDimensionality; i++)
 				listArgs.add (varGrid.getBoxSize ().getCoord (i).clone ());

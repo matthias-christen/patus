@@ -685,8 +685,8 @@ public class Parser {
 	{
 		if (m_stencil.getDomainSize () == null)
 			errors.SemErr ("No domainsize defined in the stencil specification.");
-		if (!m_bIterateWhileSet)
-			errors.SemErr ("No 'iterate while ...' defined in the stencil specification.");
+		//if (!m_bIterateWhileSet)
+		//	errors.SemErr ("No 'iterate while ...' defined in the stencil specification.");
 		if (m_stencil.getStencilBundle () == null)
 			errors.SemErr ("No stencil operation defined in the stencil specification.");
 	}

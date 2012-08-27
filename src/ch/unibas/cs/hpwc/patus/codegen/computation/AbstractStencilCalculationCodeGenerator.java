@@ -582,8 +582,13 @@ abstract class AbstractStencilCalculationCodeGenerator
 		return exprResult;
 	}
 	
+	protected Expression getDimensionIndexIdentifier (SubdomainIdentifier sdid, int nDim)
+	{
+		return m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (sdid, nDim).clone ();		
+	}
+	
 	protected Expression getDimensionIndexIdentifier (int nDim)
 	{
-		return m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (m_sdidStencilArg, nDim).clone ();
+		return getDimensionIndexIdentifier (m_sdidStencilArg, nDim);
 	}
 }

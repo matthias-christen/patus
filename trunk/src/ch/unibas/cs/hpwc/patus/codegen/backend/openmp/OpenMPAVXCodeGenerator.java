@@ -105,10 +105,10 @@ public class OpenMPAVXCodeGenerator extends OpenMPCodeGenerator
 				switch (nOffset)
 				{
 				case 1:
-					return _mm256_shuffle_pd (new Typecast (CodeGeneratorUtil.specifiers (specVecDouble), expr1), new Typecast (CodeGeneratorUtil.specifiers (specVecDouble), _mm256_permute2f128_ps (expr1, expr2, 33)), 5);
-					//return _mm256_shuffle_ps (_mm256_permute_ps (expr1, 122), _mm256_shuffle_ps (_mm256_permute2f128_ps (expr1, expr2, 33), expr1, 248), 35);
+					return _mm256_shuffle_ps (_mm256_permute_ps (expr1, 122), _mm256_shuffle_ps (_mm256_permute2f128_ps (expr1, expr2, 33), expr1, 248), 35);
 				case 2:
-					return _mm256_shuffle_ps (_mm256_shuffle_ps (expr1, expr1, 110), _mm256_permute_ps (_mm256_permute2f128_ps (expr2, expr1, 3), 205), 36);
+					return _mm256_shuffle_pd (new Typecast (CodeGeneratorUtil.specifiers (specVecDouble), expr1), new Typecast (CodeGeneratorUtil.specifiers (specVecDouble), _mm256_permute2f128_ps (expr1, expr2, 33)), 5);
+					//return _mm256_shuffle_ps (_mm256_shuffle_ps (expr1, expr1, 110), _mm256_permute_ps (_mm256_permute2f128_ps (expr2, expr1, 3), 205), 36);
 				case 3:
 					return _mm256_blend_ps (_mm256_permute_ps (_mm256_permute2f128_ps (expr2, expr1, 3), 145), _mm256_permute_ps (expr1, 127), 17);
 				case 4:

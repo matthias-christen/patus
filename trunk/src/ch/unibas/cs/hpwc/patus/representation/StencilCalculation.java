@@ -17,10 +17,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import cetus.hir.AssignmentExpression;
+import cetus.hir.AssignmentOperator;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
+import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.FloatLiteral;
+import cetus.hir.FunctionCall;
 import cetus.hir.IDExpression;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
@@ -34,11 +38,11 @@ import ch.unibas.cs.hpwc.patus.codegen.ProjectionMask;
 import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
 import ch.unibas.cs.hpwc.patus.geometry.Vector;
-import ch.unibas.cs.hpwc.patus.grammar.stencil.Parser;
-import ch.unibas.cs.hpwc.patus.grammar.stencil.Scanner;
+import ch.unibas.cs.hpwc.patus.grammar.stencil2.Range;
+import ch.unibas.cs.hpwc.patus.symbolic.ExpressionData;
+import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
-import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -128,7 +132,7 @@ public class StencilCalculation
 
 	public static class ParamType extends ArgumentType
 	{
-		private List<Integer> m_listDimensions;
+		private List<Range> m_listDimensions;
 		protected Expression m_exprDefaultValue;
 
 		
@@ -137,13 +141,34 @@ public class StencilCalculation
 			this (specType, null);
 		}
 		
-		public ParamType (Specifier specType, List<Integer> listDimensions)
+		public ParamType (Specifier specType, List<?> listDimensions)
 		{
 			super (EArgumentType.PARAMETER, specType);
-			m_listDimensions = listDimensions == null ? new ArrayList<Integer> (0) : listDimensions;
+			
+			m_listDimensions = new ArrayList<> (listDimensions == null ? 0 : listDimensions.size ());
+			if (listDimensions != null)
+			{
+				for (Object o : listDimensions)
+				{
+					if (o instanceof Integer)
+						m_listDimensions.add (new Range (0, (Integer) o - 1));
+					else if (o instanceof Range)
+						m_listDimensions.add ((Range) o);
+					else
+						throw new RuntimeException (StringUtil.concat ("Unsupported type: ", o.getClass ().getName ()));
+				}
+			}
 		}
-
+		
 		public Iterable<Integer> getDimensions ()
+		{
+			List<Integer> l = new ArrayList<> (m_listDimensions.size ());
+			for (Range range : m_listDimensions)
+				l.add (range.getSize ());
+			return l;
+		}
+		
+		public Iterable<Range> getRanges ()
 		{
 			return m_listDimensions;
 		}
@@ -176,6 +201,116 @@ public class StencilCalculation
 		 */
 		EQUAL_BASE;
 	}
+	
+	public static class ReductionVariable
+	{
+		/**
+		 * The variable type
+		 */
+		private Specifier m_specType;
+		
+		/**
+		 * The type of the reduction (sum, product, min, max)
+		 */
+		private EReductionType m_type;
+		
+		/**
+		 * The base name of the reduction variable
+		 */
+		private String m_strBaseName;
+		
+		/**
+		 * The identifier of the local reduction variable
+		 */
+		private IDExpression m_idLocalReductionVariable;
+		
+		/**
+		 * The identifier of the shared array used to gather the data from the
+		 * parallel entities
+		 */
+		private IDExpression m_idSharedReductionArray;
+
+		/**
+		 * The identifier of the global reduction variable, which contains the
+		 * final reduced result
+		 */
+		private IDExpression m_idGlobalReductionVariable;
+		
+		
+		public ReductionVariable (String strBaseName, EReductionType type, Specifier specType)
+		{
+			m_strBaseName = strBaseName;
+			m_type = type;
+			m_specType = specType;
+			
+			m_idLocalReductionVariable = new NameID (StringUtil.concat (m_strBaseName, "_loc"));
+			m_idSharedReductionArray = new NameID (StringUtil.concat (m_strBaseName, "_sharr"));
+			m_idGlobalReductionVariable = new NameID (StringUtil.concat (m_strBaseName, "_glob"));
+		}
+
+		public EReductionType getType ()
+		{
+			return m_type;
+		}
+
+		public String getBaseName ()
+		{
+			return m_strBaseName;
+		}
+
+		public IDExpression getLocalReductionVariable ()
+		{
+			return m_idLocalReductionVariable;
+		}
+
+		public IDExpression getSharedReductionArray ()
+		{
+			return m_idSharedReductionArray;
+		}
+
+		public IDExpression getGlobalReductionVariable ()
+		{
+			return m_idGlobalReductionVariable;
+		}		
+	}
+	
+	public enum EReductionType
+	{
+		SUM,
+		PRODUCT,
+		MIN,
+		MAX;
+
+		public static EReductionType fromString (String s)
+		{
+			if ("sum".equals (s))
+				return SUM;
+			if ("product".equals (s))
+				return PRODUCT;
+			if ("min".equals (s))
+				return MIN;
+			if ("max".equals (s))
+				return MAX;
+			return null;
+		}
+		
+		public Expression reduce (Expression expr1, Expression expr2)
+		{
+			switch (this)
+			{
+			case SUM:
+				return ExpressionUtil.add (expr1, expr2);
+			case PRODUCT:
+				return ExpressionUtil.product (expr1, expr2);
+			case MIN:
+				return ExpressionUtil.min (expr1, expr2);
+			case MAX:
+				return ExpressionUtil.max (expr1, expr2);
+			}
+			
+			return null;
+		}
+	}
 
 
 	///////////////////////////////////////////////////////////////////
@@ -191,10 +326,12 @@ public class StencilCalculation
 		switch (nStencilDSLVersion)
 		{
 		case 1:
-			return parse1 (new Parser (new Scanner (strFilename)), options);
+			return parse1 (new ch.unibas.cs.hpwc.patus.grammar.stencil.Parser (
+				new ch.unibas.cs.hpwc.patus.grammar.stencil.Scanner (strFilename)), options);
 			
 		case 2:
-			return parse2 (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Parser (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Scanner (strFilename)), options);
+			return parse2 (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Parser (
+				new ch.unibas.cs.hpwc.patus.grammar.stencil2.Scanner (strFilename)), options);
 			
 		default:
 			throw new RuntimeException (StringUtil.concat ("Unsupported stencil DSL version: ", nStencilDSLVersion));
@@ -206,17 +343,19 @@ public class StencilCalculation
 		switch (nStencilDSLVersion)
 		{
 		case 1:
-			return parse1 (new Parser (new Scanner (new ByteArrayInputStream (strStencilSpecification.getBytes ()))), options);
+			return parse1 (new ch.unibas.cs.hpwc.patus.grammar.stencil.Parser (
+				new ch.unibas.cs.hpwc.patus.grammar.stencil.Scanner (new ByteArrayInputStream (strStencilSpecification.getBytes ()))), options);
 			
 		case 2:
-			return parse2 (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Parser (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Scanner (new ByteArrayInputStream (strStencilSpecification.getBytes ()))), options);
+			return parse2 (new ch.unibas.cs.hpwc.patus.grammar.stencil2.Parser (
+				new ch.unibas.cs.hpwc.patus.grammar.stencil2.Scanner (new ByteArrayInputStream (strStencilSpecification.getBytes ()))), options);
 			
 		default:
 			throw new RuntimeException (StringUtil.concat ("Unsupported stencil DSL version: ", nStencilDSLVersion));
 		}
 	}
 
-	private static StencilCalculation parse1 (Parser parser, CodeGenerationOptions options)
+	private static StencilCalculation parse1 (ch.unibas.cs.hpwc.patus.grammar.stencil.Parser parser, CodeGenerationOptions options)
 	{
 		parser.setOptions (options);
 		parser.Parse ();
@@ -270,6 +409,11 @@ public class StencilCalculation
 	 * The set of output stencil nodes that correspond to the base memory objects
 	 */
 	private StencilNodeSet m_stencilNodeSetBaseOutput;
+	
+	/**
+	 * Maps reduction variable names to reduction variables
+	 */
+	private Map<String, ReductionVariable> m_mapReductionVariables;
 
 	
 	/**
@@ -292,6 +436,7 @@ public class StencilCalculation
 	 * The maximum number of iterations
 	 */
 	private Expression m_exprMaxIter;
+	private Expression m_exprStoppingCondition;
 
 	/**
 	 * The symbolic size of the grid on which the stencil is executed
@@ -308,6 +453,9 @@ public class StencilCalculation
 	 * domain size definition and the optional size parameters to the grids)
 	 */
 	private List<NameID> m_listSizeParameters;
+	
+	private static int m_nReductionVarsCount = 0;
+	private StencilBundle m_stencilReductions;
 
 
 	///////////////////////////////////////////////////////////////////
@@ -334,6 +482,7 @@ public class StencilCalculation
 		m_listArguments = new ArrayList<> ();
 		m_mapArguments = new HashMap<> ();
 		m_mapReferenceNodes = new HashMap<> ();
+		m_mapReductionVariables = new HashMap<> ();
 
 		m_listSizeParameters = new LinkedList<> ();
 
@@ -373,6 +522,28 @@ public class StencilCalculation
 	public void setStencil (StencilBundle stencil)
 	{
 		m_stencil = stencil;
+		
+		// add the temporary reductions bundle to the actual stencil
+		if (m_stencilReductions != null)
+		{
+			for (Stencil s : m_stencilReductions)
+			{
+				try
+				{
+					m_stencil.addStencil (s, false);
+				}
+				catch (NoSuchMethodException e)
+				{
+					e.printStackTrace();
+				}
+				catch (SecurityException e)
+				{
+					e.printStackTrace();
+				}
+			}
+			
+			m_stencilReductions = null;
+		}
 
 		ProjectionMask mask = new ProjectionMask (Vector.getZeroVector (getDimensionality ()));
 		m_stencilNodeSetBaseInput = new StencilNodeSet (m_stencil.getFusedStencil (), StencilNodeSet.ENodeTypes.INPUT_NODES).applyMask (mask);
@@ -419,6 +590,86 @@ public class StencilCalculation
 	
 	public void setIterateWhile (Expression exprIterateWhile)
 	{
+		m_exprStoppingCondition = exprIterateWhile.clone ();
+
+		m_stencilReductions = null;
+		StencilBundle stencil = m_stencil == null ? new StencilBundle (this) : m_stencil;
+		
+		for (DepthFirstIterator it = new DepthFirstIterator (m_exprStoppingCondition); it.hasNext (); )
+		{
+			Object o = it.next ();
+			if (o instanceof FunctionCall)
+			{
+				FunctionCall fnx = (FunctionCall) o;
+				if (fnx.getName () instanceof IDExpression)
+				{
+					String strFnxName = ((IDExpression) fnx.getName ()).getName ();
+					
+					// - replace the sum/prod/min/max function calls and replace it by reduction variables
+					// - add the computation of the reduction to the stencil bundle
+					
+					Expression exprReplace = null;
+					EReductionType type = EReductionType.fromString (strFnxName);
+					if (type != null)
+					{
+						Stencil s = new Stencil ();
+						Expression exprStencil = fnx.getArgument (0);
+						
+						// add the input nodes to the stencil and find the "dominant" type
+						Specifier specType = null;							
+						for (DepthFirstIterator it0 = new DepthFirstIterator (exprStencil); it0.hasNext (); )
+						{
+							Object o0 = it0.next ();
+							if (o0 instanceof StencilNode)
+							{
+								s.addInputNode ((StencilNode) o0);
+								specType = CodeGeneratorUtil.getDominantType (specType, ((StencilNode) o0).getSpecifier ());
+							}
+						}
+
+						ReductionVariable rv = addReductionVariable (StringUtil.concat ("reductvar_", m_nReductionVarsCount++), type, specType);
+
+						// set the output node and create the expression (the actual computation)
+						s.addOutputNode (new StencilNode (rv.getLocalReductionVariable ().getName (), specType, new Index ()));
+						s.setExpression (new ExpressionData (
+							new AssignmentExpression (
+								rv.getLocalReductionVariable ().clone (),
+								AssignmentOperator.NORMAL,
+								type.reduce (rv.getLocalReductionVariable (), exprStencil)
+							),
+							ExpressionUtil.getNumberOfFlops (exprStencil),
+							Symbolic.EExpressionType.EXPRESSION)
+						);
+
+						try
+						{							
+							stencil.addStencil (s, false);
+						}
+						catch (NoSuchMethodException e)
+						{
+							e.printStackTrace();
+						}
+						catch (SecurityException e)
+						{
+							e.printStackTrace();
+						}
+						
+						exprReplace = rv.getGlobalReductionVariable ().clone ();
+					}
+										
+					// replace the function call
+					if (m_exprStoppingCondition == o)
+						m_exprStoppingCondition = exprReplace;
+					else if (exprReplace != null)
+						((Expression) o).swapWith (exprReplace);
+				}
+			}
+		}
+		
+		if (m_stencil == null)
+			m_stencilReductions = stencil;
+		
+		
 		// TODO: implement stopping criterion / reductions
 		
 		if (exprIterateWhile instanceof BinaryExpression)
@@ -445,7 +696,7 @@ public class StencilCalculation
 				
 		}
 
-		throw new RuntimeException ("Currently, only 'iterate while {condition}' statements are supported where {condition} is of the form 't < {value}', where {value} evaluates to an integer number");
+//		throw new RuntimeException ("Currently, only 'iterate while {condition}' statements are supported where {condition} is of the form 't < {value}', where {value} evaluates to an integer number");
 	}
 
 	/**
@@ -522,6 +773,13 @@ public class StencilCalculation
 			m_listArguments.add (strArgumentName);
 			m_mapArguments.put (strArgumentName, type);
 		}
+	}
+	
+	public ReductionVariable addReductionVariable (String strVariableName, EReductionType type, Specifier specType)
+	{
+		ReductionVariable rv = new ReductionVariable (strVariableName, type, specType);
+		m_mapReductionVariables.put (strVariableName, rv);
+		return rv;
 	}
 	
 	/**
@@ -608,6 +866,16 @@ public class StencilCalculation
 		if (type == null)
 			return false;
 		return type.getType ().equals (EArgumentType.PARAMETER);
+	}
+	
+	public boolean isReductionVariable (String strVarName)
+	{
+		return m_mapReductionVariables.containsKey (strVarName);
+	}
+	
+	public ReductionVariable getReductionVariable (String strBaseVarName)
+	{
+		return m_mapReductionVariables.get (strBaseVarName);
 	}
 
 	/**

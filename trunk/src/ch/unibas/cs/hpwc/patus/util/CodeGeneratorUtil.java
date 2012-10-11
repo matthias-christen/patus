@@ -587,4 +587,13 @@ public class CodeGeneratorUtil
 		cmpstmt.addStatement (bIsOrphan ? stmt : stmt.clone ());
 		return cmpstmt;
 	}
+
+	public static Specifier getDominantType (Specifier spec1, Specifier spec2)
+	{
+		if (spec1 == null)
+			return spec2;
+		if (spec1.equals (Specifier.FLOAT))
+			return spec2;
+		return Specifier.DOUBLE;
+	}
 }

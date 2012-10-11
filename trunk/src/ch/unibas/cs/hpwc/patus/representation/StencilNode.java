@@ -3,10 +3,13 @@
  */
 package ch.unibas.cs.hpwc.patus.representation;
 
+import java.io.PrintWriter;
+
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
 import cetus.hir.Identifier;
+import cetus.hir.IntegerLiteral;
 import cetus.hir.Specifier;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -57,11 +60,71 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 		m_specType = specType;
 		m_index = index == null ? new Index () : new Index (index);
 		m_exprConstraint = null;
+		
+		setDefaultPrintMethod ();
 	}
 
 	public StencilNode (StencilNode node)
 	{
 		this (node.getName (), node.getSpecifier (), new Index (node.getIndex ()));
+	}
+	
+	public void setDefaultPrintMethod ()
+	{
+		Class<?>[] rgParams = new Class<?>[] { Identifier.class, PrintWriter.class };
+		try
+		{
+			object_print_method = Identifier.class.getMethod ("defaultPrint", rgParams);
+		}
+		catch (Exception e)
+		{
+			object_print_method = null;
+		}
+	}
+	
+	public void setExpandedPrintMethod ()
+	{
+		Class<?>[] rgParams = new Class<?>[] { StencilNode.class, PrintWriter.class };
+		try
+		{
+			object_print_method = StencilNode.class.getMethod ("expandedPrint", rgParams);
+		}
+		catch (Exception e)
+		{
+			object_print_method = null;
+		}
+	}
+	
+	public static void expandedPrint (StencilNode node, PrintWriter o)
+	{
+		o.print (node.getName ());
+		o.print ("___");
+		
+		for (Expression exprIdx : node.getIndex ().getSpaceIndexEx ())
+		{
+			if (exprIdx instanceof IntegerLiteral)
+				printNum (((IntegerLiteral) exprIdx).getValue (), o);
+			else
+				exprIdx.print (o);
+			
+			o.print ('_');
+		}
+		
+		o.print ("__");
+		printNum (node.getIndex ().getTimeIndex (), o);
+		o.print ("___");
+		printNum (node.getIndex ().getVectorIndex (), o);
+	}
+	
+	private static void printNum (long n, PrintWriter o)
+	{
+		if (n >= 0)
+			o.print (n);
+		else
+		{
+			o.print ('m');
+			o.print (-n);
+		}
 	}
 
 	public Specifier getSpecifier ()
@@ -111,6 +174,11 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 			m_exprConstraint = exprConstraint;
 		else
 			m_exprConstraint = new BinaryExpression (m_exprConstraint, BinaryOperator.LOGICAL_AND, exprConstraint);
+	}
+	
+	public StencilNode clone ()
+	{
+		return new StencilNode (this);
 	}
 
 	@Override

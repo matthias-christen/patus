@@ -242,6 +242,10 @@
 					<xs:documentation>fused multiply-subtract</xs:documentation>
 				</xs:annotation>
 			</xs:enumeration>
+			<xs:enumeration value="vector-reduce-sum"></xs:enumeration>
+			<xs:enumeration value="vector-reduce-product"></xs:enumeration>
+			<xs:enumeration value="vector-reduce-min"></xs:enumeration>
+			<xs:enumeration value="vector-reduce-max"></xs:enumeration>
 			<xs:enumeration value="load-gpr">
 				<xs:annotation>
 					<xs:documentation>Load instruction, moving data from memory to a general purpose register (GPR)</xs:documentation>

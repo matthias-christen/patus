@@ -51,7 +51,7 @@ public class Globals
 	public static final NameID FNX_INITIALIZE = new NameID ("initialize");
 	
 	/**
-	 * The suffix appended to the parametrized initialization/stencil kernel functions
+	 * The suffix appended to the parameterized initialization/stencil kernel functions
 	 */
 	public static final String PARAMETRIZED_FUNCTION_SUFFIX = "_parm";
 
@@ -68,6 +68,11 @@ public class Globals
 	public static final NameID FNX_FMA = new NameID (TypeBaseIntrinsicEnum.FMA.value ());
 	public static final NameID FNX_FMS = new NameID (TypeBaseIntrinsicEnum.FMS.value ());
 	public static final NameID FNX_MALLOC = new NameID (TypeBaseIntrinsicEnum.MALLOC.value ());
+	
+	public static final NameID FNX_VECTOR_REDUCE_SUM = new NameID (TypeBaseIntrinsicEnum.VECTOR_REDUCE_SUM.value ());
+	public static final NameID FNX_VECTOR_REDUCE_PRODUCT = new NameID (TypeBaseIntrinsicEnum.VECTOR_REDUCE_PRODUCT.value ());
+	public static final NameID FNX_VECTOR_REDUCE_MIN = new NameID (TypeBaseIntrinsicEnum.VECTOR_REDUCE_MIN.value ());
+	public static final NameID FNX_VECTOR_REDUCE_MAX = new NameID (TypeBaseIntrinsicEnum.VECTOR_REDUCE_MAX.value ());
 
 	public static final Specifier SPECIFIER_INDEX = Specifier.INT;
 	public static final Specifier SPECIFIER_SIZE = Specifier.INT;

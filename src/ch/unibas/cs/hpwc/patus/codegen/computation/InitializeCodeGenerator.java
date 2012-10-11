@@ -48,12 +48,12 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
 	
-	private static class StencilNode2
+	private static class StencilNodeEx
 	{
 		private Stencil m_stencil;
 		private StencilNode m_node;
 		
-		public StencilNode2 (Stencil stencil, StencilNode node)
+		public StencilNodeEx (Stencil stencil, StencilNode node)
 		{
 			m_stencil = stencil;
 			m_node = node;
@@ -101,7 +101,7 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 	{
 		// collect sets of nodes for which the corresponding base grid dimensions are the same
 		// (so that they can be grouped in "for" statements for the boundary initialization)
-		Map<Box, List<StencilNode2>> mapNodes = new HashMap<> ();
+		Map<Box, List<StencilNodeEx>> mapNodes = new HashMap<> ();
 		for (Stencil stencil : m_data.getStencilCalculation ().getInitialization ())
 		{
 			Expression exprStencil = stencil.getExpression ();			
@@ -112,10 +112,10 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 					String strArgName = MemoryObjectManager.createMemoryObjectName (null, nodeOutput, null, true);
 					Box boxGridDimensions = ((StencilCalculation.GridType) m_data.getStencilCalculation ().getArgumentType (strArgName)).getBoxDimension ();
 
-					List<StencilNode2> listNodes = mapNodes.get (boxGridDimensions);
+					List<StencilNodeEx> listNodes = mapNodes.get (boxGridDimensions);
 					if (listNodes == null)
 						mapNodes.put (boxGridDimensions, listNodes = new ArrayList<> ());
-					listNodes.add (new StencilNode2 (stencil, nodeOutput));
+					listNodes.add (new StencilNodeEx (stencil, nodeOutput));
 				}
 			}
 		}
@@ -179,7 +179,7 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 	 * @param exprEnd
 	 */
 	protected void generateBoundaryInitialization (int nDim, SubdomainIdentifier sdidOrig, SubdomainIdentifier sdidReplacement,
-		Map<Box, List<StencilNode2>> mapNodes, Expression exprDomainLimit, Expression exprStart, Expression exprEnd)
+		Map<Box, List<StencilNodeEx>> mapNodes, Expression exprDomainLimit, Expression exprStart, Expression exprEnd)
 	{
 		StatementListBundle slbBody = new StatementListBundle ();
 		
@@ -234,7 +234,7 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 	 * @return The statement list bundle containing the generated
 	 *         <code>for</code> loop
 	 */
-	protected StatementListBundle generateInitializationPerNodeSet (int nDim, List<StencilNode2> listNodes, Expression exprStart, Expression exprEnd)
+	protected StatementListBundle generateInitializationPerNodeSet (int nDim, List<StencilNodeEx> listNodes, Expression exprStart, Expression exprEnd)
 	{
 		StatementListBundle slbFor = new StatementListBundle ();
 		
@@ -249,7 +249,7 @@ class InitializeCodeGenerator extends AbstractStencilCalculationCodeGenerator
 
 		// generate the initialization statements
 		StatementListBundle slbBody = new StatementListBundle ();
-		for (StencilNode2 n2 : listNodes)
+		for (StencilNodeEx n2 : listNodes)
 		{
 			Expression exprStencil = n2.getStencil ().getExpression ();
 			generateInitializationExpressions (slbBody, n2.getNode (), exprStencil.clone (), getDatatype (exprStencil));

@@ -391,4 +391,28 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 			Globals.getIntrinsicArguments (TypeBaseIntrinsicEnum.FMS)
 		);
 	}
+	
+	@Override
+	public Expression vector_reduce_sum (Expression expr, Specifier specDatatype)
+	{
+		return internalGenerateFunctionCall (Globals.FNX_VECTOR_REDUCE_SUM.getName (), specDatatype, true, new Expression[] { expr }, null);
+	}
+
+	@Override
+	public Expression vector_reduce_product (Expression expr, Specifier specDatatype)
+	{
+		return internalGenerateFunctionCall (Globals.FNX_VECTOR_REDUCE_PRODUCT.getName (), specDatatype, true, new Expression[] { expr }, null);
+	}
+
+	@Override
+	public Expression vector_reduce_min (Expression expr, Specifier specDatatype)
+	{
+		return internalGenerateFunctionCall (Globals.FNX_VECTOR_REDUCE_MIN.getName (), specDatatype, true, new Expression[] { expr }, null);
+	}
+
+	@Override
+	public Expression vector_reduce_max (Expression expr, Specifier specDatatype)
+	{
+		return internalGenerateFunctionCall (Globals.FNX_VECTOR_REDUCE_MAX.getName (), specDatatype, true, new Expression[] { expr }, null);
+	}
 }

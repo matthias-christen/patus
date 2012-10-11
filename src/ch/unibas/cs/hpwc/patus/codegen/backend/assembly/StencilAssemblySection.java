@@ -40,6 +40,7 @@ import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.representation.FindStencilNodeBaseVectors;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
+import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
@@ -581,6 +582,8 @@ public class StencilAssemblySection extends AssemblySection
 	 */
 	private void findConstantsAndParams (Traversable trv)
 	{
+		StencilCalculation sc = m_data.getStencilCalculation ();
+		
 		for (DepthFirstIterator it = new DepthFirstIterator (trv); it.hasNext (); )
 		{
 			Object obj = it.next ();
@@ -588,9 +591,17 @@ public class StencilAssemblySection extends AssemblySection
 				addToConstantsAndParamsMap ((FloatLiteral) obj);
 			else if (obj instanceof NameID)
 			{
+				String strName = ((NameID) obj).getName ();
+				
 				// if the NameID is a stencil parameter, add it to the map
-				if (m_data.getStencilCalculation ().isParameter (((NameID) obj).getName ()))
+				if (sc.isParameter (strName))
 					addToConstantsAndParamsMap ((NameID) obj);
+				else if (sc.isReductionVariable (strName))
+				{
+					StencilCalculation.ReductionVariable rv = sc.getReductionVariable (strName);
+					if (rv != null)
+						addToConstantsAndParamsMap (rv.getLocalReductionVariable ());
+				}
 			}
 			else if (obj instanceof StencilNode)
 			{
@@ -949,7 +960,7 @@ public class StencilAssemblySection extends AssemblySection
 		
 		int nConstParamIdx = getConstantOrParamIndex (exprConstantOrParam);
 		if (nConstParamIdx == -1)
-			throw new RuntimeException (StringUtil.concat ("No index for the constant of parameter ", exprConstantOrParam.toString ()));
+			throw new RuntimeException (StringUtil.concat ("No index for the constant or parameter ", exprConstantOrParam.toString ()));
 		
 		IOperand opAddr = new IOperand.Address (
 			getInput (AssemblySection.INPUT_CONSTANTS_ARRAYPTR),

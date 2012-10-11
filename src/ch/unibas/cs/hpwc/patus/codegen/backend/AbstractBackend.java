@@ -188,8 +188,32 @@ public abstract class AbstractBackend implements IBackend
 	{
 		return m_mixinArithmetic.sqrt (expr, specDatatype, bVectorize);
 	}
+	
+	@Override
+	public Expression vector_reduce_sum (Expression expr, Specifier specDatatype)
+	{
+		return m_mixinArithmetic.vector_reduce_sum (expr, specDatatype);
+	}
 
+	@Override
+	public Expression vector_reduce_product (Expression expr, Specifier specDatatype)
+	{
+		return m_mixinArithmetic.vector_reduce_product (expr, specDatatype);
+	}
 
+	@Override
+	public Expression vector_reduce_min (Expression expr, Specifier specDatatype)
+	{
+		return m_mixinArithmetic.vector_reduce_min (expr, specDatatype);
+	}
+
+	@Override
+	public Expression vector_reduce_max (Expression expr, Specifier specDatatype)
+	{
+		return m_mixinArithmetic.vector_reduce_max (expr, specDatatype);
+	}
+
+	
 	///////////////////////////////////////////////////////////////////
 	// IAdditionalKernelSpecific Implementation
 

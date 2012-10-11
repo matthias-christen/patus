@@ -310,6 +310,11 @@ public class Stencil implements IStencilStructure, IStencilOperations
 		return m_nDimensionality;
 	}
 
+	public ExpressionData getExpressionData ()
+	{
+		return m_edStencilCalculation;
+	}
+	
 	/**
 	 * Returns the expression of a single stencil calculation,
 	 * the right hand side of the stencil assignment statement.
@@ -319,7 +324,11 @@ public class Stencil implements IStencilStructure, IStencilOperations
 	{
 		if (m_edStencilCalculation == null)
 			return null;
-		return ((AssignmentExpression) m_edStencilCalculation.getExpression ()).getRHS ();
+		
+		if (m_edStencilCalculation.getExpression () instanceof AssignmentExpression)
+			return ((AssignmentExpression) m_edStencilCalculation.getExpression ()).getRHS ();
+		
+		return m_edStencilCalculation.getExpression ();
 	}
 
 	/**

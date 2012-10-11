@@ -196,4 +196,9 @@ public interface IArithmetic
 	 * @return A SIMD vector with entries <code>expr</code>
 	 */
 	public abstract Traversable splat (Expression expr, Specifier specDatatype);
+	
+	public abstract Expression vector_reduce_sum (Expression expr, Specifier specDatatype);
+	public abstract Expression vector_reduce_product (Expression expr, Specifier specDatatype);
+	public abstract Expression vector_reduce_min (Expression expr, Specifier specDatatype);
+	public abstract Expression vector_reduce_max (Expression expr, Specifier specDatatype);
 }

@@ -27,6 +27,7 @@ import cetus.hir.Literal;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Typecast;
+import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
@@ -571,7 +572,22 @@ public class Symbolic
 		// Hack
 		// Maxima uses ":" as assignment, "=" as comparison
 
+		List<StencilNode> listNodes = new ArrayList<> ();
+		for (DepthFirstIterator it = new DepthFirstIterator (expr); it.hasNext (); )
+		{
+			Object o = it.next ();
+			if (o instanceof StencilNode)
+			{
+				((StencilNode) o).setExpandedPrintMethod ();
+				listNodes.add ((StencilNode) o);
+			}
+		}
+		
 		String strExpr = expr1.toString ();
+		
+		for (StencilNode node : listNodes)
+			node.setDefaultPrintMethod ();
+		
 		if (strExpr.indexOf (">>") >= 0)
 			throw new NotConvertableException (expr1);
 		if (strExpr.indexOf ("<<") >= 0)

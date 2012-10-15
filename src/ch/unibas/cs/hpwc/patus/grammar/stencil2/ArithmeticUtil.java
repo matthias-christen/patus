@@ -200,27 +200,44 @@ public class ArithmeticUtil
 		return lv.containsLocalVariable (listArgs.get (0));
 	}
 	
-	public ExpressionData expandCompileTimeReduction (String strFunctionName, List<Expression> listArgs, int nFlopsCount, LocalVars lv, Token la)
+	public ExpressionData expandCompileTimeReduction (String strFunctionName, List<Expression> listArgs, LocalVars lv, Token la)
 	{
 		BinaryOperator op = null;
+		int nUnit = 0;
 		if ("sum".equals (strFunctionName))
 			op = BinaryOperator.ADD;
 		else if ("product".equals (strFunctionName))
+		{
 			op = BinaryOperator.MULTIPLY;
+			nUnit = 1;
+		}
 		else
 			m_errors.SemErr (la.line, la.col, StringUtil.concat ("\"", strFunctionName, "\" is not a reduction function."));
 
 		Expression exprProto = listArgs.get (0);
 		Expression expr = null;
 		
-		int nTermsCount = 0;
-		for (Expression e : lv.expand (exprProto))
+		int nFlopsCount = 0;
+		for (ExpressionData ed : lv.expand (exprProto))
 		{
-			expr = expr == null ? e : new BinaryExpression (expr, op, e);
-			nTermsCount++;
+			// check for unity elements
+			if (ed.getExpression () instanceof IntegerLiteral)
+			{
+				// nothing to do if the term is 0 (for sums) or 1 (for products)
+				if (((IntegerLiteral) ed.getExpression ()).getValue () == nUnit)
+					continue;
+			}
+
+			// add the one flop for the reduction if not the first term of the sum/product
+			if (expr != null)
+				nFlopsCount++;
+			nFlopsCount += ed.getFlopsCount ();
+
+			// build the expression
+			expr = expr == null ? ed.getExpression () : new BinaryExpression (expr, op, ed.getExpression ());
 		}
 					
-		return new ExpressionData (expr, nFlopsCount * nTermsCount + (nTermsCount - 1), Symbolic.EExpressionType.EXPRESSION);
+		return new ExpressionData (expr, nFlopsCount, Symbolic.EExpressionType.EXPRESSION);
 	}
 	
 	/**

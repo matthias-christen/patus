@@ -15,6 +15,7 @@ import cetus.hir.Expression;
 import cetus.hir.IDExpression;
 import cetus.hir.IntegerLiteral;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.symbolic.ExpressionData;
 import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.AnalyzeTools;
 import ch.unibas.cs.hpwc.patus.util.DomainPointEnumerator;
@@ -61,22 +62,22 @@ public class LocalVars
 		}
 	}
 	
-	protected class ExpandedExpressionIterator implements Iterator<Expression>
+	protected class ExpandedExpressionIterator implements Iterator<ExpressionData>
 	{
-		private Expression m_exprToExpand;
+		private ExpressionData m_edToExpand;
 		private Collection<String> m_collLocalVars;
 		private Iterator<int[]> m_itDPE;
 		
-		private Expression m_exprNext;
+		private ExpressionData m_edNext;
 		
 		
-		public ExpandedExpressionIterator (Expression exprToExpand)
+		public ExpandedExpressionIterator (ExpressionData edToExpand)
 		{
-			m_exprToExpand = exprToExpand;
+			m_edToExpand = edToExpand;
 			
 			// build the index space
 			DomainPointEnumerator dpe = new DomainPointEnumerator ();
-			for (String strLoc : m_collLocalVars = collectLocalVariables (exprToExpand))
+			for (String strLoc : m_collLocalVars = collectLocalVariables (edToExpand.getExpression ()))
 			{
 				Range range = get (strLoc);
 				if (range != null)
@@ -84,26 +85,29 @@ public class LocalVars
 			}
 			
 			m_itDPE = dpe.iterator ();
-			computeNext ();
+			if (dpe.size () == 0)
+				m_edNext = m_edToExpand;
+			else
+				computeNext ();
 		}
 
 		@Override
 		public boolean hasNext ()
 		{
-			return m_exprNext != null;
+			return m_edNext != null;
 		}
 
 		@Override
-		public Expression next ()
+		public ExpressionData next ()
 		{
-			Expression expr = m_exprNext;
+			ExpressionData ed = m_edNext;
 			computeNext ();
-			return expr;
+			return ed;
 		}
 		
 		private void computeNext ()
 		{
-			m_exprNext = null;
+			m_edNext = null;
 			
 			if (!m_itDPE.hasNext ())
 				return;
@@ -115,7 +119,7 @@ public class LocalVars
 			
 				if (evaluatePredicates (va))
 				{
-					m_exprNext = substituteLocalVariables (m_exprToExpand, va);
+					m_edNext = substituteLocalVariables (m_edToExpand.getExpression (), va);
 					break;
 				}
 			}
@@ -221,23 +225,35 @@ public class LocalVars
 		}
 	}
 	
-	public Iterable<Expression> expand (final Expression expr)
+	public Iterable<ExpressionData> expand (final Expression expr)
 	{
-		return new Iterable<Expression>()
+		return new Iterable<ExpressionData>()
 		{			
 			@Override
-			public Iterator<Expression> iterator ()
+			public Iterator<ExpressionData> iterator ()
 			{
-				return new ExpandedExpressionIterator (expr);
+				return new ExpandedExpressionIterator (new ExpressionData (expr, ExpressionUtil.getNumberOfFlops (expr), Symbolic.EExpressionType.EXPRESSION));
 			}
 		};
 	}
 	
+	public Iterable<ExpressionData> expand (final ExpressionData ed)
+	{
+		return new Iterable<ExpressionData>()
+		{			
+			@Override
+			public Iterator<ExpressionData> iterator ()
+			{
+				return new ExpandedExpressionIterator (ed);
+			}
+		};
+	}
+
 	public boolean evaluatePredicates (ValueAssignment values)
 	{
 		for (Expression exprPred : m_listPredicates)
 		{
-			Expression e = substituteLocalVariables (exprPred, values);
+			Expression e = substituteLocalVariables (exprPred, values).getExpression ();
 			
 			if (e instanceof BinaryExpression && AnalyzeTools.isComparisonOperator (((BinaryExpression) e).getOperator ()))
 			{
@@ -260,9 +276,8 @@ public class LocalVars
 		return true;
 	}
 
-	private Expression substituteLocalVariables (Expression expr, ValueAssignment values)
+	private ExpressionData substituteLocalVariables (Expression expr, ValueAssignment values)
 	{
-		boolean bContainsStencilNodes = false;
 		Expression exprResult = expr.clone ();
 		
 		for (DepthFirstIterator it = new DepthFirstIterator (exprResult); it.hasNext (); )
@@ -273,12 +288,11 @@ public class LocalVars
 			{
 				Expression[] rgExprCoords = ((StencilNode) o).getIndex ().getSpaceIndexEx ();
 				for (int i = 0; i < rgExprCoords.length; i++)
-					rgExprCoords[i] = substituteLocalVariables (rgExprCoords[i], values);
+					rgExprCoords[i] = substituteLocalVariables (rgExprCoords[i], values).getExpression ();
 				((StencilNode) o).getIndex ().setSpaceIndex (rgExprCoords);
-				bContainsStencilNodes = true;
 				
 				if (o == exprResult)
-					return (StencilNode) o;
+					return new ExpressionData ((StencilNode) o, 0, Symbolic.EExpressionType.EXPRESSION);
 			}
 			else if (o instanceof IDExpression)
 			{
@@ -286,15 +300,19 @@ public class LocalVars
 				if (nValue != null)
 				{
 					if (o == exprResult)
-						return new IntegerLiteral (nValue);
+						return new ExpressionData (new IntegerLiteral (nValue), 0, Symbolic.EExpressionType.EXPRESSION);
 					else
 						((Expression) o).swapWith (new IntegerLiteral (nValue));
 				}
 			}
 		}
 		
-		if (!bContainsStencilNodes)
-			return Symbolic.simplify (exprResult);
-		return exprResult;
+		return Symbolic.simplifyEx (exprResult);
+	}
+	
+	@Override
+	public String toString ()
+	{
+		return m_mapVariables.toString ();
 	}
 }

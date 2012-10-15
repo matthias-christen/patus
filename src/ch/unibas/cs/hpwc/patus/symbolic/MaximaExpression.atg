@@ -35,6 +35,7 @@ import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
@@ -79,7 +80,9 @@ COMPILER MaximaExpression
 		for (DepthFirstIterator it = new DepthFirstIterator (exprOrig); it.hasNext (); )
 		{
 			Object obj = it.next ();
-			if (obj instanceof Identifier)
+			if (obj instanceof StencilNode)
+				m_mapIdentifiers.put (((StencilNode) obj).toExpandedString (), (Identifier) obj);			
+			else if (obj instanceof Identifier)
 				m_mapIdentifiers.put (((Identifier) obj).getName (), (Identifier) obj);
 		}
 	}

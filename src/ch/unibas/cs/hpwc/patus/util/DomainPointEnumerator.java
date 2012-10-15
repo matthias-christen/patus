@@ -113,7 +113,7 @@ public class DomainPointEnumerator implements Iterable<int[]>
 	public DomainPointEnumerator ()
 	{
 		m_listDimensions = new ArrayList<> ();
-		m_nPointsCount = 1;
+		m_nPointsCount = 0;
 	}
 
 	public DomainPointEnumerator (MinMax... rgDimensions)
@@ -131,6 +131,8 @@ public class DomainPointEnumerator implements Iterable<int[]>
 	public void addDimension (MinMax dimension)
 	{
 		m_listDimensions.add (dimension);
+		if (m_nPointsCount == 0)
+			m_nPointsCount = 1;
 		m_nPointsCount *= dimension.size ();
 	}
 

@@ -29,6 +29,7 @@ import cetus.hir.Specifier;
 import cetus.hir.Typecast;
 import ch.unibas.cs.hpwc.patus.representation.StencilNode;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 /**
@@ -94,7 +95,7 @@ public class Symbolic
 		INEQUALITY
 	}
 
-	private static Map<Expression, Expression> m_mapCache1 = new HashMap<> ();
+	private static Map<Expression, ExpressionData> m_mapCache1 = new HashMap<> ();
 	private static Map<String, ExpressionData> m_mapCache2 = new HashMap<> ();
 
 
@@ -415,14 +416,25 @@ public class Symbolic
 	 */
 	public static Expression simplify (Expression expr, List<Expression> listAssumptions)
 	{
+		ExpressionData ed = Symbolic.simplifyEx (expr, listAssumptions);
+		return ed == null ? null : ed.getExpression ();
+	}
+	
+	public static ExpressionData simplifyEx (Expression expr)
+	{
+		return Symbolic.simplifyEx (expr, null);
+	}
+	
+	public static ExpressionData simplifyEx (Expression expr, List<Expression> listAssumptions)
+	{
 		// literals can't be simplified any further
 		if ((expr instanceof Literal) || (expr instanceof IDExpression))
-			return expr;
+			return new ExpressionData (expr, 0, Symbolic.EExpressionType.EXPRESSION);
 
 		// TODO: factor the assumptions into the expression cache
-		Expression exprResult = Symbolic.m_mapCache1.get (expr);
-		if (exprResult != null)
-			return exprResult.clone ();
+		ExpressionData edResult = Symbolic.m_mapCache1.get (expr);
+		if (edResult != null)
+			return edResult.clone ();
 
 		try
 		{
@@ -433,29 +445,29 @@ public class Symbolic
 			Symbolic.makeAssumptions (strExpression, listAssumptions);
 
 			// evaluate the expression
-			exprResult = Symbolic.evaluateExpression (StringUtil.concat ("ratsimp(", strExpression, ")"), expr);
-			if (isAcceptable (exprResult, listAssumptions))
-				Symbolic.m_mapCache1.put (expr, exprResult);
+			edResult = Symbolic.evaluateExpressionEx (StringUtil.concat ("ratsimp(", strExpression, ")"), expr);
+			if (isAcceptable (edResult.getExpression (), listAssumptions))
+				Symbolic.m_mapCache1.put (expr, edResult);
 			else
-				exprResult = expr;
+				edResult = new ExpressionData (expr, ExpressionUtil.getNumberOfFlops (expr), Symbolic.EExpressionType.EXPRESSION);
 
 			// reset the system
 			if (listAssumptions != null)
 				Symbolic.reset ();
 
-			return exprResult;
+			return edResult;
 		}
 		catch (NotConvertableException e)
 		{
 			// an error has occurred; just return the original expression
-			Symbolic.m_mapCache1.put (expr, exprResult = expr);
-			return expr;
+			Symbolic.m_mapCache1.put (expr, edResult = new ExpressionData (expr, ExpressionUtil.getNumberOfFlops (expr), Symbolic.EExpressionType.EXPRESSION));
+			return edResult;
 		}
 		catch (MaximaTimeoutException e)
 		{
 			// an error has occurred; just return the original expression
-			Symbolic.m_mapCache1.put (expr, exprResult = expr);
-			return expr;
+			Symbolic.m_mapCache1.put (expr, edResult = new ExpressionData (expr, ExpressionUtil.getNumberOfFlops (expr), Symbolic.EExpressionType.EXPRESSION));
+			return edResult;
 		}
 	}
 
@@ -573,13 +585,28 @@ public class Symbolic
 		// Maxima uses ":" as assignment, "=" as comparison
 
 		List<StencilNode> listNodes = new ArrayList<> ();
-		for (DepthFirstIterator it = new DepthFirstIterator (expr); it.hasNext (); )
+		for (DepthFirstIterator it = new DepthFirstIterator (expr1); it.hasNext (); )
 		{
 			Object o = it.next ();
 			if (o instanceof StencilNode)
 			{
 				((StencilNode) o).setExpandedPrintMethod ();
 				listNodes.add ((StencilNode) o);
+			}
+			else if (o instanceof FunctionCall)
+			{
+				// replace "pow(a,b)" by "a^b" 
+				FunctionCall f = (FunctionCall) o;
+				if (f.getName () instanceof IDExpression && ("pow".equals (((IDExpression) f.getName ()).getName ()) || "powf".equals (((IDExpression) f.getName ()).getName ())) && f.getNumArguments () == 2)
+				{
+					Expression exprReplace = new BinaryExpression (f.getArgument (0).clone (), BinaryOperator.BITWISE_EXCLUSIVE_OR, f.getArgument (1).clone ());
+					if (o == expr1)
+					{
+						expr1 = exprReplace;
+						break;
+					}
+					f.swapWith (exprReplace);
+				}
 			}
 		}
 		

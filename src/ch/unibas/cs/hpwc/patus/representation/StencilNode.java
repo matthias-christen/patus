@@ -111,9 +111,9 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 		}
 		
 		o.print ("__");
-		printNum (node.getIndex ().getTimeIndex (), o);
+		o.print (StringUtil.num2IdStr (node.getIndex ().getTimeIndex ()));
 		o.print ("___");
-		printNum (node.getIndex ().getVectorIndex (), o);
+		o.print (StringUtil.num2IdStr (node.getIndex ().getVectorIndex ()));
 	}
 	
 	private static void printNum (long n, PrintWriter o)
@@ -213,6 +213,29 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 	public String toString ()
 	{
 		return StringUtil.concat (getName (), m_index.toString ());
+	}
+	
+	public String toExpandedString ()
+	{
+		StringBuilder sb = new StringBuilder (getName ());
+		sb.append ("___");
+		
+		for (Expression exprIdx : getIndex ().getSpaceIndexEx ())
+		{
+			if (exprIdx instanceof IntegerLiteral)
+				sb.append (StringUtil.num2IdStr (((IntegerLiteral) exprIdx).getValue ()));
+			else
+				sb.append (exprIdx.toString ());
+			
+			sb.append ('_');
+		}
+		
+		sb.append ("__");
+		sb.append (StringUtil.num2IdStr (getIndex ().getTimeIndex ()));
+		sb.append ("___");
+		sb.append (StringUtil.num2IdStr (getIndex ().getVectorIndex ()));
+	
+		return sb.toString ();
 	}
 
 

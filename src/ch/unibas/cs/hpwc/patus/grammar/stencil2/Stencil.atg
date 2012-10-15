@@ -1292,7 +1292,7 @@ PRODUCTIONS                                                                    /
         	IF(isGridVariable ())
         		StencilIdentifier<out StencilNode node, lv, EStreamDirection.INPUT, bOffsetInSpace, bOffsetInTime>
         		                                                               (. expr = new ExpressionData (node, 0, Symbolic.EExpressionType.EXPRESSION); .)
-        		                                                               (. if (lv == null) stencil.addInputNode (node); else for (Expression exprNode : lv.expand (node)) stencil.addInputNode ((StencilNode) exprNode); .) 
+        		                                                               (. if (lv == null) stencil.addInputNode (node); else for (ExpressionData edNode : lv.expand (node)) stencil.addInputNode ((StencilNode) edNode.getExpression ()); .) 
         	|
         	BracketedExpression<out ExpressionData exprBracketed, stencil, lv, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime>
         	                                                                   (. expr = exprBracketed; .)
@@ -1328,7 +1328,7 @@ PRODUCTIONS                                                                    /
         		}
         	]
         ')'                                                                    (. fnx = m_au.isCompileTimeReduction (strFunctionName, listArgs, lv, la) ? .)
-                                                                               (. 	m_au.replaceIndexedScalars (m_au.expandCompileTimeReduction (strFunctionName, listArgs, nFlopsCount, lv, la), m_mapScalars, la) : .)
+                                                                               (. 	m_au.replaceIndexedScalars (m_au.expandCompileTimeReduction (strFunctionName, listArgs, lv, la), m_mapScalars, la) : .)
                                                                                (. 	new ExpressionData (new FunctionCall (new NameID (strFunctionName), listArgs), nFlopsCount + 1, Symbolic.EExpressionType.EXPRESSION); .)
         .
 

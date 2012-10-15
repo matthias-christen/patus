@@ -227,4 +227,18 @@ public class StringUtil
 			return s.substring (0, nNumTotalChars);
 		return String.format (StringUtil.concat ("%1$-", nNumTotalChars, "s"), s);
 	}
+
+	public static String num2IdStr (int n)
+	{
+		if (n >= 0)
+			return String.valueOf (n);
+		return "m" + String.valueOf (-n);
+	}
+
+	public static String num2IdStr (long n)
+	{
+		if (n >= 0)
+			return String.valueOf (n);
+		return "m" + String.valueOf (-n);
+	}
 }

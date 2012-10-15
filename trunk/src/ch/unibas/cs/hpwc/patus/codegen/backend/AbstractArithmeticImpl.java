@@ -167,9 +167,9 @@ public abstract class AbstractArithmeticImpl implements IArithmetic
 	{
 		String strMethod = null;
 		if (ue.getOperator ().equals (UnaryOperator.PLUS))
-			strMethod = "plus";
+			strMethod = "unary_plus";
 		else if (ue.getOperator ().equals (UnaryOperator.MINUS))
-			strMethod = "minus";
+			strMethod = "unary_minus";
 
 		// calculate
 		Expression exprResult = invoke (strMethod, ue.getExpression (), specDatatype, bVectorize);

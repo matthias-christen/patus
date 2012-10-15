@@ -234,7 +234,7 @@ public class StencilNode extends Identifier implements ISpaceIndexable
 		sb.append (StringUtil.num2IdStr (getIndex ().getTimeIndex ()));
 		sb.append ("___");
 		sb.append (StringUtil.num2IdStr (getIndex ().getVectorIndex ()));
-	
+		
 		return sb.toString ();
 	}
 

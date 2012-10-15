@@ -81,7 +81,7 @@ COMPILER MaximaExpression
 		{
 			Object obj = it.next ();
 			if (obj instanceof StencilNode)
-				m_mapIdentifiers.put (((StencilNode) obj).toExpandedString (), (Identifier) obj);			
+				m_mapIdentifiers.put (((StencilNode) obj).toExpandedString (), (Identifier) obj);
 			else if (obj instanceof Identifier)
 				m_mapIdentifiers.put (((Identifier) obj).getName (), (Identifier) obj);
 		}

@@ -590,8 +590,9 @@ public class Symbolic
 			Object o = it.next ();
 			if (o instanceof StencilNode)
 			{
-				((StencilNode) o).setExpandedPrintMethod ();
-				listNodes.add ((StencilNode) o);
+				StencilNode n = (StencilNode) o;
+				n.setExpandedPrintMethod ();
+				listNodes.add (n);
 			}
 			else if (o instanceof FunctionCall)
 			{

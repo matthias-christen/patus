@@ -1066,7 +1066,7 @@ public class MemoryObjectManager
 		if (bIncludeTimeInformation)
 		{
 			int nTimeIdx = node.getIndex ().getTimeIndex ();
-			strTimeInformation = StringUtil.concat ("_", nTimeIdx < 0 ? "m" : "", String.valueOf (Math.abs (nTimeIdx)));
+			strTimeInformation = StringUtil.concat ("_", StringUtil.num2IdStr (nTimeIdx));
 		}
 
 		StringBuilder sbSpaceInformation = new StringBuilder ();

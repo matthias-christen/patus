@@ -127,35 +127,40 @@ public class Parser {
 		 */
 		public int getLinearIndex (String strIdentifier, List<Expression> listIndices)
 		{
-			if (listIndices.size () != m_rgDimensions.length)
+			if ((listIndices == null && m_rgDimensions.length != 0) || (listIndices != null && listIndices.size () != m_rgDimensions.length))
 			{
-				errors.SemErr (la.line, la.col, StringUtil.concat ("Parameter dimension of ", strIdentifier, " does not agree with its definition: should be ", listIndices.size (), "."));
+				errors.SemErr (la.line, la.col, StringUtil.concat ("Parameter dimension of ", strIdentifier,
+					" does not agree with its definition: should be ", (listIndices == null ? 0 : listIndices.size ()), ".")
+				);
 				return -1;
 			}
 			
 			int nIdx = 0;
-			int i = 0;
-			for (Expression exprIdxValue : listIndices)
+			if (listIndices != null)
 			{
-				Integer nIdxValue = ExpressionUtil.getIntegerValueEx (exprIdxValue);
-				if (nIdxValue == null)
+				int i = 0;
+				for (Expression exprIdxValue : listIndices)
 				{
-					errors.SemErr (la.line, la.col, StringUtil.concat ("Value ", exprIdxValue.toString (), " does not evaluate to an integer number"));
-					continue;
+					Integer nIdxValue = ExpressionUtil.getIntegerValueEx (exprIdxValue);
+					if (nIdxValue == null)
+					{
+						errors.SemErr (la.line, la.col, StringUtil.concat ("Value ", exprIdxValue.toString (), " does not evaluate to an integer number"));
+						continue;
+					}
+					
+					// check whether the indices are within the defined bounds
+					if (nIdxValue < m_rgDimensions[i].getStart () || nIdxValue > m_rgDimensions[i].getEnd ())
+					{
+						errors.SemErr (la.line, la.col, StringUtil.concat ("Index in dimension ", i, " of \"", strIdentifier, listIndices.toString (), "\" out of bounds: should be in ", m_rgDimensions[i].toString (), "."));
+						return -1;
+					}
+					
+					// caluclate index
+					nIdx = nIdx * m_rgDimensions[i].getSize () + nIdxValue;
+					i++;
 				}
-				
-				// check whether the indices are within the defined bounds
-				if (nIdxValue < m_rgDimensions[i].getStart () || nIdxValue > m_rgDimensions[i].getEnd ())
-				{
-					errors.SemErr (la.line, la.col, StringUtil.concat ("Index in dimension ", i, " of \"", strIdentifier, listIndices.toString (), "\" out of bounds: should be in ", m_rgDimensions[i].toString (), "."));
-					return -1;
-				}
-				
-				// caluclate index
-				nIdx = nIdx * m_rgDimensions[i].getSize () + nIdxValue;
-				i++;
 			}
-			
+						
 			return nIdx + m_nStartIndex;
 		}
 		
@@ -1094,7 +1099,7 @@ public class Parser {
 	StencilNode  StencilIdentifier(LocalVars lv, EStreamDirection dir, boolean bOffsetInSpace, boolean bOffsetInTime) {
 		StencilNode  node;
 		Expect(1);
-		String strIdentifier = t.val; node = null; Index index = new Index (); 
+		String strIdentifier = t.val; node = null; Index index = new Index (); boolean bVectorIndexSet = false; 
 		Expect(32);
 		ExpressionData exprIdx0 = StencilExpression(null, lv, false, true, false, false);
 		int nMode = 0; List<Expression> listIndices = new ArrayList<> (); listIndices.add (exprIdx0.getExpression ()); 
@@ -1104,13 +1109,24 @@ public class Parser {
 				Get();
 			} else {
 				Get();
-				switch (nMode) { case 0: index.setSpaceIndex (listIndices, bOffsetInSpace ? getNegSpatialCoords (listIndices.size ()) : null); if (isConstGridVariable (strIdentifier)) nMode++; break; case 1: index.setTimeIndex (listIndices, bOffsetInTime ? getNegTemporalCoord () : null); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } nMode++; listIndices = new ArrayList<> (); 
+				switch (nMode) { 
+				case 0: index.setSpaceIndex (listIndices, bOffsetInSpace ? getNegSpatialCoords (listIndices.size ()) : null); if (isConstGridVariable (strIdentifier)) nMode++; break; 
+				case 1: index.setTimeIndex (listIndices, bOffsetInTime ? getNegTemporalCoord () : null); break; 
+				case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); bVectorIndexSet = true; break; 
+				default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } 
+				nMode++; listIndices = new ArrayList<> (); 
 			}
 			ExpressionData exprIdx1 = StencilExpression(null, lv, false, true, false, false);
 			listIndices.add (exprIdx1.getExpression ()); 
 		}
-		switch (nMode) { case 0: index.setSpaceIndex (listIndices, bOffsetInSpace ? getNegSpatialCoords (listIndices.size ()) : null); break; case 1: index.setTimeIndex (listIndices, bOffsetInTime ? getNegTemporalCoord () : null); break; case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); break; default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } 
-		StreamIndex si = getStream (strIdentifier, dir); node = new StencilNode (strIdentifier, si == null ? Specifier.DOUBLE : si.getSpecifier (), index); 
+		switch (nMode) { 
+		case 0: index.setSpaceIndex (listIndices, bOffsetInSpace ? getNegSpatialCoords (listIndices.size ()) : null); break; 
+		case 1: index.setTimeIndex (listIndices, bOffsetInTime ? getNegTemporalCoord () : null); break; 
+		case 2: index.setVectorIndex (getStreamIndex (strIdentifier, listIndices, dir)); bVectorIndexSet = true; break; 
+		default: errors.SemErr (la.line, la.col, "Grids can't have more than 3 different index types."); } 
+		if (!bVectorIndexSet) index.setVectorIndex (getStreamIndex (strIdentifier, null, dir)); 
+		StreamIndex si = getStream (strIdentifier, dir); 
+		node = new StencilNode (strIdentifier, si == null ? Specifier.DOUBLE : si.getSpecifier (), index); 
 		if (la.kind == 35) {
 			Get();
 			ExpressionData exprConstr0 = LogicalExpression(null, lv, false, true, false, false);
@@ -1387,7 +1403,7 @@ public class Parser {
 		} else if (isGridVariable ()) {
 			StencilNode node = StencilIdentifier(lv, EStreamDirection.INPUT, bOffsetInSpace, bOffsetInTime);
 			expr = new ExpressionData (node, 0, Symbolic.EExpressionType.EXPRESSION); 
-			if (lv == null) stencil.addInputNode (node); else for (Expression exprNode : lv.expand (node)) stencil.addInputNode ((StencilNode) exprNode); 
+			if (lv == null) stencil.addInputNode (node); else for (ExpressionData edNode : lv.expand (node)) stencil.addInputNode ((StencilNode) edNode.getExpression ()); 
 		} else if (la.kind == 5) {
 			ExpressionData exprBracketed = BracketedExpression(stencil, lv, bIsDecl, bIsInteger, bOffsetInSpace, bOffsetInTime);
 			expr = exprBracketed; 
@@ -1439,7 +1455,7 @@ public class Parser {
 		}
 		Expect(6);
 		fnx = m_au.isCompileTimeReduction (strFunctionName, listArgs, lv, la) ? 
-		m_au.replaceIndexedScalars (m_au.expandCompileTimeReduction (strFunctionName, listArgs, nFlopsCount, lv, la), m_mapScalars, la) : 
+		m_au.replaceIndexedScalars (m_au.expandCompileTimeReduction (strFunctionName, listArgs, lv, la), m_mapScalars, la) : 
 		new ExpressionData (new FunctionCall (new NameID (strFunctionName), listArgs), nFlopsCount + 1, Symbolic.EExpressionType.EXPRESSION); 
 		return fnx;
 	}

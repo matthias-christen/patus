@@ -157,7 +157,6 @@ public class KernelSourceFile
 		m_bCreateBenchmarkingHarness = bCreateBenchmarkingHarness;
 	}
 
-
 	public final TranslationUnit getTranslationUnit ()
 	{
 		return m_unit;

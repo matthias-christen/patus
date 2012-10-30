@@ -1,0 +1,54 @@
+/**
+ * The Himeno benchmark, "a linear solver of pressure Poisson using a point-Jacobi method."
+ * http://www.phoronix-test-suite.com/benchmark-files/himenobmtxpa.tar.bz2
+ */
+stencil himeno (
+	float grid p,
+	const float grid a[4],
+	const float grid b[3],
+	const float grid c[3],
+	const float grid wrk1,
+	const float grid bnd,
+	float param omega,
+	float result gosa)
+{
+	domainsize (1..x_max, 1..y_max, 1..z_max);
+	iterate while t < 100;
+	
+	initial
+	{
+		p[x, y, z; 0] = x^2 / x_max^2;
+		a[x, y, z; 0] = 1;
+		a[x, y, z; 1] = 1;
+		a[x, y, z; 2] = 1;
+		a[x, y, z; 3] = 1/6;
+		b[x, y, z; 0] = 0;
+		b[x, y, z; 1] = 0;
+		b[x, y, z; 2] = 0;
+		c[x, y, z; 0] = 1;
+		c[x, y, z; 1] = 1;
+		c[x, y, z; 2] = 1;
+		wrk1[x, y, z] = 0;
+		bnd[x, y, z] = 1;		
+	}
+	
+	operation
+	{
+		float s0 =
+			a[x, y, z; 0] * p[x+1, y, z; t] +
+			a[x, y, z; 1] * p[x, y+1, z; t] +
+			a[x, y, z; 2] * p[x, y, z+1; t] +
+//			b[x, y, z; 0] * (p[x+1, y+1, z; t] - p[x+1, y-1, z; t] - p[x-1, y+1, z; t] + p[x-1, y-1, z; t]) +
+			b[x, y, z; 0] * ({ i=-1..1, j=-1..1 : abs(i)+abs(j)=2 } sum ((-1)^(i*j) * p[x+i, y+j, z; t])) +
+			b[x, y, z; 1] * (p[x, y+1, z+1; t] - p[x, y-1, z+1; t] - p[x, y+1, z-1; t] + p[x, y-1, z-1; t]) +
+			b[x, y, z; 2] * (p[x+1, y, z+1; t] - p[x-1, y, z+1; t] - p[x+1, y, z-1; t] + p[x-1, y, z-1; t]) +
+			c[x, y, z; 0] * p[x-1, y, z; t] +
+			c[x, y, z; 1] * p[x, y-1, z; t] +
+			c[x, y, z; 2] * p[x, y, z-1; t] +
+			wrk1[x, y, z];
+			
+		float ss = (s0 * a[x, y, z; 3] - p[x, y, z; t]) * bnd[x, y, z];
+		gosa = sum (ss^2);
+		p[x, y, z; t+1] = p[x, y, z; t] + omega * ss;
+	}
+}

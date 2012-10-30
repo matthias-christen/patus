@@ -1,0 +1,172 @@
+% ********** Appendix 1 **********
+\chapter{\textsc{Patus} Grammars}
+\label{sec:appendix_grammars}
+
+\section{Stencil DSL Grammar}
+
+In the following, the EBNF grammar for the \textsc{Patus} stencil specifications syntax is given.
+The grayed out identifiers have not yet been specified or implemented and will be added eventually
+in the future.
+
+\begin{EBNF}
+	\item[Stencil]
+%		`stencil' \<Identifier> `\{' [ \<Options> ] \<DomainSize> \<NumIterations> \<Operation>
+		`stencil' \<Identifier> `\{' [ \<Options> ] \<DomainSize> \<NumIterations> \<Operation>
+			\textcolor{gray}{\<Boundary> [ \<Filter> ] [ \<StoppingCriterion> ]} `\}'
+	\item[DomainSize]
+		`domainsize' `=' \<Box> `;'
+	\item[NumIterations]
+		`t\_max' `=' \<IntegerExpr> `;'
+	\item[Operation]
+    	`operation' \<Identifier> `(' \<ParamList> `)' `\{' \{ \<Statement> \} `\}'
+	\item[ParamList]
+		\{ \<GridDecl> | \<ParamDecl> \}
+	\item[Statement]
+		\<LHS> `=' \<StencilExpr> `;'
+	\item[LHS]
+		\<StencilNode> | \<VarDecl>
+	\item[StencilExpr]
+		\<StencilNode> | \<Identifier> | \<NumberLiteral> | \<FunctionCall> | ( \<UnaryOperator> \<StencilExpr> ) | ( \<StencilExpr> \<BinaryOperator> \<StencilExpr> ) | `(' \<StencilExpr> `)'
+	\item[StencilNode]
+		\<Identifier> `[' \<SpatialCoords> [ `;' \<TemporalCoord> ] [ `;' \<ArrayIndices> ] `]'
+	\item[SpatialCoords]
+		(`x' | `y' | `z' | `u' | `v' | `w' | `x' \<IntegerLiteral> ) [ \<Offset> ]
+	\item[TemporalCoord]
+		`t' [ \<Offset>
+	\item[ArrayIndices]
+		\<IntegerLiteral> \{ `,' \<IntegerLiteral> \}
+	\item[Offset]
+		\<UnaryOperator> \<IntegerLiteral>
+	\item[FunctionCall]
+		\<Identifier> `(' [ \<StencilExpr> \{ `,' \<StencilExpr> \} ] `)'
+	\item[IntegerExpr]
+		\<Identifier> | \<IntegerLiteral> | \<FunctionCall> | ( \<UnaryOperator> \<IntegerExpr> ) | ( \<IntegerExpr> \<BinaryOperator> \<IntegerExpr> ) | `(' \<IntegerExpr> `)'
+	\item[VarDecl]
+		\<Type> \<Identifier>
+	\item[Box]
+		`(' \<Range> \{ `,' \<Range> `)'
+	\item[Range]
+		\<IntegerExpr> `..' \<IntegerExpr>
+	\item[GridDecl]
+		[ \<Specifier> ] \<Type> `grid' \<Identifier> [ `(' \<Box> `)' ] [ \<ArrayDecl> ]
+	\item[ParamDecl]
+		\<Type> `param' \<Identifier> [ \<ArrayDecl> ]
+	\item[ArrayDecl]
+		`[' \<IntegerLiteral> \{ `,' \<IntegerLiteral> \} `]'
+	\item[Specifier]
+		`const'
+	\item[Type]
+		`float' | `double'
+	\item[UnaryOperator]
+		`+' | `-'
+	\item[BinaryOperator]
+		`+' | `-' | `*' | `/' | `\^'
+%	\item[Options]
+%		`options' `\{' \{ \<OptionIdentifier> `=' \<OptionValue> \} `\}'
+\end{EBNF}
+
+
+
+\section{Strategy DSL Grammar}
+
+The following EBNF grammar specifies the \textsc{Patus} Strategy syntax.
+Again, as the project matures, the specification might change so that yet missing aspects of parallelization and
+optimization methods can be specified as \textsc{Patus} Strategies.
+
+\begin{EBNF}
+	\item[Strategy]
+		`strategy' \<Identifier> `(' \<ParamList> `)' \<CompoundStatement>
+	\item[ParamList]
+		\<SubdomainParam> \{ `,' \<AutoTunerParam> \}
+	\item[SubdomainParam]
+		`domain' \<Identifier>	
+	\item[AutoTunerParam]
+		`auto' \<AutoTunerDeclSpec> \<Identifier>
+	\item[AutoTunerDeclSpec]
+		`int' | `dim' | ( `codim' `(' \<IntegerLiteral> `)' )
+
+	\item[Statement]
+		\<DeclarationStatement> | \<AssignmentStatement> | \<CompoundStatement> | \<IfStatement> | \<Loop> %| \<SubCall>
+	\item[DeclarationStatement]
+		\<DeclSpec> \<Identifier> `;'
+	\item[AssignmentStatement]
+		\<LValue> `=' \<Expr> `;'
+	\item[CompoundStatement]
+		`\{' \{ \<Statement> \} `\}'
+	\item[IfStatement]
+		`if' `(' \<ConditionExpr> `)' \<Statement> [ `else' \<Statement> ]
+	\item[Loop]
+		( \<RangeIterator> | \<SubdomainIterator> ) [ `parallel' [ \<IntegerLiteral> ] [ `schedule' \<IntegerLiteral> ] ] \<Statement>
+
+	\item[RangeIterator]
+		`for' \<Identifier> `=' \<Expr> `..' \<Expr> [ `by' \<Expr> ]
+
+	\item[SubdomainIterator]
+		`for' \<SubdomainIteratorDecl> `in' \<Identifier> `(' \<Range> `;' \<Expr> `)'
+
+	\item[SubdomainIteratorDecl]
+		\<PointDecl> | \<PlaneDecl> | \<SubdomainDecl>
+	\item[PointDecl]
+		`point' \<Identifier>
+	\item[PlaneDecl]
+		`plane' \<Identifier>
+	\item[SubdomainDecl]
+		`subdomain' \<Identifier> `(' \<Range> `)'
+		
+	\item[Range]
+		\<Vector> \{ \<UnaryOperator> \<ScaledBorder> \}
+	\item[Vector]
+		\<Subvector> [ `...' [ `,' \<Subvector> ] ]
+	\item[Subvector]
+		( `:' \{ `,' \<ScalarList> \} ) | \<DimensionIdentifier> | \<DomainSizeExpr> | \<BracketedVector> | \<ScalarList>
+	\item[ScalarList]
+		\<ScalarRange> \{ `,' \<ScalarRange> \}
+	\item[DimensionIdentifier]
+		\<Expr> [ `(' \<Vector> `)' ]
+	\item[DomainSizeExpr]
+		\<SizeProperty> [ `(' \<Vector> `)' ]
+	\item[BracketedVector]
+		`(' \<Vector> \{ `,' \<Vector> \} `)'
+	\item[ScalarRange]
+		\<Expr> [ `..' \<Expr> ]
+	\item[SizeProperty]
+		( `stencil' | \<Identifier> ) `.' ( `size' | `min' | `max' )
+			
+	\item[ScaledBorder]
+		[ \<Expr> \<MultiplicativeOperator> ] \<Border> [ \<MultiplicativeOperator> \<Expr> ]
+	\item[Border]
+		\<StencilBoxBorder> | \<LiteralBorder>
+	\item[StencilBoxBorder]
+		`stencil' `.' `box' [ `(' \<Vector> `)' ]
+	\item[LiteralBorder]
+		`(' \<Vector> `)' `,' `(' \<Vector> `)'
+
+ 	\item[LValue]
+		\<GridAccess> | \<Identifier>
+	\item[GridAccess]
+		\<Identifier> `[' \<SpatialIndex> `;' \<Expr> \{ `;' \<Expr> \} `]'
+	\item[SpatialIndex]
+		\<Identifier> | \<Range>
+		
+	\item[Expr]
+		\<Identifier> | \<NumberLiteral> | \<FunctionCall> | ( \<UnaryOperator> \<Expr> ) | ( \<Expr> \<BinaryOperator> \<Expr> ) | `(' \<Expr> `)'
+	\item[FunctionCall]
+		\<Identifier> `(' [ \<Expr> \{ `,' \<Expr> \} ] `)'
+	\item[ConditionExpr]
+		\<ComparisonExpr> | ( \<ConditionExpr> \<LogicalOperator> \<ConditionExpr> )
+	\item[ComparisonExpr]
+		\<Expr> \<ComparisonOperator> \<Expr>
+    
+	\item[UnaryOperator]
+		`+' | `-'
+	\item[MultiplicativeOperator]
+		`*'
+	\item[BinaryOperator]
+		`+' | `-' | `*' | `/' `\%'
+	\item[LogicalOperator]
+		`||' | `\&\&'
+	\item[ComparisonOperator]
+		`$<$' | `$<$=' | `==' | `$>$=' | `$>$' | `!='
+\end{EBNF}
+
+% ********** End of appendix **********

@@ -1,0 +1,14 @@
+strategy gpu_blocked (domain u, auto int cbx)
+{
+	// iterate over time steps 
+	for t = 1 .. stencil.t_max
+	{
+		// iterate over subdomain
+		for subdomain v(stencil.size(1), stencil.size(2), 1 ...) in u(:; t) parallel
+		{
+			//for subdomain w(cbx, 1 ...) in v(:; t)
+			for point pt in v(:; t)
+				v[pt; t+1] = stencil (v[pt; t]);
+		}
+	}
+}

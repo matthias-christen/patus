@@ -1,0 +1,64 @@
+stencil whispering_gallery (
+   	float grid e(1 .. x_max, 1 .. y_max)[2],
+    float grid h(1 .. x_max, 1 .. y_max),
+    const float grid ca(1 .. x_max, 1 .. y_max),
+    const float grid cb(1 .. x_max, 1 .. y_max),
+    const float grid da(1 .. x_max, 1 .. y_max),
+    const float grid db(1 .. x_max, 1 .. y_max),
+	float grid u_em(1 .. x_max, 1 .. y_max),
+	float param MU, float param EPSILON,
+	float param T0, float param OMEGA, float param DT)
+{
+	iterate while t < 5000;
+	domainsize = (2 .. x_max-1, 2 .. y_max-1);
+	
+	initial
+	{
+		e[x, y; 0; 0] = 0;
+		e[x, y; 0; 1] = 0;
+		h[x, y; 0] = 0;
+		
+		ca[x, y] = 0;
+		cb[x, y] = 0;
+		da[x, y] = 0;
+		db[x, y] = 0;
+
+		float sigma = 0;
+		float er = 1;
+		
+		ca[x, y : (x-x_max/2)^2 + (y-y_max/2)^2 >= (0.4 * x_max)^2] =
+			(1 - sigma * DT / (2 * EPSILON * er)) / (1 + sigma * DT / (2 * EPSILON * er));		
+		cb[x, y : (x-x_max/2)^2 + (y-y_max/2)^2 >= (0.4 * x_max)^2] =
+			(1 / (EPSILON * er * C0 * sqrt(2))) / (1 + sigma * DT / (2 * EPSILON * er));		
+	}
+	
+	operation
+	{
+		sequence (
+		{
+			// update E-field
+			e[x, y; t+1; 0] = ca[x, y] * e[x, y; t; 0] + cb[x, y] * (h[x, y+1; t] - h[x, y; t]);
+        	e[x, y; t+1; 1] = ca[x, y] * e[x, y; t; 1] - cb[x, y] * (h[x+1, y; t] - h[x, y; t]);
+        },
+        {
+        	// update H-field
+			h[x, y; t+1] = da[x, y] * h[x, y; t] + db[x, y] * (e[x, y; t; 0] - e[x, y-1; t; 0] + e[x-1, y; t; 1] - e[x, y; t; 1]);
+		},
+		{
+			// apply the source
+			
+			float T0 = 2.95E-14;
+			
+			// "Size" of impulse wave
+			float D = 1.5E32 / x_max^2;
+		
+			h[0.5 * x_max, 0.3 * y_max; t+1] += exp(-(t-T0)^2 / D) * cos((t-T0) * OMEGA);
+		},
+		{
+			// integrate energy density
+			u_em[x, y; t+1] = (t > 4000) ?
+				u_em[x, y; t] + 0.5 * (h[x, y; t]^2 / MU + EPSILON * (e[x, y; t; 0]^2 + e[x, y; t; 1]^2)) :
+				0;
+		});
+	}
+}

@@ -1,0 +1,355 @@
+% *************** Document style definitions ***************
+
+% ******************************************************************
+% This file defines the document design.
+% Usually it is not necessary to edit this file, but you can change
+% the design if you want.
+% ******************************************************************
+
+% *************** Load packages ***************
+
+\usepackage{mathpazo} % math & rm
+\linespread{1.05}        % Palatino needs more leading (space between lines)
+
+\usepackage{graphicx}
+\usepackage{epsfig}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{stmaryrd}
+\usepackage{url}
+\usepackage{longtable}
+\usepackage[figuresright]{rotating}
+\usepackage{listings}
+\usepackage{ebnf}
+\usepackage[chapter]{algorithm}
+\usepackage{algpseudocode}
+%\usepackage{fixme}
+\usepackage{mathabx}
+\usepackage{multirow}
+\usepackage{colortbl}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{longtable}
+\usepackage{framed}
+
+
+% *************** Enable index generation ***************
+\makeindex
+
+% *************** Add reference to page number at which bibliography entry is cited ***************
+\usepackage{citeref}
+\renewcommand{\bibitempages}[1]{\newblock {\scriptsize [\mbox{cited at p.\ }#1]}}
+
+% *************** Some colour definitions ***************
+\usepackage{color}
+
+\definecolor{greenyellow}   {cmyk}{0.15, 0   , 0.69, 0   }
+\definecolor{yellow}        {cmyk}{0   , 0   , 1   , 0   }
+\definecolor{goldenrod}     {cmyk}{0   , 0.10, 0.84, 0   }
+\definecolor{dandelion}     {cmyk}{0   , 0.29, 0.84, 0   }
+\definecolor{apricot}       {cmyk}{0   , 0.32, 0.52, 0   }
+\definecolor{peach}         {cmyk}{0   , 0.50, 0.70, 0   }
+\definecolor{melon}         {cmyk}{0   , 0.46, 0.50, 0   }
+\definecolor{yelloworange}  {cmyk}{0   , 0.42, 1   , 0   }
+\definecolor{orange}        {cmyk}{0   , 0.61, 0.87, 0   }
+\definecolor{burntorange}   {cmyk}{0   , 0.51, 1   , 0   }
+\definecolor{bittersweet}   {cmyk}{0   , 0.75, 1   , 0.24}
+\definecolor{redorange}     {cmyk}{0   , 0.77, 0.87, 0   }
+\definecolor{mahogany}      {cmyk}{0   , 0.85, 0.87, 0.35}
+\definecolor{maroon}        {cmyk}{0   , 0.87, 0.68, 0.32}
+\definecolor{brickred}      {cmyk}{0   , 0.89, 0.94, 0.28}
+\definecolor{red}           {cmyk}{0   , 1   , 1   , 0   }
+\definecolor{orangered}     {cmyk}{0   , 1   , 0.50, 0   }
+\definecolor{rubinered}     {cmyk}{0   , 1   , 0.13, 0   }
+\definecolor{wildstrawberry}{cmyk}{0   , 0.96, 0.39, 0   }
+\definecolor{salmon}        {cmyk}{0   , 0.53, 0.38, 0   }
+\definecolor{carnationpink} {cmyk}{0   , 0.63, 0   , 0   }
+\definecolor{magenta}       {cmyk}{0   , 1   , 0   , 0   }
+\definecolor{violetred}     {cmyk}{0   , 0.81, 0   , 0   }
+\definecolor{rhodamine}     {cmyk}{0   , 0.82, 0   , 0   }
+\definecolor{mulberry}      {cmyk}{0.34, 0.90, 0   , 0.02}
+\definecolor{redviolet}     {cmyk}{0.07, 0.90, 0   , 0.34}
+\definecolor{fuchsia}       {cmyk}{0.47, 0.91, 0   , 0.08}
+\definecolor{lavender}      {cmyk}{0   , 0.48, 0   , 0   }
+\definecolor{thistle}       {cmyk}{0.12, 0.59, 0   , 0   }
+\definecolor{orchid}        {cmyk}{0.32, 0.64, 0   , 0   }
+\definecolor{darkorchid}    {cmyk}{0.40, 0.80, 0.20, 0   }
+\definecolor{purple}        {cmyk}{0.45, 0.86, 0   , 0   }
+\definecolor{plum}          {cmyk}{0.50, 1   , 0   , 0   }
+\definecolor{violet}        {cmyk}{0.79, 0.88, 0   , 0   }
+\definecolor{royalpurple}   {cmyk}{0.75, 0.90, 0   , 0   }
+\definecolor{blueviolet}    {cmyk}{0.86, 0.91, 0   , 0.04}
+\definecolor{periwinkle}    {cmyk}{0.57, 0.55, 0   , 0   }
+\definecolor{cadetblue}     {cmyk}{0.62, 0.57, 0.23, 0   }
+\definecolor{cornflowerblue}{cmyk}{0.65, 0.13, 0   , 0   }
+\definecolor{midnightblue}  {cmyk}{0.98, 0.13, 0   , 0.43}
+\definecolor{darkblue}      {cmyk}{0.92, 0.67, 0   , 0.53}
+\definecolor{navyblue}      {cmyk}{0.94, 0.54, 0   , 0   }
+\definecolor{royalblue}     {cmyk}{1   , 0.50, 0   , 0   }
+\definecolor{blue}          {cmyk}{1   , 1   , 0   , 0   }
+\definecolor{cerulean}      {cmyk}{0.94, 0.11, 0   , 0   }
+\definecolor{cyan}          {cmyk}{1   , 0   , 0   , 0   }
+\definecolor{processblue}   {cmyk}{0.96, 0   , 0   , 0   }
+\definecolor{skyblue}       {cmyk}{0.62, 0   , 0.12, 0   }
+\definecolor{turquoise}     {cmyk}{0.85, 0   , 0.20, 0   }
+\definecolor{tealblue}      {cmyk}{0.86, 0   , 0.34, 0.02}
+\definecolor{aquamarine}    {cmyk}{0.82, 0   , 0.30, 0   }
+\definecolor{bluegreen}     {cmyk}{0.85, 0   , 0.33, 0   }
+\definecolor{emerald}       {cmyk}{1   , 0   , 0.50, 0   }
+\definecolor{junglegreen}   {cmyk}{0.99, 0   , 0.52, 0   }
+\definecolor{seagreen}      {cmyk}{0.69, 0   , 0.50, 0   }
+\definecolor{green}         {cmyk}{1   , 0   , 1   , 0   }
+\definecolor{forestgreen}   {cmyk}{0.91, 0   , 0.88, 0.12}
+\definecolor{pinegreen}     {cmyk}{0.92, 0   , 0.59, 0.25}
+\definecolor{limegreen}     {cmyk}{0.50, 0   , 1   , 0   }
+\definecolor{yellowgreen}   {cmyk}{0.44, 0   , 0.74, 0   }
+\definecolor{springgreen}   {cmyk}{0.26, 0   , 0.76, 0   }
+\definecolor{olivegreen}    {cmyk}{0.64, 0   , 0.95, 0.40}
+\definecolor{rawsienna}     {cmyk}{0   , 0.72, 1   , 0.45}
+\definecolor{sepia}         {cmyk}{0   , 0.83, 1   , 0.70}
+\definecolor{brown}         {cmyk}{0   , 0.81, 1   , 0.60}
+\definecolor{tan}           {cmyk}{0.14, 0.42, 0.56, 0   }
+\definecolor{gray}          {cmyk}{0   , 0   , 0   , 0.50}
+\definecolor{lightgray}     {cmyk}{0   , 0   , 0   , 0.05}
+\definecolor{black}         {cmyk}{0   , 0   , 0   , 1   }
+\definecolor{white}{cmyk}{0   , 0   , 0   , 0   }%
+
+
+
+
+% *************** Define our own pseudo language for lstlisting ***************
+\lstdefinelanguage{pseudo}{
+	morekeywords={procedure,function,if,else,for,all,in,to,downto,while,do,end},
+	sensitive=true,
+	morecomment=[l]{//},
+	morecomment=[s]{/*}{*/},
+	morestring=[b]"
+}
+
+\lstdefinelanguage{pseudo}{
+	morekeywords={procedure,function,if,else,for,by,all,in,to,downto,while,do,end},
+	sensitive=true,
+	morecomment=[l]{//},
+	morecomment=[s]{/*}{*/},
+	morestring=[b]"
+}
+
+\lstdefinelanguage{strategy}{
+  keywords={,strategy,stencil,for,by,schedule,subdomain,plane,point,in,parallel,temporary,alias,domain,auto,int,dim,},
+  comment=[l]//,
+  morecomment=[s]{/*}{*/}
+}
+
+\lstdefinelanguage{stencil}{
+  keywords={,stencil,operation,boundary,filter,grid,double,float,const,param,domainsize,t_max,options,},
+  comment=[l]//,
+  morecomment=[s]{/*}{*/}
+}
+
+\lstset{
+  language=pseudo,
+  basicstyle=\ttfamily,
+  frame=ltrb,
+  framesep=0pt,
+  backgroundcolor=\color{lightgray},
+  rulecolor=\color{gray},
+  basicstyle=\footnotesize,
+  stringstyle=\ttfamily,
+  commentstyle=\ttfamily\color{forestgreen},
+  keywordstyle=\ttfamily\color{midnightblue}\bfseries,
+  identifierstyle=\ttfamily, 
+  tabsize=2,
+  showstringspaces=false,
+  escapechar=~,
+  captionpos=b
+}
+
+% *************** Enable hyperlinks in PDF documents ***************
+\ifpdf
+    \pdfcompresslevel=9
+        \usepackage[plainpages=false,pdfpagelabels,bookmarksnumbered,%
+        colorlinks=true,%
+        linkcolor=darkblue,%
+        citecolor=darkblue,%
+        filecolor=darkblue,%
+        urlcolor=darkblue,%
+        pdftex,%
+        unicode]{hyperref} 
+    \input supp-mis.tex
+    \input supp-pdf.tex
+    \pdfimageresolution=600
+    \usepackage{thumbpdf} 
+\else
+    \usepackage{hyperref}
+\fi
+
+\usepackage{memhfixc}
+
+% *************** Page layout ***************
+\settypeblocksize{*}{32pc}{1.618}
+
+\setlrmargins{*}{1.47in}{*}
+\setulmargins{*}{*}{1.3}
+
+\setheadfoot{\onelineskip}{2\onelineskip}
+\setheaderspaces{*}{2\onelineskip}{*}
+
+\def\baselinestretch{1.1}
+
+\checkandfixthelayout
+
+% *************** Chapter and section style ***************
+\makechapterstyle{mychapterstyle}{%
+    \renewcommand{\chapnamefont}{\LARGE\sffamily\bfseries}%
+    \renewcommand{\chapnumfont}{\LARGE\sffamily\bfseries}%
+    \renewcommand{\chaptitlefont}{\Huge\sffamily\bfseries}%
+    \renewcommand{\printchaptertitle}[1]{%
+        \chaptitlefont\hrule height 0.5pt \vspace{1em}%
+        {##1}\vspace{1em}\hrule height 0.5pt%
+        }%
+    \renewcommand{\printchapternum}{%
+        \chapnumfont\thechapter%
+        }%
+}
+
+\chapterstyle{mychapterstyle}
+
+\setsecheadstyle{\Large\sffamily\bfseries}
+\setsubsecheadstyle{\large\sffamily\bfseries}
+\setsubsubsecheadstyle{\normalfont\sffamily\bfseries}
+\setparaheadstyle{\normalfont\sffamily}
+
+\makeevenhead{headings}{\thepage}{}{\small\slshape\leftmark}
+\makeoddhead{headings}{\small\slshape\rightmark}{}{\thepage}
+
+% *************** Table of contents style ***************
+\settocdepth{subsection}
+
+\setsecnumdepth{subsection}
+\maxsecnumdepth{subsection}
+\settocdepth{subsection}
+\maxtocdepth{subsection}
+
+% ********** Commands for epigraphs **********
+\setlength{\epigraphwidth}{0.57\textwidth}
+\setlength{\epigraphrule}{0pt}
+\setlength{\beforeepigraphskip}{1\baselineskip}
+\setlength{\afterepigraphskip}{2\baselineskip}
+
+\newcommand{\epitext}{\sffamily\itshape}
+\newcommand{\epiauthor}{\sffamily\scshape ---~}
+\newcommand{\epititle}{\sffamily\itshape}
+\newcommand{\epidate}{\sffamily\scshape}
+\newcommand{\episkip}{\medskip}
+
+\newcommand{\myepigraph}[4]{%
+	\epigraph{\epitext #1\episkip}{\epiauthor #2\\\epititle #3 \epidate(#4)}\noindent}
+
+% *************** Algorithms ***************
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+
+% *************** Theorems ***************
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{definition}{Definition}[chapter]
+
+% *************** Other ***************
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+
+\newcommand{\boldgreek}[1]{\mbox{\boldmath$#1$}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+
+% *************** Examples ***************
+\newcounter{example}[chapter]
+\renewcommand\theexample{\thechapter.\arabic{example}} 
+%\newcommand{\example}[2]{
+%    \refstepcounter{example}%
+%    \vspace{8pt}%
+%    \noindent\fcolorbox{gray}{lightgray}{%
+%        \begin{minipage}{0.985\textwidth}%
+%	    \textbf{Example \theexample}: %
+%	    \textit{#1}\hrule%
+%	    \medskip%
+%	    #2%
+%       \end{minipage}%
+%    }%
+%    \vspace{8pt}%
+%}
+
+\makeatletter
+\newcommand\framename{Example}
+%\newcounter{framecnt}
+%\setcounter{framecnt}{0}
+\newcommand{\TitleFrame}[2]{%
+    \fboxrule=\FrameRule
+    \fboxsep=\FrameSep
+    \vbox{\nobreak \vskip -0.7\FrameSep
+        \rlap{\strut#1}\nobreak\nointerlineskip% left justified
+        %\vskip 0.7\FrameSep
+	    %\fontfamily{cmss}\fontseries{m}\fontshape{n}\selectfont
+        \noindent\fcolorbox{gray}{lightgray}{#2}%
+    }%
+}
+\newenvironment{example}[2][\FrameFirst@Lab\ (cont.)]{%
+    \refstepcounter{example}%
+    \def\FrameFirst@Lab{\textbf{\framename\ \theexample:\ }\textit{#2}}%
+    \def\FrameCont@Lab{#1}%
+    \def\FrameCommand##1{%
+        \TitleFrame{\FrameFirst@Lab}{##1}}%
+    \def\FirstFrameCommand##1{%
+        \TitleFrame{\FrameFirst@Lab}{##1}}%
+    \def\MidFrameCommand##1{%
+        \TitleFrame{\FrameCont@Lab}{##1}}%
+    \def\LastFrameCommand##1{%
+        \TitleFrame{\FrameCont@Lab}{##1}}%
+    \MakeFramed{\hsize\textwidth
+    \advance\hsize -2\FrameRule
+    \advance\hsize -2\FrameSep
+    \FrameRestore}}%
+   {\endMakeFramed}
+\makeatother
+% http://tex.stackexchange.com/questions/19099/framebox-and-minipage-causes-white-space-and-is-not-float
+
+
+\newcommand{\cmdln}[3]{
+	%\vspace{8mm}
+	\noindent\texttt{--{#1}=}#2
+	\begin{quote}#3\end{quote}
+}
+
+
+\newcolumntype{x}[1]{%
+>{\centering\arraybackslash}p{#1}}%
+% found here: http://texblog.wordpress.com/2008/05/07/fwd-equal-cell-width-right-and-centre-aligned-content/
+
+\newcommand{\w}[1]{\textcolor{white}{\tiny #1}}%
+
+\newcommand\diag[4]{%
+  \multicolumn{1}{p{#2}|}{\hskip-\tabcolsep
+  $\vcenter{\begin{tikzpicture}[baseline=0,anchor=south west,inner sep=#1]
+  \path[use as bounding box] (0,0) rectangle (#2+2\tabcolsep,\baselineskip);
+  \node[minimum width={#2+2\tabcolsep},minimum height=\baselineskip+\extrarowheight] (box) {};
+  \draw (box.north west) -- (box.south east);
+  \node[anchor=south west] at (box.south west) {#3};
+  \node[anchor=north east] at (box.north east) {#4};
+ \end{tikzpicture}}$\hskip-\tabcolsep}}
+% from: http://tex.stackexchange.com/questions/17745/diagonal-lines-in-table-cell
+
+\newcommand\bdiag[4]{%
+  \multicolumn{1}{p{#2}|}{\hskip-\tabcolsep
+  $\vcenter{\begin{tikzpicture}[baseline=0,anchor=south west,inner sep=#1]
+  \path[use as bounding box] (0,0) rectangle (#2+2\tabcolsep,\baselineskip);
+  \node[minimum width={#2+2\tabcolsep},minimum height=\baselineskip+\extrarowheight] (box) {};
+  \draw (box.north east) -- (box.south west);
+  \node[anchor=north west] at (box.north west) {#3};
+  \node[anchor=south east] at (box.south east) {#4};
+ \end{tikzpicture}}$\hskip-\tabcolsep}}
+ 
+
+\newcommand{\fixme}[1]{\textbf{\color{red}!!! #1 !!!}}
+
+
+% *************** End of document style definition ***************

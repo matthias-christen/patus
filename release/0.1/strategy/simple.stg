@@ -1,0 +1,14 @@
+/**
+ * Simple parallel strategy:
+ * Iterate over the grid and parallelize the outer most loop.
+ */
+strategy simple_parallel (domain u, auto int chunk = 1:u.size(1))
+{
+	// do all the timesteps
+	for t = 1 .. stencil.t_max
+	{
+		// apply the stencil to all the points in the domain
+		for point p in u(:; t) parallel schedule chunk 
+			u[p; t+1] = stencil (u[p; t]);
+	}
+}

@@ -858,7 +858,7 @@ public class Parser {
 		bundle = new StencilBundle (m_stencil); 
 		while (!(la.kind == 0 || la.kind == 20)) {SynErr(63); Get();}
 		Expect(20);
-		Body(bundle, true, true);
+		Body(bundle, true, true, false);
 		return bundle;
 	}
 
@@ -867,7 +867,7 @@ public class Parser {
 		bundle = new StencilBundle (m_stencil); 
 		while (!(la.kind == 0 || la.kind == 21)) {SynErr(64); Get();}
 		Expect(21);
-		Body(bundle, false, true);
+		Body(bundle, false, true, false);
 		StencilSpecificationAnalyzer.normalizeStencilNodesForBoundariesAndIntial (bundle); 
 		return bundle;
 	}
@@ -877,7 +877,7 @@ public class Parser {
 		bundle = new StencilBundle (m_stencil); 
 		while (!(la.kind == 0 || la.kind == 22)) {SynErr(65); Get();}
 		Expect(22);
-		Body(bundle, false, false);
+		Body(bundle, false, false, true);
 		StencilSpecificationAnalyzer.normalizeStencilNodesForBoundariesAndIntial (bundle); 
 		return bundle;
 	}
@@ -924,19 +924,19 @@ public class Parser {
 		return box;
 	}
 
-	void Body(StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime) {
+	void Body(StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime, boolean bIsInitialization) {
 		Expect(7);
 		while (StartOf(2)) {
-			AssignmentStatement(bundle, bOffsetInSpace, bOffsetInTime);
+			AssignmentStatement(bundle, bOffsetInSpace, bOffsetInTime, bIsInitialization);
 		}
 		Expect(8);
 	}
 
-	void AssignmentStatement(StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime) {
+	void AssignmentStatement(StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime, boolean bIsInitialization) {
 		if (la.kind == 1) {
-			StencilAssignment(bundle, bOffsetInSpace, bOffsetInTime);
+			StencilAssignment(bundle, bOffsetInSpace, bOffsetInTime, bIsInitialization);
 		} else if (la.kind == 26 || la.kind == 27) {
-			ScalarAssignment(bundle, bOffsetInSpace, bOffsetInTime);
+			ScalarAssignment(bundle, bOffsetInSpace, bOffsetInTime, bIsInitialization);
 		} else if (la.kind == 34) {
 			PredicateAssignment();
 		} else SynErr(68);
@@ -1063,9 +1063,9 @@ public class Parser {
 		return range;
 	}
 
-	void StencilAssignment(StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime) {
+	void StencilAssignment(StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime, boolean bIsInitialization) {
 		Stencil stencil = new Stencil (); 
-		StencilNode nodeLHS = StencilIdentifier(null, EStreamDirection.OUTPUT, bOffsetInSpace, bOffsetInTime);
+		StencilNode nodeLHS = StencilIdentifier(null, bIsInitialization ? EStreamDirection.INPUT : EStreamDirection.OUTPUT, bOffsetInSpace, bOffsetInTime);
 		stencil.addOutputNode (nodeLHS); 
 		Expect(12);
 		ExpressionData edRHS = StencilExpression(stencil, null, false, false, bOffsetInSpace, bOffsetInTime);
@@ -1073,7 +1073,7 @@ public class Parser {
 		try { if (!stencil.isEmpty ()) bundle.addStencil (stencil, bOffsetInSpace); } catch (NoSuchMethodException e) { e.printStackTrace (); } 
 	}
 
-	void ScalarAssignment(StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime) {
+	void ScalarAssignment(StencilBundle bundle, boolean bOffsetInSpace, boolean bOffsetInTime, boolean bIsInitialization) {
 		Specifier specType = Specifier.FLOAT; List<Range> listDimensions = new ArrayList<> (); Map<IntArray, Stencil> mapInit = new HashMap<> (); 
 		if (la.kind == 26) {
 			Get();

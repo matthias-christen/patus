@@ -6,7 +6,9 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -69,6 +71,26 @@ public class Preprocessor
 	{
 		return StringUtil.concat (FileUtil.getFilenameWithoutExtension (f), "_pp.", FileUtil.getExtension (f));
 	}
+	
+	private String getVariableName (GlobalGeneratedIdentifiers.Variable variable, boolean bIncludeTimeIndex)
+	{
+		if (!bIncludeTimeIndex)
+			return variable.getOriginalName ();
+		
+		// HACK
+		// variables with vector and time index are of the format
+		//     <varname>_<vecidx>_<timeidx>
+		// cut out the vector index
+		
+		String strName = variable.getName ();
+		int nPos2 = strName.lastIndexOf ('_');
+		if (nPos2 >= 0)
+		{
+			int nPos1 = strName.substring (0, nPos2).lastIndexOf ('_');
+			return StringUtil.concat (strName.substring (0, nPos1), strName.substring (nPos2));
+		}
+		return strName;
+	}
 
 	public void start () throws IOException
 	{
@@ -126,7 +148,12 @@ public class Preprocessor
 					// insert the function call into the original file
 					boolean bMakeFortranCompatible = options.getOptions ().getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
 					List<GlobalGeneratedIdentifiers.Variable> listParams = data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterVarList (
-						!bMakeFortranCompatible, true, true, bMakeFortranCompatible);
+						!bMakeFortranCompatible, false, false, bMakeFortranCompatible);
+					
+					Map<String, Boolean> mapIncludeTimeIndex = new HashMap<> ();
+					for (GlobalGeneratedIdentifiers.Variable v : listParams)
+						mapIncludeTimeIndex.put (v.getOriginalName (), mapIncludeTimeIndex.containsKey (v.getOriginalName ()));
+					
 					if (bMakeFortranCompatible)
 					{
 						// Fortran version
@@ -138,7 +165,7 @@ public class Preprocessor
 						{
 							if (!bFirst)
 								out.print (", ");
-							out.print (StringUtil.trimLeft (v.getOriginalName (), new char[] { '_' }));
+							out.print (StringUtil.trimLeft (getVariableName (v, mapIncludeTimeIndex.get (v.getOriginalName ())), new char[] { '_' }));
 							bFirst = false;
 						}
 						out.println (")");
@@ -146,6 +173,18 @@ public class Preprocessor
 					else
 					{
 						// C version
+						out.println ("{");
+						
+						// declare output variables (dummies)
+						for (GlobalGeneratedIdentifiers.Variable v : listParams)
+							if (v.getType ().equals (GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID))
+							{
+								out.print (v.getDatatype ());
+								out.print ("* ");
+								out.print (getVariableName (v, mapIncludeTimeIndex.get (v.getOriginalName ())));
+								out.println (';');
+							}
+						
 						out.print (data.getStencilCalculation ().getName ());
 						out.print (" (");
 						boolean bFirst = true;
@@ -153,10 +192,13 @@ public class Preprocessor
 						{
 							if (!bFirst)
 								out.print (", ");
-							out.print (v.getOriginalName ());
+							if (v.getType ().equals (GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID))
+								out.print ("&");
+							out.print (getVariableName (v, mapIncludeTimeIndex.get (v.getOriginalName ())));
 							bFirst = false;
 						}
 						out.println (");");
+						out.println ("}");
 					}
 				}
 			}
@@ -176,7 +218,7 @@ public class Preprocessor
 	protected CodeGeneratorSharedObjects generateCode (String strStencilSpecification, CommandLineOptions options)
 	{
 		// parse the stencil specification
-		StencilCalculation stencil = StencilCalculation.parse (strStencilSpecification, StencilCalculation.DEFAULT_DSL_VERSION, options.getOptions ());
+		StencilCalculation stencil = StencilCalculation.parse (strStencilSpecification, options.getStencilDSLVersion (), options.getOptions ());
 
 		// try to parse the strategy file
 		if (m_strategy == null)

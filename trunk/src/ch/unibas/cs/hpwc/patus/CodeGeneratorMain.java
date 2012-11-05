@@ -89,8 +89,6 @@ public class CodeGeneratorMain
 		try
 		{
 			generateCode ();
-			compile ();
-			autotune ();
 		}
 		catch (Exception e)
 		{
@@ -166,23 +164,6 @@ public class CodeGeneratorMain
 		return data;
 	}
 
-	/**
-	 * Compiles the generated code.
-	 */
-	private void compile ()
-	{
-		//CodeGeneratorMain.LOGGER.info ("Compiling generated code...");
-		//new Compile (m_hardwareDescription).compile (m_fileOutputDirectory);
-	}
-
-	/**
-	 * Runs the autotuner on the executable.
-	 */
-	private void autotune ()
-	{
-		//CodeGeneratorMain.LOGGER.info ("Starting autotuner...");
-	}
-
 	private String getOutputFile (String strKernelBaseName)
 	{
 		StringBuilder sb = new StringBuilder (strKernelBaseName);
@@ -225,29 +206,38 @@ public class CodeGeneratorMain
 	 * @param args
 	 *            Command line arguments
 	 */
-	public static void main (String[] args) throws Exception
+	public static void main (String[] args)
 	{
-		CommandLineOptions options = new CommandLineOptions (args, true);
-
-		if (options.getStencilFile () == null || options.getStrategyFile () == null || options.getArchitectureDescriptionFile () == null || options.getArchitectureName () == null)
+		try
 		{
-			CommandLineOptions.printHelp ();
-			return;
+			CommandLineOptions options = new CommandLineOptions (args, true);
+	
+			if (options.getStencilFile () == null || options.getStrategyFile () == null || options.getArchitectureDescriptionFile () == null || options.getArchitectureName () == null)
+			{
+				CommandLineOptions.printHelp ();
+				return;
+			}
+	
+			// parse the input files
+	
+			// try to parse the stencil file
+			CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Reading stencil specification ", options.getStencilFile ().getName (), "..."));
+			StencilCalculation stencil = StencilCalculation.load (options.getStencilFile ().getAbsolutePath (), options.getStencilDSLVersion (), options.getOptions ());
+			options.getOptions ().checkSettings (stencil);
+	
+			// try to parse the strategy file
+			CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Reading strategy ", options.getStrategyFile ().getName (), "..."));
+			Strategy strategy = Strategy.load (options.getStrategyFile ().getAbsolutePath (), stencil);
+			StrategyFix.fix (strategy, options.getHardwareDescription (), options.getOptions ());
+	
+			// create the Main object
+			new CodeGeneratorMain (stencil, strategy, options.getHardwareDescription (), options.getOutputDir (), options.getOptions ()).run ();
 		}
-
-		// parse the input files
-
-		// try to parse the stencil file
-		CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Reading stencil specification ", options.getStencilFile ().getName (), "..."));
-		StencilCalculation stencil = StencilCalculation.load (options.getStencilFile ().getAbsolutePath (), options.getStencilDSLVersion (), options.getOptions ());
-		options.getOptions ().checkSettings (stencil);
-
-		// try to parse the strategy file
-		CodeGeneratorMain.LOGGER.info (StringUtil.concat ("Reading strategy ", options.getStrategyFile ().getName (), "..."));
-		Strategy strategy = Strategy.load (options.getStrategyFile ().getAbsolutePath (), stencil);
-		StrategyFix.fix (strategy, options.getHardwareDescription (), options.getOptions ());
-
-		// create the Main object
-		new CodeGeneratorMain (stencil, strategy, options.getHardwareDescription (), options.getOutputDir (), options.getOptions ()).run ();
+		catch (Exception e)
+		{
+			if (CodeGeneratorMain.LOGGER.isDebugEnabled ())
+				e.printStackTrace ();
+			CodeGeneratorMain.LOGGER.error (e.getMessage ());
+		}
 	}
 }

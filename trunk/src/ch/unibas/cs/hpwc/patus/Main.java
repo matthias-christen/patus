@@ -12,9 +12,6 @@ package ch.unibas.cs.hpwc.patus;
 
 import java.util.Arrays;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-
 import ch.unibas.cs.hpwc.patus.autotuner.StandaloneAutotuner;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.preprocessor.Preprocessor;
@@ -35,9 +32,6 @@ public class Main
 	 */
 	public static void main (String[] args) throws Exception
 	{
-		// set logger level
-		Logger.getRootLogger ().setLevel (Level.DEBUG);
-
 		if (args.length < 1)
 		{
 			System.out.println ("No mode selected.\nSyntax:\n\tPatus <mode> <mode-specific params>\nwhere <mode> is one of 'codegen', 'codegen-x', 'autotune', or 'compare'.");

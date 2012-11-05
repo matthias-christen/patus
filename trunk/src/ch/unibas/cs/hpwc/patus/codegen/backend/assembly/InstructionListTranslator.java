@@ -614,7 +614,7 @@ public class InstructionListTranslator
 		Intrinsic intrinsic = getIntrinsicForInstruction (instruction);
 		if (intrinsic == null)
 		{
-			LOGGER.info (StringUtil.concat ("No intrinsic found for the instruction ", instruction.getInstructionName ()));
+			LOGGER.debug (StringUtil.concat ("No intrinsic found for the instruction ", instruction.getInstructionName ()));
 			m_ilOut.addInstruction (instruction);
 			return;
 		}

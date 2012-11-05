@@ -1066,7 +1066,7 @@ public class CodeGenerator
 		// remove declarations of unused variables
 		for (ParameterAssignment pa : slbInput)
 		{
-			LOGGER.info (StringUtil.concat ("Removing unused variables from ", pa.toString ()));
+			LOGGER.debug (StringUtil.concat ("Removing unused variables from ", pa.toString ()));
 
 			StatementList sl = slbInput.getStatementList (pa);
 			List<Statement> list = sl.getStatementsAsList ();

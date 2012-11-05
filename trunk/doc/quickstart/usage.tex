@@ -1,0 +1,276 @@
+\section{Using \textsc{Patus}}
+
+\subsection{A Walkthrough Example}
+
+In \textsc{Patus}, the user specifies the actual stencil computation.
+Thus, if the tool is to be used to solve differential equations using a finite difference-based
+discretization method, the discretization needs to be done prior to the implementation in \textsc{Patus}.
+In the following, we show briefly how this can be done by means of a simple example.
+
+
+\subsubsection{From a Model to a Stencil Specification}
+
+Consider the classical wave equation\index{wave equation} on $\Omega=[-1,1]^3$ with Dirichlet boundary conditions and some initial condition:
+\begin{align}
+  \frac{\partial^2 u}{\partial t^2} - c^2 \Delta u & = 0 \qquad \text{in }\Omega, \nonumber \\
+  u & = 0 \qquad \text{on }\partial\Omega, \\
+  u(x,y,z)|_{t=0} & = \sin(2\pi x) \sin(2\pi y) \sin (2\pi z). \nonumber
+  \label{eq:wave}
+\end{align}
+
+Using an explicit finite difference method to discretize the equation both in space and time
+by means of a fourth-order discretization of the Laplacian $\Delta$ over an equidistant spatial grid with stepsize $h$
+and a second-order scheme with time step $\delta t$ in time, we obtain
+\begin{equation}
+	\label{eq:wave-discrete}
+	\frac{u^{(t+\delta t)}-2u^{(t)}+u^{(t-\delta t)}}{\delta t} - c^2 \Delta_h u^{(t)} = 0,
+\end{equation}
+where $\Delta_h$ is the discretized version of the Laplacian:
+\begin{align}
+  \label{eq:wave-discrete-laplacian}
+  \Delta_h u^{(t)}(x,y,z) = -\tfrac{15}{2h^2} & u^{(t)}(x,y,z) + \\
+    -\tfrac{1}{12h^2} & \left(u^{(t)}(x-2h,y,z) + u^{(t)}(x,y-2h,z) + u^{(t)}(x,y,z-2h) \right) + \nonumber \\
+     \tfrac{4}{3h^2}  & \left(u^{(t)}(x-h,y,z)  + u^{(t)}(x,y-h,z)  + u^{(t)}(x,y,z-h)  \right) + \nonumber \\                     
+     \tfrac{4}{3h^2}  & \left(u^{(t)}(x+h,y,z)  + u^{(t)}(x,y+h,z)  + u^{(t)}(x,y,z+h)  \right) + \nonumber \\
+    -\tfrac{1}{12h^2} & \left(u^{(t)}(x+2h,y,z) + u^{(t)}(x,y+2h,z) + u^{(t)}(x,y,z+2h) \right).  \nonumber
+\end{align}
+Substituting Eqn. \ref{eq:wave-discrete-laplacian} into Eqn. \ref{eq:wave-discrete},
+solving Eqn. \ref{eq:wave-discrete} for $u^{(t+\delta t)}$, and interpreting $u$ as a grid in space and time with mesh size $h$
+and time step $\delta t$, we arrive at
+\begin{align*}
+  u[x,y,z;t+1] =  2 & u[x,y,z;t] - u[x,y,z;t-1] + c^2\tfrac{\delta t}{h^2} \Big( -\tfrac{15}{2} u[x,y,z;t] + \\
+    -\tfrac{1}{12}& \left(u[x-2,y,z;t] + u[x,y-2,z;t] + u[x,y,z-2;t] \right) + \\
+     \tfrac{4}{3}  & \left(u[x-1,y,z;t] + u[x,y-1,z;t] + u[x,y,z-1;t] \right) + \\                     
+     \tfrac{4}{3}  & \left(u[x+1,y,z;t] + u[x,y+1,z;t] + u[x,y,z+1;t] \right) + \\
+    -\tfrac{1}{12}& \left(u[x+2,y,z;t] + u[x,y+2,z;t] + u[x,y,z+2;t] \right) \!\!\Big).
+\end{align*}
+This can now be turned into a \textsc{Patus} stencil specification almost trivially:
+
+\begin{lstlisting}[language=stencil]
+stencil wave(
+  float grid U(0..x_max-1, 0..y_max-1, 0..z_max-1), 
+  float param fMin = -1,
+  float param fDX = 2 / (x_max-3),
+  float param fDT_DX_sq = 0.25)
+{
+  // do one timestep within the stencil kernel
+  iterate while t < 1;
+  
+  // define the region on which the stencil is evaluated
+  domainsize = (2..x_max-3, 2..y_max-3, 2..z_max-3);
+  
+  // define the initial condition (how the data is initialized
+  // before the computation)
+  // note that 0 <= x < x_max, etc.
+  initial {
+    U[x,y,z; -1] = sinf(2*~$\pi$~*((x-1)*fDX+fMin)) *
+      sinf(2*~$\pi$~*((y-1)*fDX+fMin)) * sinf(2*~$\pi$~*((z-1)*fDX+fMin));
+    U[x, y, z; -1 :
+      x==0 || y==0 || z==0 || x==x_max-1 || y==y_max-1 || z==z_max-1 ] = 0;
+    U[x,y,z; 0] = U[x,y,z; -1];
+    U[x,y,z; 1] = 0;
+  }
+
+  // define the actual stencil computation
+  operation {
+    float c1 = 2 - 15/2 * fDT_DX_sq;
+    float c2 = 4/3 * fDT_DX_sq;
+    float c3 = -1/12 * fDT_DX_sq;
+    
+    U[x,y,z; t+1] = c1 * U[x,y,z; t] - U[x,y,z; t-1] +
+      c2 * (
+        U[x+1,y,z; t] + U[x-1,y,z; t] +
+        U[x,y+1,z; t] + U[x,y-1,z; t] +
+        U[x,y,z+1; t] + U[x,y,z-1; t]
+      ) +
+      c3 * (
+        U[x+2,y,z; t] + U[x-2,y,z; t] +
+        U[x,y+2,z; t] + U[x,y-2,z; t] +
+        U[x,y,z+2; t] + U[x,y,z-2; t]
+      );
+  }
+}
+\end{lstlisting}
+
+\noindent From this stencil specification, \textsc{Patus} will generate
+\begin{itemize}
+  \item a C source code file implementing the stencil computation and
+  \item source files from which a benchmarking harness can be built.
+\end{itemize}
+The benchmarking executable is then used by the auto-tuner, which determines a set of
+architecture-specific parameters, for which the stencil achieves the best performance.
+
+
+\subsubsection{The Specification Explained}
+
+\begin{itemize}
+  \item The \textbf{stencil} specification defines a stencil ``wave,'' which operates on a grid (called ``U'')
+    of size $[$0, x\_max-1$] \times [$0, y\_max-1$] \times [$0,z\_max-1$]$.
+    Note that the size parameters do not have to be defined in the stencil specification.
+    Instead, they will appear as arguments to the generated stencil kernel function, and, in the
+    benchmarking harness, as command line arguments.
+    
+    The remaining arguments, ``fMin,'' ``fDX,'' and ``fDT\_DX\_sq,'' are used for initializing the grid
+    and performing the stencil computation. These parameters will also appear as arguments to the generated
+    C function implementing the computation.
+
+    Optionally, parameters can be initialized with default
+    values (as shown in the listing above). This affects only the benchmarking harness and will fix the
+    values which are passed to the generated stencil kernel.
+
+  \item The \textbf{iterate while} statement defines the number of timesteps to be performed within one stencil kernel call.
+    In the example, one timestep per kernel invocation will be performed. (Timesteps are counted from 0.)
+    The statement can be omitted. Then, the number of timesteps defaults to 1.
+    In the future we will also allow (reduction-based) convergence criteria (e.g., ``iterate as long as the residual is
+    larger than some $\varepsilon$'').
+    
+  \item The \textbf{domainsize} defines the iteration space. While the total size of the grid extends from 0 to $\ast$\_max-1,
+    the stencil is only applied to the points between 2 and $\ast$\_max-3 ($\ast \in \{$x, y, z$\}$), i.e., only
+    to the \emph{interior} grid points.
+    
+  \item The \textbf{initial} block defines how the grid is initialized, or more mathematically: it defines the initial condition
+    of the (discretized) PDE. The ``sinf'' function is actually a C function (single precision sine)
+    which will be called (this is the behavior
+    if there is a function which is not known to \textsc{Patus}).
+    Note that \textsc{Patus} also defines the $\pi$ literal with the obvious meaning.\\
+    The second statement of the initialization sets all the grid points for which x, y, z are 0 or $\ast$\_max-1
+    (the condition after colon) to zero. I.e., you can use the set builder notation (with any logical and comparison operators you know from C/C++)
+    to select certain grid points and initialize them.\\
+    \textbf{initial} blocks are not mandatory; if no \textbf{initial} is provided, \textsc{Patus} will create an initialization
+    routine anyway, initializing the data with arbitrary values. (This is to ensure the correct data placement on NUMA machines.)
+    
+  \item The \textbf{operation}, finally, defines the actual stencil computation.
+    It can contain definitions of constants (as in the listing) or temporary values, and it can also contain more than
+    one stencil expression.
+  
+  \item Optionally, the stencil specification can also contain a \textbf{boundaries} block, in which
+    special treatment of boundary regions can be specified. Essentially, within the \textbf{boundaries} block,
+    special stencils are defined which are applied to boundary regions. See section \ref{sec:stencilspec}.
+\end{itemize}
+
+
+\subsubsection{Building the Benchmarking Harness}
+
+Once the stencil specification is written, \textsc{Patus} can be run to transform it into C code.
+Assume the stencil specification was saved in the file \texttt{examples/ stencils/wave-1.stc}.
+(This very stencil specification is actually there.)
+In your shell, type
+\cmd{cd examples/stencils\\
+%  patus examples/stencils/wave-1.stc --outdir=out/wave-1
+  \phantom{XXXX}patus wave-1.stc
+}
+This will generate the C code implementing the Wave stencil, using the default architecture,
+and putting the generated files in the
+\texttt{out} directory. (You can change the output directly by adding the \texttt{--outdir=$<$your-output-dir$>$}
+to the \textsc{Patus} command line.)
+Change into the output directory, \cmd{cd out}
+and type \cmd{make} to build the benchmarking harness, which will be used for the auto-tuning process, and can also be
+used for simple simulations. When the build completes successfully, there is an executable file,
+\texttt{bench} (or \texttt{bench.exe} on Windows) in the directory.
+
+If you try to start the benchmarking executable, you will see that it expects some command line arguments:
+\example{\small\texttt{%
+  \$  ./bench\\
+  Wrong number of parameters. Syntax:\\
+  ./bench <x\_max> <y\_max> <z\_max> <cb\_x> <cb\_y> <cb\_z> <chunk> <\_unroll\_p3>
+}}
+
+The $\ast$\_max correspond to the unspecified domain size variables in the stencil specification.
+All the other arguments come from the code generator, and it is the auto-tuner's task to find the best values
+for them.
+
+
+\subsubsection{Auto-Tuning}
+
+The Makefile (which was also used to build the benchmarking harness) defines a ``tune'' target, which
+starts the auto-tuner. ``tune'' expects the domain size variables to be specified:
+\cmd{make tune x\_max=64 y\_max=64 z\_max=64}
+Type the above command in the shell. The auto-tuner will run the benchmarking executable a number of times,
+varying the values of the arguments to determine, and it will terminate with a message like
+
+\example{\small
+  \texttt{Optimal parameter configuration found:}\\
+  \texttt{64 64 64 62 20 8 2 0}\\
+
+  \texttt{Timing information for the optimal run:}\\
+  \texttt{0.9047935972598529}\\
+
+  \texttt{Program output of the optimal run:}\\
+  \texttt{Flops / stencil call:\phantom{XX}16}\\
+  \texttt{Stencil computations:\phantom{XX}1116000}\\
+  \texttt{Bytes transferred:\phantom{XXXXX}15728640}\\
+  \texttt{Total Flops:\phantom{XXXXXXXXXXX}17856000}\\
+  \texttt{Seconds elapsed:\phantom{XXXXXXX}0.000423}\\
+  \texttt{Performance:\phantom{XXXXXXXXXXX}42.193517 GFlop/s}\\
+  \texttt{Bandwidth utilization:\phantom{X}37.166590 GB/s}\\
+  \texttt{1352692.000000}\\
+  \texttt{Validation OK.}
+}
+
+\noindent Thus, according to the auto-tuner, on the machine the benchmark was run and for x\_max=y\_max=z\_max=64,
+the best parameter combination is \cmd{cb\_x=62, cb\_y=20, cb\_z=8, chunk=2, \_unroll\_p3=0.}
+
+
+\subsubsection{Simple Visualization}
+
+You can run the benchmarking executable with the arguments provided by the auto-tuner,
+\cmd{./bench 64 64 64 62 20 8 2 0}
+If you add the flag \texttt{-o} to the command line,
+\cmd{./bench 64 64 64 62 20 8 2 0 -o}
+the program will take snapshots of the data grids before and after the execution of the stencil kernel
+and write them to text files. If you have gnuplot installed on your system, you can run
+\cmd{make plot} which will use gnuplot to create image files from the data text files.
+
+
+\subsection{Writing Your Own Stencil Specifications}
+\label{sec:stencilspec}
+
+\subsubsection{Stencil Arguments}
+
+\subsubsection{The ``operation''}
+
+stencil offsets have to be compile-time constants
+
+\begin{lstlisting}[language=stencil]
+stencil wave(
+  float grid U(0..x_max-1, 0..y_max-1, 0..z_max-1), 
+  float param fDT_DX_sq = 0.25)
+{
+  // define the region on which the stencil is evaluated
+  domainsize = (2..x_max-3, 2..y_max-3, 2..z_max-3);
+  
+  // define the actual stencil computation
+  operation {
+    float c[0..2] = {
+      2 - 15/2 * fDT_DX_sq,
+      4/3 * fDT_DX_sq,
+      -1/12 * fDT_DX_sq
+    };
+    
+    U[x,y,z; t+1] = c[0]*U[x,y,z; t] - U[x,y,z; t-1] +
+      { i=-1..1, j=-1..1, k=-1..1, r=1..2 : i^2+j^2+k^2==1 } sum(
+        c[r] * U[x+r*i,y+r*j,z+r*k; t]
+      );
+  }
+}
+\end{lstlisting}
+
+
+\subsubsection{Number of Timesteps and Iteration Space}
+
+\subsubsection{Boundary Conditions}
+
+\subsubsection{Initial Condition}
+
+set comprehensions/set-builder notation
+
+
+\subsection{Integrating Into Your Own Application}
+
+Two modes.
+
+See the directory \texttt{examples/applications} for examples how to integrate \textsc{Patus}-generated code
+into user code.
+
+
+Create Fortran example

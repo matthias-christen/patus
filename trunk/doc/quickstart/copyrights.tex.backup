@@ -1,0 +1,24 @@
+\subsection{Copyrights}
+
+%ANTLR 3
+%Copyright (c) 2010 Terence Parr
+%All rights reserved.
+
+The following software packages are used in \textsc{Patus}:
+\medskip
+
+\noindent \textbf{Cetus.}
+Copyright under the Cetus Artistic License.\\
+\url{http://cetus.ecn.purdue.edu/}
+
+\medskip
+
+\noindent \textbf{JGAP.} Copyright under the GNU Lesser Public License.\\
+\url{http://jgap.sourceforge.net/}
+
+\medskip
+
+\noindent \textbf{Time measurement.}
+Copyright (c) 2003, 2007-8 Matteo Frigo.
+Copyright (c) 2003, 2007-8 Massachusetts Institute of Technology.
+

@@ -23,7 +23,7 @@ int main (int argc, char** argv)
 	// write output
 	if (has_arg ("-o", argc, argv))
 	{
-		#pragma patus write_output_grids("%s.0.data")
+		#pragma patus write_grids("%s.0.data", input)
 	}
 
 	long nFlopsPerStencil = PATUS_FLOPS_PER_STENCIL;
@@ -55,7 +55,7 @@ int main (int argc, char** argv)
 			#pragma omp barrier
 			#pragma patus compute_stencil
 		}
-		#pragma patus write_output_grids("%s.1.data")
+		#pragma patus write_grids("%s.1.data", output)
 	}
 	
 	// validate

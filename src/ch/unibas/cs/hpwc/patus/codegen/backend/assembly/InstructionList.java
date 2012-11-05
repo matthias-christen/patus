@@ -273,7 +273,7 @@ public class InstructionList implements Iterable<IInstruction>
 	 */
 	public InstructionList allocateRegisters (AssemblySection as, Set<IOperand.PseudoRegister> setReusedRegisters)
 	{
-		LOGGER.info ("Performing live analysis and allocating registers...");
+		LOGGER.debug ("Performing live analysis and allocating registers...");
 				
 		// do a live analysis
 		LiveAnalysis analysis = new LiveAnalysis (as.getArchitectureDescription (), this);

@@ -321,7 +321,10 @@ public class Parser {
 				dpe.addDimension (new DomainPointEnumerator.MinMax (range.getStart (), range.getEnd ()));
 				
 			if (dpe.size () == 0)
-				m_listStencilOperationArguments.add (strIdentifier);
+			{
+				if (bIsStencilArgument)
+					m_listStencilOperationArguments.add (strIdentifier);
+			}
 			else
 			{
 				// convert multi-dimensional scalars to simple scalars with the index in their name

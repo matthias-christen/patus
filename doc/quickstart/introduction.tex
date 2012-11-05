@@ -1,0 +1,28 @@
+\section{Introduction}
+
+\textsc{Patus} is a code generation and auto-tuning tool for the class of stencil computations.
+
+Stencil computations are constituent computational building blocks in many
+scientific and engineering codes. These codes typically achieve a low
+fraction of peak performance. Computational domains that involve stencils
+include medical and life science applications, petroleum reservoir
+simulations, weather and climate modeling, and physics simulations such as
+fluid dynamics or quantum chromodynamics.
+Stencil codes may perform tens of thousands of
+iterations over the spatial domain in order to resolve the time-dependent
+solution accurately; hence, may require significant core hours on
+supercomputers. Thus, any performance improvement may lead to a
+significant reduction in time to solution.
+
+Despite the apparent simplicity of stencil computations and the fact that their computation structure maps well to 
+current hardware architectures, meticulous architecture-specific tuning is still required to elicit a platform's full computational power
+due to the fact that microarchitectures have grown increasingly complex.
+Manual architecture-specific tuning requires a significant effort:
+Not only does it require a deeper understanding of the architecture, but it is also both a time consuming and
+error-prone process. Although the performance gain might justify the effort, the code usually becomes nonportable
+and hard to maintain.
+
+The goal of \textsc{Patus} is to accept an intuitive stencil specification and turn it into architecture-specific, optimized, high-performance code.
+The stencil specification is formulated in a small domain-specific language, which is explained in section \ref{sec:stencilspec}.
+
+Currently, \textsc{Patus} supports shared-memory CPU architectures and, as a proof of concept, CUDA-programmable GPUs.

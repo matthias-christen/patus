@@ -1,0 +1,31 @@
+/**
+ * Stencil specification for the H-field update.
+ */
+stencil fdtdH2D (
+	const float grid e(1 .. x_max, 1 .. y_max)[2],
+	float grid h(1 .. x_max, 1 .. y_max),
+	const float grid da(1 .. x_max, 1 .. y_max),
+	const float grid db(1 .. x_max, 1 .. y_max),
+	float param da_vacuum, float param da_material,
+	float param db_vacuum, float param db_material)
+{
+    domainsize = (2 .. x_max-1, 2 .. y_max-1);
+    
+    operation
+    {
+        h[x, y; t+1] = da[x, y] * h[x, y; t] +
+        	db[x, y] * (e[x, y; 0] - e[x, y-1; 0] + e[x-1, y; 1] - e[x, y; 1]);
+    }
+    
+    initial
+    {
+		h[x, y; 0] = 0;
+
+		da[x, y] = da_vacuum;
+		db[x, y] = db_vacuum;
+		da[x, y : (x-x_max/2)^2 + (y-y_max/2)^2 >= (2*x_max/5)^2] =
+			da_material;
+		db[x, y : (x-x_max/2)^2 + (y-y_max/2)^2 >= (2*x_max/5)^2] =
+			db_material;
+    }
+}

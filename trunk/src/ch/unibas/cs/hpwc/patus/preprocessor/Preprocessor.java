@@ -235,7 +235,7 @@ public class Preprocessor
 		options.getOptions ().setKernelFilename (StringUtil.concat ("../", stencil.getName ()));
 
 		// create the output directory
-		File fileOutputDir = new File (m_fileOutput.getParentFile (), stencil.getName ());
+		File fileOutputDir = options.isOutputDirSet () ? options.getOutputDir () : new File (m_fileOutput.getParentFile (), stencil.getName ());
 		fileOutputDir.mkdirs ();
 
 		return new CodeGeneratorMain (stencil, m_strategy, options.getHardwareDescription (), fileOutputDir, options.getOptions ()).generateCode ();

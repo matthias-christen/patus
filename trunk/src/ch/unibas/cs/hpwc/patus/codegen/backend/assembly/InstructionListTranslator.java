@@ -629,7 +629,7 @@ public class InstructionListTranslator
 			rgDestArgs = Arguments.parseArguments (intrinsic.getArguments ());
 		else
 		{
-			LOGGER.warn (StringUtil.concat ("No arguments were defined for the intrinsic ", intrinsic.getBaseName (), ". Assuming generic arguments."));
+			LOGGER.debug (StringUtil.concat ("No arguments were defined for the intrinsic ", intrinsic.getBaseName (), ". Assuming generic arguments."));
 			rgDestArgs = InstructionListTranslator.createGenericArguments (rgSourceOps.length);
 		}
 

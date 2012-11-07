@@ -798,10 +798,6 @@ PRODUCTIONS                                                                    /
 	StencilOptionsCompatibility =
 		SYNC "compatibility" '='
 		(
-			"C"                                                                (. m_options.setCompatibility (CodeGenerationOptions.ECompatibility.C); .)
-			|
-			"C++"                                                              (. m_options.setCompatibility (CodeGenerationOptions.ECompatibility.C); .)
-			|
 			"C/C++"                                                            (. m_options.setCompatibility (CodeGenerationOptions.ECompatibility.C); .)
 			|
 			"Fortran"                                                          (. m_options.setCompatibility (CodeGenerationOptions.ECompatibility.FORTRAN); .)

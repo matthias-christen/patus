@@ -39,58 +39,106 @@ fi
 if [ $# -eq 0 ] || echo $@ | grep -q "\\-\\-help"
 then
 	echo "Syntax:"
-	echo "    patus <stencil-spec> [ command-line-options ]"
-	echo "Below are the command line options you can provide to patus.jar."
+	echo "    patus [ command-line-options ] <stencil-spec> [ command-line-options ]"
 	echo
-	java -jar $PATUS_HOME/bin/patus.jar codegen
+	echo "The most common command line options are:"
 	echo
-	echo "The following architectures names can be used:"
-	grep "architectureType name=" $PATUS_HOME/arch/architectures.xml | sed s/.\\+name=\"//g | sed s/\".\\+//g
+	echo "--architecture=<Hardware Name>"
+	echo "    Possible values for <Hardware Name> are:"
+	grep "architectureType name=" $PATUS_HOME/arch/architectures.xml | sed "s/.\\+name=\"/        /g" | sed s/\".\\+//g
+	echo
+	echo "--outdir=<Output Directory>"
+    echo "    The output directory in which the generated files will be written."
+    echo "    If not specified the generated files will be created in ./out"
+    echo
+    echo "--strategy=<Strategy File>"
+	echo "    The Strategy file describing the parallelization/optimization strategy."
+	echo "    Strategy files can be found in $PATUS_HOME/strategy"
+	echo
+	echo "--unroll=<UnrollFactors1,UnrollFactors2,...>"
+	echo "    A list of unrolling factors applied to the inner most loop nest"
+	echo "    containing the stencil computation."
+	echo "    UnrollFactorsI can be either an integer, in which case the unrolling"
+	echo "    factor is applied to each dimension, or it can be a list of integers"
+	echo "    separated by colons, in which case a single, specific unrolling"
+	echo "    configuration for this UnrollFactorsI is created. E.g.,"
+	echo "        2:1:4"
+	echo "    will unroll twice in the x dimension, apply no unrolling to the"
+	echo "    y dimension, and unroll four times in the z dimension. Should the"
+	echo "    stencil have more than 3 dimensions, no unrolling will be applied in"
+	echo "    any of the other dimensions."
+	echo
+	echo "--embedded"
+	echo "    Specify this flag if your stencil specification is embedded in a"
+	echo "    source file and Patus is to be used both as a preprocessor (to extract"
+	echo "    the specification) and a code generator"
+	echo
+	echo "For more command line options, execute"
+	echo "    patus --morehelp"
 	exit
 fi
 
-# get the stencil specification
-stencil_spec=$1
-shift
-
-# set default strategy and default architecture
-arch="x86_64 SSE asm"
-if grep -q avx /proc/cpuinfo
+if echo $@ | grep -q "\\-\\-morehelp"
 then
-	# the CPU supports AVX
-	arch="x86_64 AVX asm"
-	echo "AVX support detected; using the architecture name '$arch'"
+	echo "Command line options you can provide to patus.jar:"
+	echo
+	java -jar $PATUS_HOME/bin/patus.jar codegen
+	exit
 fi
 
+# set default parameters
+stencil_spec=""
+arch="x86_64 SSE asm"
+arch_set="false"
+verb="codegen"
 strategy="$PATUS_HOME/strategy/cacheblocked.stg"
 outdir="$PWD/out"
 unroll="1,2,4:1:1"
 moreargs=""
 
-while getopts ":-:" optchar
+for arg in "$@"
 do
-	arg_name=${OPTARG%=*}
-	arg_value=${OPTARG#*=}
-	
-	case "$arg_name" in
-	architecture)
-		arch="$arg_value"
-		;;
-	strategy)
-		strategy="$arg_value"
-		;;
-	outdir)
-		outdir="$arg_value"
-		;;
-	unroll)
-		unroll="$arg_value"
-		;;
-	*)
-		moreargs="$moreargs --$arg_name=$arg_value"
-		;;
-	esac
+	if [ ${arg:0:2} == "--" ]
+	then
+		arg_name=${arg%=*}
+		arg_value=${arg#*=}
+		
+		case "$arg_name" in
+		--embedded)
+			verb="codegen-x"
+			;;
+		--architecture)
+			arch="$arg_value"
+			arch_set="true"
+			;;
+		--strategy)
+			strategy="$arg_value"
+			;;
+		--outdir)
+			outdir="$arg_value"
+			;;
+		--unroll)
+			unroll="$arg_value"
+			;;
+		*)
+			moreargs="$moreargs $arg_name=$arg_value"
+			;;
+		esac
+	else
+		stencil_spec="$arg"
+	fi
 done
 
+# if the architecture has not been set on the command line, test whether AVX is available
+if [ "$arch_set" == "false" ]
+then
+	if grep -q avx /proc/cpuinfo
+	then
+		# the CPU supports AVX
+		arch="x86_64 AVX asm"
+		echo "AVX support detected; using the architecture name '$arch'"
+	fi
+fi
 
 # run Patus
-java -jar $PATUS_HOME/bin/patus.jar codegen --stencil2=$stencil_spec --strategy=$strategy --outdir=$outdir --unroll=$unroll --architecture="$PATUS_HOME/arch/architectures.xml,$arch" $moreargs
+java -jar $PATUS_HOME/bin/patus.jar $verb --stencil2=$stencil_spec --strategy=$strategy --outdir=$outdir --unroll=$unroll --architecture="$PATUS_HOME/arch/architectures.xml,$arch" $moreargs

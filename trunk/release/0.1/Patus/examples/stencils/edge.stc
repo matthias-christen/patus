@@ -1,0 +1,11 @@
+stencil edge (float grid U)
+{
+	domainsize = (1 .. width, 1 .. height);
+    
+	operation
+	{
+		U[x, y; t+1] = -12 * U[x, y; t] +
+			2 * (U[x-1, y; t] + U[x+1, y; t] + U[x, y-1; t] + U[x, y+1; t]) +
+			U[x-1, y-1; t] + U[x+1, y-1; t] + U[x-1, y+1; t] + U[x+1, y+1; t];
+	}
+}

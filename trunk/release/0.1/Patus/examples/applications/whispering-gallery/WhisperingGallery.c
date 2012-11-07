@@ -63,7 +63,8 @@
 #define T_MAX 5000
 
 
-int main() {
+int main()
+{
 	int t, i, j, k;
 
 	// Define the size of the grids (use quadratic grids)
@@ -144,9 +145,10 @@ int main() {
 	// Simulation loop
 	// Call Patus-generated kernels
 	double fTimeStart = gettime ();	
-	#pragma omp parallel private (t, j, i)
+	#pragma omp parallel private (t)
 	{
-		for (t = 0; t < T_MAX; t++) {
+		for (t = 0; t < T_MAX; t++)
+		{
 			fdtdE2D (&dummy, &dummy, e_0_0, e_1_0, e_0_1, e_1_1, h_2_0,
 				ca, cb, ca_vacuum, ca_material, cb_vacuum, cb_material,
 				x_max, y_max
@@ -183,7 +185,8 @@ int main() {
 			}
 
 			// Accumulate the energy density
-			if (t > 4000) {
+			if (t > 4000)
+			{
 				integrate (&dummy, e_0_0, e_1_0, h_2_0, u_em, u_em,
 					MU, EPSILON, x_max, y_max
 				);
@@ -218,7 +221,8 @@ int main() {
 /**
  * The Gaussian, additive wave source.
  */
-float gaussianSource(float t) {
+float gaussianSource(float t)
+{
 	// Time of maximum excitation
 	const float T0 = 2.95e-14f;
 	
@@ -236,7 +240,8 @@ float gaussianSource(float t) {
  * sigma: electric conductivity
  * er:    relative (electric) permittivity of material
  */
-float calculateCa(float sigma, float er) {
+float calculateCa(float sigma, float er)
+{
 	return (1.0f - sigma * DT / (2.0f * EPSILON * er)) /
 		(1.0f + sigma * DT / (2.0f * EPSILON * er));
 }
@@ -245,7 +250,8 @@ float calculateCa(float sigma, float er) {
  * sigma: electric conductivity
  * er:    relative (electric) permittivity of material
  */
-float calculateCb(float sigma, float er) {
+float calculateCb(float sigma, float er)
+{
 	return (1.0f / (EPSILON * er * C0 * sqrtf(2.0f))) /
 		(1.0f + sigma * DT / (2.0f * EPSILON * er));
 }
@@ -254,7 +260,8 @@ float calculateCb(float sigma, float er) {
  * sigma: equivalent magnetic conductivity
  * mur:   (magnetic) permeability of material
  */
-float calculateDa(float sigma, float mur) {
+float calculateDa(float sigma, float mur)
+{
 	return (1.0f - sigma * DT / (2.0f * MU * mur)) /
 		(1.0f + sigma * DT / (2.0f * MU * mur));
 }
@@ -263,7 +270,8 @@ float calculateDa(float sigma, float mur) {
  * sigma: equivalent magnetic conductivity
  * mur:  (magnetic) permeability of material
  */
-float calculateDb(float sigma, float mur) {
+float calculateDb(float sigma, float mur)
+{
 	return (1.0f / (MU * mur * C0 * sqrtf(2.0f))) /
 		(1.0f + sigma * DT / (2.0f * MU * mur));
 }

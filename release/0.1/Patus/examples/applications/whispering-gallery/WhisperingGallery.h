@@ -12,15 +12,17 @@
  * ptr_aligned:  A pointer which will contain the aligned address
  * x_max, y_max: The size of the grid
  */
-void allocate(float** ptr, float** ptr_aligned, int x_max, int y_max) {
-	*ptr = (float*) malloc ((x_max) * (y_max) * sizeof (float) + 31);
+void allocate(float** ptr, float** ptr_aligned, int x_max, int y_max)
+{
+	*ptr = (float*) malloc (x_max * y_max * sizeof (float) + 31);
 	*ptr_aligned = (float*) (((uintptr_t) *ptr + 31) & (~((uintptr_t) 31)));
 }
 
 /**
  * Returns the current time in microseconds.
  */
-double gettime() {
+double gettime()
+{
 	struct timeval tp;
 	gettimeofday(&tp, NULL);
 	return (double) tp.tv_sec + (double) tp.tv_usec * 1e-6;
@@ -29,7 +31,8 @@ double gettime() {
 /**
  * Write the time averaged solution to a text file.
  */
-void write(float* u, int x_max, int y_max) {
+void write(float* u, int x_max, int y_max)
+{
 	int i, j;
 	FILE* file = fopen("output.txt", "w");
 	

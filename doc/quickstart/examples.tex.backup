@@ -1,0 +1,16 @@
+\section{Examples}
+
+In the \texttt{example} directory some example stencil specifications can be found.
+
+The \texttt{stencil} subdirectory contains single stencil specifications, for which
+code can be generated using the provided Makefile. The Makefile builds the benchmarking
+harnesses at the same time.
+
+In the \texttt{applications} two example applications can be found, which use
+\textsc{Patus} to generate the computate kernels.
+For both applications, Makefiles are provided. Typing \cmd{make} in the shell will
+build and run the simulations.
+
+\begin{itemize}
+  \item \textbf{wave} is the simple wave equation solver from 
+\end{itemize}

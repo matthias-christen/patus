@@ -30,6 +30,7 @@ public class CommandLineOptions
 	private File m_fileStrategy;
 	private File m_fileArchitecture;
 	private File m_fileOutDir;
+	private boolean m_bIsOutDirSet;
 	private String m_strArchName;
 	private IArchitectureDescription m_hwDesc;
 	private CodeGenerationOptions m_options;
@@ -46,6 +47,7 @@ public class CommandLineOptions
 		m_fileStrategy = null;
 		m_fileArchitecture = null;
 		m_fileOutDir = null;
+		m_bIsOutDirSet = false;
 		m_strArchName = null;
 		m_hwDesc = null;
 		m_options = new CodeGenerationOptions ();
@@ -64,6 +66,7 @@ public class CommandLineOptions
 		m_fileStrategy = options.getStrategyFile () == null ? null : new File (options.getStrategyFile ().getAbsolutePath ());
 		m_fileArchitecture = options.getArchitectureDescriptionFile () == null ? null : new File (options.getArchitectureDescriptionFile ().getAbsolutePath ());
 		m_fileOutDir = options.getOutputDir () == null ? null : new File (options.getOutputDir ().getAbsolutePath ());
+		m_bIsOutDirSet = options.isOutputDirSet ();
 		m_hwDesc = options.getHardwareDescription ();// == null ? null : options.getHardwareDescription ().clone ();
 		m_options = options.getOptions () == null ? null : new CodeGenerationOptions ();
 		m_options.set (options.getOptions ());
@@ -101,7 +104,10 @@ public class CommandLineOptions
 				m_strArchName = rgValues[1];
 			}
 			else if ("outdir".equals (strOption))
+			{
 				m_fileOutDir = new File (strValue);
+				m_bIsOutDirSet = true;
+			}
 			else if ("generate".equals (strOption))
 			{
 				m_options.clearTargets ();
@@ -299,6 +305,11 @@ public class CommandLineOptions
 	public final File getOutputDir ()
 	{
 		return m_fileOutDir;
+	}
+	
+	public final boolean isOutputDirSet ()
+	{
+		return m_bIsOutDirSet;
 	}
 
 	public final String getArchitectureName ()

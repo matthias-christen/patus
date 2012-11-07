@@ -1,4 +1,4 @@
-strategy gpu_blocked (domain u, auto int cbx)
+strategy gpu_blocked (domain u, auto int cbx = {1,2,4})
 {
 	// iterate over time steps 
 	for t = 1 .. stencil.t_max

@@ -1,0 +1,31 @@
+\section{Examples}
+\label{sec:examples}
+
+In the \textbf{examples} directory some example stencil specifications can be found.
+
+The \textbf{stencil} subdirectory contains single stencil specifications, for which
+code can be generated using the provided Makefile. The Makefile builds the benchmarking
+harnesses at the same time.
+
+In the \textbf{applications} subdirectory, two example applications can be found, which use
+\textsc{Patus} to generate the computate kernels.
+For both applications, Makefiles are provided. Typing \cmd{make} in the shell will
+build and run the simulations.
+In the Makefiles, remove the ``-mavx'' flag from the compiler command line if your CPU does not support AVX.
+
+\begin{itemize}
+  \item \textbf{wave} is the simple 3D wave equation solver from \ref{sec:wave}.
+    The file \texttt{wave.c} contains both the application code and the embedded
+    \textsc{Patus} stencil specification, showing how both parts can be used in a
+    single source file.\\
+    A simple visualization (using gnuplot) is provided. \cmd{make run} both starts
+    the program and the visualization.
+    
+  \item \textbf{whispering-gallery} is a 2D nano-photonics simulation developed by Max Nolte,
+    who has kindly agreed to publish his source code.
+    The simulation uses two stencils (defined in the external files \texttt{fdtdE2.stc}
+    and \texttt{fdtdH2.stc}) to calculate Maxwell's equation using the FDTD method,
+    and a third stencil to integrate the energy density (\texttt{integrate.stc}).\\
+    Typing \cmd{make} in the shell will first build the simulation and then start it.
+    When the computation completes, the result is visualized with gnuplot and displayed.
+\end{itemize}

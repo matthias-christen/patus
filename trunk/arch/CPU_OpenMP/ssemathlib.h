@@ -293,4 +293,15 @@ __m128d atan_pd (__m128d x);
 __m128 atan2_ps (__m128 y, __m128 x);
 __m128d atan2_pd (__m128d y, __m128d x);
 
+
+DECLARE_CONST(ZERO, 0.0)
+
+#define clamp0(x) ((x) > 0) ? 0 : (x)
+#define clamp0_ps(x) _mm_and_ps (x, _mm_cmp_ps (x, ZERO_PS, 1))
+#define clamp0_pd(x) _mm_and_pd (x, _mm_cmp_pd (x, ZERO_PD, 1))
+
+#define clamp0if(value, threshold) ((threshold) > 0) ? 0 : (value)
+#define clamp0if_ps(value, threshold) _mm_and_ps (value, _mm_cmp_ps (threshold, ZERO_PS, 1))
+#define clamp0if_pd(value, threshold) _mm_and_pd (value, _mm_cmp_pd (threshold, ZERO_PD, 1))
+
 #endif

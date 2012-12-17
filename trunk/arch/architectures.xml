@@ -66,6 +66,8 @@
 			<intrinsic base-name="acos" name="acos_pd" datatype="__m128d"/>
 			<intrinsic base-name="atan" name="atan_pd" datatype="__m128d"/>
 			<intrinsic base-name="atan2" name="atan2_pd" datatype="__m128d"/>
+			<intrinsic base-name="clamp0" name="clamp0_pd" datatype="__m128d"/>
+			<intrinsic base-name="clamp0if" name="clamp0if_pd" datatype="__m128d"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
 			<intrinsic base-name="unary_minus" name="neg_ps" datatype="__m128"/>
@@ -91,6 +93,8 @@
 			<intrinsic base-name="acos" name="acos_ps" datatype="__m128"/>
 			<intrinsic base-name="atan" name="atan_ps" datatype="__m128"/>
 			<intrinsic base-name="atan2" name="atan2_ps" datatype="__m128"/>
+			<intrinsic base-name="clamp0" name="clamp0_ps" datatype="__m128"/>
+			<intrinsic base-name="clamp0if" name="clamp0if_ps" datatype="__m128"/>
 			
 			<!-- non-arithmetic intrinsics -->
 		</intrinsics>
@@ -335,6 +339,8 @@
 			<intrinsic base-name="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
 			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
 			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>
+			<intrinsic base-name="clamp0" name="_mm256_clamp0_pd" datatype="__m256d"/>
+			<intrinsic base-name="clamp0if" name="_mm256_clamp0if_pd" datatype="__m256d"/>
 			
 			<!-- intrinsics for single precision arithmetic operations -->
 			<intrinsic base-name="unary_minus" name="_mm256_neg_ps" datatype="__m256"/>
@@ -345,6 +351,8 @@
 			<intrinsic base-name="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
 			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
 			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>
+			<intrinsic base-name="clamp0" name="_mm256_clamp0_ps" datatype="__m256"/>
+			<intrinsic base-name="clamp0if" name="_mm256_clamp0if_ps" datatype="__m256"/>
 			
 			<!-- non-arithmetic intrinsics -->
 		</intrinsics>
@@ -376,6 +384,8 @@
 			<intrinsic base-name="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
 			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
 			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>
+			<intrinsic base-name="clamp0" name="_mm256_clamp0_pd" datatype="__m256d"/>
+			<intrinsic base-name="clamp0if" name="_mm256_clamp0if_pd" datatype="__m256d"/>
 			<intrinsic base-name="fma" name="_mm256_macc_pd" datatype="__m256d" arguments="factor1,factor2,summand"/>
 			<intrinsic base-name="fms" name="_mm256_msub_pd" datatype="__m256d" arguments="factor1,factor2,summand"/>
 			
@@ -388,6 +398,8 @@
 			<intrinsic base-name="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
 			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
 			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>
+			<intrinsic base-name="clamp0" name="_mm256_clamp0_ps" datatype="__m256"/>
+			<intrinsic base-name="clamp0if" name="_mm256_clamp0if_ps" datatype="__m256"/>
 			<intrinsic base-name="fma" name="_mm256_macc_ps" datatype="__m256" arguments="factor1,factor2,summand"/>
 			<intrinsic base-name="fms" name="_mm256_msub_ps" datatype="__m256" arguments="factor1,factor2,summand"/>
 		</intrinsics>

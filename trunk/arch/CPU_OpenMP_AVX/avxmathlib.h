@@ -28,4 +28,12 @@ AVX_DECLARE_LONG_CONST(AVX_SIGN_MASK_DOUBLE, 0x00000000, 0x80000000)
 #define _mm256_neg_ps(x) _mm256_xor_ps (x, (__m256) AVX_SIGN_MASK_SINGLE)
 #define _mm256_neg_pd(x) _mm256_xor_pd (x, (__m256d) AVX_SIGN_MASK_DOUBLE)
 
+#define clamp0(x) ((x) > 0) ? 0 : (x)
+#define _mm256_clamp0_ps(x) _mm256_and_ps (x, _mm256_cmp_ps (x, _mm256_xor_ps (x, x), 1))
+#define _mm256_clamp0_pd(x) _mm256_and_pd (x, _mm256_cmp_pd (x, _mm256_xor_pd (x, x), 1))
+
+#define clamp0if(value, threshold) ((threshold) > 0) ? 0 : (value)
+#define _mm256_clamp0if_ps(value, threshold) _mm256_and_ps (value, _mm256_cmp_ps (threshold, _mm256_xor_ps (value, value), 1))
+#define _mm256_clamp0if_pd(value, threshold) _mm256_and_pd (value, _mm256_cmp_pd (threshold, _mm256_xor_pd (value, value), 1))
+
 #endif

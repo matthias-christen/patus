@@ -659,12 +659,13 @@ public class StencilAssemblySection extends AssemblySection
 				rgConstsAndParams[nIdx] = expr;
 		}
 		
-		addInput (
-			AssemblySection.INPUT_CONSTANTS_ARRAYPTR,
-			m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalars (
-				rgConstsAndParams, getDatatype (), m_slbGeneratedCode, m_options),
-			EAssemblySectionInputType.CONST_POINTER
+		Expression exprConstsAndParamsPtr = m_data.getCodeGenerators ().getSIMDScalarGeneratedIdentifiers ().createVectorizedScalars (
+			rgConstsAndParams, getDatatype (), m_slbGeneratedCode, m_options
 		);
+		if (rgConstsAndParams.length == 1)
+			exprConstsAndParamsPtr = new UnaryExpression (UnaryOperator.ADDRESS_OF, exprConstsAndParamsPtr);
+		
+		addInput (AssemblySection.INPUT_CONSTANTS_ARRAYPTR, exprConstsAndParamsPtr, EAssemblySectionInputType.CONST_POINTER);
 	}
 	
 	/**

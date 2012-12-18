@@ -646,7 +646,7 @@ public class CodeGenerator
 		// create the function
 		List<Specifier> listSpecs = new ArrayList<> ();
 		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
-		listSpecs.add (Specifier.INLINE);
+		//listSpecs.add (Specifier.INLINE);
 		
 		proc.addProcedureDeclaration (
 			listSpecs,

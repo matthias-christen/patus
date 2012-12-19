@@ -1,13 +1,13 @@
-stencil tricubic
+stencil tricubic (
+    float grid u(0 .. x_max+2, 0 .. y_max+2, 0 .. z_max+2),
+    const float grid a(0 .. x_max+2, 0 .. y_max+2, 0 .. z_max+2),
+    const float grid b(0 .. x_max+2, 0 .. y_max+2, 0 .. z_max+2),
+    const float grid c(0 .. x_max+2, 0 .. y_max+2, 0 .. z_max+2)
+)
 {
 	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
-	t_max = 1;
 
-	operation (
-        float grid u(0 .. x_max+2, 0 .. y_max+2, 0 .. z_max+2),
-        const float grid a(0 .. x_max+2, 0 .. y_max+2, 0 .. z_max+2),
-        const float grid b(0 .. x_max+2, 0 .. y_max+2, 0 .. z_max+2),
-        const float grid c(0 .. x_max+2, 0 .. y_max+2, 0 .. z_max+2))
+	operation
 	{
 		float w1_a = 1.0/6.0                   * a[x,y,z] * (a[x,y,z]+1.0) * (a[x,y,z]+2.0);
 		float w2_a = -0.5     * (a[x,y,z]-1.0)            * (a[x,y,z]+1.0) * (a[x,y,z]+2.0);

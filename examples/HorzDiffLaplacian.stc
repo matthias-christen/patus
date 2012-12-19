@@ -1,0 +1,16 @@
+stencil HorzDiffLaplacian (
+	float grid lap(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid up(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid crlato(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid crlatu(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1)
+)
+{
+	domainsize = (2 .. iDim-3, 2 .. jDim-3, 0 .. kDim-1);
+
+	operation
+	{
+		lap[x, y, z; t+1] = up[x+1, y, z] + up[x-1, y, z] - 2 * up[x, y, z]
+			+ crlato[x, y, z] * (up[x, y+1, z] - up[x, y, z])
+			- crlatu[x, y, z] * (up[x, y, z] - up[x, y-1, z]);
+	}
+}

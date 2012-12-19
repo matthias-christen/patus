@@ -48,10 +48,10 @@ then
 	grep "architectureType name=" $PATUS_HOME/arch/architectures.xml | sed "s/.\\+name=\"/        /g" | sed s/\".\\+//g
 	echo
 	echo "--outdir=<Output Directory>"
-    echo "    The output directory in which the generated files will be written."
-    echo "    If not specified the generated files will be created in ./out"
-    echo
-    echo "--strategy=<Strategy File>"
+	echo "    The output directory in which the generated files will be written."
+	echo "    If not specified the generated files will be created in ./out"
+	echo
+	echo "--strategy=<Strategy File>"
 	echo "    The Strategy file describing the parallelization/optimization strategy."
 	echo "    Strategy files can be found in $PATUS_HOME/strategy"
 	echo
@@ -72,6 +72,10 @@ then
 	echo "    Specify this flag if your stencil specification is embedded in a"
 	echo "    source file and Patus is to be used both as a preprocessor (to extract"
 	echo "    the specification) and a code generator"
+	echo
+	echo "--create-inline-asm={yes|no}"
+	echo "    Do or don't create any inline assembly code."
+	echo "    Defaults to 'yes'"
 	echo
 	echo "For more command line options, execute"
 	echo "    patus --morehelp"
@@ -94,6 +98,7 @@ verb="codegen"
 strategy="$PATUS_HOME/strategy/cacheblocked.stg"
 outdir="$PWD/out"
 unroll="1,2,4:1:1"
+create_inline_asm="yes"
 moreargs=""
 
 for arg in "$@"
@@ -120,6 +125,9 @@ do
 		--unroll)
 			unroll="$arg_value"
 			;;
+		--create-inline-asm)
+			create_inline_asm="$arg_value"
+			;;
 		*)
 			moreargs="$moreargs $arg_name=$arg_value"
 			;;
@@ -135,8 +143,19 @@ then
 	if grep -q avx /proc/cpuinfo
 	then
 		# the CPU supports AVX
-		arch="x86_64 AVX asm"
+		if [ "$create_inline_asm" == "no" ]
+		then
+			arch="x86_64 AVX"
+		else
+			arch="x86_64 AVX asm"
+		fi
+
 		echo "AVX support detected; using the architecture name '$arch'"
+	else
+		if [ "$create_inline_asm" == "no" ]
+		then
+			arch="x86_64 SSE"
+		fi
 	fi
 fi
 

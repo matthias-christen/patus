@@ -1,0 +1,13 @@
+stencil Heat3D (double grid A(0 .. N+1, 0 .. N+1, 0 .. N+1))
+{
+	domainsize = (1 .. N, 1 .. N, 1 .. N);
+	
+	operation
+	{
+		A[x, y, z; t+1] =
+			0.125 * (A[x, y, z+1; t] - 2.0 * A[x, y, z; t] + A[x, y, z-1; t]) +
+			0.125 * (A[x, y+1, z; t] - 2.0 * A[x, y, z; t] + A[x, y-1, z; t]) +
+			0.125 * (A[x+1, y, z; t] - 2.0 * A[x, y, z; t] + A[x-1, y, z; t]) +
+			A[x, y, z; t];
+	}
+}

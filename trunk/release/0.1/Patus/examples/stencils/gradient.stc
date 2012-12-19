@@ -9,8 +9,8 @@ stencil gradient (
 
 	operation
 	{
-		Ux[x, y, z; t] = alpha * (V[x+1, y, z] + V[x-1, y, z]);
-		Uy[x, y, z; t] = beta  * (V[x, y+1, z] + V[x, y-1, z]);
-		Uz[x, y, z; t] = gamma * (V[x, y, z+1] + V[x, y, z-1]);
+		Ux[x, y, z; t] = alpha * (V[x+1, y, z] - V[x-1, y, z]);
+		Uy[x, y, z; t] = beta  * (V[x, y+1, z] - V[x, y-1, z]);
+		Uz[x, y, z; t] = gamma * (V[x, y, z+1] - V[x, y, z-1]);
 	}
 }

@@ -1,0 +1,30 @@
+stencil uxx1 (
+    const float grid d1(-1 .. g_nxt+2, -1 .. g_nyt+2, -1 .. g_nzt+2),
+    float grid u1(-1 .. g_nxt+2, -1 .. g_nyt+2, -1 .. g_nzt+2),
+    const float grid xx(-1 .. g_nxt+2, -1 .. g_nyt+2, -1 .. g_nzt+2), 
+    const float grid xy(-1 .. g_nxt+2, -1 .. g_nyt+2, -1 .. g_nzt+2),
+    const float grid xz(-1 .. g_nxt+2, -1 .. g_nyt+2, -1 .. g_nzt+2),
+    float param dth)
+{
+    domainsize = (nxb .. nxe, nyb .. nye, nzb .. nze);
+
+    operation
+    {
+	    float c1 = 9./8.;
+	    float c2 = -1./24.;
+      
+	    float d = 0.25 * (d1[x,y,z] + d1[x,y-1,z] + d1[x,y,z-1] + d1[x,y-1,z-1]);
+	    u1[x,y,z; t+1] = u1[x,y,z; t] + (dth / d) * (
+		    c1 * (
+			    xx[x,  y,z] - xx[x-1,y,z] +
+			    xy[x,y,  z] - xy[x,y-1,z] +
+			    xz[x,y,z  ] - xz[x,y,z-1]) +
+			     
+		    c2 * (
+			    xx[x+1,y,z] - xx[x-2,y,z] +
+			    xy[x,y+1,z] - xy[x,y-2,z] +
+			    xz[x,y,z+1] - xz[x,y,z-2])
+	    );
+    }
+}
+

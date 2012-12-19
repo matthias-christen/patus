@@ -1,0 +1,19 @@
+stencil HorzDiffFluxes (
+	float grid flx(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	float grid fly(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid lap(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid up(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid crlato(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1)
+)
+{
+	domainsize = (2 .. iDim-3, 2 .. jDim-3, 0 .. kDim-1);
+
+	operation
+	{
+		flx[x, y, z; t+1] = lap[x+1, y, z] - lap[x, y, z];
+		fly[x, y, z; t+1] = crlato[x, y, z] * (lap[x, y+1, z] - lap[x, y, z]);
+		
+		flx[x, y, z; t+1] = clamp0if (flx[x, y, z; t+1], flx[x, y, z; t+1] * (up[x+1, y, z] - up[x, y, z]));
+		fly[x, y, z; t+1] = clamp0if (fly[x, y, z; t+1], fly[x, y, z; t+1] * (up[x, y+1, z] - up[x, y, z]));
+	}
+}

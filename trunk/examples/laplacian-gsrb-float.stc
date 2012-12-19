@@ -1,9 +1,8 @@
-stencil laplacian_gsrb
+stencil laplacian_gsrb (float grid u, float param alpha, float param beta)
 {
 	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
-	t_max = 1;
 	
-	operation (float grid u, float param alpha, float param beta)
+	operation
 	{
 		u[x, y, z; t+1] =
 			(alpha + 4 * beta^2) * u[x, y, z; t] +

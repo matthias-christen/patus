@@ -6,6 +6,7 @@ import java.util.Map;
 import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.IDExpression;
+import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
 
@@ -37,6 +38,15 @@ public class StencilAnalyzer
 		Boolean bIsConstant = map.get (stencil);
 		if (bIsConstant != null)
 			return bIsConstant;
+		
+		// if the stencil has output nodes (i.e., if the RHS is not assigned to a temporary variable), treat as non-constant
+		// => e.g., don't do loop-invariant code motion
+		// TODO: check if this is OK
+		if (stencil.getOutputNodes () != null && ((StencilNodeSet) stencil.getOutputNodes ()).size () > 0)
+		{
+			map.put (stencil, false);
+			return false;
+		}
 		
 		Expression expr = stencil.getExpression ();
 		if (expr == null)

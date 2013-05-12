@@ -39,6 +39,15 @@ public class ArithmeticUtil
 		return bIsIntegerLiteral ? new IntegerLiteral ((long) fValue) : new FloatLiteral (fValue);
 	}
 	
+	public Literal getConstantValue (String strIdentifier, Map<String, Literal> mapConstants)
+	{
+		if (mapConstants == null)
+			return null;
+	       
+		Literal litValue = mapConstants.get (strIdentifier);
+		return litValue == null ? null : litValue.clone ();
+	}
+	
 	/**
 	 * Create a balanced sum expression.
 	 */
@@ -289,12 +298,12 @@ public class ArithmeticUtil
 		return sb.toString ();
 	}
 	
-	public ExpressionData replaceIndexedScalars (ExpressionData expr, Map<String, StencilCalculation.ParamType> mapScalars, Token la)
+	public ExpressionData replaceIndexedScalars (ExpressionData expr, Map<String, StencilCalculation.ParamType> mapScalars, Map<String, Literal> mapConstants, Token la)
 	{
-		return new ExpressionData (replaceIndexedScalars (expr.getExpression (), mapScalars, la), expr.getFlopsCount (), expr.getType ());
+		return new ExpressionData (replaceIndexedScalars (expr.getExpression (), mapScalars, mapConstants, la), expr.getFlopsCount (), expr.getType ());
 	}
 
-	public Expression replaceIndexedScalars (Expression expr, Map<String, StencilCalculation.ParamType> mapScalars, Token la)
+	public Expression replaceIndexedScalars (Expression expr, Map<String, StencilCalculation.ParamType> mapScalars, Map<String, Literal> mapConstants, Token la)
 	{
 		Expression exprResult = expr.clone ();
 		for (DepthFirstIterator it = new DepthFirstIterator (exprResult); it.hasNext (); )
@@ -316,13 +325,14 @@ public class ArithmeticUtil
 							String strSubstName = getIndexedIdentifier (strName, rgIdx);
 							if (!mapScalars.containsKey (strSubstName))
 								throwOutOfBoundsError (aa, strName, rgIdx, mapScalars, la);
-								
-							NameID nidNew = new NameID (strSubstName);
+							
+							Literal litValue = getConstantValue (strSubstName, mapConstants);
+							Expression exprReplacement = litValue != null ? litValue : new NameID (strSubstName);
 							
 							if (exprResult == o)
-								return nidNew;
+								return exprReplacement;
 							else
-								aa.swapWith (nidNew);
+								aa.swapWith (exprReplacement);
 						}
 					}
 				}

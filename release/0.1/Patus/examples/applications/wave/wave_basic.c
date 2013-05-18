@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "wave.h"
+#include "utils.h"
 
 
 // Length of one side of the cube of the simulation

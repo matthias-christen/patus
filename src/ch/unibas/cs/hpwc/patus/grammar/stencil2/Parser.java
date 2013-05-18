@@ -418,11 +418,7 @@ public class Parser {
 	
 	private Literal getConstantValue (String strIdentifier)
 	{
-		if (m_mapConstants == null)
-			return null;
-	       
-		Literal litValue = m_mapConstants.get (strIdentifier);
-		return litValue == null ? null : litValue.clone ();
+		return m_au.getConstantValue (strIdentifier, m_mapConstants);
 	}
 	
 	/**
@@ -1158,9 +1154,14 @@ public class Parser {
 			Expect(31);
 			rgIdx = m_au.asIntArray (listIndices); 
 			if (rgIdx == null) exprParam = new ArrayAccess (new NameID (strIdentifier), listIndices); 
-			else exprParam = new NameID (m_au.getIndexedIdentifier (strIdentifier, rgIdx)); 
+			else { 
+			String strIndexedIdentifier = m_au.getIndexedIdentifier (strIdentifier, rgIdx); 
+			litValue = getConstantValue (strIndexedIdentifier); 
+			if (litValue != null) exprParam = litValue; 
+			} 
 		}
-		if (rgIdx == null && !(exprParam instanceof FloatLiteral) && !(exprParam instanceof IntegerLiteral) && !bIsDecl && (lv == null || !lv.hasVariable (strIdentifier))) checkParameterIndices (strIdentifier, exprParam, lv); 
+		if (rgIdx == null && !(exprParam instanceof FloatLiteral) && !(exprParam instanceof IntegerLiteral) && !bIsDecl && (lv == null || !lv.hasVariable (strIdentifier))) 
+		checkParameterIndices (strIdentifier, exprParam, lv); 
 		return exprParam;
 	}
 
@@ -1452,7 +1453,7 @@ public class Parser {
 		}
 		Expect(6);
 		fnx = m_au.isCompileTimeReduction (strFunctionName, listArgs, lv, la) ? 
-		m_au.replaceIndexedScalars (m_au.expandCompileTimeReduction (strFunctionName, listArgs, lv, la), m_mapScalars, la) : 
+		m_au.replaceIndexedScalars (m_au.expandCompileTimeReduction (strFunctionName, listArgs, lv, la), m_mapScalars, m_mapConstants, la) : 
 		new ExpressionData (new FunctionCall (new NameID (strFunctionName), listArgs), nFlopsCount + 1, Symbolic.EExpressionType.EXPRESSION); 
 		return fnx;
 	}

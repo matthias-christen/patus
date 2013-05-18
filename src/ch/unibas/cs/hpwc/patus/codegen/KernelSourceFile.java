@@ -5,9 +5,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import cetus.hir.Printable;
+import cetus.hir.Procedure;
 import cetus.hir.TranslationUnit;
 import ch.unibas.cs.hpwc.patus.codegen.benchmark.BenchmarkHarness;
 import ch.unibas.cs.hpwc.patus.util.IndentOutputStream;
@@ -29,6 +33,7 @@ public class KernelSourceFile
 
 	protected File m_file;
 	protected TranslationUnit m_unit;
+	protected List<Procedure> m_listExportedProcedures;
 
 	// configuration
 	protected CodeGenerationOptions.ECompatibility m_compatibility;
@@ -43,16 +48,23 @@ public class KernelSourceFile
 	{
 		m_file = f;
 		m_unit = new TranslationUnit (f.getPath ());
+		m_listExportedProcedures = new ArrayList<> ();
 	}
 
 	public KernelSourceFile (String strFilename)
 	{
 		this (new File (strFilename));
 	}
+	
+	public void addExportProcedure (Procedure procedure)
+	{
+		m_listExportedProcedures.add (procedure);
+	}
 
 	public void writeCode (CodeGenerator cg, CodeGeneratorSharedObjects data, File fileOutputDirectory)
 	{
 		writeKernelSource (cg, data, fileOutputDirectory);
+		writeKernelHeader (fileOutputDirectory);
 		writeTuningParamsSource (data, fileOutputDirectory);
 	}
 
@@ -87,7 +99,6 @@ public class KernelSourceFile
 
 			m_unit.print (out);
 			out.flush ();
-			out.close ();
 		}
 		catch (IOException e)
 		{
@@ -100,15 +111,58 @@ public class KernelSourceFile
 		}		
 	}
 	
+	private void writeKernelHeader (File fileOutputDirectory)
+	{
+		// write the kernel header file (for inclusion in application code)
+		PrintWriter out = null;
+		try
+		{
+			// create the header filename
+			String strFilename = m_unit.getOutputFilename ();
+			int nDotPos = strFilename.lastIndexOf ('.');
+			if (nDotPos >= 0)
+				strFilename = strFilename.substring (0, nDotPos) + ".h";
+			else
+				strFilename += ".h";
+				
+			out = new PrintWriter (new File (fileOutputDirectory, strFilename));
+			
+			// create the forward declarations
+			for (Procedure proc : m_listExportedProcedures)
+			{
+				for (Object obj : proc.getReturnType ())
+				{
+					((Printable) obj).print (out);
+					out.print (" ");
+				}
+				
+				proc.getDeclarator ().print (out);
+				out.println (";");
+			}
+
+			out.flush ();
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace ();
+		}
+		finally
+		{
+			if (out != null)
+				out.close ();
+		}
+	}
+	
 	/**
 	 * Write the tuning parameters header file.
 	 */
 	@SuppressWarnings("static-method")
 	private void writeTuningParamsSource (CodeGeneratorSharedObjects data, File fileOutputDirectory)
 	{
+		PrintWriter out = null;
 		try
 		{
-			PrintWriter out = new PrintWriter (new File (fileOutputDirectory, CodeGenerationOptions.DEFAULT_TUNEDPARAMS_FILENAME));
+			out = new PrintWriter (new File (fileOutputDirectory, CodeGenerationOptions.DEFAULT_TUNEDPARAMS_FILENAME));
 			GlobalGeneratedIdentifiers glid = data.getData ().getGlobalGeneratedIdentifiers ();
 			
 			for (GlobalGeneratedIdentifiers.Variable var : glid.getAutotuneVariables ())
@@ -119,11 +173,15 @@ public class KernelSourceFile
 			}
 			
 			out.flush ();
-			out.close ();
 		}
 		catch (FileNotFoundException e)
 		{
 			e.printStackTrace ();
+		}
+		finally
+		{
+			if (out != null)
+				out.close ();
 		}
 	}
 

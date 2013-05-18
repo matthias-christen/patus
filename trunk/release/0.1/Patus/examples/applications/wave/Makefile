@@ -21,12 +21,10 @@ define run-patus
 	
 	@echo Copying the generated kernel.c file to the main directory and rename appropriately...
 	cp $(OUT_DIR)/kernel.c $(@:_pp.c=_patus.c)
+	cp $(OUT_DIR)/kernel.h $(@:_pp.c=_patus.h)
 	
 	@echo Copying the header files...
 	cp $(OUT_DIR)/*.h .
-	
-	@echo Creating a header file containing forward declarations to the generated kernel functions...
-	grep "void \w\+\s*(.*)" $(OUT_DIR)/kernel.c | sed s/$$/\;/g > $(@:_pp.c=_patus.h)
 	
 	@echo Running the auto-tuner...
 	make --directory=$(OUT_DIR)
@@ -61,9 +59,10 @@ run:
 
 # Remove any generated files
 clean:
-	rm -f cycle.h ssemathlib.h avxmathlib.h avxreductions.h ssereductions.h patusrt.h tuned_params.h
+	rm -f cycle.h ssemathlib.h avxmathlib.h avxreductions.h ssereductions.h patusrt.h tuned_params.h wave.h
 	rm -rf *_patus.* *_pp.c wave_kernel
 	rm -f wave wave_basic
+	rm -f [0-9][0-9][0-9][0-9].txt
 	rm -f *~
 
 # Remove any files created by the programs

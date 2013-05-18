@@ -104,16 +104,16 @@ public class CodeGenerator
 		private String m_strBaseFunctionName;
 		private List<Declaration> m_listParams;
 		private StatementListBundle m_slbBody;
-		private TranslationUnit m_unit;
+		private KernelSourceFile m_kernelSourceFile;
 		private boolean m_bMakeFortranCompatible;
 
 		public GeneratedProcedure (String strBaseFunctionName, List<Declaration> listParams, StatementListBundle slbBody,
-			TranslationUnit unit, boolean bMakeFortranCompatible)
+			KernelSourceFile kernelSourceFile, boolean bMakeFortranCompatible)
 		{
 			m_strBaseFunctionName = strBaseFunctionName;
 			m_listParams = listParams;
 			m_slbBody = slbBody;
-			m_unit = unit;
+			m_kernelSourceFile = kernelSourceFile;
 			m_bMakeFortranCompatible = bMakeFortranCompatible;
 		}
 
@@ -140,9 +140,9 @@ public class CodeGenerator
 			return m_slbBody;
 		}
 
-		public final TranslationUnit getTranslationUnit ()
+		public final KernelSourceFile getKernelSourceFile ()
 		{
-			return m_unit;
+			return m_kernelSourceFile;
 		}
 
 		/**
@@ -153,30 +153,30 @@ public class CodeGenerator
 		 * @param cmpstmtBody
 		 * @param unit
 		 */
-		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, CompoundStatement cmpstmtBody,
+		public Procedure addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, CompoundStatement cmpstmtBody,
 			boolean bIsParametrizedVersion, boolean bIncludeStencilCommentAnnotation)
 		{
-			addProcedureDeclaration (listAdditionalDeclSpecs, m_listParams, cmpstmtBody, bIsParametrizedVersion, bIncludeStencilCommentAnnotation);
+			return addProcedureDeclaration (listAdditionalDeclSpecs, m_listParams, cmpstmtBody, bIsParametrizedVersion, bIncludeStencilCommentAnnotation);
 		}
 
-		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, List<Declaration> listParams, CompoundStatement cmpstmtBody,
+		public Procedure addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, List<Declaration> listParams, CompoundStatement cmpstmtBody,
 			boolean bIsParametrizedVersion, boolean bIncludeStencilCommentAnnotation)
 		{
 			// set the name of the stencil/initialization function, which is called in the benchmarking harness
 			// i.e., always set the parametrized version
 			setGlobalGeneratedIdentifiersFunctionName (new NameID (getFunctionName (true)));
 			
-			addProcedureDeclaration (listAdditionalDeclSpecs, getFunctionName (bIsParametrizedVersion), listParams, cmpstmtBody, bIncludeStencilCommentAnnotation);
+			return addProcedureDeclaration (listAdditionalDeclSpecs, getFunctionName (bIsParametrizedVersion), listParams, cmpstmtBody, bIncludeStencilCommentAnnotation);
 		}
 
-		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, String strFunctionName,
+		public Procedure addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, String strFunctionName,
 			CompoundStatement cmpstmtBody, boolean bIncludeStencilCommentAnnotation)
 		{
-			addProcedureDeclaration (listAdditionalDeclSpecs, strFunctionName, m_listParams, cmpstmtBody, bIncludeStencilCommentAnnotation);
+			return addProcedureDeclaration (listAdditionalDeclSpecs, strFunctionName, m_listParams, cmpstmtBody, bIncludeStencilCommentAnnotation);
 		}
 
 		@SuppressWarnings("unchecked")
-		public void addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, String strFunctionName,
+		public Procedure addProcedureDeclaration (List<Specifier> listAdditionalDeclSpecs, String strFunctionName,
 			List<Declaration> listParams, CompoundStatement cmpstmtBody, boolean bIncludeStencilCommentAnnotation)
 		{
 			List<Specifier> listSpecs = new ArrayList<> (listAdditionalDeclSpecs == null ? 1 : listAdditionalDeclSpecs.size () + 1);
@@ -193,7 +193,9 @@ public class CodeGenerator
 			if (bIncludeStencilCommentAnnotation)
 				procedure.annotate (new CommentAnnotation (m_data.getStencilCalculation ().getStencilExpressions ()));
 
-			m_unit.addDeclaration (procedure);
+			m_kernelSourceFile.getTranslationUnit ().addDeclaration (procedure);
+			
+			return procedure;
 		}
 
 		protected abstract void setGlobalGeneratedIdentifiersFunctionName (NameID nidFnxName);
@@ -332,7 +334,7 @@ public class CodeGenerator
 			m_data.getStencilCalculation ().getName (),
 			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (true, bIncludeAutotuneParameters, false, false),
 			slbThreadBody,
-			out.getTranslationUnit (),
+			out,
 			bMakeFortranCompatible)
 		{
 			@Override
@@ -349,7 +351,7 @@ public class CodeGenerator
 				Globals.getInitializeFunctionName (m_data.getStencilCalculation ().getName ()),
 				m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (false, bIncludeAutotuneParameters, false, false),
 				slbInitializationBody,
-				out.getTranslationUnit (),
+				out,
 				bMakeFortranCompatible)
 			{
 				@Override
@@ -500,6 +502,7 @@ public class CodeGenerator
 		{
 			// there is at least one code
 			List<String> listStencilFunctions = new ArrayList<> (nCodesCount);
+			Procedure procedureLast = null;
 
 			for (ParameterAssignment pa : proc.getBodyCodes ())
 			{
@@ -531,9 +534,9 @@ public class CodeGenerator
 
 				// add the code to the translation unit
 				if (nCodesCount == 1 && !bIsFortranCompatible)
-					proc.addProcedureDeclaration (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL), cmpstmtBody, true, bIncludeStencilCommentAnnotation);
+					procedureLast = proc.addProcedureDeclaration (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL), cmpstmtBody, true, bIncludeStencilCommentAnnotation);
 				else
-					proc.addProcedureDeclaration (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.LOCALFUNCTION), strDecoratedFunctionName, cmpstmtBody, false);
+					procedureLast = proc.addProcedureDeclaration (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.LOCALFUNCTION), strDecoratedFunctionName, cmpstmtBody, false);
 
 				listStencilFunctions.add (strDecoratedFunctionName);
 			}
@@ -541,6 +544,8 @@ public class CodeGenerator
 			// add a function call to the kernel (if there is more than one)
 			if (nCodesCount > 1 || bIsFortranCompatible)
 				createParametrizedProxyFunction (proc, listStencilFunctions, bIncludeStencilCommentAnnotation, bIncludeAutotuneParameters, bIsFortranCompatible);
+			else if (nCodesCount == 1 && procedureLast != null)
+				proc.getKernelSourceFile ().addExportProcedure (procedureLast);
 			
 			// add a function calling the kernel function with the parameters from the tuned_params.h
 			if (m_data.getData ().getGlobalGeneratedIdentifiers ().getAutotuneVariables ().size () > 0)
@@ -562,7 +567,7 @@ public class CodeGenerator
 		// add a function that selects the right unrolling configuration based on a command line parameter
 		NameID nidCodeVariants = new NameID (StringUtil.concat ("g_rgCodeVariants", m_nCodeVariantsCount++));
 		if (m_data.getArchitectureDescription ().useFunctionPointers ())
-			proc.getTranslationUnit ().addDeclaration (CodeGenerator.createCodeVariantFnxPtrArray (nidCodeVariants, listStencilFunctions, proc.getParams ()));
+			proc.getKernelSourceFile ().getTranslationUnit ().addDeclaration (CodeGenerator.createCodeVariantFnxPtrArray (nidCodeVariants, listStencilFunctions, proc.getParams ()));
 
 		// build the function parameter list: same as for the stencil functions, but with additional parameters for the code selection
 		List<Identifier> listSelectors = new ArrayList<> ();
@@ -580,7 +585,7 @@ public class CodeGenerator
 			rgSelectorsCount[i++] = nValue;
 
 		// add the function call
-		proc.addProcedureDeclaration (
+		Procedure procedureExported = proc.addProcedureDeclaration (
 			m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL),
 			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (
 				true, bIncludeAutotuneParameters, bIncludeAutotuneParameters, bIsFortranCompatible),
@@ -594,6 +599,8 @@ public class CodeGenerator
 			true,
 			bIncludeStencilCommentAnnotation
 		);
+		
+		proc.getKernelSourceFile ().addExportProcedure (procedureExported);
 	}
 	
 	protected void createUnparametrizedProxyFunction (GeneratedProcedure proc, List<String> listStencilFunctions,
@@ -648,13 +655,15 @@ public class CodeGenerator
 		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
 		//listSpecs.add (Specifier.INLINE);
 		
-		proc.addProcedureDeclaration (
+		Procedure procedureExported = proc.addProcedureDeclaration (
 			listSpecs,
 			m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (bIncludeOutputGrids, false, false, bIsFortranCompatible),
 			cmpstmtFnxCall,
 			false,
 			bIncludeStencilCommentAnnotation
 		);
+		
+		proc.getKernelSourceFile ().addExportProcedure (procedureExported);
 	}
 	
 	/**

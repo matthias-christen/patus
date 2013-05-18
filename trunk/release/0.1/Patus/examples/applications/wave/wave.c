@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "wave.h"
+#include "utils.h"
 
 // Include header files which will be created after running Patus
 // (cf. Makefile)

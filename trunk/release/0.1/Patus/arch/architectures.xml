@@ -438,9 +438,8 @@
 	<architectureType  name="NVIDIA CUDA">
 		<codegenerator src-suffix="cu" backend="CUDA4" use-function-pointers="false"/>
 		<parallelism>
-			<!--
 			<level hasExplicitLocalDataCopy="true" asyncIO="false"/>
-			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>-->
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
 
 			<level number="1" name="ThreadBlock" has-explicit-local-datacopy="false" async-IO="false"/>
 			<level number="2" name="Thread" has-explicit-local-datacopy="false" async-IO="false">

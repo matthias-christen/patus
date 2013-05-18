@@ -10,12 +10,10 @@ define run-patus
 	
 	@echo Copying the generated kernel.c file to the main directory and rename appropriately...
 	cp $(<:.stc=)/kernel.c $@
+	cp $(<:.stc=)/kernel.h $(@:c=h)
 	
 	@echo Copying the header files...
 	cp $(<:.stc=)/*.h .
-	
-	@echo Creating a header file containing forward declarations to the generated kernel functions...
-	grep "void \w\+\s*(.*)" $@ | sed s/$$/\;/g > $(@:c=h)
 	
 	@echo Running the auto-tuner...
 	make --directory=$(<:.stc=)

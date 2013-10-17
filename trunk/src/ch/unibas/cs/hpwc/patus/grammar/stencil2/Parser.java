@@ -1157,7 +1157,7 @@ public class Parser {
 			else { 
 			String strIndexedIdentifier = m_au.getIndexedIdentifier (strIdentifier, rgIdx); 
 			litValue = getConstantValue (strIndexedIdentifier); 
-			if (litValue != null) exprParam = litValue; 
+			if (litValue != null) exprParam = litValue; else exprParam = new NameID (strIndexedIdentifier); 
 			} 
 		}
 		if (rgIdx == null && !(exprParam instanceof FloatLiteral) && !(exprParam instanceof IntegerLiteral) && !bIsDecl && (lv == null || !lv.hasVariable (strIdentifier))) 

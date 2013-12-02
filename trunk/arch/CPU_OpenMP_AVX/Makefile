@@ -5,7 +5,15 @@
 # required runtime files by Patus.
 #
 
-CC = gcc
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S), Darwin)
+	CC = /usr/local/bin/gcc
+	GNUPLOT = /Applications/Gnuplot.app/Contents/Resources/bin/gnuplot
+else
+	CC = gcc
+	GNUPLOT = gnuplot
+endif
+
 CFLAGS = -O3 -g -mavx -fopenmp -I.
 
 
@@ -20,7 +28,7 @@ $(PATUS_TEST_NONAUTOTUNE_EXE_PARAMS)
 	$(PATUS_AUTOTUNER) bench $(PATUS_EXE_PARAMS) | tee `date +tune_%F_%H.%M.%S.txt`
 
 plot:
-	for f in *.data; do echo "set term png; set view map; splot \"$$f\" matrix with image" | gnuplot > $${f%.data}.png; done
+	for f in *.data; do echo "set term png; set view map; splot \"$$f\" matrix with image" | $(GNUPLOT) > $${f%.data}.png; done
 
 clean:
 	rm -rf *.o bench

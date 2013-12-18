@@ -899,6 +899,59 @@
 		<build compiler-command="make" harness-template-dir="MIC_OpenMP"/>
 	</architectureType>
 
+<architectureType name="INTELXEONPHI">
+		<codegenerator src-suffix="c" backend="INTELXEONPHI" use-function-pointers="true"/>
+		<parallelism>
+			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
+				<barrier type="pragma" implementation="omp barrier"/>
+			</level>
+		</parallelism>
+		<datatypes>
+			<!-- declare MIC 512-bit vector datatypes -->
+			<!-- restrict alignment to 64 bytes -->
+			<datatype basetype="float" name="__m512" simd-vector-length="16" width="512" alignment="64"/>
+			<datatype basetype="double" name="__m512d" simd-vector-length="8" width="512" alignment="64"/>
+		</datatypes>
+		<declspecs>
+			<declspec type="restrictedpointer" specifiers="__restrict__"/>
+		</declspecs>
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			<intrinsic base-name="unary_minus" name="_mm512_neg_pd" datatype="__m512d"/>
+			<intrinsic base-name="plus" name="_mm512_add_pd" datatype="__m512d"/>
+			<intrinsic base-name="minus" name="_mm512_sub_pd" datatype="__m512d"/>
+			<intrinsic base-name="multiply" name="_mm512_mul_pd" datatype="__m512d"/>
+			<intrinsic base-name="divide" name="_mm512_div_pd" datatype="__m512d"/>
+			<intrinsic base-name="sqrt" name="_mm512_sqrt_pd" datatype="__m512d"/>
+			<intrinsic base-name="min" name="_mm512_min_pd" datatype="__m512d"/>
+			<intrinsic base-name="max" name="_mm512_max_pd" datatype="__m512d"/>
+			<intrinsic base-name="fma" name="_mm512_fmadd_pd" datatype="__m512d" arguments="factor1,factor2,summand"/>
+			<intrinsic base-name="fms" name="_mm512_fmsub_pd" datatype="__m512d" arguments="factor1,factor2,summand"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			<intrinsic base-name="unary_minus" name="_mm512_neg_ps" datatype="__m512"/>
+			<intrinsic base-name="plus" name="_mm512_add_ps" datatype="__m512"/>
+			<intrinsic base-name="minus" name="_mm512_sub_ps" datatype="__m512"/>
+			<intrinsic base-name="multiply" name="_mm512_mul_ps" datatype="__m512"/>
+			<intrinsic base-name="divide" name="_mm512_div_ps" datatype="__m512"/>
+			<intrinsic base-name="sqrt" name="_mm512_sqrt_ps" datatype="__m512"/>
+			<intrinsic base-name="min" name="_mm512_min_ps" datatype="__m512"/>
+			<intrinsic base-name="max" name="_mm512_max_ps" datatype="__m512"/>
+			<intrinsic base-name="fma" name="_mm512_fmadd_ps" datatype="__m512" arguments="factor1,factor2,summand"/>
+			<intrinsic base-name="fms" name="_mm512_fmsub_ps" datatype="__m512" arguments="factor1,factor2,summand"/>
+			
+			<!-- non-arithmetic intrinsics -->
+		</intrinsics>
+		<includes>
+			<include file="omp.h"/>
+			<include file="immintrin.h"/>
+			<include file="zmmintrin.h"/>
+			<include file="math.h"/>
+		</includes>
+		<build compiler-command="make" harness-template-dir="MIC_OpenMP"/>
+	</architectureType>
+
+
 	<!-- NVIDIA CUDA GPU -->
 	<architectureType name="NVIDIA CUDA">
 		<codegenerator src-suffix="cu" backend="CUDA" use-function-pointers="false"/>

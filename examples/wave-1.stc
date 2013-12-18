@@ -4,7 +4,7 @@ stencil wave (
 	float param fDX = 2 / (x_max-3),
 	float param fDT_DX_sq = 0.25)
 {
-	iterate while t < 1;
+	iterate while t < 5;
 	domainsize = (2 .. x_max-3, 2 .. y_max-3, 2 .. z_max-3);
   
 	initial

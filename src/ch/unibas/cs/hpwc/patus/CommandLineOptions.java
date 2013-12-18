@@ -72,6 +72,11 @@ public class CommandLineOptions
 		m_options.set (options.getOptions ());
 	}
 
+	/**
+	 * Parse the comandline options an set the coresponding fields.
+	 * @param args Comandlinearguments
+	 * @param bIsCommandLineArgument
+	 */
 	public void parse (String[] args, boolean bIsCommandLineArgument)
 	{
 		Matcher matcher = null;
@@ -145,6 +150,10 @@ public class CommandLineOptions
 				m_options.setValidationTolerance (Double.parseDouble (strValue));
 			else if ("debug".equals (strOption))
 				m_options.setDebugOptions (strValue.split (","));
+			
+			//Option to build code which run natively on the Mic or use the Offload symantics
+			else if ("build-native-Mic".equals (strOption))
+				m_options.setNativeMic (strValue.equals("yes"));
 		}
 
 		if (m_fileOutDir == null)
@@ -159,7 +168,10 @@ public class CommandLineOptions
 				throw new RuntimeException (StringUtil.concat ("Could not find hardware '", m_strArchName, "'"));
 		}
 	}
-
+	/**
+	 * Print a help message for the use of Patus and its commandlines.
+	 * 
+	 */
 	public static void printHelp ()
 	{
 		System.out.println ("Usage: Patus codegen[-x]");
@@ -280,6 +292,11 @@ public class CommandLineOptions
 		System.out.println ("              print-validation-errors  Prints all values if the validation fails.");
 		System.out.println ("                                       The option is ignored if no validation code");
 		System.out.println ("                                       is generated.");
+		System.out.println ("--build_native_Mic={yes|no}");
+		System.out.println ("              Specifies whether to create code that will natively run on the Mic or use the offload pragma.");
+		System.out.println ("              If <Target> is not the Intel Xeon Phi, this option will be ignored.");
+		System.out.println ("              Defaults to \"yes\".");
+		System.out.println ();
 	}
 
 	public final File getStencilFile ()

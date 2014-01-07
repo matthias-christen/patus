@@ -1,7 +1,7 @@
 /**
  * DISCLAIMER:
- * The generated code was not tested on actual Xeon Phi (MIC) devices and may be erroneous.
- * For now, only native (no-offload) executables are built, which are to be run directly on the co-processor.
+ * This file is currently worked on an can contain errors
+ * Here Offload code will be produeced
  */
  
 #include <stdio.h>

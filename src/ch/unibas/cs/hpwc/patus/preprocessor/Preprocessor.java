@@ -108,6 +108,7 @@ public class Preprocessor
 		for ( ; ; )
 		{
 			String strLine = in.readLine ();
+			
 			if (strLine == null)
 				break;
 

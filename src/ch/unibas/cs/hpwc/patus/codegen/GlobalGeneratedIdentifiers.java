@@ -448,8 +448,9 @@ public class GlobalGeneratedIdentifiers
 	}
 
 	/**
-	 *
-	 * @return
+	 *Generates Initialize Function Declaration with Specifiers.
+	 * 
+	 * @return VariableDeclaration
 	 */
 	public VariableDeclaration getInitializeFunctionDeclaration (CodeGenerationOptions.ECompatibility compatibility)
 	{
@@ -459,7 +460,7 @@ public class GlobalGeneratedIdentifiers
 		List<Specifier> listSpecs = new ArrayList<> ();
 		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
 		listSpecs.add (Specifier.VOID);
-
+		
 		return new VariableDeclaration (
 			listSpecs,
 			new ProcedureDeclarator (
@@ -500,7 +501,6 @@ public class GlobalGeneratedIdentifiers
 		List<Specifier> listSpecs = new ArrayList<> ();
 		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
 		listSpecs.add (Specifier.VOID);
-
 		// if Fortran-compatibility mode is turned on, don't include the output grids in the stencil kernel declaration
 		boolean bIsFortranCompatible = compatibility == CodeGenerationOptions.ECompatibility.FORTRAN;
 		List<Variable> listVariables = getVariables (

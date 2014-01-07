@@ -189,4 +189,5 @@ public class IntelXeonCodeGenerator extends OpenMPCodeGenerator
 	{
 		return createOffloadPragma ("nocopy", false, true);
 	}
+	
 }

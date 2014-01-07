@@ -80,6 +80,8 @@ public class Specifier implements Printable
   public static final Specifier CBOOL    = new Specifier(37);
   public static final Specifier CCOMPLEX  = new Specifier(38);
   public static final Specifier CIMAGINARY  = new Specifier(39);
+
+
  
   /** Predefined integer value of each specifiers. */
   protected int value;

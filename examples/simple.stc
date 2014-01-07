@@ -6,9 +6,7 @@ stencil wave (
   
 	initial
 	{
-		
 		U[x; 0] = 1;
-		U[x; 1] = 0;
 	}
 
 	operation

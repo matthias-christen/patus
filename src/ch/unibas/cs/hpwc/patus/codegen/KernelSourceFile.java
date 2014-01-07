@@ -96,7 +96,7 @@ public class KernelSourceFile
 				out.println (strAdditionalKernelSpecificCode);
 				out.println ();
 			}
-
+			
 			m_unit.print (out);
 			out.flush ();
 		}

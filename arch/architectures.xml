@@ -913,6 +913,7 @@
 			<datatype basetype="double" name="__m512d" simd-vector-length="8" width="512" alignment="64"/>
 		</datatypes>
 		<declspecs>
+			<declspec type="kernel" specifiers="__attribute__ ((target (mic)))"/>
 			<declspec type="restrictedpointer" specifiers="__restrict__"/>
 		</declspecs>
 		<intrinsics>

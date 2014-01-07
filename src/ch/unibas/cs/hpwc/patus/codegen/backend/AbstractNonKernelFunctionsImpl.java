@@ -317,7 +317,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 			sl.addDeclaration (declInit.clone ());
 		if (declStencil != null)
 			sl.addDeclaration (declStencil.clone ());
-
+		
 		return sl;
 	}
 
@@ -344,7 +344,6 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 					if (decl != null)
 					{
 						sl.addDeclaration (decl);
-
 						// declare additional grids for validation
 						if (m_data.getOptions ().getCreateValidationCode ())
 						{
@@ -356,6 +355,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 				}
 			}
 		}
+		
 
 		// parse the command line
 		StatementList slParseCmdLine = parseCommandLine ();

@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import cetus.hir.Annotation;
 import cetus.hir.AnnotationStatement;
 import cetus.hir.ArrayAccess;
 import cetus.hir.ArraySpecifier;
@@ -31,6 +32,7 @@ import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.BreakStatement;
 import cetus.hir.Case;
+import cetus.hir.CodeAnnotation;
 import cetus.hir.CommentAnnotation;
 import cetus.hir.CompoundStatement;
 import cetus.hir.Declaration;
@@ -45,7 +47,10 @@ import cetus.hir.Initializer;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.NestedDeclarator;
+import cetus.hir.NewExpression;
 import cetus.hir.PointerSpecifier;
+import cetus.hir.PragmaAnnotation;
+import cetus.hir.PreAnnotation;
 import cetus.hir.Procedure;
 import cetus.hir.ProcedureDeclarator;
 import cetus.hir.SizeofExpression;
@@ -288,8 +293,9 @@ public class CodeGenerator
 
 		CompoundStatement cmpstmtStrategyKernelThreadBody = m_cgThreadCode.generate (m_data.getStrategy ().getBody (), optionsStencil);
 		m_data.getData ().capture ();
-
+		
 		StatementListBundle slbThreadBody = new SingleThreadCodeGenerator (m_data).generate (cmpstmtStrategyKernelThreadBody, optionsStencil);
+		
 		addAdditionalDeclarationsAndAssignments (slbThreadBody, optionsStencil);
 		
 		return slbThreadBody;
@@ -298,6 +304,8 @@ public class CodeGenerator
 	private StatementListBundle createInitializationCode (List<KernelSourceFile> listOutputs)
 	{
 		StatementListBundle slbInitializationBody = null;
+		
+		
 		
 		boolean bCreateInitialization = false;
 		for (KernelSourceFile out : listOutputs)
@@ -373,9 +381,9 @@ public class CodeGenerator
 		for (Declaration decl : m_data.getData ().getGlobalDeclarationsToAdd ())
 		{
 			VariableDeclarator declarator = (VariableDeclarator) decl.getChildren ().get (0);
-			if (HIRAnalyzer.isReferenced (new Identifier (declarator), trvContext))
+			if (HIRAnalyzer.isReferenced (new Identifier (declarator), trvContext)){
 				unit.addDeclaration (decl);
-		}
+		}}
 	}
 
 	/**
@@ -431,9 +439,10 @@ public class CodeGenerator
 	{
 		// if necessary, add the pointer initializers
 		setBaseMemoryObjectInitializers ();
-
+		
 		// add the additional declarations to the code
-		List<Statement> listDeclarationsAndAssignments = new ArrayList<> (m_data.getData ().getNumberOfDeclarationsToAdd ());
+		List<Statement> listDeclarationsAndAssignments = new ArrayList<> (m_data.getData ().getNumberOfDeclarationsToAdd ()+1);
+				
 		for (Declaration decl : m_data.getData ().getDeclarationsToAdd ())
 			listDeclarationsAndAssignments.add (new DeclarationStatement (decl));
 
@@ -461,9 +470,18 @@ public class CodeGenerator
 		
 		listDeclarationsAndAssignments.add (new AnnotationStatement (new CommentAnnotation ("Implementation")));
 
-		// add the statements at the top
+		// Segment of Code for generateing code which runs on the Mic (Surounding the funciton)
 		slbCode.addStatementsAtTop (listDeclarationsAndAssignments);
 
+		if(!m_data.getOptions().getNativeMic()){
+		//TODO DIRECTIVE ENDE
+			slbCode.addStatementAtTop(new AnnotationStatement(new CodeAnnotation("#ifdef __MIC__")));
+			slbCode.addStatement(new AnnotationStatement(new CodeAnnotation("#else")));
+			slbCode.addStatement(new AnnotationStatement(new CodeAnnotation("\t printf(\"ERROR not executing on the MIC\");")));
+			slbCode.addStatement(new AnnotationStatement(new CodeAnnotation("#endif")));
+		}
+		
+		
 		// add statements at bottom: assign the output grid to the kernel's output argument
 		/*
 		if (bAreBaseMemoryObjectsReferenced)

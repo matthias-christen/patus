@@ -100,7 +100,8 @@ public class ThreadCodeGenerator
 		{
 			// add the strategy code as a comment
 			if (!(t instanceof DeclarationStatement))
-				CodeGeneratorUtil.addComment (cmpstmtOutput, t.toString ());
+			//	CodeGeneratorUtil.addComment (cmpstmtOutput, t.toString ());
+		
 
 			// add the code
 			if (t instanceof RangeIterator)

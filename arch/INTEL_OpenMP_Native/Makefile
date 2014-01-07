@@ -12,10 +12,10 @@ CC = icc
 CFLAGS = -O3 -mmic -fno-alias -fno-fnalias -g -openmp -I.
 
 bench: kernel.o driver.o util.o timer.o
-        $(CC) $(CFLAGS) -o $@ $+
+	$(CC) $(CFLAGS) -o $@ $+
 
 %.o: %.c
-        $(CC) $(CFLAGS) -c -o $@ $<
-        
+	$(CC) $(CFLAGS) -c -o $@ $<
+    
 clean:
-        rm -rf *.o bench
+	rm -rf *.o bench

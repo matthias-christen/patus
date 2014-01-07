@@ -1,0 +1,9 @@
+Patus Syntax Highlighting for vim
+
+Copy the files
+	patus_stencil.vim
+	patus_strategy.vim
+into $HOME/.vim/syntax
+and
+	patus_filetypes.vim
+into $HOME/.vim/ftdetect

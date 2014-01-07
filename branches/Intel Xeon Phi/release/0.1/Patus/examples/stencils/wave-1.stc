@@ -1,0 +1,33 @@
+stencil wave (
+	float grid U(0 .. x_max-1, 0 .. y_max-1, 0 .. z_max-1), 
+	float param fMin,
+	float param fDX,
+	float param fDT_DX_sq)
+{
+	iterate while t < 1;
+	domainsize = (2 .. x_max-3, 2 .. y_max-3, 2 .. z_max-3);
+  
+	initial
+	{
+		// Initialize the timesteps (initially, t=0, so, with respect to the
+		// stencil definition in the "operation" we need to initialize for t=-1,0,1).
+		// Note that we can use the symbol π.
+		U[x, y, z; -1] = sinf (2*π * ((x-1) * fDX + fMin)) * sinf (2*π * ((y-1) * fDX + fMin)) * sinf (2*π * ((z-1) * fDX + fMin));
+		U[x, y, z; 0] = U[x, y, z; -1];
+		U[x, y, z; 1] = 0;
+	}
+
+	operation
+	{
+		// Define some constants which will be used in the computation.
+		// Patus will recognize these as constants and do the initialization
+		// before the compute loop.
+		float c1 = 2 - 15/2 * fDT_DX_sq;
+		float c2 = 4/3 * fDT_DX_sq;
+		float c3 = -1/12 * fDT_DX_sq;
+				
+		U[x, y, z; t+1] = c1 * U[x, y, z; t] - U[x, y, z; t-1] +
+			c2 * (U[x+1, y, z; t] + U[x-1, y, z; t] + U[x, y+1, z; t] + U[x, y-1, z; t] + U[x, y, z+1; t] + U[x, y, z-1; t]) +
+			c3 * (U[x+2, y, z; t] + U[x-2, y, z; t] + U[x, y+2, z; t] + U[x, y-2, z; t] + U[x, y, z+2; t] + U[x, y, z-2; t]);	            
+	}
+}

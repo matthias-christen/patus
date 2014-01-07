@@ -1,0 +1,76 @@
+%From: Damian.Cugley@prg.oxford.ac.uk (Damian Cugley)
+%Subject: Re: Styles for lispcode and grammars wanted...
+%Date: 11 Jul 90 18:34:23 GMT
+% 
+%Here's one I threw together for my own use.  It does EBNF, in LaTeX, in
+%the style I like - catagory names italicized in angle brackets, and
+%`::=' introducing productions.
+% 
+%Example of use:
+%------------------------------------------------------------------------
+%Generally glue is quoted using this notation~\TBcite[\p271]:
+%\begin{EBNF}
+%    \item[glue]
+%	\<dimen> [~`plus' \<stretch>~] [~`minus' \<stretch>~].
+%    \item[stretch]
+%	\<dimen> | \<fil dimen>.
+%    \item[fil dimen] 
+%	\<factor> (~`fil' | `fill' | `filll'~).
+%\end{EBNF}
+%A \<stretch> which is a \<dimen> ...
+%------------------------------------------------------------------------
+% 
+%This is "list" environment in the style of "description" etc (Sec. 5.7).
+%Thus, productions start with 
+% 
+%	\item[LHS]
+%  
+%which produces   
+% 
+%	<LHS> ::=
+% 
+%in the document.  (This was so I can alter the ::= to something else if
+%I really want to.)  Each production is in LR (horizontal) mode.  The
+%whole thing is indented to \parindent, with turnover lines indented a
+%further 2 em.
+% 
+%`|' produces a vertical line.  
+% 
+%\<FOO> or \Cat{FOO} produces <FOO>, with FOO italicized.  
+% 
+%You might prefer  {\tt plus}  instead of  `plus'  etc.
+% 
+% 
+%Here's the code:
+%------------------------------------------------------------------------
+% Damian Cugley <Damian.Cugley@prg.oxford.ac.uk> Wed 11 Jul 1990
+ 
+\begingroup \catcode`\|=13
+    \gdef\EBNF
+    {\list{???}%
+      {%
+	\catcode`\|=13 \def|{$\mid$}%
+	\def\makelabel##1{\<##1> ::=}%
+	\parsep=0pt \itemsep=\smallskipamount
+	\leftmargin=\parindent \advance\leftmargin+2em
+	\labelsep=0.5em \labelwidth=1.5em
+	\raggedright
+      }%
+    }
+\endgroup
+ 
+\let\endEBNF\endlist
+ 
+\def\Cat#1{\ifmmode%
+\hbox{$\langle${\textit{#1\/}}$\rangle$}\else
+{$\langle$\penalty10000{\textit{#1\/}}\penalty10000$\rangle$}\fi}
+\def\<#1>{\Cat{#1}}
+%\def\({$\big($}
+%\def\){$\big)$}
+\endinput
+------------------------------------------------------------------------
+ 
+ /--------------------------------------------------------------------\
+ | Damian Cugley, Programming Research Group, 11 Keble Rd, Oxford, UK |
+ | Damian.Cugley@prg.oxford.ac.uk  =or=  ...@oxford.prg in UK         |
+ \--------------------------------------------------------------------/

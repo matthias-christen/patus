@@ -1,0 +1,6 @@
+Patus Syntax Highlighting for gedit
+
+Copy the files
+	stc.lang
+	stg.lang
+into $HOME/.local/share/gtksourceview-3.0/language-specs

@@ -1,0 +1,16 @@
+stencil gradient (
+	const double grid V(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+	double grid Ux(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+	double grid Uy(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+	double grid Uz(0 .. x_max+1, 0 .. y_max+1, 0 .. z_max+1),
+	double param alpha, double param beta, double param gamma)
+{
+	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+
+	operation
+	{
+		Ux[x, y, z; t] = alpha * (V[x+1, y, z] - V[x-1, y, z]);
+		Uy[x, y, z; t] = beta  * (V[x, y+1, z] - V[x, y-1, z]);
+		Uz[x, y, z; t] = gamma * (V[x, y, z+1] - V[x, y, z-1]);
+	}
+}

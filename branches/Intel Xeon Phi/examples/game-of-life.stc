@@ -1,0 +1,19 @@
+stencil game_of_life
+{
+    domainsize = (1 .. width, 1 .. height);
+    t_max = 100;
+    
+    operation (float grid u)
+    {
+    	// some large number
+    	float C = 100000000000000000000;
+    	
+    	// count the number of live neighbors
+    	float L = u[x - 1, y - 1; t] + u[x, y - 1; t] + u[x + 1, y - 1; t] +
+    	          u[x - 1, y    ; t] +                  u[x + 1, y    ; t] +
+    	          u[x - 1, y + 1; t] + u[x, y + 1; t] + u[x + 1, y + 1; t]; 
+ 
+ 		// apply the rules   	
+        u[x, y; t+1] = 1 / (1 + (u[x, y; t] + L - 3) * (L - 3) * C);
+	}
+}

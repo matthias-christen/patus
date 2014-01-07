@@ -1,0 +1,38 @@
+\changetocdepth {2}
+\changetocdepth {2}
+\contentsline {chapter}{Contents}{i}{section*.1}
+\contentsline {chapter}{\chapternumberline {1}A \textsc {Patus} Walkthrough Example}{3}{chapter.1}
+\contentsline {section}{\numberline {1.1}From a Model to a Stencil}{3}{section.1.1}
+\contentsline {section}{\numberline {1.2}Generating The Code}{5}{section.1.2}
+\contentsline {section}{\numberline {1.3}Running and Tuning}{6}{section.1.3}
+\contentsline {chapter}{\chapternumberline {2}\textsc {Patus} Usage}{11}{chapter.2}
+\contentsline {section}{\numberline {2.1}Code Generation}{11}{section.2.1}
+\contentsline {section}{\numberline {2.2}Auto-Tuning}{13}{section.2.2}
+\contentsline {chapter}{\chapternumberline {3}Integrating into User Code}{17}{chapter.3}
+\contentsline {chapter}{\chapternumberline {4}Alternate Entry Points to \textsc {Patus}}{19}{chapter.4}
+\contentsline {chapter}{\chapternumberline {5}More Details on \textsc {Patus} Stencil Specifications}{21}{chapter.5}
+\contentsline {chapter}{\chapternumberline {6}Strategies and Hardware Architectures}{25}{chapter.6}
+\contentsline {section}{\numberline {6.1}A Cache Blocking Strategy}{25}{section.6.1}
+\contentsline {section}{\numberline {6.2}Independence of the Stencil}{27}{section.6.2}
+\contentsline {section}{\numberline {6.3}Independence of the Hardware Architecture}{29}{section.6.3}
+\contentsline {section}{\numberline {6.4}Examples of Generated Code}{30}{section.6.4}
+\contentsline {chapter}{\chapternumberline {7}Current Limitations}{33}{chapter.7}
+\contentsline {chapter}{Bibliography}{35}{section*.4}
+\contentsline {appendix}{\chapternumberline {A}\textsc {Patus} Grammars}{39}{appendix.A}
+\contentsline {section}{\numberline {A.1}Stencil DSL Grammar}{39}{section.A.1}
+\contentsline {section}{\numberline {A.2}Strategy DSL Grammar}{40}{section.A.2}
+\contentsline {appendix}{\chapternumberline {B}Stencil Specifications}{43}{appendix.B}
+\contentsline {section}{\numberline {B.1}Basic Differential Operators}{43}{section.B.1}
+\contentsline {subsection}{\numberline {B.1.1}Laplacian}{43}{subsection.B.1.1}
+\contentsline {subsection}{\numberline {B.1.2}Divergence}{43}{subsection.B.1.2}
+\contentsline {subsection}{\numberline {B.1.3}Gradient}{44}{subsection.B.1.3}
+\contentsline {section}{\numberline {B.2}Wave Equation}{44}{section.B.2}
+\contentsline {section}{\numberline {B.3}COSMO}{45}{section.B.3}
+\contentsline {subsection}{\numberline {B.3.1}Upstream}{45}{subsection.B.3.1}
+\contentsline {subsection}{\numberline {B.3.2}Tricubic Interpolation}{45}{subsection.B.3.2}
+\contentsline {section}{\numberline {B.4}Hyperthermia}{46}{section.B.4}
+\contentsline {section}{\numberline {B.5}Anelastic Wave Propagation}{46}{section.B.5}
+\contentsline {subsection}{\numberline {B.5.1}uxx1}{46}{subsection.B.5.1}
+\contentsline {subsection}{\numberline {B.5.2}xy1}{47}{subsection.B.5.2}
+\contentsline {subsection}{\numberline {B.5.3}xyz1}{48}{subsection.B.5.3}
+\contentsline {subsection}{\numberline {B.5.4}xyzq}{50}{subsection.B.5.4}

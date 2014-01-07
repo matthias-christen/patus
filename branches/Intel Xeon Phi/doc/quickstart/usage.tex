@@ -1,0 +1,518 @@
+\section{Using \textsc{Patus}}
+
+\subsection{A Walkthrough Example}
+\label{sec:wave}
+
+In \textsc{Patus}, the user specifies the actual stencil computation.
+Thus, if the tool is to be used to solve differential equations using a finite difference-based
+discretization method, the discretization needs to be done prior to the implementation in \textsc{Patus}.
+In the following, we show briefly how this can be done by means of a simple example.
+
+
+\subsubsection{From a Model to a Stencil Specification}
+
+Consider the classical wave equation\index{wave equation} on $\Omega=[-1,1]^3$ with Dirichlet boundary conditions and some initial condition:
+\begin{align}
+  \frac{\partial^2 u}{\partial t^2} - c^2 \Delta u & = 0 \qquad \text{in }\Omega, \nonumber \\
+  u & = 0 \qquad \text{on }\partial\Omega, \\
+  u(x,y,z)|_{t=0} & = \sin(2\pi x) \sin(2\pi y) \sin (2\pi z). \nonumber
+  \label{eq:wave}
+\end{align}
+
+Using an explicit finite difference method to discretize the equation both in space and time
+by means of a fourth-order discretization of the Laplacian $\Delta$ over an equidistant spatial grid with stepsize $h$
+and a second-order scheme with time step $\delta t$ in time, we obtain
+\begin{equation}
+	\label{eq:wave-discrete}
+	\frac{u^{(t+\delta t)}-2u^{(t)}+u^{(t-\delta t)}}{\delta t} - c^2 \Delta_h u^{(t)} = 0,
+\end{equation}
+where $\Delta_h$ is the discretized version of the Laplacian:
+\begin{align}
+  \label{eq:wave-discrete-laplacian}
+  \Delta_h u^{(t)}(x,y,z) = -\tfrac{15}{2h^2} & u^{(t)}(x,y,z) + \\
+    -\tfrac{1}{12h^2} & \left(u^{(t)}(x-2h,y,z) + u^{(t)}(x,y-2h,z) + u^{(t)}(x,y,z-2h) \right) + \nonumber \\
+     \tfrac{4}{3h^2}  & \left(u^{(t)}(x-h,y,z)  + u^{(t)}(x,y-h,z)  + u^{(t)}(x,y,z-h)  \right) + \nonumber \\                     
+     \tfrac{4}{3h^2}  & \left(u^{(t)}(x+h,y,z)  + u^{(t)}(x,y+h,z)  + u^{(t)}(x,y,z+h)  \right) + \nonumber \\
+    -\tfrac{1}{12h^2} & \left(u^{(t)}(x+2h,y,z) + u^{(t)}(x,y+2h,z) + u^{(t)}(x,y,z+2h) \right).  \nonumber
+\end{align}
+Substituting Eqn. \ref{eq:wave-discrete-laplacian} into Eqn. \ref{eq:wave-discrete},
+solving Eqn. \ref{eq:wave-discrete} for $u^{(t+\delta t)}$, and interpreting $u$ as a grid in space and time with mesh size $h$
+and time step $\delta t$, we arrive at
+\begin{align*}
+  u[x,y,z;t+1] =  2 & u[x,y,z;t] - u[x,y,z;t-1] + c^2\tfrac{\delta t}{h^2} \Big( -\tfrac{15}{2} u[x,y,z;t] + \\
+    -\tfrac{1}{12}& \left(u[x-2,y,z;t] + u[x,y-2,z;t] + u[x,y,z-2;t] \right) + \\
+     \tfrac{4}{3}  & \left(u[x-1,y,z;t] + u[x,y-1,z;t] + u[x,y,z-1;t] \right) + \\                     
+     \tfrac{4}{3}  & \left(u[x+1,y,z;t] + u[x,y+1,z;t] + u[x,y,z+1;t] \right) + \\
+    -\tfrac{1}{12}& \left(u[x+2,y,z;t] + u[x,y+2,z;t] + u[x,y,z+2;t] \right) \!\!\Big).
+\end{align*}
+This can now be turned into a \textsc{Patus} stencil specification almost trivially:
+
+\begin{lstlisting}[language=stencil]
+stencil wave(
+  float grid U(0..x_max-1, 0..y_max-1, 0..z_max-1), 
+  float param fMin = -1,
+  float param fDX = 2 / (x_max-3),
+  float param fDT_DX_sq = 0.25)
+{
+  // do one timestep within the stencil kernel
+  iterate while t < 1;
+  
+  // define the region on which the stencil is evaluated
+  domainsize = (2..x_max-3, 2..y_max-3, 2..z_max-3);
+  
+  // define the initial condition (how the data is initialized
+  // before the computation)
+  // note that 0 <= x < x_max, etc.
+  initial {
+    U[x,y,z; -1] = sinf(2*~$\pi$~*((x-1)*fDX+fMin)) *
+      sinf(2*~$\pi$~*((y-1)*fDX+fMin)) * sinf(2*~$\pi$~*((z-1)*fDX+fMin));
+    U[x, y, z; -1 :
+      x==0 || y==0 || z==0 || x==x_max-1 || y==y_max-1 || z==z_max-1 ] = 0;
+    U[x,y,z; 0] = U[x,y,z; -1];
+    U[x,y,z; 1] = 0;
+  }
+
+  // define the actual stencil computation
+  operation {
+    float c1 = 2 - 15/2 * fDT_DX_sq;
+    float c2 = 4/3 * fDT_DX_sq;
+    float c3 = -1/12 * fDT_DX_sq;
+    
+    U[x,y,z; t+1] = c1 * U[x,y,z; t] - U[x,y,z; t-1] +
+      c2 * (
+        U[x+1,y,z; t] + U[x-1,y,z; t] +
+        U[x,y+1,z; t] + U[x,y-1,z; t] +
+        U[x,y,z+1; t] + U[x,y,z-1; t]
+      ) +
+      c3 * (
+        U[x+2,y,z; t] + U[x-2,y,z; t] +
+        U[x,y+2,z; t] + U[x,y-2,z; t] +
+        U[x,y,z+2; t] + U[x,y,z-2; t]
+      );
+  }
+}
+\end{lstlisting}
+
+\noindent From this stencil specification, \textsc{Patus} will generate
+\begin{itemize}
+  \item a C source code file implementing the stencil computation and
+  \item source files from which a benchmarking harness can be built.
+\end{itemize}
+The benchmarking executable is then used by the auto-tuner, which determines a set of
+architecture-specific parameters, for which the stencil achieves the best performance.
+
+
+\subsubsection{The Specification Explained}
+
+\begin{itemize}
+  \item The \textbf{stencil} specification defines a stencil ``wave,'' which operates on a grid (called ``U'')
+    of size $[$0, x\_max-1$] \times [$0, y\_max-1$] \times [$0,z\_max-1$]$.
+    Note that the size parameters do not have to be defined in the stencil specification.
+    Instead, they will appear as arguments to the generated stencil kernel function, and, in the
+    benchmarking harness, as command line arguments.
+    
+    The remaining arguments, ``fMin,'' ``fDX,'' and ``fDT\_DX\_sq,'' are used for initializing the grid
+    and performing the stencil computation. These parameters will also appear as arguments to the generated
+    C function implementing the computation.
+
+    Optionally, parameters can be initialized with default
+    values (as shown in the listing above). This affects only the benchmarking harness and will fix the
+    values which are passed to the generated stencil kernel.
+
+  \item The \textbf{iterate while} statement defines the number of timesteps to be performed within one stencil kernel call.
+    In the example, one timestep per kernel invocation will be performed. (Timesteps are counted from 0.)
+    The statement can be omitted. Then, the number of timesteps defaults to 1.
+    In the future we will also allow (reduction-based) convergence criteria (e.g., ``iterate as long as the residual is
+    larger than some $\varepsilon$'').
+    
+  \item The \textbf{domainsize} defines the iteration space. While the total size of the grid extends from 0 to $\ast$\_max-1,
+    the stencil is only applied to the points between 2 and $\ast$\_max-3 ($\ast \in \{$x, y, z$\}$), i.e., only
+    to the \emph{interior} grid points.
+    
+  \item The \textbf{initial} block defines how the grid is initialized, or more mathematically: it defines the initial condition
+    of the (discretized) PDE. The ``sinf'' function is actually a C function (single precision sine)
+    which will be called (this is the behavior
+    if there is a function which is not known to \textsc{Patus}).
+    Note that \textsc{Patus} also defines the $\pi$ literal with the obvious meaning.\\
+    The second statement of the initialization sets all the grid points for which x, y, z are 0 or $\ast$\_max-1
+    (the condition after colon) to zero. I.e., you can use the set builder notation (with any logical and comparison operators you know from C/C++)
+    to select certain grid points and initialize them.\\
+    \textbf{initial} blocks are not mandatory; if no \textbf{initial} is provided, \textsc{Patus} will create an initialization
+    routine anyway, initializing the data with arbitrary values. (This is to ensure the correct data placement on NUMA machines.)
+    
+  \item The \textbf{operation}, finally, defines the actual stencil computation.
+    It can contain definitions of constants (as in the listing) or temporary values, and it can also contain more than
+    one stencil expression.
+  
+  \item Optionally, the stencil specification can also contain a \textbf{boundaries} block, in which
+    special treatment of boundary regions can be specified. Essentially, within the \textbf{boundaries} block,
+    special stencils are defined which are applied to boundary regions. See section \ref{sec:stencilspec}.
+\end{itemize}
+
+
+\subsubsection{Building the Benchmarking Harness}
+
+Once the stencil specification is written, \textsc{Patus} can be run to transform it into C code.
+Assume the stencil specification was saved in the file \texttt{examples/ stencils/wave-1.stc}.
+(This very stencil specification is actually there.)
+In your shell (in Linux), type
+\cmd{cd examples/stencils\\
+%  patus examples/stencils/wave-1.stc --outdir=out/wave-1
+  \phantom{XXXX}patus wave-1.stc
+}
+or, in Microsoft Windows, on the command line type
+\cmd{cd examples\textbackslash{}stencils\\
+  \phantom{XXXX}..\textbackslash{}..\textbackslash{}bin\textbackslash{}patus.bat wave-1.stc
+}
+This will generate the C code implementing the Wave stencil, using the default architecture,
+and putting the generated files in the
+\texttt{out} directory. (You can change the output directly by adding the \texttt{--outdir=$<$your-output-dir$>$}
+to the \textsc{Patus} command line.)
+Change into the output directory, \cmd{cd out}
+and type \cmd{make} to build the benchmarking harness, which will be used for the auto-tuning process, and can also be
+used for simple simulations. When the build completes successfully, there is an executable file,
+\texttt{bench} (or \texttt{bench.exe} on Windows) in the directory.
+
+If you try to start the benchmarking executable, you will see that it expects some command line arguments:
+\example{\small\texttt{%
+  \$  ./bench\\
+  Wrong number of parameters. Syntax:\\
+  ./bench <x\_max> <y\_max> <z\_max> <cb\_x> <cb\_y> <cb\_z> <chunk> <\_unroll\_p3>
+}}
+
+The $\ast$\_max correspond to the unspecified domain size variables in the stencil specification.
+All the other arguments come from the code generator, and it is the auto-tuner's task to find the best values
+for them.
+
+
+\subsubsection{Auto-Tuning}
+
+The Makefile (which was also used to build the benchmarking harness) defines a ``tune'' target, which
+starts the auto-tuner. ``tune'' expects the domain size variables to be specified:
+\cmd{make tune x\_max=64 y\_max=64 z\_max=64}
+Type the above command in the shell. The auto-tuner will run the benchmarking executable a number of times,
+varying the values of the arguments to determine, and it will terminate with a message like
+
+\example{\small
+  \texttt{Optimal parameter configuration found:}\\
+  \texttt{64 64 64 62 20 8 2 0}\\
+
+  \texttt{Timing information for the optimal run:}\\
+  \texttt{0.9047935972598529}\\
+
+  \texttt{Program output of the optimal run:}\\
+  \texttt{Flops / stencil call:\phantom{XX}16}\\
+  \texttt{Stencil computations:\phantom{XX}1116000}\\
+  \texttt{Bytes transferred:\phantom{XXXXX}15728640}\\
+  \texttt{Total Flops:\phantom{XXXXXXXXXXX}17856000}\\
+  \texttt{Seconds elapsed:\phantom{XXXXXXX}0.000423}\\
+  \texttt{Performance:\phantom{XXXXXXXXXXX}42.193517 GFlop/s}\\
+  \texttt{Bandwidth utilization:\phantom{X}37.166590 GB/s}\\
+  \texttt{1352692.000000}\\
+  \texttt{Validation OK.}
+}
+
+\noindent Thus, according to the auto-tuner, on the machine the benchmark was run and for x\_max=y\_max=z\_max=64,
+the best parameter combination is \cmd{cb\_x=62, cb\_y=20, cb\_z=8, chunk=2, \_unroll\_p3=0.}
+
+\textsc{Patus} has certain requirements for the grid sizes in the unit stride dimension.
+If the requirements are not met when you run the executable or the auto-tuner, you may see an error message like
+\cmd{Non-native, aligned SIMD type mode requires that (x\_max+2) is divisible by 4 [(x\_max+2) = 102].}
+If this is the case, adjust the grid size (here, e.g., set \texttt{x\_max} to 102 instead of 100) and run again.
+
+
+\subsubsection{Simple Visualization}
+
+You can run the benchmarking executable with the arguments provided by the auto-tuner,
+\cmd{./bench 64 64 64 62 20 8 2 0}
+If you add the flag \texttt{-o} to the command line,
+\cmd{./bench 64 64 64 62 20 8 2 0 -o}
+the program will take snapshots of the data grids before and after the execution of the stencil kernel
+and write them to text files. If you have gnuplot installed on your system, you can run
+\cmd{make plot} which will use gnuplot to create image files from the data text files.
+
+
+\subsection{Writing Your Own Stencil Specifications}
+\label{sec:stencilspec}
+
+A stencil specification has the following form:
+\example{
+  \texttt{stencil} \textit{\footnotesize stencil-name} \texttt{(} \textit{\footnotesize stencil-arguments} \texttt{)}
+  \texttt{\{}\\
+  \phantom{XXXX}\textit{\footnotesize iteration-space}\\
+  \phantom{XXXX}\textit{[ {\footnotesize number-of-timesteps} ]}\\
+  \phantom{XXXX}\textit{\footnotesize operation}\\
+  \phantom{XXXX}\textit{[ {\footnotesize boundaries} ]}\\
+  \phantom{XXXX}\textit{[ {\footnotesize initial} ]}\\
+  \texttt{\}}
+}
+
+The order of the iteration space, number of timesteps, operation, boundaries, and initial specifications
+is not relevant.
+
+
+\subsubsection{Stencil Arguments}
+
+Arguments to the stencil can be either \textbf{grid}s or \textbf{param}s. Two datatypes are supported:
+\textbf{float} (for single precision floating point numbers) and \textbf{double} (double precision
+floating point numbers). Grids are multi-dimensional arrays of data which can be read and written to.
+Params are application-specific read-only data used in the computation. They can be scalars or fixed-size
+arrays.
+
+\bigskip
+
+\noindent A \textbf{grid} can be declared as follows:
+\example{
+  \textit{[} \texttt{const} \textit{]}
+  \textit{(} \texttt{float} $|$ \texttt{double} \textit{)}
+  \texttt{grid}
+  \textit{\footnotesize grid-name}
+  \textit{[}\texttt{(}
+  \textit{\footnotesize lbnd$_1$} \texttt{..} \textit{\footnotesize ubnd$_1$}\texttt{,}
+  \textit{\footnotesize lbnd$_2$} \texttt{..} \textit{\footnotesize ubnd$_2$}
+  \dots
+  \texttt{)}\textit{]}\\
+  \textit{[}
+  \texttt{[}
+  \textit{\footnotesize albnd$_1$} \textit{[}\texttt{..} \textit{\footnotesize aubnd$_1$}\textit{]} \texttt{,}
+  \textit{\footnotesize albnd$_2$} \textit{[}\texttt{..} \textit{\footnotesize aubnd$_2$}\textit{]}
+  \dots
+  \texttt{]}
+  \textit{]}
+}
+
+\noindent All the upper bounds are inclusive.
+
+\medskip
+\noindent Examples:
+\begin{lstlisting}[language=stencil]
+float grid A
+const double grid B
+float grid C(-1 .. size_x)
+const double grid D(0..sx, 1..sy, -2..sz+2)[3]
+float grid E(min_x..max_x, min_y..max_y)[0..1, -1..3]
+\end{lstlisting}
+
+The grid \texttt{A} is declared as a single precision grid with no explicit size declaration.
+With the size declaration the size of the grid in memory can be defined, which is distinct from the
+iteration domain, i.e., the specification of the domain to which the calculation is applied.
+In this case, the grid's size is implied from the \textbf{domainsize} in the stencil specification:
+the grid is assumed to be the smallest grid such that all the grid accesses in the stencil computation are valid.
+
+For the grid \texttt{B} also no explicit size is declared. \textbf{const} means that the grid is read-only.
+
+Grid \texttt{C} is declared as a one-dimensional grid indexable from -1 to size\_x.
+In the actual stencil computation, not all of these points need to be written to (or read), but
+no bounds checking is performed. If the computation violates the bounds, the compiled code probably will raise
+segmentation faults.
+
+\texttt{D} is declared as an array of 3 three-dimensional grids,
+\texttt{E} as a two-di\-men\-sional array of two-dimensional grids.
+The examples also show that the lower and upper bounds can be arbitrary arithmetic expressions containing variables.
+Any variables appearing in size declarations will become arguments to the generated stencil function.
+The array indices of \texttt{E} can be 0 or 1 (first component) and between (and including) -1 and 3 (second component).
+
+\bigskip
+
+\noindent A \texttt{param} can be declared as follows:
+\example{
+  \textit{(} \texttt{float} $|$ \texttt{double} \textit{)}
+  \texttt{param}
+  \textit{\footnotesize param-name}
+  \textit{[}
+  \texttt{[}
+  \textit{\footnotesize albnd$_1$} \textit{[}\texttt{..} \textit{\footnotesize aubnd$_1$}\textit{]} \texttt{,}
+  \textit{\footnotesize albnd$_2$} \textit{[}\texttt{..} \textit{\footnotesize aubnd$_2$}\textit{]}
+  \dots
+  \texttt{]}
+  \textit{]}
+  \textit{[}\texttt{=} \textit{\footnotesize values}
+  \textit{]}
+}
+
+\medskip
+\noindent Examples:
+\begin{lstlisting}[language=stencil]
+float param a
+double param b[2]
+float param c = 1.23
+double param d[2..5, 3] = {{0.1,0.2,0.3,0.4}, {1.1,2.2,3.3,4.4}, {5,6,7,8}}
+\end{lstlisting}
+
+\textbf{param}s can be simple scalar values or, as \textbf{grid}s, (multi-dimensional) arrays of fixed size.
+Furthermore, default values can be provided. If the \textbf{param} is an array, the default values are grouped
+by curly braces (cf. the initialization of \texttt{d}).
+
+
+\subsubsection{Iteration Space}
+
+The iteration space, i.e., the domain of the grids on which the stencil computation is executed, is defined by
+\example{
+  \texttt{domainsize = (}
+  \textit{\footnotesize lbnd$_1$} \texttt{..} \textit{\footnotesize ubnd$_1$} \texttt{,}
+  \textit{\footnotesize lbnd$_2$} \texttt{..} \textit{\footnotesize ubnd$_2$} \dots
+  \texttt{);}
+}
+
+\noindent Again, the upper bounds are inclusive. The domain size definition also defines the dimensionality of the stencil.
+
+
+\subsubsection{Number of Timesteps}
+
+The number of timesteps to be performed within one call to the generated stencil kernel function is defined by
+\example{
+  \texttt{iterate while} \textit{\footnotesize condition} \texttt{;}
+}
+
+\noindent Currently, the \textit{condition} must have the form ``\texttt{t <} \textit{num-timesteps}'' where
+\textit{num-timesteps} is an integer literal.
+The statement is optional. If it is not specified, by default, one timestep will be performed (this corresponds to
+``\texttt{iterate while t < 1}'').
+
+In the future, reduction-based stopping criteria will also be supported, which, e.g., can check for convergence.
+
+
+\subsubsection{The ``operation''}
+
+In the \textbf{operation} block, the actual stencil computation is specified which is executed on the inner
+points of the grid. An operation can contain one or more statements within curly braces.
+Statements can be either computations of temporary values or assignments to read-and-write grids
+defined in the stencil's parameter list.
+Any of arithmetic operators (\texttt{+}, \texttt{-}, $\ast$, \texttt{/}, \texttt{\textasciicircum}) can be used
+(for addition, subtraction, multiplication, division, and exponentiation).
+
+Grids are indexed as follows:
+\example{
+  \textit{\footnotesize grid-name} \texttt{[}
+  \texttt{x} \textit{[ (} \texttt{+}$|$\texttt{-} \textit{) \textit{\footnotesize offset$_x$} ]} \texttt{,}
+  \texttt{y} \textit{[ (} \texttt{+}$|$\texttt{-} \textit{) \textit{\footnotesize offset$_y$} ]} \texttt{,}
+  \dots\\
+  \textit{[} \texttt{;}
+  \texttt{t} \textit{[ (} \texttt{+}$|$\texttt{-} \textit{) \textit{\footnotesize time-offset} ]}
+  \textit{]}\\
+  \textit{[} \texttt{;} \textit{\footnotesize idx$_1$} \texttt{,} \textit{\footnotesize idx$_2$} \dots  \textit{]}  
+  \texttt{]}
+}
+\noindent i.e., by spatial coordinates first, then by the temporal index (which must not be present if the grid
+was declared as \texttt{const}), and then by array indices if the grid was declared to be an array.
+
+The offsets to the spatial identifiers (\texttt{x}, \texttt{y}, \texttt{z}, \texttt{u}, \texttt{v}, \texttt{w},
+\texttt{x}\textit{i} for some integer \textit{i}) and to the spatial identifier \texttt{t} have to be compile-time constants.
+The array indices also have to be compile-time constants (e.g., integer literals).
+
+\medskip
+\noindent Examples for accessing the grids defined above:
+\begin{lstlisting}[language=stencil]
+A[x,y+1,z-2; t+2]    // assuming that the stencil dimensionality is 3
+B[x+1,y,z]           // B is const => no time component
+C[x+1; t-1]
+D[x,y,z; 0]          // D is const => no time component, but an array index
+E[x,y,z; t+1; 0,-1]  // time component and two-dimensional array index
+\end{lstlisting}
+
+Furthermore, temporary variables (scalars or arrays) can be declared and assigned expressions.
+Assigning values to arrays works as described for stencil arguments.
+
+The stencil \textbf{operation} can also contain reductions (sums or products), which are resolved at compile time.
+This feature is syntactic sugar which can save some typing.
+The syntax is
+\example{
+  \texttt{\{}
+  \textit{\footnotesize idxvar$_1$}\texttt{=}\textit{\footnotesize lbnd$_1$}\texttt{..}\textit{\footnotesize ubnd$_1$} \texttt{,}
+  \textit{\footnotesize idxvar$_2$}\texttt{=}\textit{\footnotesize lbnd$_2$}\texttt{..}\textit{\footnotesize ubnd$_2$} \dots
+  \textit{[} \texttt{:} \textit{\footnotesize constraints} \textit{]}
+  \texttt{\}}\\
+  \textit{(} \texttt{sum} $|$ \texttt{product} \textit{)}
+  \texttt{(} \textit{\footnotesize expression} \texttt{)}
+}
+\noindent The set defines the index space for the sum or the product, and the expression within the sum or the product
+the expression, possibly depending on index variables, which is summed up or multiplied for all index variable values.
+Optionally, separated by a colon, in the index set definition, constraints can be specified, which are logical expressions
+separated by commas.
+
+The following example shows an \textbf{operation} which uses both a temporary array and a sum:
+
+\begin{lstlisting}[language=stencil]
+operation {
+  float c[0..2] = {
+    2 - 15/2 * fDT_DX_sq,
+    4/3 * fDT_DX_sq,
+    -1/12 * fDT_DX_sq
+  };
+    
+  U[x,y,z; t+1] = c[0]*U[x,y,z; t] - U[x,y,z; t-1] + (
+    { i=-1..1, j=-1..1, k=-1..1, r=1..2 : i^2+j^2+k^2==1 } sum(
+      c[r] * U[x+r*i,y+r*j,z+r*k; t]
+    )
+  );
+}
+\end{lstlisting}
+Here, a temporary array \texttt{c} is declared and initialized, and in the second part a compile time reduction is used
+to sum up the neighboring points of the center point:
+The three index variables \texttt{i}, \texttt{j}, \texttt{k} take the values -1, 0, and 1, but all combinations are filtered
+except if \texttt{i}$^2+$\texttt{j}$^2+$\texttt{k}$^2$=1. \texttt{r} takes the values 1 and 2.
+Note that the index of \texttt{c} and the spatial offsets in the grid \texttt{U} within the \texttt{sum} are compile-time
+constants (the variables appear only in the sum's index set).
+
+
+\subsubsection{Boundary Conditions}
+
+The \textbf{boundaries} block can be used to specify special stencils which are to be evaluated in boundary regions.
+A boundary point is characterized by having one or more spatial coordinates in the grid access fixed to discrete values.
+For instance:
+
+\begin{lstlisting}[language=stencil]
+boundaries {
+  U[0,y,z;t+1] = 0;
+  U[x,y,z; t+1 : 0<=x<=1] = 1;
+  U[x,0,z;t+1] = U[x,y_max-1,z;t];
+}
+\end{lstlisting}
+In first statement of the example, all the points with 0 x-coordinates will be set to zero.
+In the second statement all the points for which the x-coordinate is either 0 or 1 will be set to 1 (the colon notation is the
+same as mentioned previously for compile-time reductions). ``\texttt{0<=x<=1}'' is a shorthand for ``\texttt{0<=x \&\& x<=1}''.
+The third statement shows that the right-hand side does not have to be a constant, but can be in fact any arithmetic expression.
+
+If the boundary block is omitted, no boundary handling is implemented in the generated stencil function.
+
+
+\subsubsection{Initial Condition}
+
+In the \textbf{initial} condition specification, the temporal coordinates of grids are fixed (as opposed to the spatial ones in the
+boundary specification). All the grids read in the \texttt{operation} should be initialized with 0 substituted for \texttt{t}.
+\texttt{initial} is optional; if it is not provided, \textsc{Patus} creates a default initialization with arbitrary values.
+
+Again, as in the \textbf{boundary} block, the set-builder notation can be used to select a number of grid points to initialize.
+E.g., in the last line in the example below, all the points within a cylinder around the origin with radius 30 parallel to the z-axis
+are selected.
+No error is raised if points are selected that are not contained in the actual grid.
+The first statement shows that points can be initialized depending on their grid coordinates.
+
+\begin{lstlisting}[language=stencil]
+initial {
+  U[x,y,z; -1] = sinf(2*~$\pi$~*((x-1)*fDX+fMin)) *
+    sinf(2*~$\pi$~*((y-1)*fDX+fMin)) * sinf(2*~$\pi$~*((z-1)*fDX+fMin));
+  U[x, y, z; 0] = U[x, y, z; -1];
+  U[x, y, z; 1] = 0;
+
+  U[x,y,z;-1 : 10<=x<=20, 5<=y<=10] = 0;
+  U[x,y,z; 0 : x^2+y^2 <= 900] = 0;
+}
+\end{lstlisting}
+
+
+\subsection{Integrating Into Your Own Application}
+
+
+In the generated code (usually the file implementing the stencils in C is called \texttt{kernel.c}),
+search for the function with the same name as the name of your stencil to determine the signature.
+This is the function that should be called from within your application code.
+
+See the directory \texttt{examples/applications} for examples how to integrate \textsc{Patus}-generated code
+into user code.
+The examples also contain Makefiles that show how the process of generating and automatically tuning stencil kernels
+and use them to build the final application executable can be facilitated.
+The examples are described briefly below.
+
+
+%Create Fortran example

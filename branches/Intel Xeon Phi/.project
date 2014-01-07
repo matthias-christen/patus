@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>Patus-GoogleCode</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>at.ssw.coco.eclipse.builder.CocoBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+		<buildCommand>
+			<name>org.eclipse.jdt.core.javabuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.jdt.core.javanature</nature>
+		<nature>at.ssw.coco.eclipse.builder.CocoNature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>Link</name>
+			<type>2</type>
+			<locationURI>TEMP</locationURI>
+		</link>
+	</linkedResources>
+</projectDescription>

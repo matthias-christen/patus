@@ -1,0 +1,19 @@
+stencil fdtdE2D
+{
+    domainsize = (2 .. x_max-1, 2 .. y_max-1);
+    t_max = 1;
+    
+    operation (
+    	float grid e(1 .. x_max, 1 .. y_max)[2],
+    	const float grid h(1 .. x_max, 1 .. y_max),
+    	float param ca, float param cb
+    )
+//		const float grid ca(1 .. x_max, 1 .. y_max),
+//		const float grid cb(1 .. x_max, 1 .. y_max))//, float param dt)
+    {
+//        e[x, y; t+1; 0] = ca[x, y] * e[x, y; t; 0] + cb[x, y] * (h[x, y+1] - h[x, y]);
+//        e[x, y; t+1; 1] = ca[x, y] * e[x, y; t; 1] - cb[x, y] * (h[x+1, y] - h[x, y]);
+        e[x, y; t+1; 0] = ca * e[x, y; t; 0] + cb * (h[x, y+1] - h[x, y]);
+        e[x, y; t+1; 1] = ca * e[x, y; t; 1] - cb * (h[x+1, y] - h[x, y]);
+    }
+}

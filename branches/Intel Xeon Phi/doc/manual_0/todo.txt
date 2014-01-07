@@ -1,0 +1,26 @@
+InlineAsm:
+	AssemblyExpressionGenerator: worthwhile breaking add-sub dependence chains? (balanced trees?)
+		(=> trade off between instruction level parallelism and register pressure)
+		make tunable?
+		
+How to optimize large kernels?
+
+
+Implement boundary conditions, e.g.,
+	boundaries (float grid u)
+	{
+		u[0, y, z] = u[x_max-2, y, z];
+		u[x_max-1, y, z] = u[0, y, z];
+		u[x, 0, z] = 0;
+		u[x, y, z_max-1] = 1;
+	}
+	
+Synchronization on parallelism levels
+	allow to specify whether sync is possible on that level,
+	if not, do sync on level above
+	if no level above exists exit and restart kernel (=> GPU global sync)
+	
+Loop invariant code motion
+	move calculation of constants in the stencil specification out of the loops
+	store partial sums if possible? e.g. u[x-2,y-1]+u[x-1,y-1]+u[x,y-1]+u[x+1,y-1] -> s;
+		can be reused for u[x-1,y-1]+u[x,y-1]+u[x+1,y-1]+u[x+2,y-1] = s-u[x-2,y-1]+u[x+2,y-1]

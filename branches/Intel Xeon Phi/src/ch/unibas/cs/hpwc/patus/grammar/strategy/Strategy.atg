@@ -1,0 +1,1651 @@
+/*******************************************************************************
+ * Copyright (c) 2011 Matthias-M. Christen, University of Basel, Switzerland.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser Public License v2.1
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * 
+ * Contributors:
+ *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
+ ******************************************************************************/
+///////////////////////////////////////////////////////////////////////////
+// Imports
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Stack;
+
+import cetus.hir.ArrayAccess;
+import cetus.hir.AssignmentExpression;
+import cetus.hir.AssignmentOperator;
+import cetus.hir.BinaryExpression;
+import cetus.hir.BinaryOperator;
+import cetus.hir.CompoundStatement;
+import cetus.hir.Declaration;
+import cetus.hir.DeclarationStatement;
+import cetus.hir.DepthFirstIterator;
+import cetus.hir.Expression;
+import cetus.hir.ExpressionStatement;
+import cetus.hir.FloatLiteral;
+import cetus.hir.FunctionCall;
+import cetus.hir.Identifier;
+import cetus.hir.IDExpression;
+import cetus.hir.IfStatement;
+import cetus.hir.IntegerLiteral;
+import cetus.hir.NameID;
+import cetus.hir.Specifier;
+import cetus.hir.Statement;
+import cetus.hir.StringLiteral;
+import cetus.hir.Symbol;
+import cetus.hir.UnaryExpression;
+import cetus.hir.UnaryOperator;
+import cetus.hir.ValueInitializer;
+import cetus.hir.VariableDeclaration;
+import cetus.hir.VariableDeclarator;
+
+import ch.unibas.cs.hpwc.patus.ast.Loop;
+import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
+import ch.unibas.cs.hpwc.patus.ast.StencilProperty;
+import ch.unibas.cs.hpwc.patus.ast.StencilSpecifier;
+import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
+import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
+
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.codegen.Strategy;
+
+import ch.unibas.cs.hpwc.patus.geometry.Border;
+import ch.unibas.cs.hpwc.patus.geometry.Box;
+import ch.unibas.cs.hpwc.patus.geometry.Point;
+import ch.unibas.cs.hpwc.patus.geometry.Size;
+import ch.unibas.cs.hpwc.patus.geometry.Subdomain;
+import ch.unibas.cs.hpwc.patus.geometry.Vector;
+
+import ch.unibas.cs.hpwc.patus.representation.Stencil;
+import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
+
+import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
+
+
+COMPILER StrategySpecification
+
+	///////////////////////////////////////////////////////////////////////////
+	// Inner Types
+
+	private enum EHandSide
+	{
+		LEFT,
+		RIGHT
+	}
+	
+	private class SubdomainDecl
+	{
+        private String m_strOrigIdentifier;
+		private Subdomain m_subdomain;
+		private Symbol m_symbol;
+		private int m_nContextID;
+		
+		public SubdomainDecl (String strIdentifier, Subdomain subdomain, int nContextID)
+		{
+            m_strOrigIdentifier = strIdentifier;
+			m_subdomain = subdomain;
+			m_nContextID = nContextID;
+
+			VariableDeclarator decl = new VariableDeclarator (new NameID (StringUtil.concat (strIdentifier, m_nContextID)));
+			m_cmpstmtStrategyBody.addDeclaration (new VariableDeclaration (StencilSpecifier.STENCIL_GRID, decl));
+			m_symbol = decl;
+		}		
+		
+		public String getOriginalIdentifier ()
+		{
+            return m_strOrigIdentifier;
+		}
+		
+		public Subdomain getSubdomain ()
+		{
+			return m_subdomain;
+		}
+		
+		public Symbol getSymbol ()
+		{
+			return m_symbol;
+		}
+		
+		public int getContextID ()
+		{
+            return m_nContextID;
+        }
+	}
+
+
+	///////////////////////////////////////////////////////////////////////////
+	// Member Variables
+
+	/**
+	 * The result of the parser
+	 */
+	private Strategy m_strategy;
+	
+	/**
+	 * The body of the strategy procedure.
+	 * Used to declare variables.
+	 */
+	private CompoundStatement m_cmpstmtStrategyBody;
+	
+	/**
+	 * Map of subdomains used in the strategy
+	 */
+	private Map<String, List<SubdomainDecl>> m_mapSubdomains = new HashMap<> ();
+	
+	/**
+	 * Parallelism levels of loops
+	 */
+	private Stack<Integer> m_stackParallelismLevels = new Stack<> ();
+	
+	/**
+	 * Dimension identifiers. The value in the map are the codimensions of the corresponding
+	 * dimension identifiers.
+	 */
+	private Map<String, Integer> m_mapDimensionIdentifiers = new HashMap<> ();
+	
+	private Map<String, Integer> m_mapConstants = new HashMap<> ();
+	
+	/**
+	 * The stencil calculation
+	 */
+	private StencilCalculation m_stencilCalculation = null;
+	
+	
+	/**
+	 * The current context identifier. Context identifiers indicate 'where' in the strategy
+	 * the current token is read to provide information about/simulate variable scopes.
+	 */
+	private int m_nCurrentContextID;
+	private int m_nLastContextID;
+	private Stack<Integer> m_stackContextIDs;
+		
+	
+	///////////////////////////////////////////////////////////////////////////
+	// Custom Implementation
+	
+	public boolean hasErrors ()
+	{
+		return errors.count > 0;
+	}
+	
+	/**
+	 * Sets the stencil calculation object. This must be set before starting parsing.
+	 */
+	public void setStencilCalculation (StencilCalculation stencilCalculation)
+	{
+		m_stencilCalculation = stencilCalculation;
+	}
+	
+	/**
+	 * Returns the result after parsing.
+	 */
+	public Strategy getStrategy ()
+	{
+		return m_strategy;
+	}
+	
+	private void initialize ()
+	{
+        if (m_stencilCalculation == null)
+            throw new RuntimeException ("The stencil calculation object must be set before starting to parse the strategy.");
+
+        m_strategy = new Strategy ();
+        m_stackParallelismLevels.push (0);
+
+        // initialize the context
+        m_nCurrentContextID = 0;
+        m_nLastContextID = 0;
+        m_stackContextIDs = new Stack<> ();
+        m_stackContextIDs.push (m_nCurrentContextID);
+    }
+    
+    private void pushContext ()
+    {
+        m_stackContextIDs.push (m_nCurrentContextID);
+        m_nLastContextID++;
+        m_nCurrentContextID = m_nLastContextID;
+    }
+    
+    private void popContext ()
+    {
+        m_nCurrentContextID = m_stackContextIDs.pop ();
+    }
+	
+	/**
+	 * Extracts the first identifier from the expression <code>expr</code>.
+	 * @param expr The expression from which to extract the identifier
+	 * @return The first identifier in <code>expr</code>
+	 */
+	private Expression findIdentifier (Expression expr)
+	{
+		if (expr instanceof IDExpression)
+			return expr;
+			
+		for (Object o : expr.getChildren ())
+		{
+			if (o instanceof ArrayAccess)
+				continue;
+			if (o instanceof Expression)
+				findIdentifier ((Expression) o);
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Determines whether the identifier has been declared.
+	 */
+	private boolean isDeclared (IDExpression identifier)
+	{
+		// check whether the variable has already been declared within the procedure body
+		if (identifier instanceof SubdomainIdentifier)
+			return m_cmpstmtStrategyBody.findSymbol (new NameID (((SubdomainIdentifier) identifier).getName ())) != null;
+		return m_cmpstmtStrategyBody.findSymbol (identifier) != null;
+	}
+	
+	/**
+	 * Adds a variable declaration for the identifier in <code>exprIdentifier</code> to the
+	 * symbol table of the stategy.
+	 * @param specifier
+	 * @param exprIdentifier The identifier
+	 */
+	private Identifier addDeclaration (Specifier specifier, Expression exprIdentifier)
+	{
+		IDExpression id = (IDExpression) findIdentifier (exprIdentifier);
+		if (id != null && !isDeclared (id))
+		{
+			VariableDeclarator decl = new VariableDeclarator (id);
+			m_cmpstmtStrategyBody.addDeclaration (new VariableDeclaration (specifier, decl));
+			return new Identifier (decl);
+		}
+		
+		return null;
+	}
+
+	/**
+	 * Checks whether the identifier in <code>exprIdentifier</code> has been declared.
+	 * If not, a semantic error is thrown.
+	 * @param exprIdentifier The identifier to check
+	 */	
+	private void checkDeclared (Expression exprIdentifier)
+	{
+		IDExpression id = (IDExpression) findIdentifier (exprIdentifier);
+		if (id != null && !isDeclared (id))
+			errors.SemErr (la.line, la.col, id.toString () + " has not been initialized before use");
+	}
+	
+	/**
+	 * Registers a subdomain and binds it to the identifier <code>strIdentifier</code>.
+	 * @param strIdentifier The identifier to which the domain will be tied
+	 * @param subdomain The subdomain that is registered
+	 */
+	private void registerSubdomain (String strIdentifier, Subdomain subdomain, List<Expression> listArraySizes)
+	{
+        List<SubdomainDecl> list = m_mapSubdomains.get (strIdentifier);
+        if (list == null)
+            m_mapSubdomains.put (strIdentifier, list = new LinkedList<> ());
+		list.add (new SubdomainDecl (strIdentifier, subdomain, m_nCurrentContextID));
+	}
+	
+	private SubdomainDecl getSubdomainDecl (String strIdentifier)
+	{
+        List<SubdomainDecl> listDecls = m_mapSubdomains.get (strIdentifier);
+        if (listDecls == null || listDecls.size () == 0)
+        {
+            errors.SemErr (la.line, la.col, StringUtil.concat (strIdentifier, " has not been declared"));
+            return null;
+        }
+            
+        // find the decl matching the current context
+        for (SubdomainDecl decl : listDecls)
+        {
+            // check whether the decl's context is the current one or belongs to a parent context
+            if (decl.getContextID () == m_nCurrentContextID || m_stackContextIDs.contains (decl.getContextID ()))
+                return decl;
+        }
+        
+        // no decl found
+        errors.SemErr (la.line, la.col, StringUtil.concat (strIdentifier, " has not been declared"));
+        return null;
+	}
+	
+	private SubdomainIdentifier getSubdomainIdentifier (String strIdentifier)
+	{
+        SubdomainDecl decl = getSubdomainDecl (strIdentifier);
+        if (decl != null)
+            return new SubdomainIdentifier (decl.getSymbol (), decl.getSubdomain ());
+        return null;
+	}
+	
+	private Subdomain getSubdomain (String strIdentifier)
+	{
+        SubdomainDecl decl = getSubdomainDecl (strIdentifier);
+        if (decl != null)
+            return decl.getSubdomain ();
+        return null;
+	}
+	
+	private void setStrategySubdomainMap ()
+	{
+		Map<String, Subdomain> map = new HashMap<> ();
+		for (String s : m_mapSubdomains.keySet ())
+			map.put (s, m_mapSubdomains.get (s).iterator ().next ().getSubdomain ());    // just get the first list entry
+		m_strategy.setSubdomains (map); 
+	}
+	
+	private boolean isSubdomainIdentifier ()
+	{
+		return m_mapSubdomains == null ? false : m_mapSubdomains.containsKey (la.val);
+	}
+	
+	private boolean isDimensionParameter ()
+	{
+		return m_mapDimensionIdentifiers == null ? false : m_mapDimensionIdentifiers.containsKey (la.val);
+	}
+	
+	private Expression getDimIdentifier (Expression expr, int nDim)
+	{
+		if (expr instanceof NameID)
+			return new NameID (StringUtil.concat (((NameID) expr).getName (), "_", CodeGeneratorUtil.getDimensionName (nDim)));
+
+		Expression exprNew = expr.clone ();
+		for (DepthFirstIterator it = new DepthFirstIterator (exprNew); it.hasNext (); )
+		{
+			Object obj = it.next ();
+			if (obj instanceof NameID)
+			{
+				NameID nid = (NameID) obj;
+				if (m_mapDimensionIdentifiers.containsKey (nid.getName ()))
+					nid.swapWith (new NameID (StringUtil.concat (nid.getName (), "_", CodeGeneratorUtil.getDimensionName (nDim))));
+			}
+		}
+		return exprNew;
+	}
+	
+	/**
+	 * Creates an expression array of the dimension as the stencil computations to be used as
+	 * spatial index from indices in <code>listHead</code> and <code>listTail</code>.
+	 * <code>listHead</code> has priority over <code>listTail</code> if there isn't a
+	 * <code>null</code> entry in the list, i.e., if there are more
+	 * entries in total in the lists, the array will be filled up with the entries of
+	 * <code>listHead</code> first before the entries in <code>listTail</code> will be used.
+	 * A <code>null</code> entry in <code>listHead</code> or <code>listTail</code> means that
+	 * the corresponding coordinates will be replaced by the domain's size. 
+	 */
+	private List<Expression> createVector (List<Expression> listHead, List<Expression> listTail, Vector vecDefault)
+	{
+		int nTailSize = listTail == null ? 0 : listTail.size ();
+		byte nDimensionality = (nTailSize == 0 && listHead != null) ? (byte) listHead.size () : m_stencilCalculation.getDimensionality ();
+		int j = 0;
+		Expression[] rgIdx = new Expression[nDimensionality];
+		
+		// set head elements
+		if (listHead != null)
+		{
+			for (Expression expr : listHead)
+			{
+	            if (expr == null)
+	                break;
+				if (j >= nDimensionality)
+					break;
+				rgIdx[j++] = expr;
+			}
+		}
+		
+		// set tail elements
+		for ( ; j < nDimensionality - nTailSize; j++)
+			rgIdx[j] = null;
+
+		for (int k = nTailSize - 1; k >= 0; k--)
+		{
+			if (j >= nDimensionality)
+				break;
+			j++;
+			rgIdx[nDimensionality - nTailSize + k] = listTail.get (k);
+		}
+		
+		// fill result list
+		List<Expression> listResult = new ArrayList<> (nDimensionality);
+		j = 0;
+		for (Expression expr : rgIdx)
+		{
+            listResult.add (expr == null && vecDefault != null ? vecDefault.getCoord (j) : expr);
+            j++;
+        }
+		return listResult;
+	}
+
+	/**
+	 * Creates a unary expression.
+	 * @param bIsNegative Flag indicating whether to return the negative of <code>expr</code>
+	 * @param expr The expression
+	 */	
+	private Expression createUnaryExpression (boolean bIsNegative, Expression expr)
+	{
+		if (expr instanceof IntegerLiteral)
+			return bIsNegative ? new IntegerLiteral (-((IntegerLiteral) expr).getValue ()) : expr;
+		if (expr instanceof FloatLiteral)
+			return bIsNegative ? new FloatLiteral (-((FloatLiteral) expr).getValue ()) : expr;
+		return bIsNegative ? new UnaryExpression (UnaryOperator.MINUS, expr) : expr;
+	}
+	
+	private FloatLiteral floatOp (double fVal1, BinaryOperator op, double fVal2)
+	{
+		if (op == BinaryOperator.ADD)
+			return new FloatLiteral (fVal1 + fVal2);
+		if (op == BinaryOperator.SUBTRACT)
+			return new FloatLiteral (fVal1 - fVal2);
+		if (op == BinaryOperator.MULTIPLY)
+			return new FloatLiteral (fVal1 * fVal2);
+		if (op == BinaryOperator.DIVIDE)
+			return new FloatLiteral (fVal1 / fVal2);
+			
+		errors.SemErr (la.line, la.col, "Unsupported binary integer operation.");
+		return null;
+	}
+	
+	private IntegerLiteral intOp (long nVal1, BinaryOperator op, long nVal2)
+	{
+		if (op == BinaryOperator.ADD)
+			return new IntegerLiteral (nVal1 + nVal2);
+		if (op == BinaryOperator.SUBTRACT)
+			return new IntegerLiteral (nVal1 - nVal2);
+		if (op == BinaryOperator.MULTIPLY)
+			return new IntegerLiteral (nVal1 * nVal2);
+		if (op == BinaryOperator.DIVIDE)
+			return new IntegerLiteral (nVal1 / nVal2);
+		if (op == BinaryOperator.MODULUS)
+			return new IntegerLiteral (nVal1 % nVal2);
+
+		errors.SemErr (la.line, la.col, "Unsupported binary integer operation.");
+		return null;
+	}
+
+	private Expression createBinaryExpression (Expression expr1, BinaryOperator op, Expression expr2)
+	{
+		if (expr1 instanceof IntegerLiteral)
+		{
+			if (expr2 instanceof IntegerLiteral)
+				return intOp (((IntegerLiteral) expr1).getValue (), op, ((IntegerLiteral) expr2).getValue ());
+			else if (expr2 instanceof FloatLiteral)
+				return floatOp (((IntegerLiteral) expr1).getValue (), op, ((FloatLiteral) expr2).getValue ());
+		}
+		else if (expr1 instanceof FloatLiteral)
+		{
+			if (expr2 instanceof IntegerLiteral)
+				return floatOp (((FloatLiteral) expr1).getValue (), op, ((IntegerLiteral) expr2).getValue ());
+			else if (expr2 instanceof FloatLiteral)
+				return floatOp (((FloatLiteral) expr1).getValue (), op, ((FloatLiteral) expr2).getValue ());
+		}
+
+		return new BinaryExpression (expr1, op, expr2);
+	}
+	
+	/**
+	 * Returns the <code>nDimension</code>-th coordinate of the subdomain <code>sgid</code>.
+	 */
+	private Expression createCoordinateExpression (Expression exprSgid, int nDimension)
+	{
+		if (!(exprSgid instanceof SubdomainIdentifier))
+		{
+			errors.SemErr (la.line, la.col, "Coordinate subscripts can only be applied to subdomain identifiers.");
+			return null;
+		}
+		
+		return new NameID (StringUtil.concat (((SubdomainIdentifier) exprSgid).getName (), "_idx_", CodeGeneratorUtil.getDimensionName (nDimension + 1)));
+	}
+	
+	/**
+	 * Creates new vector by selecting the coordinates defined in <code>listCoords</code> from the
+	 * vector <code>listVector</code>.
+	 */
+	private List<Expression> createSubscriptedVector (List<Expression> listVector, List<Expression> listCoords)
+	{
+        List<Expression> listResult = new ArrayList<> (listCoords.size ());
+        for (Expression exprCoord : listCoords)
+        {
+            int nCoord = getIntValue (exprCoord);
+            if (0 < nCoord && nCoord <= listVector.size ())
+                listResult.add (listVector.get (nCoord - 1));
+            else
+            	listResult.add (null);
+        }
+        
+        return listResult;
+	}
+	
+	private Size createSize (List<Expression> listSize)
+	{
+	   Expression[] rgSize = new Expression[listSize.size ()];
+	   listSize.toArray (rgSize);
+	   return new Size (rgSize);
+	}
+	
+	private Integer getIntegerValue (Expression expr)
+	{
+        try
+        {
+            return ExpressionUtil.getIntegerValue (expr);
+        }
+        catch (RuntimeException e)
+        {
+        	return null;
+        }
+	}
+
+	private int getIntValue (Expression expr)
+	{
+		Integer nVal = getIntegerValue (expr);
+		if (nVal == null)
+		{
+            errors.SemErr (la.line, la.col, "Compile time constant expected.");
+            return 0;
+		}
+
+		return nVal;
+	}
+	
+	private Integer getConstantValue (String strIdentifier)
+	{
+		return m_mapConstants.get (strIdentifier);
+	}
+	
+//	/**
+//	 * LL1 conflict resolver for assignments.
+//	 */
+//	private boolean isAssignment ()
+//	{
+//		Token t = scanner.Peek ();
+//		scanner.ResetPeek ();
+//		return t.val.equals ("=");
+//	}
+	
+	/**
+	 * LL1 conflict resolver for function calls.
+	 */
+	private boolean isSubCall ()
+	{
+		if (isSubdomainIdentifier () || isDimensionParameter ())
+			return false;
+		Token t = scanner.Peek ();
+		scanner.ResetPeek ();
+		return t.val.equals ("(");
+	}
+	
+	private boolean isStencilCall ()
+	{
+		Token t = scanner.Peek ();
+		scanner.ResetPeek ();
+		return la.val.equals ("stencil") && t.val.equals ("(");		
+	}
+	
+	/**
+	 * LL1 conflict resolver for array accesses.
+	 */
+	private boolean isGridAccess ()
+	{
+		Token t = scanner.Peek ();
+		scanner.ResetPeek ();
+		return t.val.equals ("[");
+	}
+	
+	/**
+	 * LL1 conflict resolver checking whether there is only one identifier
+	 * as spatial index.
+	 */
+	private boolean isSingleSpatialIndex ()
+	{
+		Token t = scanner.Peek ();
+		scanner.ResetPeek ();
+		return t.val.equals (";");
+	}
+	
+	private boolean isCoordinateOrVector ()
+	{
+		Token t = scanner.Peek ();
+		scanner.ResetPeek ();
+		return isSubdomainIdentifier () && t.val.equals ("(");
+	}
+	
+	private boolean checkVector (boolean bHasOpenBracket, boolean bIsBracketedVector)
+	{
+		int nOpenBrackets = bHasOpenBracket ? 1 : 0;
+		boolean bIsVector = false;
+		while (nOpenBrackets > 0 || !bIsVector)
+		{
+			Token t = scanner.Peek ();
+			if (t.val.equals (":") || t.val.equals ("..") || t.val.equals ("...") || t.val.equals (","))
+			{
+				if (nOpenBrackets == 1)
+				{
+					bIsVector = true;
+					break;
+				}
+			}
+			else if (t.val.equals ("("))
+				nOpenBrackets++;
+			else if (t.val.equals (")"))
+				nOpenBrackets--;
+				
+			if (bIsBracketedVector && nOpenBrackets == 0)
+				break;
+		}
+		scanner.ResetPeek ();
+		
+		return bIsVector;
+	}
+	
+	/**
+	 * LL1 conflict resolver for vector types.
+	 */
+	private boolean isVector ()
+	{
+		if (!isSubdomainIdentifier () && !isDimensionParameter ())
+			return false;
+		return checkVector (false, false);
+	}
+
+	private boolean isBracketedVector ()
+	{
+		if (!la.val.equals ("("))
+			return false;
+			
+		return checkVector (true, true);
+	}
+
+    /**
+     * LL1 conflict resolver detecting vector-valued properties (size, min, and max).
+     */
+    private boolean isVectorProperty ()
+    {
+        Token t = scanner.Peek ();
+        if (!t.val.equals ("."))
+        {
+            scanner.ResetPeek ();
+            return false;
+        }
+        
+        t = scanner.Peek ();
+        if (!t.val.equals ("size") && !t.val.equals ("min") && !t.val.equals ("max"))
+        {
+            scanner.ResetPeek ();
+            return false;
+        }
+        
+        t = scanner.Peek ();
+        if (t.val.equals ("("))
+        {
+        	// subscripted property; check whether the subscript is a vector
+        	return checkVector (true, true);
+        }
+        
+        scanner.ResetPeek ();
+        return true;
+    }
+    
+    private boolean isNoEllipsis ()
+    {
+    	return !la.val.equals ("...");
+    }
+
+    /**
+     * LL1 conflict resolver determining whether a border specifiaction is encountered.
+     * Borders either start with "stencil.box" or are a literal border specification.
+     */
+    private boolean isBorder ()
+    {
+        if (isStencilBox ())
+            return true;
+        if (isLiteralBorder ())
+            return true;
+        return false;
+    }
+    
+	/**
+	 * LL1 conflict resolver determining whether a "stencil.box" is encountered.
+	 */	
+	private boolean isStencilBox ()
+	{
+		Token t = la;
+		if (!t.val.equals ("stencil"))
+			return false;
+			
+		t = scanner.Peek ();
+		if (!t.val.equals ("."))
+		{
+			scanner.ResetPeek ();
+			return false;
+		}
+		
+		t = scanner.Peek ();
+		if (!t.val.equals ("box"))
+		{
+			scanner.ResetPeek ();
+			return false;
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * LL1 conflict resolver for literal border expressions.
+	 */
+	private boolean isLiteralBorder ()
+	{
+		return la.val.equals ("<");
+		
+		/*	
+		if (!la.val.equals ("("))
+			return false;
+
+		// the number of ";"-separated components; must have exactly 2			 
+		int nComponents = 1;
+
+		int nOpenBrackets = 1;
+		while (nOpenBrackets > 0)
+		{
+			t = scanner.Peek ();
+			if (t.val.equals ("("))
+				nOpenBrackets++;
+			else if (t.val.equals (")"))
+				nOpenBrackets--;
+			else if (nOpenBrackets == 1 && t.val.equals (";"))
+				nComponents++;
+		}
+		scanner.ResetPeek ();
+		
+		return nComponents == 2;
+		*/
+	}
+	
+	/**
+	 * LL1 conflict resolver to decide whether the next entity is a property (of a subdomain or the stencil).
+	 */
+	private boolean isProperty ()
+	{
+		Token t = scanner.Peek ();
+		scanner.ResetPeek ();
+		return (isSubdomainIdentifier () || la.val.equals ("stencil")) && t.val.equals (".");
+	}
+	
+	private Expression getAutotuneListItem (List<Expression> l, int nIdx)
+	{
+		if (l.size () == 1)
+			return l.get (0);
+		return l.get (nIdx);
+	}
+	
+
+///////////////////////////////////////////////////////////////////////////
+// Tokens
+
+CHARACTERS
+	letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_".
+	digit = "0123456789".
+	cr = '\r'.
+	lf = '\n'.
+	tab = '\t'.
+
+TOKENS
+	ident = letter { letter | digit }.
+    integer = digit { digit }.
+    float = digit { digit } '.' [ digit { digit } [ 'e' [ '+' | '-' ] digit { digit } ] ].
+
+COMMENTS FROM "/*" TO "*/" NESTED
+COMMENTS FROM "//" TO lf
+
+IGNORE cr + lf + tab
+
+
+///////////////////////////////////////////////////////////////////////////
+// Productions
+
+PRODUCTIONS                                                                    // SEMANTIC ACTIONS
+
+    ///////////////////////////////////////////////////////////////////////
+    // Strategy Description
+       
+	// -- Strategy Procedure Declaration
+        
+    /**
+     * The strategy description.
+     * Entry point of the strategy grammar.
+     */
+    StrategySpecification =                                                    (. initialize (); .)
+        "strategy"                                                             (. m_cmpstmtStrategyBody = new CompoundStatement (); .)
+        ident
+        '('
+        StrategyParamList<. out List<Declaration> listParameters .>            (. m_strategy.setParameters (listParameters); for (Declaration decl : listParameters) m_cmpstmtStrategyBody.addDeclaration (decl.clone ()); .)
+        ')'
+        StrategyCompoundStatement<out Statement stmtBody>                      (. m_cmpstmtStrategyBody.addStatement (stmtBody); m_strategy.setBody (m_cmpstmtStrategyBody); setStrategySubdomainMap (); .)
+        .
+        
+    /**
+     * The strategy parameter list.
+     */
+    StrategyParamList<. out List<Declaration> listParams .> =                  (. listParams = new ArrayList<> (); .)
+        "domain" ident                                                         (. VariableDeclarator decl = new VariableDeclarator (new NameID (t.val)); listParams.add (new VariableDeclaration (StencilSpecifier.STENCIL_GRID, decl)); .)
+                                                                               (. Point ptMin = m_stencilCalculation.getDomainSize ().getMin (); Point ptMax = m_stencilCalculation.getDomainSize ().getMax (); .)
+		                                                                       (. Subdomain sg = new Subdomain (null, Subdomain.ESubdomainType.SUBDOMAIN, ptMin, new Size (ptMin, ptMax), true); .)
+		                                                                       (. registerSubdomain (decl.getSymbolName (), sg, null); m_strategy.setBaseDomain (getSubdomainIdentifier (decl.getSymbolName ())); .) 
+        {
+        	',' "auto"                                                         (. boolean bIsDimParam = false; int nStartDimension = 0; .)
+        	(
+        		"int"
+        		|
+        		"dim"                                                          (. bIsDimParam = true; nStartDimension = 0; .)
+        		|
+        		(
+        			"codim" '(' integer ')'                                    (. bIsDimParam = true; nStartDimension = Math.max (0, m_stencilCalculation.getDimensionality () - Integer.parseInt (t.val)); .)
+        		)
+        	)
+        	ident                                                              (. String strParamName = t.val; String[] rgParamNames = null; decl = new VariableDeclarator (new NameID (strParamName)); .)
+        	                                                                   (. if (!bIsDimParam) listParams.add (new VariableDeclaration (StencilSpecifier.STRATEGY_AUTO, decl)); .)
+        	                                                                   (. else { .)
+        	                                                                   (.     rgParamNames = new String[m_stencilCalculation.getDimensionality ()]; .)
+        	                                                                   (.     m_mapDimensionIdentifiers.put (decl.getSymbolName (), m_stencilCalculation.getDimensionality () - nStartDimension); .)
+        	                                                                   (.     for (int i = nStartDimension; i < m_stencilCalculation.getDimensionality (); i++) { .)
+        	                                                                   (.         rgParamNames[i] = StringUtil.concat (decl.getSymbolName (), "_", CodeGeneratorUtil.getDimensionName (i)); .)
+        	                                                                   (.         VariableDeclarator declNew = decl.clone (); declNew.setName (rgParamNames[i]); .)
+        	                                                                   (.         listParams.add (new VariableDeclaration (StencilSpecifier.STRATEGY_AUTO, declNew)); .)
+        	                                                                   (.     } .)
+        	                                                                   (. } .)
+			[
+				'='
+				AutoTuneValues<. out List<IAutotunerParam> listAutotuneParams.>(. if (!bIsDimParam) m_strategy.setAutotuneSpecification (strParamName, listAutotuneParams.get (0)); .)
+				                                                               (. else for (int i = nStartDimension; i < m_stencilCalculation.getDimensionality (); i++) { .)
+				                                                               (.     m_strategy.setAutotuneSpecification (rgParamNames[i], listAutotuneParams.get (i - nStartDimension)); .)
+				                                                               (. } .)
+			]
+        }.
+
+               
+    // -------- Strategy Statements --------
+
+    StrategyStatement<out Statement stmt> =                                    (. stmt = null; .)
+    	(
+            StrategyDeclaration<out Statement stmtDeclaration> SYNC ';'        (. stmt = stmtDeclaration; .)
+            |
+        	StrategyLoop<out Statement stmtLoop>                               (. stmt = stmtLoop; .)
+        	|
+        	StrategyIfStatement<out Statement stmtConditional>                 (. stmt = stmtConditional; .)
+        	|
+        	StrategyCompoundStatement<out Statement stmtCompound>              (. stmt = stmtCompound; .)
+        	|
+        	IF(isSubCall ())
+        		SubCall<out Statement stmtSubCall> SYNC ';'                    (. stmt = stmtSubCall; .)
+        	|
+      		StrategyAssignment<out Expression exprAssign> SYNC ';'             (. stmt = new ExpressionStatement (exprAssign); .)
+        ).
+        
+    StrategyCompoundStatement<out Statement stmt> =
+       	'{'                                                                    (. CompoundStatement cmpstmt = new CompoundStatement (); pushContext (); .)
+        {
+       		StrategyStatement<out Statement stmt1>                             (. if (stmt1 != null) { if (stmt1 instanceof DeclarationStatement) { Declaration decl = ((DeclarationStatement) stmt1).getDeclaration (); decl.setParent (null); cmpstmt.addDeclaration (decl); } else cmpstmt.addStatement (stmt1); } .)
+       	}                                                                      // avoid unnecessary compound statements...
+       	'}'                                                                    (. if (cmpstmt.getChildren ().size () == 1) { stmt = (Statement) cmpstmt.getChildren ().get (0); stmt.setParent (null); } else stmt = cmpstmt; popContext (); .)
+       	.
+    
+        
+    /**
+     * A strategy variable declaration.
+     */
+    StrategyDeclaration<out Statement stmt> =                                  (. stmt = null; .)
+        (
+            StrategyDomainDeclaration<out stmt>
+            |
+            StrategyIntegerDeclaration<out stmt>
+        ).
+        
+    /**
+     * A declaration of a temporary domain within the strategy.
+     */
+    StrategyDomainDeclaration<out Statement stmt> =                            (. stmt = null; .)
+        SYNC "domain"
+        ident                                                                  (. String strIdentifier = t.val; .)
+        '('                                                                    (. byte nDim = m_stencilCalculation.getDimensionality (); Size size = new Size (nDim); Border border = new Border (nDim); .)
+        SubdomainSize<size, border, Vector.getZeroVector (nDim)>
+        /*';'
+        StrategyExpression<out Expression exprTimeSize>
+        [
+           ';'
+           StrategyExpression<out Expression exprAddSize> 
+        ]*/
+        ')'                                                                    (. size.addBorder (border); List<Expression> listArraySizes = new ArrayList<Expression> (); .)
+        // Arrays
+        [
+        	'['
+        	StrategyExpression<out Expression exprArraySize>                   (. listArraySizes.add (exprArraySize); .)
+        	{
+        		',' StrategyExpression<out exprArraySize>                      (. listArraySizes.add (exprArraySize); .)
+        	}
+        	']'
+        ]                                                                      (. registerSubdomain (strIdentifier, new Subdomain (null, Subdomain.ESubdomainType.SUBDOMAIN, size), listArraySizes); SubdomainIdentifier sgid = getSubdomainIdentifier (strIdentifier); addDeclaration (StencilSpecifier.STENCIL_GRID, sgid); .)
+                                                                               (. stmt = new ExpressionStatement (new AssignmentExpression (sgid, AssignmentOperator.NORMAL, new FunctionCall (Globals.FNX_MALLOC.clone (), CodeGeneratorUtil.expressions (size.getVolume ())))); .)
+        .
+        
+    /**
+     * A declaration of a scalar integer variable.
+     */
+    StrategyIntegerDeclaration<out Statement stmt> =                           (. stmt = null; .)
+        SYNC "int" ident                                                       (. String strIdentifier = t.val; .)
+        [
+            StrategyAssignmentOperation<out Expression expr>                   (. Integer nVal = getIntegerValue (expr); if (nVal != null) m_mapConstants.put (strIdentifier, nVal); .)
+                                                                               (. else { .)
+                                                                               (.     VariableDeclarator decl = new VariableDeclarator (new NameID (strIdentifier)); .)
+                                                                               (.     decl.setInitializer (new ValueInitializer (expr)); .)
+                                                                               (.     stmt = new DeclarationStatement (new VariableDeclaration (Globals.SPECIFIER_INDEX, decl)); } .)
+        ].
+            
+    /**
+     * A loop.
+     * Different types of loops exist:
+     *     for subdomain v(sx,sy,sz) in u ...
+     * iterates a subdomain v sized (sx,sy,sz) over the domain u,
+     *     for plane p in u ...
+     * iterates over planes of the (sub)domain u,
+     *     for point p in u ...
+     * iterates pointwise over the (sub)domain/plane u,
+     *     for i = start .. end by stride ...
+     * is a traditional for loop executing the loop's body for i=start,start+1,...,end.
+     */
+    StrategyLoop<out Loop loop> =                                              (. loop = null; boolean bNewParallelismLevel = false; .)
+    	SYNC "for"
+    	(                                                                      (. SubdomainIterator loopSubdomain = new SubdomainIterator (); .)
+    		(
+    			(
+    				/* subdomain iterators */
+		    		SubdomainLoop<loopSubdomain>
+		    		|
+		    		PlaneLoop<loopSubdomain>
+		    		|
+		    		PointLoop<loopSubdomain>
+		    	)
+		    	[
+		    		SYNC "parallel"                                            (. loopSubdomain.setNumberOfThreads (Loop.MAX_THREADS); bNewParallelismLevel = true; .)
+			    	[
+			    		SYNC "schedule" StrategyExpression<
+			    			out Expression exprChunkSizeTmp>                   (. int nDim = loopSubdomain.getDomainIdentifier ().getDimensionality (); Expression[] rgChunkSize = new Expression[nDim]; rgChunkSize[0] = exprChunkSizeTmp; for (int i = 1; i < nDim; i++) rgChunkSize[i] = Globals.ONE.clone (); loopSubdomain.setChunkSize (rgChunkSize); .)
+			    	]
+		    	]
+	    	)                                                                  (. loop = loopSubdomain; .)
+    		|
+    		(
+    			/* range iterator */
+    			RangeLoop<out loop>
+    			[
+			    	SYNC "parallel"                                            (. loop.setNumberOfThreads (Loop.MAX_THREADS); bNewParallelismLevel = true; .)
+			    	[                                                          // the number of threads (optional: if not provided, the maximum number of threads is used (partitioned among the parallel loops)
+			    		StrategyExpression<out Expression exprNumThreads>      (. loop.setNumberOfThreads (exprNumThreads); bNewParallelismLevel = false; .)
+			    	]                                                          (. if (bNewParallelismLevel) m_stackParallelismLevels.push (m_stackParallelismLevels.peek () + 1); .)
+			    	[
+			    		SYNC "schedule" StrategyExpression<
+			    			out Expression exprChunkSizeTmp>                   (. loop.setChunkSize (new Expression[] { exprChunkSizeTmp }); .)
+			    	]
+    			]
+    		)
+    	)                                                                      (. if (loop == null) loop = new RangeIterator (); .)
+    	                                                                       (. int nParLevel = m_stackParallelismLevels.peek (); if (bNewParallelismLevel) nParLevel++; m_stackParallelismLevels.push (nParLevel); loop.setParallelismLevel (nParLevel); .)
+        StrategyStatement<out Statement stmtBody>                              (. loop.setLoopBody (stmtBody); m_stackParallelismLevels.pop (); .)
+        .
+        
+    /**
+     * The bounded iterator "for i = start .. end by stride ..."
+     */     
+    RangeLoop<out RangeIterator loop> =                                        (. loop = new RangeIterator (); .)
+                                                                               // loop index variable (Note: this is automatically declared in Loop)
+        ident                                                                  (. NameID idLoopIdx = new NameID (t.val); loop.setLoopIndex (addDeclaration (Globals.SPECIFIER_INDEX, idLoopIdx)); .)
+        '=' StrategyExpression<out Expression exprStart>                       // loop start and end expression
+        ".." StrategyExpression<out Expression exprEnd>                        (. if (exprEnd.equals (StencilProperty.getMaxTime ())) { exprEnd = m_stencilCalculation.getMaxIterations ().clone (); loop.setMainTemporalIterator (true); } .)
+                                                                               (.  Expression exprStep = new IntegerLiteral (1); .)
+        [                                                                      // the loop stride
+            SYNC "by" StrategyExpression<out Expression exprStepTmp>           (. exprStep = exprStepTmp; .)
+        ]                                                                      (. loop.setRange (exprStart, exprEnd, exprStep); .)
+        .
+        
+    /**
+     * The subdomain iterator "for subdomain v(sx,sy,sz) in u ..."
+     */
+	SubdomainLoop<SubdomainIterator loop> =
+		SYNC "subdomain"
+		ident                                                                  (. String strIdentifier = t.val; byte nDimensionality = m_stencilCalculation.getDimensionality (); Size size = new Size (nDimensionality); Border border = new Border (nDimensionality); Size sizeDomn = new Size (nDimensionality); Border borderDomn = new Border (nDimensionality); .)
+		'(' SubdomainSize<size,border,Vector.getOnesVector(nDimensionality)> ')' (. size.addBorder (border); .)
+        IterationSpace<out SubdomainIdentifier sgidDomn, sizeDomn, borderDomn>   (. loop.setDomainSubdomain (sgidDomn, sizeDomn, borderDomn); .)
+                                                                               (. registerSubdomain (strIdentifier, new Subdomain (sgidDomn.getSubdomain (), Subdomain.ESubdomainType.SUBDOMAIN, size), null); .)
+                                                                               (. SubdomainIdentifier sgid = getSubdomainIdentifier (strIdentifier); .)
+                                                                               (. if (sgidDomn.getTemporalIndex () != null) sgid.setTemporalIndex (sgidDomn.getTemporalIndex ()); .)
+                                                                               (. loop.setIteratorSubdomain (sgid); .)
+		.
+	
+    /**
+     * The plane iterator "for plane p in u ..."
+     * (A plane is a object of co-dimension 1)
+     */
+    PlaneLoop<SubdomainIterator loop> =
+        SYNC "plane"
+        ident                                                                  (. String strIdentifier = t.val; byte nDimensionality = m_stencilCalculation.getDimensionality (); Size sizeDomn = new Size (nDimensionality); Border borderDomn = new Border (nDimensionality); .)
+        IterationSpace<out SubdomainIdentifier sgidDomn, sizeDomn, borderDomn> (. loop.setDomainSubdomain (sgidDomn, sizeDomn, borderDomn); .)
+                                                                               (. Expression[] rgSize = new Expression[nDimensionality]; for (int i = 0; i < nDimensionality - 1; i++) rgSize[i] = sgidDomn.getSubdomain ().getSize ().getCoord (i).clone (); rgSize[nDimensionality - 1] = new IntegerLiteral (1); .)
+                                                                               (. registerSubdomain (strIdentifier, new Subdomain (sgidDomn.getSubdomain (), Subdomain.ESubdomainType.PLANE, new Size (rgSize)), null); .)
+                                                                               (. SubdomainIdentifier sgid = getSubdomainIdentifier (strIdentifier); .)
+                                                                               (. if (sgidDomn.getTemporalIndex () != null) sgid.setTemporalIndex (sgidDomn.getTemporalIndex ()); .)
+                                                                               (. loop.setIteratorSubdomain (sgid); .)
+        .
+
+    /**
+     * The point iterator "for point p in u ..."
+     */
+    PointLoop<SubdomainIterator loop> =
+        SYNC "point"
+        ident                                                                  (. String strIdentifier = t.val; byte nDimensionality = m_stencilCalculation.getDimensionality (); Size sizeDomn = new Size (nDimensionality); Border borderDomn = new Border (nDimensionality); .)
+        IterationSpace<out SubdomainIdentifier sgidDomn, sizeDomn, borderDomn> (. loop.setDomainSubdomain (sgidDomn, sizeDomn, borderDomn); .)
+                                                                               (. Expression[] rgSize = new Expression[nDimensionality]; for (int i = 0; i < nDimensionality; i++) rgSize[i] = new IntegerLiteral (1); .)
+                                                                               (. registerSubdomain (strIdentifier, new Subdomain (sgidDomn.getSubdomain (), Subdomain.ESubdomainType.POINT, new Size (rgSize)), null); .)
+                                                                               (. SubdomainIdentifier sgid = getSubdomainIdentifier (strIdentifier); .)
+                                                                               (. if (sgidDomn.getTemporalIndex () != null) sgid.setTemporalIndex (sgidDomn.getTemporalIndex ()); .)
+                                                                               (. loop.setIteratorSubdomain (sgid); .)
+        .
+
+    /**
+     * The "in" expression for subdomain/plane/point loops
+     */
+    IterationSpace<out SubdomainIdentifier subdomain, Size size, Border border> =
+        SYNC "in"                                                              (. subdomain = null; .)
+        StrategySubdomainIdentifier<out Expression exprSgid, EHandSide.RIGHT>  (. if (!(exprSgid instanceof SubdomainIdentifier)) { errors.SemErr (la.line, la.col, StringUtil.concat (exprSgid.toString (), " is not a subdomain.")); return null; } .)
+        '('                                                                    (. subdomain = (SubdomainIdentifier) exprSgid; .)
+        /* relative starting point within the domain domain */
+        SubdomainSize<size, border, subdomain.getSubdomain ().getSize ()>
+        ';'
+        StrategyExpression<out Expression exprTimeIdx>                         (. if (exprTimeIdx != null) subdomain.setTemporalIndex (exprTimeIdx); .)
+        ')'.		
+		
+	/**
+	 * Subdomain coordinates (of an iterator box) relative to the "natural" iterator coordinates.
+	 * The <code>size</code> and <code>border</code> arguments are filled by this method.
+	 */
+    SubdomainSize<Size size, Border border, Vector vecParentSize> =
+        StrategyVector<. out List<Expression> listExpressions, vecParentSize .>(. int i = 0; for (Expression expr : listExpressions) { size.setCoord (i, expr); i++; } .)
+        {                                                                      (. boolean bIsNegative = false; .)
+            (
+                '+'
+                |
+                '-'                                                            (. bIsNegative = true; .)
+            )
+            SubdomainScaledBorder<out Border border1>                          (. if (border1 != null) { .)
+                                                                               (.     if (bIsNegative) { border.getMin ().subtract (border1.getMin ()); border.getMax ().subtract (border1.getMax ()); } .)
+                                                                               (.     else { border.getMin ().add (border1.getMin ()); border.getMax ().add (border1.getMax ()); } .)
+                                                                               (. } .)
+        }.
+        
+    /**
+     * A border definition that can have factors to the left or right.
+     */
+    SubdomainScaledBorder<out Border border> =                                 (. border = null; Expression exprFactor1 = null; Expression exprFactor2 = null; .)
+        (
+            IF(isBorder ())
+                SubdomainBorder<out border>                                    (. if (border == null) return null; .)
+            |
+            (
+                StrategyUnaryExpression<out exprFactor1>
+                '*'
+                SubdomainBorder<out border>                                    (. if (border == null) return null; .)
+            )
+        )
+        [
+            '*'
+            StrategyUnaryExpression<out exprFactor2>
+        ]                                                                      (. Expression exprFactor = (exprFactor1 == null ? (exprFactor2 == null ? null : exprFactor2) : (exprFactor2 == null ? exprFactor1 : new BinaryExpression (exprFactor1, BinaryOperator.MULTIPLY, exprFactor2))); .)
+                                                                               (. if (exprFactor != null) border.scale (exprFactor); .)
+        .
+        
+    /**
+     * A border definition (enlarging or decreasing the domain size).
+     */
+    SubdomainBorder<out Border border> =                                       (. border = null; .)
+    	(
+    		StencilBoxBorder<out border>
+    		|
+    		LiteralSubdomainBorder<out border>
+    	).
+    	
+    LiteralSubdomainBorder<out Border border> =                                (. border = null; .)
+    	'<'
+    	(
+    		IF(isVector ())
+    			LiteralVectorBorder<out border>
+    		|
+    		IF(isBorder ())
+    			SubdomainBorder<out border>
+    			{
+    				',' SubdomainBorder<out Border border1>                    (. int nDim0 = border.getDimensionality (); Expression rgExprMin[] = new Expression[nDim0 + border1.getDimensionality ()]; .)
+    				                                                           (. Expression rgExprMax[] = new Expression[nDim0 + border1.getDimensionality ()]; .)
+    				                                                           (. for (int i = 0; i < nDim0; i++) { rgExprMin[i] = border.getMin ().getCoord (i); rgExprMax[i] = border.getMax ().getCoord (i); } .)
+    				                                                           (. for (int i = 0; i < border1.getDimensionality (); i++) { rgExprMin[nDim0 + i] = border1.getMin ().getCoord (i); rgExprMax[nDim0 + i] = border1.getMax ().getCoord (i); } .)
+    				                                                           (. border = new Border (new Size (rgExprMin), new Size (rgExprMax)); .)
+    			}    				    			
+    		|
+    		(
+    			StrategyExpression<out Expression exprMin>
+    			',' StrategyExpression<out Expression exprMax>                 (. border = new Border (new Size (new UnaryExpression (UnaryOperator.MINUS, exprMin)), new Size (exprMax)); .)
+    		)
+    	)
+    	'>'
+    	.
+    	
+    StencilBoxBorder<out Border border> =                                      (. border = null; Stencil stencil = m_stencilCalculation.getStencilBundle ().getFusedStencil (); .)
+    	SYNC "stencil" '.' "box"                                               (. int[] rgMinSpaceIdx = stencil.getMinSpaceIndex (); int[] rgMaxSpaceIdx = stencil.getMaxSpaceIndex (); .)
+                                                                               (. List<Expression> listMinSpaceIdx = new ArrayList<Expression> (rgMinSpaceIdx.length); List<Expression> listMaxSpaceIdx = new ArrayList<Expression> (rgMaxSpaceIdx.length); .)
+                                                                               (. for (int i = 0; i < rgMinSpaceIdx.length; i++) { listMinSpaceIdx.add (new IntegerLiteral (-rgMinSpaceIdx[i])); listMaxSpaceIdx.add (new IntegerLiteral (rgMaxSpaceIdx[i])); } .)
+        [
+        	// optional box coordinate subscripts
+            '('
+            StrategyVector<. out List<Expression> listCoords, null .>          (. listMinSpaceIdx = createSubscriptedVector (listMinSpaceIdx, listCoords); listMaxSpaceIdx = createSubscriptedVector (listMaxSpaceIdx, listCoords); .)
+            ')'                                                                (. border = new Border (createSize (listMinSpaceIdx), createSize (listMaxSpaceIdx)); .)
+        ]                                                                      (. ; .)
+    	.
+    	
+    LiteralVectorBorder<out Border border> =                                   (. border = null; Vector v = Vector.getZeroVector (m_stencilCalculation.getStencilBundle ().getFusedStencil ().getDimensionality ()); .)
+    	'(' StrategyVector<. out List<Expression> listMin, v .> ')'            (. List<Expression> listMinNeg = new ArrayList<> (listMin.size ()); .)
+    	','                                                                    (. for (Expression expr : listMin) listMinNeg.add (new UnaryExpression (UnaryOperator.MINUS, expr)); .)
+    	'(' StrategyVector<. out List<Expression> listMax, v .> ')'            (. border = new Border (createSize (listMinNeg), createSize (listMax)); .)
+    	.
+        
+    /**
+     * A coordinate vector expression which can contain place holders and ellipses,
+     * which will be filled with the appropriate values.
+     */
+    StrategyVector<out List<Expression> listExpressions, Vector vecDefault> =  (. listExpressions = new LinkedList<> (); List<Expression> listTail = null; byte nDim = m_stencilCalculation.getDimensionality (); .)
+        Subvector<. out List<Expression> listHead .>
+        [
+            "..."
+            [
+            	',' Subvector<out listTail>
+            ]                                                                  (. Expression exprLast = listHead.get (listHead.size () - 1); int nTailSize = listTail == null ? 0 : listTail.size (); for (int i = listHead.size (); i < nDim - nTailSize; i++) listHead.add (exprLast.clone ()); .)
+        ]                                                                      (. listExpressions = createVector (listHead, listTail, vecDefault); .)
+        .
+        
+    /**
+     * A vector part.
+     */        
+    Subvector<. out List<Expression> listExpressions .> =                      (. listExpressions = null; byte nDimensionality = m_stencilCalculation.getDimensionality (); .)
+        (
+        	(
+            	':'                                                            (. List<Expression> listExprs1 = null; .)
+            	{
+            		',' ScalarList<out listExprs1>
+            	}                                                              (. listExpressions = new ArrayList<> (nDimensionality); int nTailSize = listExprs1 == null ? 0 : listExprs1.size (); .)
+            	                                                               (. for (int i = 0; i < nDimensionality - nTailSize; i++) listExpressions.add (null); if (listExprs1 != null) listExpressions.addAll (listExprs1); .)
+            )
+            |
+            IF(isDimensionParameter ())
+            	DimensionIdentifier<out listExpressions>
+            |
+            IF(isVectorProperty ())
+            	DomainSizeExpression<out listExpressions>
+            |
+            IF(isBracketedVector ())
+            	'('
+            	StrategyVector<out listExpressions, null>
+            	{
+            		','
+            		StrategyVector<. out List<Expression> listExprs1, null .>  (. listExpressions.addAll (listExprs1); .)
+            	}
+            	')'
+            |
+            ScalarList<out listExpressions>
+        ).
+        
+    DimensionIdentifier<out List<Expression> listExpressions> =                (. byte nDimensionality = m_stencilCalculation.getDimensionality (); .)
+	    StrategyExpression<out Expression exprSize>                            (. listExpressions = new ArrayList<> (); for (int i = 0; i < nDimensionality; i++) listExpressions.add (getDimIdentifier (exprSize, i)); .)
+        [
+    	  	'('                                                                (. Vector v = new Vector (nDimensionality); for (int i = 0; i < nDimensionality; i++) v.setCoord (i, i + 1); .)
+          	StrategyVector<. out List<Expression> listSubscripts, v .>         (. listExpressions = createSubscriptedVector (listExpressions, listSubscripts); .)
+        	')'
+        ].
+        
+    /**
+     * A list of scalars, which can contain a range token "..".
+     */
+    ScalarList<. out List<Expression> listExpressions .> =                     (. listExpressions = new ArrayList<> (); .)
+    	ScalarRange<. out List<Expression> listRange .>                        (. listExpressions.addAll (listRange); .)
+    	{
+    		',' ScalarRange<. out listRange .>                                 (. listExpressions.addAll (listRange); .)
+    	}.
+    	
+    /**
+     * A range of scalars (with the range token ".." between the start and end value. 
+     */
+    ScalarRange<. out List<Expression> listExpressions .> =                    (. listExpressions = new ArrayList<> (); .)
+        StrategyExpression<out Expression exprStart>                           (. listExpressions.add (exprStart); .)
+        [
+        	".." CompileTimeConstant<out int nEnd>                             (. for (int i = getIntValue (exprStart) + 1; i <= nEnd; i++) listExpressions.add (new IntegerLiteral (i)); .)
+        ].
+    
+    DomainSizeExpression<out List<Expression> listExpressions> =               (. Box box = null; .)
+        (
+            "stencil"                                                          (. box = m_stencilCalculation.getStencilBundle ().getFusedStencil ().getBoundingBox (); .)
+            |
+            StrategySubdomainIdentifier<out Expression exprSgid, EHandSide.RIGHT>(. Subdomain sg = getSubdomain (t.val); if (sg == null) return new ArrayList<> (0); box = sg.getBox (); .)
+        )
+        '.'                                                                    (. listExpressions = new ArrayList<> (); if (box == null) { errors.SemErr (la.line, la.col, "No box defined"); return null; } .)
+        (
+            "size"                                                             (. for (Expression expr : box.getSize ()) listExpressions.add (expr); .)
+            |
+            "min"                                                              (. for (Expression expr : box.getMin ()) listExpressions.add (expr); .)
+            |
+            "max"                                                              (. for (Expression expr : box.getMax ()) listExpressions.add (expr); .)
+        )
+        [
+            '(' StrategyVector<. out List<Expression> listCoords, null .> ')'  (. listExpressions = createSubscriptedVector (listExpressions, listCoords); .)
+        ]. 
+        
+	/**
+	 * An LValue.
+	 */        
+    StrategyLValue<out Expression expr> =                                      (. expr = null; .)
+    	(
+    		IF(isGridAccess ())
+    			StrategyGridAccess<out Expression expr0, EHandSide.LEFT>       (. expr = expr0; .)
+    		|
+    		ident                                                              (. expr = new NameID (t.val); .)
+    	).
+    	
+	/**
+	 * A subdomain identifier. Check that the identifier actually
+	 * is a subdomain identifier if found on the right hand side
+	 * of an assignment or in an expression.
+	 */
+    StrategySubdomainIdentifier<out Expression exprIdentifier, EHandSide hs> =
+        ident                                                                  (. String strName = t.val; if (m_mapDimensionIdentifiers.containsKey (strName)) errors.SemErr (la.line, la.col, "Dimension identifiers cannot be used in epxressions"); .)
+                                                                               (. exprIdentifier = m_mapSubdomains.containsKey (strName) ? getSubdomainIdentifier (t.val) : new NameID (t.val); .)
+                                                                               (. if (hs == EHandSide.LEFT) .)
+                                                                               (.     addDeclaration (StencilSpecifier.STENCIL_GRID, exprIdentifier); .)
+                                                                               (. else .)
+                                                                               (.     checkDeclared (exprIdentifier); .)
+    	.
+    
+    /**
+     * A subscript for domain identifiers
+     */
+	StrategyGridAccess<out Expression exprSubdomainIdentifier, EHandSide hs> =
+		StrategySubdomainIdentifier<out Expression exprSgid, hs>               (. exprSubdomainIdentifier = exprSgid; .)	                     
+		'['                                                                    (. if (!(exprSubdomainIdentifier instanceof SubdomainIdentifier)) { errors.SemErr (la.line, la.col, StringUtil.concat (exprSubdomainIdentifier.toString (), " has not been declared a subdomain. Only subdomains can have array subscripts.")); return null; } .)
+		                                                                       (. SubdomainIdentifier sgid = (SubdomainIdentifier) exprSubdomainIdentifier; .)
+		/* spatial index */
+		/*StrategyVector<. out List<Expression> listSpatialIdx, Vector.getZeroVector (m_stencilCalculation.getDimensionality ()) .>*/
+		(
+			IF(isSubdomainIdentifier ())
+				StrategySubdomainIdentifier<out Expression exprPoint, hs>      (. exprSubdomainIdentifier = exprPoint; sgid = (SubdomainIdentifier) exprSubdomainIdentifier; .)
+		    |
+		    /*StrategyVector<. out List<Expression> listSpatialIdx, Vector.getZeroVector (m_stencilCalculation.getDimensionality ()) .>*/
+		    (                                                                  (. byte nDim = m_stencilCalculation.getDimensionality (); Size size = new Size (nDim); Border border = new Border (nDim); .)
+		    	SubdomainSize<size, border, Vector.getZeroVector (nDim)>       (. Box box = new Box (size.getCoords (), size.getCoords ()); box.addBorder (border); sgid.setSpatialOffset (box.getMin ().getCoords ()); .)
+		    )
+		)
+		';'
+		/* temporal index */
+		StrategyExpression<out Expression exprTimeIndex>                       (. sgid.setTemporalIndex (exprTimeIndex); .)
+		{
+			/* more indices */
+			SYNC ';' StrategyExpression<out Expression exprIdx>                (. /* TODO! */ .)
+		}
+		']'
+		.	
+
+	/**
+	 * A coordinate expression "v(const)" where v is a subdomain
+	 * identifier and const a compile time constant.
+	 */
+    StrategySubdomainCoordinate<out Expression exprCoord> =
+    	StrategySubdomainIdentifier<out Expression exprSgid, EHandSide.RIGHT>
+    	'(' CompileTimeConstant<out int nDim> ')'                              (. exprCoord = createCoordinateExpression (exprSgid, nDim); .)
+    	.
+    	
+    /**
+     * A stencil or domain property.
+     */
+    StrategyProperty<out Expression expr> =                                    (. expr = null; .)
+    	(
+    		StrategyStencilProperty<out expr>
+    		|
+    		StrategySubdomainProperty<out expr>
+    	).
+    	
+    /**
+     * A stencil property.
+     */
+    StrategyStencilProperty<out Expression expr> =                             (. expr = null; .)
+    	"stencil" '.'
+    	(
+    		"dim"                                                              (. expr = new IntegerLiteral (m_stencilCalculation.getDimensionality ()); .)
+			|
+			"t_max"                                                            (. expr = StencilProperty.getMaxTime (); .)
+			|
+			(                                                                  (. Vector v = null; Box box = m_stencilCalculation.getStencilBundle ().getFusedStencil ().getBoundingBox (); .)
+				(
+					"size"                                                     (. v = box.getSize (); .)
+					|
+					"min"                                                      (. v = box.getMin (); .)
+					|
+					"max"                                                      (. v = box.getMax (); .)
+				)
+				'(' CompileTimeConstant<out int nIdx> ')'                      (. expr = v.getCoord (nIdx - 1); .)
+			)			
+    	).
+    	
+    /**
+     * A domain property.
+     */
+    StrategySubdomainProperty<out Expression expr> =                           (. expr = null; .)
+    	StrategySubdomainIdentifier<out Expression exprSgid, EHandSide.RIGHT> '.'(. if (!(exprSgid instanceof SubdomainIdentifier)) { errors.SemErr (la.line, la.col, "Subdomain identifier expected."); return null; } SubdomainIdentifier sgid = (SubdomainIdentifier) exprSgid; .)
+    	(
+        	"dim"                                                              (. expr = new IntegerLiteral (m_stencilCalculation.getDimensionality ()); .)
+        	|
+        	"min" '(' CompileTimeConstant<out int nIdx> ')'                    (. expr = sgid.getSubdomain ().getBox ().getMin ().getCoord (nIdx - 1); .)
+        	|
+        	"max" '(' CompileTimeConstant<out int nIdx> ')'                    (. expr = sgid.getSubdomain ().getBox ().getMax ().getCoord (nIdx - 1); .)
+        	|
+        	"size" '(' CompileTimeConstant<out int nIdx> ')'                   (. expr = sgid.getSubdomain ().getBox ().getSize ().getCoord (nIdx - 1); .)        	 
+        	|
+        	"volume"                                                           (. expr = sgid.getSubdomain ().getBox ().getVolume (); /* TODO: respect padding/alignment restrictions... */ .)
+        ).
+
+	/**
+	 * A compile time constant.
+	 */    	
+    CompileTimeConstant<out int nResult> =                                     (. nResult = 0; .)
+    	StrategyExpression<out Expression expr>                                (. try { nResult = ExpressionUtil.getIntegerValue (expr); } catch (RuntimeException e) { errors.SemErr (la.line, la.col, "Compile time constant expected."); } .)
+    	.
+
+
+    // -------- Strategy Conditional --------
+
+    /**
+     * An if statement.
+     */
+    StrategyIfStatement<out Statement stmt> =
+    	SYNC "if" '(' ConditionalExpression<out Expression exprCondition> ')'
+    	StrategyStatement<out Statement stmtIf>                                (. stmt = new IfStatement (exprCondition, stmtIf); .)
+    	[                                                                      /* Note: the LL(1) conflict from the "else" is OK (no special treatment required) */
+    		SYNC "else" StrategyStatement<out Statement stmtElse>    		   (. ((IfStatement) stmt).setElseStatement (stmtElse); .)
+    	].
+    	
+    ConditionalExpression<out Expression expr> =
+    	ConditionalAndExpression<out Expression expr0>                         (. expr = expr0; .)
+    	{
+    		"||"
+    		ConditionalAndExpression<out Expression expr1>                     (. expr = new BinaryExpression (expr.clone (), BinaryOperator.LOGICAL_OR, expr1); .)
+    	}
+    	.
+    	
+    ConditionalAndExpression<out Expression expr> =
+    	ComparisonExpression<out Expression expr0>                             (. expr = expr0; .)
+    	{
+    		"&&"
+    		ComparisonExpression<out Expression expr1>                         (. expr = new BinaryExpression (expr.clone (), BinaryOperator.LOGICAL_AND, expr1); .)
+    	}
+    	.
+    	
+    ComparisonExpression<out Expression expr> =
+    	StrategyExpression<out Expression expr0>                               (. BinaryOperator op = null; .)
+    	(
+    		"<"                                                                (. op = BinaryOperator.COMPARE_LT; .)
+    		|
+    		"<="                                                               (. op = BinaryOperator.COMPARE_LE; .)
+    		|
+    		"=="                                                               (. op = BinaryOperator.COMPARE_EQ; .)
+    		|
+    		">="                                                               (. op = BinaryOperator.COMPARE_GE; .)
+    		|
+    		">"                                                                (. op = BinaryOperator.COMPARE_GT; .)
+    		|
+    		"!="                                                               (. op = BinaryOperator.COMPARE_NE; .)
+    	)
+    	StrategyExpression<out Expression expr1>                               (. expr = new BinaryExpression (expr0, op, expr1); .)
+    	.
+    
+    
+    // -------- Strategy Arithmetic Expressions --------
+    	
+	/**
+	 *
+	 */
+    StrategyAssignment<out Expression exprAssignment> =                        (. exprAssignment = null; .)
+        StrategyLValue<out Expression exprIdentifier>
+        StrategyAssignmentOperation<out Expression exprRHS>                    (. exprAssignment = new AssignmentExpression (exprIdentifier, AssignmentOperator.NORMAL, exprRHS); .)
+        .
+        
+    StrategyAssignmentOperation<out Expression expr> =                         (. expr = null; .)
+        '='
+        (
+        	IF(isStencilCall ())
+        	(
+        		"stencil"
+        		'('
+        		StrategyGridAccess<
+        			out Expression exprArgument, EHandSide.RIGHT>              (. expr = CodeGeneratorUtil.createStencilFunctionCall (exprArgument.clone ()); .)
+        		')'
+        	)
+        	|
+        	StrategyExpression<out expr>
+        )
+        .
+
+	/**
+	 * An expression within the strategy method.
+	 */
+    StrategyExpression<out Expression expr> =
+        StrategyAdditiveExpression<out expr>.
+
+	/**
+	 * An additive expression.
+	 */
+    StrategyAdditiveExpression<out Expression expr> =
+        StrategyMultiplicativeExpression<out Expression expr0>                 (. expr = expr0; .)
+        {                                                                      (. BinaryOperator op = BinaryOperator.ADD; .)
+        	(
+        		'+'                                                            /* Note: the LL1 conflict with the +/- in StrategyUnaryExpression is OK. */
+        		|
+        		'-'                                                            (. op = BinaryOperator.SUBTRACT; .)
+        	)
+        	StrategyMultiplicativeExpression<out Expression expr1>             (. expr = createBinaryExpression (expr.clone (), op, expr1); .)
+        }
+        .
+        
+	/**
+	 * A multiplicative expression.
+	 */
+    StrategyMultiplicativeExpression<out Expression expr> =
+        StrategyUnaryExpression<out Expression expr0>                          (. expr = expr0; .)
+        {                                                                      (. BinaryOperator op = BinaryOperator.MULTIPLY; .)
+        	(
+        		'*'
+        		|
+        		'/'                                                            (. op = BinaryOperator.DIVIDE; .)
+        		|
+        		'%'                                                            (. op = BinaryOperator.MODULUS; .)
+        	)
+        	StrategyUnaryExpression<out Expression expr1>                      (. expr = createBinaryExpression (expr.clone (), op, expr1); .)
+        }
+        .
+        
+	/**
+	 *
+	 */
+    StrategyUnaryExpression<out Expression expr> =                             (. expr = null; boolean bIsNegative = false; .)
+        [
+        	'+'
+        	|
+        	'-'                                                                (. bIsNegative = true; .)
+        ]
+        (
+        	NumberLiteral<out Number numValue>                                 (. expr = numValue instanceof Integer ? new IntegerLiteral (bIsNegative ? -numValue.intValue () : numValue.intValue ()) : new FloatLiteral (bIsNegative ? -numValue.doubleValue () : numValue.doubleValue ()); .)
+        	|
+        	StrategyBracketedExpression<out Expression exprBracketed>          (. expr = createUnaryExpression (bIsNegative, exprBracketed); .)
+			|
+			StrategyPointerExpression<out Expression exprPointer>              (. expr = createUnaryExpression (bIsNegative, exprPointer); .) 
+			|			                                                                      
+			IF(isSubCall ())
+        		StrategyFunctionCall<out Expression exprFnxValue>              (. expr = createUnaryExpression (bIsNegative, exprFnxValue); .)
+        	|
+        	IF(isGridAccess ())
+        		StrategyGridAccess<out Expression exprGridValue,EHandSide.RIGHT>(. expr = createUnaryExpression (bIsNegative, exprGridValue); .)
+        	|
+        	IF(isCoordinateOrVector ())
+        		StrategySubdomainCoordinate<out Expression exprCoord>          (. expr = createUnaryExpression (bIsNegative, exprCoord); .)
+        	|
+        	IF(isProperty ())
+        		StrategyProperty<out Expression exprProperty>                  (. expr = createUnaryExpression (bIsNegative, exprProperty); .)
+        	|
+        	ident                                                              (. Integer nVal = getConstantValue (t.val); expr = nVal != null ? new IntegerLiteral ((bIsNegative ? -1 : 1) * nVal) : createUnaryExpression (bIsNegative, new NameID (t.val)); .)
+        ).
+        
+    
+	/**
+	 * A bracketed expression.
+	 */
+    StrategyBracketedExpression<out Expression expr> =
+        '(' StrategyExpression<out expr> ')'.
+        
+    StrategyPointerExpression<out Expression exprPointer> =                    (. exprPointer = null; .)
+    	'&' StrategyExpression<out Expression expr>                            (. exprPointer = new UnaryExpression (UnaryOperator.ADDRESS_OF, expr); .)
+    	.
+        
+	/**
+	 * A function call.
+	 */
+    StrategyFunctionCall<out Expression exprFnx> =
+        ident                                                                  (. String strFunctionName = t.val; .)
+        '('                                                                    (. List<Expression> listArgs = new ArrayList<> (); .)
+        [
+        	StrategyExpression<out Expression expr>                            (. listArgs.add (expr); .)
+        	{
+        		SYNC ',' StrategyExpression<out expr>                          (. listArgs.add (expr); .)
+        	}
+        ]
+        ')'                                                                    (. exprFnx = new FunctionCall (new NameID (strFunctionName), listArgs); .)
+        .
+        
+    /**
+     * A subroutine call that will be treated as non-strategy
+     * related call and transferred verbatim to the generated code.
+     */
+    SubCall<out Statement stmtSubCall> =                                       (. List<Expression> listArgs = new ArrayList<> (); .)
+    	ident                                                                  (. String strSubName = t.val; .)
+    	'('
+    	[
+    		SubCallExpression<out Expression expr>                             (. listArgs.add (expr); .)
+    		{
+    			',' SubCallExpression<out expr>                                (. listArgs.add (expr); .)
+    		}
+    	]
+    	')'                                                                    (. stmtSubCall = new ExpressionStatement (new FunctionCall (new NameID (strSubName), listArgs)); .)
+    	.
+    	
+    SubCallExpression<out Expression expr> =                                   (. expr = null; .)
+    	(
+    		StringExpression<out expr>
+    		|
+    		StrategyExpression<out expr>
+    	).
+    	
+    StringExpression<out Expression expr> =
+    	'"'
+    	{ ANY }                                                                (. expr = new StringLiteral (t.val); .)
+    	'"'
+    	.
+
+
+    ///////////////////////////////////////////////////////////////////////
+	// Auto-tuner Specification
+	
+	AutoTuneValues<. out List<IAutotunerParam> listParams .> =                 (. listParams = null; .)
+		(
+			AutoTuneVector<out listParams>
+			|
+			AutoTuneItem<out listParams>
+		).
+		
+	AutoTuneVector<. out List<IAutotunerParam> listParams .> =                 (. listParams = new ArrayList<> (); .)
+		'('
+			AutoTuneItem<. out List<IAutotunerParam> l0 .>                     (. listParams.addAll (l0); .)
+			{
+				','
+				AutoTuneItem<. out List<IAutotunerParam> l1 .>                 (. listParams.addAll (l1); .)
+			}
+		')'
+		.
+		
+	AutoTuneItem<. out List<IAutotunerParam> listParams .> =                   (. listParams = null; .)
+		(
+			AutoTuneList<out listParams>
+			|
+			AutoTuneRange<out listParams>
+		).
+		
+	AutoTuneRange<. out List<IAutotunerParam> listParams .> =                  (. boolean bIsMultiplicative = false; .)
+		AutoTuneValue<. out List<Expression> listStart .>
+		':'
+		[
+			'*'                                                                (. bIsMultiplicative = true; .)
+		]
+		AutoTuneValue<. out List<Expression> listStepOrEnd .>                  (. List<Expression> listEnd = null; .)
+		                                                                       (. if (listStart.size () != listStepOrEnd.size () && (listStart.size () > 1 && listStepOrEnd.size () > 1)) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); .)
+		[
+			':'
+			AutoTuneValue<out listEnd>                                         (. if ((listStart.size () != listEnd.size () && (listStart.size () > 1 && listEnd.size () > 1)) || (listStepOrEnd.size () != listEnd.size () && (listStepOrEnd.size () > 1 && listEnd.size () > 1))) errors.SemErr (la.line, la.col, "Vector entries in an auto-tuner range parameter must have the same length."); .)
+		]
+		                                                                       (. listParams = new ArrayList<> (listStart.size ()); .)
+		                                                                       (. int nLen = Math.max (listStart.size (), listStepOrEnd.size ()); .)
+		                                                                       (. if (listEnd != null) nLen = Math.max (nLen, listEnd.size ()); .)
+		                                                                       (. for (int i = 0; i < nLen; i++) .)
+		                                                                       (.     listParams.add (listEnd == null ? .)
+		                                                                       (. 	      new IAutotunerParam.AutotunerRangeParam (getAutotuneListItem (listStart, i), getAutotuneListItem (listStepOrEnd, i)) : .)
+		                                                                       (. 	      new IAutotunerParam.AutotunerRangeParam (getAutotuneListItem (listStart, i), getAutotuneListItem (listStepOrEnd, i), bIsMultiplicative, getAutotuneListItem (listEnd, i))); .)
+		.
+		
+	AutoTuneList<. out List<IAutotunerParam> listParams .> =                   (. listParams = new ArrayList<> (); .)
+		'{'
+		AutoTuneValue<. out List<Expression> l0 .>                             (. listParams = new ArrayList<> (l0.size ()); .)
+		                                                                       (. for (Expression expr : l0) listParams.add (new IAutotunerParam.AutotunerListParam (expr)); .)
+		{
+			','
+			AutoTuneValue<. out List<Expression> l1 .>                         (. if (listParams.size () != l1.size ()) errors.SemErr (la.line, la.col, "Entries in an auto-tuner list parameter must have the same length."); .)
+			                                                                   (. int i = 0; for (Expression expr : l1) { ((IAutotunerParam.AutotunerListParam) listParams.get (i)).addValue (expr); i++; }.)
+		}
+		'}'
+		.
+		
+	AutoTuneValue<. out List<Expression> listExpressions .> =                  (. listExpressions = null; .)
+		(
+			IF(isDimensionParameter ())
+				DimensionIdentifier<out listExpressions>
+            |
+            IF(isVectorProperty ())
+            	DomainSizeExpression<out listExpressions>
+            |
+			StrategyExpression<out Expression expr>                            (. listExpressions = new ArrayList<Expression> (1); listExpressions.add (expr); .)
+		).
+		
+
+    ///////////////////////////////////////////////////////////////////////
+    // General Types
+		
+	NumberLiteral<out Number numValue> =                                       (. numValue = null; .)
+		(
+			integer                                                            (. numValue = Integer.parseInt (t.val); .)
+			|
+			float                                                              (. numValue = Double.parseDouble (t.val); .)
+		)
+		.
+		
+END StrategySpecification.

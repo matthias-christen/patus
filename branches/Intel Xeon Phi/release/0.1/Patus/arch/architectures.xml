@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<architectureTypes xsi:noNamespaceSchemaLocation="../src/ch/unibas/cs/hpwc/patus/arch/arch-config.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<!-- x86_64 architecture with SSE, OpenMP parallelization -->
+	<architectureType name="x86_64">
+		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
+		<parallelism>
+			<level number="1" has-explicit-local-datacopy="false" async-IO="false">
+				<barrier type="pragma" implementation="omp barrier"/>
+			</level>
+		</parallelism>
+		<datatypes/>
+		<declspecs>
+			<declspec type="restrictedpointer" specifiers="__restrict__"/>
+		</declspecs>
+		<intrinsics/>
+		<includes>
+			<include file="omp.h"/>
+			<include file="math.h"/>
+		</includes>
+		<build compiler-command="make" harness-template-dir="CPU_OpenMP"/>
+	</architectureType>
+
+	<!-- x86_64 architecture with SSE, OpenMP parallelization -->
+	<architectureType name="x86_64 SSE">
+		<codegenerator src-suffix="c" backend="OpenMP" use-function-pointers="true"/>
+		<parallelism>
+			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
+				<barrier type="pragma" implementation="omp barrier"/>
+			</level>
+		</parallelism>
+		<datatypes>
+			<!-- declare SSE datatypes -->
+			<!-- restrict alignment to 16 bytes -->
+			<datatype basetype="float" name="__m128" simd-vector-length="4" width="128" alignment="16"/>
+			<datatype basetype="double" name="__m128d" simd-vector-length="2" width="128" alignment="16"/>
+		</datatypes>
+		<declspecs>
+			<declspec type="restrictedpointer" specifiers="__restrict__"/>
+		</declspecs>
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			<intrinsic base-name="unary_minus" name="neg_pd" datatype="__m128d"/>
+			<intrinsic base-name="plus" name="_mm_add_pd" datatype="__m128d"/>
+			<intrinsic base-name="minus" name="_mm_sub_pd" datatype="__m128d"/>
+			<intrinsic base-name="multiply" name="_mm_mul_pd" datatype="__m128d"/>
+			<intrinsic base-name="divide" name="_mm_div_pd" datatype="__m128d"/>
+			<intrinsic base-name="sqrt" name="_mm_sqrt_pd" datatype="__m128d"/>
+			<intrinsic base-name="min" name="_mm_min_pd" datatype="__m128d"/>
+			<intrinsic base-name="max" name="_mm_max_pd" datatype="__m128d"/>
+			<!-- ssemathlib.h -->
+			<intrinsic base-name="ceil" name="ceil_pd" datatype="__m128d"/>
+			<intrinsic base-name="floor" name="floor_pd" datatype="__m128d"/>
+			<intrinsic base-name="abs" name="abs_pd" datatype="__m128d"/>
+			<intrinsic base-name="exp" name="exp_pd" datatype="__m128d"/>
+			<intrinsic base-name="log" name="log_pd" datatype="__m128d"/>
+			<intrinsic base-name="log10" name="log10_pd" datatype="__m128d"/>
+			<intrinsic base-name="pow" name="pow_pd" datatype="__m128d"/>
+			<intrinsic base-name="sin" name="sin_pd" datatype="__m128d"/>
+			<intrinsic base-name="cos" name="cos_pd" datatype="__m128d"/>
+			<intrinsic base-name="tan" name="tan_pd" datatype="__m128d"/>
+			<intrinsic base-name="asin" name="asin_pd" datatype="__m128d"/>
+			<intrinsic base-name="acos" name="acos_pd" datatype="__m128d"/>
+			<intrinsic base-name="atan" name="atan_pd" datatype="__m128d"/>
+			<intrinsic base-name="atan2" name="atan2_pd" datatype="__m128d"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			<intrinsic base-name="unary_minus" name="neg_ps" datatype="__m128"/>
+			<intrinsic base-name="plus" name="_mm_add_ps" datatype="__m128"/>
+			<intrinsic base-name="minus" name="_mm_sub_ps" datatype="__m128"/>
+			<intrinsic base-name="multiply" name="_mm_mul_ps" datatype="__m128"/>
+			<intrinsic base-name="divide" name="_mm_div_ps" datatype="__m128"/>
+			<intrinsic base-name="sqrt" name="_mm_sqrt_ps" datatype="__m128"/>
+			<intrinsic base-name="min" name="_mm_min_ps" datatype="__m128"/>
+			<intrinsic base-name="max" name="_mm_max_ps" datatype="__m128"/>
+			<!-- ssemathlib.h -->
+			<intrinsic base-name="ceil" name="ceil_ps" datatype="__m128"/>
+			<intrinsic base-name="floor" name="floor_ps" datatype="__m128"/>
+			<intrinsic base-name="abs" name="abs_ps" datatype="__m128"/>
+			<intrinsic base-name="exp" name="exp_ps" datatype="__m128"/>
+			<intrinsic base-name="log" name="log_ps" datatype="__m128"/>
+			<intrinsic base-name="log10" name="log10_ps" datatype="__m128"/>
+			<intrinsic base-name="pow" name="pow_ps" datatype="__m128"/>
+			<intrinsic base-name="sin" name="sin_ps" datatype="__m128"/>
+			<intrinsic base-name="cos" name="cos_ps" datatype="__m128"/>
+			<intrinsic base-name="tan" name="tan_ps" datatype="__m128"/>
+			<intrinsic base-name="asin" name="asin_ps" datatype="__m128"/>
+			<intrinsic base-name="acos" name="acos_ps" datatype="__m128"/>
+			<intrinsic base-name="atan" name="atan_ps" datatype="__m128"/>
+			<intrinsic base-name="atan2" name="atan2_ps" datatype="__m128"/>
+			
+			<!-- non-arithmetic intrinsics -->
+		</intrinsics>
+		<includes>
+			<include file="omp.h"/>
+			<include file="xmmintrin.h"/>
+			<include file="emmintrin.h"/>
+			<include file="ssemathlib.h"/>
+			<include file="math.h"/>
+		</includes>
+		<build compiler-command="make" harness-template-dir="CPU_OpenMP"/>
+	</architectureType>
+	
+	<!-- x86_64 architecture with SSE, OpenMP parallelization, inline assembly -->
+	<architectureType name="x86_64 SSE asm" inherits-from="x86_64 SSE">
+		<codegenerator src-suffix="c" backend="OpenMP" innermost-loop-cg="x86_64" use-function-pointers="true"/>
+		<datatypes>
+			<!-- declare SSE datatypes -->
+			<!-- restrict alignment to 16 bytes -->
+			<datatype basetype="float" name="__m128" simd-vector-length="4" width="128" alignment="16"/>
+			<datatype basetype="double" name="__m128d" simd-vector-length="2" width="128" alignment="16"/>
+		</datatypes>
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			
+			<!-- scalar operations -->
+			<intrinsic base-name="plus" name="addsd" datatype="double" arguments="reg,=reg"/>
+			<intrinsic base-name="minus" name="subsd" datatype="double" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="multiply" name="mulsd" datatype="double" arguments="reg,=reg"/>
+			<intrinsic base-name="divide" name="divsd" datatype="double" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="load-fpr-aligned" name="movsd" datatype="double"/>
+			<intrinsic base-name="store-fpr-aligned" name="movsd" datatype="double"/>
+
+			<!-- vector operations -->
+			<intrinsic base-name="unary_minus" name="xorpd" datatype="__m128d" arguments="imm:{0x00000000 0x80000000 0x00000000 0x80000000},=reg"/>
+			<intrinsic base-name="plus" name="addpd" datatype="__m128d" arguments="reg,=reg"/>
+			<intrinsic base-name="minus" name="subpd" datatype="__m128d" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="multiply" name="mulpd" datatype="__m128d" arguments="reg,=reg"/>
+			<intrinsic base-name="divide" name="divpd" datatype="__m128d" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="load-fpr-aligned" name="movapd" datatype="__m128d"/>
+			<intrinsic base-name="load-fpr-unaligned" name="movupd" datatype="__m128d"/>
+			<intrinsic base-name="store-fpr-aligned" name="movapd" datatype="__m128d"/>
+			<intrinsic base-name="store-fpr-unaligned" name="movupd" datatype="__m128d"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			
+			<!-- scalar operations -->
+			<intrinsic base-name="plus" name="addss" datatype="float" arguments="reg,=reg"/>
+			<intrinsic base-name="minus" name="subss" datatype="float" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="multiply" name="mulss" datatype="float" arguments="reg,=reg"/>
+			<intrinsic base-name="divide" name="divss" datatype="float" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="load-fpr-aligned" name="movss" datatype="float"/>
+			<intrinsic base-name="store-fpr-aligned" name="movss" datatype="float"/>
+			
+			<!-- vector operations -->
+			<intrinsic base-name="unary_minus" name="xorps" datatype="__m128" arguments="imm:{0x80000000 0x80000000 0x80000000 0x80000000},=reg"/>
+			<intrinsic base-name="plus" name="addps" datatype="__m128" arguments="reg,=reg"/>
+			<intrinsic base-name="minus" name="subps" datatype="__m128" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="multiply" name="mulps" datatype="__m128" arguments="reg,=reg"/>
+			<intrinsic base-name="divide" name="divps" datatype="__m128" arguments="reg:rhs,=reg:lhs"/>
+			<intrinsic base-name="load-fpr-aligned" name="movaps" datatype="__m128"/>
+			<intrinsic base-name="load-fpr-unaligned" name="movups" datatype="__m128"/>
+			<intrinsic base-name="store-fpr-aligned" name="movaps" datatype="__m128"/>
+			<intrinsic base-name="store-fpr-unaligned" name="movups" datatype="__m128"/>
+		</intrinsics>
+		<assembly processor-issue-rate="4">
+			<register-classes>
+				<register-class name="gpr64" type="gpr" width="64" datatype="int64_t"/>
+				<register-class name="gpr32" type="gpr" width="32" bitrange="0..31" datatype="int32_t" subregister-of="gpr64"/>
+				<register-class name="xmm" type="simd" width="128" bitrange="0..127" datatype="__m128"/>
+			</register-classes>
+			<registers>
+				<register name="rax" class="gpr64">
+					<subregister name="eax" class="gpr32"/>
+				</register>
+				<register name="rbx" class="gpr64">
+					<subregister name="ebx" class="gpr32"/>
+				</register>
+				<register name="rcx" class="gpr64">
+					<subregister name="ecx" class="gpr32"/>
+				</register>
+				<register name="rdx" class="gpr64">
+					<subregister name="edx" class="gpr32"/>
+				</register>
+				<register name="r8" class="gpr64">
+					<subregister name="r8d" class="gpr32"/>
+				</register>				
+				<register name="r9" class="gpr64">
+					<subregister name="r9d" class="gpr32"/>
+				</register>				
+				<register name="r10" class="gpr64">
+					<subregister name="r10d" class="gpr32"/>
+				</register>				
+				<register name="r11" class="gpr64">
+					<subregister name="r11d" class="gpr32"/>
+				</register>				
+				<register name="r12" class="gpr64">
+					<subregister name="r12d" class="gpr32"/>
+				</register>				
+				<register name="r13" class="gpr64">
+					<subregister name="r13d" class="gpr32"/>
+				</register>				
+				<register name="r14" class="gpr64">
+					<subregister name="r14d" class="gpr32"/>
+				</register>				
+				<register name="r15" class="gpr64">
+					<subregister name="r15d" class="gpr32"/>
+				</register>				
+				<register name="rsi" class="gpr64">
+					<subregister name="esi" class="gpr32"/>
+				</register>
+				<register name="rdi" class="gpr64">
+					<subregister name="edi" class="gpr32"/>
+				</register>
+				
+				<register name="xmm0" class="xmm"/>
+				<register name="xmm1" class="xmm"/>
+				<register name="xmm2" class="xmm"/>
+				<register name="xmm3" class="xmm"/>
+				<register name="xmm4" class="xmm"/>
+				<register name="xmm5" class="xmm"/>
+				<register name="xmm6" class="xmm"/>
+				<register name="xmm7" class="xmm"/>
+				<register name="xmm8" class="xmm"/>
+				<register name="xmm9" class="xmm"/>
+				<register name="xmm10" class="xmm"/>
+				<register name="xmm11" class="xmm"/>
+				<register name="xmm12" class="xmm"/>
+				<register name="xmm13" class="xmm"/>
+				<register name="xmm14" class="xmm"/>
+				<register name="xmm15" class="xmm"/>
+			</registers>
+		</assembly>
+	</architectureType>
+	
+	<!-- Architecture with AVX, OpenMP parallelization -->
+	<architectureType name="x86_64 AVX">
+		<codegenerator src-suffix="c" backend="OpenMP_AVX" use-function-pointers="true"/>
+		<parallelism>
+			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
+				<barrier type="pragma" implementation="omp barrier"/>
+			</level>
+		</parallelism>
+		<datatypes>
+			<!-- declare AVX-256 datatypes -->
+			<!-- restrict alignment to 32 bytes -->
+			<datatype basetype="float" name="__m256" simd-vector-length="8" width="256" alignment="32"/>
+			<datatype basetype="double" name="__m256d" simd-vector-length="4" width="256" alignment="32"/>
+		</datatypes>
+		<declspecs>
+			<declspec type="restrictedpointer" specifiers="__restrict__"/>
+		</declspecs>
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			<intrinsic base-name="unary_minus" name="_mm256_neg_pd" datatype="__m256d"/>
+			<intrinsic base-name="plus" name="_mm256_add_pd" datatype="__m256d"/>
+			<intrinsic base-name="minus" name="_mm256_sub_pd" datatype="__m256d"/>
+			<intrinsic base-name="multiply" name="_mm256_mul_pd" datatype="__m256d"/>
+			<intrinsic base-name="divide" name="_mm256_div_pd" datatype="__m256d"/>
+			<intrinsic base-name="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
+			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
+			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			<intrinsic base-name="unary_minus" name="_mm256_neg_ps" datatype="__m256"/>
+			<intrinsic base-name="plus" name="_mm256_add_ps" datatype="__m256"/>
+			<intrinsic base-name="minus" name="_mm256_sub_ps" datatype="__m256"/>
+			<intrinsic base-name="multiply" name="_mm256_mul_ps" datatype="__m256"/>
+			<intrinsic base-name="divide" name="_mm256_div_ps" datatype="__m256"/>
+			<intrinsic base-name="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
+			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
+			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>
+			
+			<!-- non-arithmetic intrinsics -->
+		</intrinsics>
+		<includes>
+			<include file="omp.h"/>
+			<include file="immintrin.h"/>
+			<include file="x86intrin.h"/>
+			<include file="avxmathlib.h"/>
+			<include file="math.h"/>
+		</includes>
+		<build compiler-command="make" harness-template-dir="CPU_OpenMP_AVX"/>
+	</architectureType>
+	
+	<!-- Generic x86_64 with AVX -->
+	<architectureType name="x86_64 AVX asm" inherits-from="x86_64 AVX">
+		<codegenerator src-suffix="c" backend="OpenMP_AVX_Asm" innermost-loop-cg="x86_64" use-function-pointers="true"/>
+		<datatypes>
+			<!-- declare AVX datatypes -->
+			<!-- restrict alignment to 32 bytes -->
+			<datatype basetype="float" name="__m256" simd-vector-length="8" width="256" alignment="32"/>
+			<datatype basetype="double" name="__m256d" simd-vector-length="4" width="256" alignment="32"/>
+		</datatypes>
+		<intrinsics>
+			<!-- intrinsics for double precision arithmetic operations -->
+			
+			<!-- scalar operations -->
+			<intrinsic base-name="plus" name="vaddsd" datatype="double" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="multiply" name="vmulsd" datatype="double" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivsd" datatype="double" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="load-fpr-aligned" name="vmovsd" datatype="double"/>
+			<intrinsic base-name="store-fpr-aligned" name="vmovsd" datatype="double"/>
+
+			<!-- vector operations -->
+			<intrinsic base-name="unary_minus" name="vxorpd" datatype="__m256d" arguments="reg/mem,imm:{0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000 0x00000000 0x80000000},=reg"/>
+			<intrinsic base-name="plus" name="vaddpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubpd" datatype="__m256d" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="multiply" name="vmulpd" datatype="__m256d" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivpd" datatype="__m256d" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<!--<intrinsic base-name="sqrt" name="_mm256_sqrt_pd" datatype="__m256d"/>
+			<intrinsic base-name="min" name="_mm256_min_pd" datatype="__m256d"/>
+			<intrinsic base-name="max" name="_mm256_max_pd" datatype="__m256d"/>-->
+			<intrinsic base-name="load-fpr-aligned" name="vmovapd" datatype="__m256d"/>
+			<intrinsic base-name="load-fpr-unaligned" name="vmovupd" datatype="__m256d"/>
+			<intrinsic base-name="store-fpr-aligned" name="vmovapd" datatype="__m256d"/>
+			<intrinsic base-name="store-fpr-unaligned" name="vmovupd" datatype="__m256d"/>
+			
+			<!-- intrinsics for single precision arithmetic operations -->
+			
+			<!-- scalar operations -->
+			<intrinsic base-name="plus" name="vaddss" datatype="float" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="multiply" name="vmulss" datatype="float" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivss" datatype="float" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="load-fpr-aligned" name="vmovss" datatype="float"/>
+			<intrinsic base-name="store-fpr-aligned" name="vmovss" datatype="float"/>
+			
+			<!-- vector operations -->
+			<intrinsic base-name="unary_minus" name="vxorps" datatype="__m256" arguments="reg/mem,imm:{0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000 0x80000000},=reg"/>
+			<intrinsic base-name="plus" name="vaddps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="minus" name="vsubps" datatype="__m256" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<intrinsic base-name="multiply" name="vmulps" datatype="__m256" arguments="reg/mem,reg,=reg"/>
+			<intrinsic base-name="divide" name="vdivps" datatype="__m256" arguments="reg/mem:rhs,reg:lhs,=reg"/>
+			<!--<intrinsic base-name="sqrt" name="_mm256_sqrt_ps" datatype="__m256"/>
+			<intrinsic base-name="min" name="_mm256_min_ps" datatype="__m256"/>
+			<intrinsic base-name="max" name="_mm256_max_ps" datatype="__m256"/>-->
+			<intrinsic base-name="load-fpr-aligned" name="vmovaps" datatype="__m256"/>
+			<intrinsic base-name="load-fpr-unaligned" name="vmovups" datatype="__m256"/>
+			<intrinsic base-name="store-fpr-aligned" name="vmovaps" datatype="__m256"/>
+			<intrinsic base-name="store-fpr-unaligned" name="vmovups" datatype="__m256"/>
+		</intrinsics>
+		<assembly processor-issue-rate="4">
+			<register-classes>
+				<register-class name="gpr64" type="gpr" width="64" datatype="int64_t"/>
+				<register-class name="gpr32" type="gpr" width="32" bitrange="0..31" datatype="int32_t" subregister-of="gpr64"/>
+				<register-class name="ymm" type="simd" width="256" datatype="__m256"/>
+				<register-class name="xmm" type="simd" width="128" bitrange="0..127" datatype="__m128" subregister-of="ymm"/>
+			</register-classes>
+			<registers>
+				<register name="rax" class="gpr64">
+					<subregister name="eax" class="gpr32"/>
+				</register>
+				<register name="rbx" class="gpr64">
+					<subregister name="ebx" class="gpr32"/>
+				</register>
+				<register name="rcx" class="gpr64">
+					<subregister name="ecx" class="gpr32"/>
+				</register>
+				<register name="rdx" class="gpr64">
+					<subregister name="edx" class="gpr32"/>
+				</register>
+				<register name="r8" class="gpr64">
+					<subregister name="r8d" class="gpr32"/>
+				</register>				
+				<register name="r9" class="gpr64">
+					<subregister name="r9d" class="gpr32"/>
+				</register>				
+				<register name="r10" class="gpr64">
+					<subregister name="r10d" class="gpr32"/>
+				</register>				
+				<register name="r11" class="gpr64">
+					<subregister name="r11d" class="gpr32"/>
+				</register>				
+				<register name="r12" class="gpr64">
+					<subregister name="r12d" class="gpr32"/>
+				</register>				
+				<register name="r13" class="gpr64">
+					<subregister name="r13d" class="gpr32"/>
+				</register>				
+				<register name="r14" class="gpr64">
+					<subregister name="r14d" class="gpr32"/>
+				</register>				
+				<register name="r15" class="gpr64">
+					<subregister name="r15d" class="gpr32"/>
+				</register>				
+				<register name="rsi" class="gpr64">
+					<subregister name="esi" class="gpr32"/>
+				</register>
+				<register name="rdi" class="gpr64">
+					<subregister name="edi" class="gpr32"/>
+				</register>
+				
+				<register name="ymm0" class="ymm">
+					<subregister name="xmm0" class="xmm"/>
+				</register>
+				<register name="ymm1" class="ymm">
+					<subregister name="xmm1" class="xmm"/>
+				</register>
+				<register name="ymm2" class="ymm">
+					<subregister name="xmm2" class="xmm"/>
+				</register>
+				<register name="ymm3" class="ymm">
+					<subregister name="xmm3" class="xmm"/>
+				</register>
+				<register name="ymm4" class="ymm">
+					<subregister name="xmm4" class="xmm"/>
+				</register>
+				<register name="ymm5" class="ymm">
+					<subregister name="xmm5" class="xmm"/>
+				</register>
+				<register name="ymm6" class="ymm">
+					<subregister name="xmm6" class="xmm"/>
+				</register>
+				<register name="ymm7" class="ymm">
+					<subregister name="xmm7" class="xmm"/>
+				</register>
+				<register name="ymm8" class="ymm">
+					<subregister name="xmm8" class="xmm"/>
+				</register>
+				<register name="ymm9" class="ymm">
+					<subregister name="xmm9" class="xmm"/>
+				</register>
+				<register name="ymm10" class="ymm">
+					<subregister name="xmm10" class="xmm"/>
+				</register>
+				<register name="ymm11" class="ymm">
+					<subregister name="xmm11" class="xmm"/>
+				</register>
+				<register name="ymm12" class="ymm">
+					<subregister name="xmm12" class="xmm"/>
+				</register>
+				<register name="ymm13" class="ymm">
+					<subregister name="xmm13" class="xmm"/>
+				</register>
+				<register name="ymm14" class="ymm">
+					<subregister name="xmm14" class="xmm"/>
+				</register>
+				<register name="ymm15" class="ymm">
+					<subregister name="xmm15" class="xmm"/>
+				</register>
+			</registers>
+		</assembly>
+	</architectureType>	
+
+	<!-- NVIDIA CUDA >= 4.0 Fermi GPU -->
+	<!--
+	<architectureType  name="NVIDIA CUDA">
+		<codegenerator src-suffix="cu" backend="CUDA4" use-function-pointers="false"/>
+		<parallelism>
+			<level hasExplicitLocalDataCopy="true" asyncIO="false"/>
+			<level hasExplicitLocalDataCopy="false" asyncIO="false"/>
+
+			<level number="1" name="ThreadBlock" has-explicit-local-datacopy="false" async-IO="false"/>
+			<level number="2" name="Thread" has-explicit-local-datacopy="false" async-IO="false">
+				<barrier type="functioncall" implementation="__syncthreads"/>
+			</level>
+		</parallelism>
+		<declspecs>
+			<declspec type="kernel" specifiers="__global__"/>
+			<declspec type="localfunction" specifiers="__device__"/>
+		</declspecs>
+		<intrinsics/>
+		<includes/>
+		<build compiler-command="make" harness-template-dir="GPU_CUDA"/>
+	</architectureType>
+	-->
+</architectureTypes>

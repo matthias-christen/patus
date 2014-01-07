@@ -1,0 +1,42 @@
+stencil wave
+{
+    //domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+    domainsize = (2 .. x_max-3, 2 .. y_max-3, 2 .. z_max-3);
+    t_max = 1;
+    
+    operation (float grid u(0 .. x_max-1, 0 .. y_max-1, 0 .. z_max-1), float param dt_dx_sq)
+    {
+    	/*
+        u[x, y, z; t+1] = 2 * u[x, y, z; t] - u[x, y, z; t-1] +
+            dt_dx_sq * (
+                -15/2 * u[x, y, z; t] +
+                4/3 * (
+                    u[x+1, y, z; t] + u[x-1, y, z; t] +
+                    u[x, y+1, z; t] + u[x, y-1, z; t] +
+                    u[x, y, z+1; t] + u[x, y, z-1; t]
+                )
+                -1/12 * (
+                    u[x+2, y, z; t] + u[x-2, y, z; t] +
+                    u[x, y+2, z; t] + u[x, y-2, z; t] +
+                    u[x, y, z+2; t] + u[x, y, z-2; t]
+                )
+            );
+    	*/
+
+		float c1 = 2 - 15/2 * dt_dx_sq;
+		float c2 = 4/3 * dt_dx_sq;
+		float c3 = -1/12 * dt_dx_sq;
+		
+        u[x, y, z; t+1] = c1 * u[x, y, z; t] - u[x, y, z; t-1] +
+            c2 * (
+                u[x+1, y, z; t] + u[x-1, y, z; t] +
+                u[x, y+1, z; t] + u[x, y-1, z; t] +
+                u[x, y, z+1; t] + u[x, y, z-1; t]
+            ) +
+            c3 * (
+                u[x+2, y, z; t] + u[x-2, y, z; t] +
+                u[x, y+2, z; t] + u[x, y-2, z; t] +
+                u[x, y, z+2; t] + u[x, y, z-2; t]
+            );
+    }
+}

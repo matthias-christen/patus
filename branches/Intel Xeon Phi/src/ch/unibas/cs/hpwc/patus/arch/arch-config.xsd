@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:element name="architectureTypes">
+		<xs:complexType>
+			<xs:sequence maxOccurs="unbounded" minOccurs="0">
+				<xs:element name="architectureType" type="typeArchitectureType">
+					<!--
+					** Check this programmatically (since we have "inherit-from" attributes) **
+					<xs:key name="keyDatatype">
+						<xs:selector xpath="./datatypes/datatype"/>
+						<xs:field xpath="@name"/>
+					</xs:key>
+					<xs:keyref name="keyrefDatatype" refer="keyDatatype">
+						<xs:selector xpath="./intrinsics/intrinsic"/>
+						<xs:field xpath="@datatype"/>
+					</xs:keyref>
+					-->
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="typeArchitectureType">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="0" name="codegenerator">
+				<xs:complexType>
+					<xs:attribute name="src-suffix" type="xs:string" use="required">
+						<xs:annotation>
+							<xs:documentation>The suffix of the generated source file. The actual filename can be specified on the Patus command line.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="backend" type="xs:string" use="required"/>
+					<xs:attribute name="innermost-loop-cg" type="xs:string" use="optional"/>
+					<xs:attribute name="use-function-pointers" type="xs:boolean" use="required">
+						<xs:annotation>
+							<xs:documentation>Specifies whether function pointers can be used to select code variants.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="1" minOccurs="0" name="parallelism">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="1" name="level">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element maxOccurs="1" minOccurs="0" name="barrier">
+										<xs:complexType>
+											<xs:attribute name="type" type="typeCgType" use="required">
+												<xs:annotation>
+													<xs:documentation>Defines how the barrier will be generated (i.e., as a pragma, function call, or statement)</xs:documentation>
+												</xs:annotation>
+											</xs:attribute>
+											<xs:attribute name="implementation" type="xs:string" use="required">
+												<xs:annotation>
+													<xs:documentation>Contains the pragma (without &quot;#pragma&quot;), the name of the function to call, or the statement.</xs:documentation>
+												</xs:annotation>
+											</xs:attribute>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+								<xs:attribute name="number" type="xs:int" use="required">
+									<xs:annotation>
+										<xs:documentation>
+											Specifies the parallelism level number. The first level (number=1) is associated with the first level in
+											the hierarchy below the root (e.g., thread blocks/SMs on a GPU).
+										</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:attribute name="name" type="xs:string" use="optional">
+									<xs:annotation>
+										<xs:documentation>An optional name of the parallelism level (not required for the time being, just for documentation reasons).</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:attribute default="false" name="has-explicit-local-datacopy" type="xs:boolean" use="optional">
+									<xs:annotation>
+										<xs:documentation>Specifies whether this parallelism level has its own copy of local data and data must be copied explicitly.</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:attribute default="false" name="requires-synchronization" type="xs:boolean" use="optional">
+									<xs:annotation>
+										<xs:documentation>Specifies whether explicit data synchronization is needed before the data can be used for computation.</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:attribute default="false" name="async-IO" type="xs:boolean" use="optional">
+									<xs:annotation>
+										<xs:documentation>
+											Specifies whether the I/O operations execute asynchronously,
+											i.e., whether computation and communication will be overlapped.
+											Setting asyncIO to true means that data is preloaded one compute
+											step ahead rather than loaded before the calculation which incurs
+											a barrier (wait for data) before the calculation can be carried
+											out.
+											This attribute is only meaningful if the parallelism level has
+											its own data copy and data must be loaded to the level.
+										</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="1" minOccurs="0" name="datatypes">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="0" name="datatype">
+							<xs:complexType>
+								<xs:attribute name="name" type="xs:string" use="required"/>
+								<xs:attribute default="1" name="simd-vector-length" type="xs:int" use="optional"/>
+								<xs:attribute name="basetype" type="typeBaseDatatype" use="required"/>
+								<xs:attribute name="width" type="xs:int" use="required"/>
+								<xs:attribute name="alignment" type="xs:int" use="optional"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="1" minOccurs="0" name="declspecs">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="0" name="declspec">
+							<xs:complexType>
+								<xs:attribute name="type" type="typeDeclspec" use="required"/>
+								<xs:attribute name="specifiers" type="xs:string" use="required"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="1" minOccurs="0" name="intrinsics">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="0" name="intrinsic">
+							<xs:complexType>
+								<xs:attribute name="name" type="xs:string" use="required"/>
+								<xs:attribute name="base-name" type="typeBaseIntrinsicName" use="required"/>
+								<xs:attribute name="datatype" type="xs:string" use="required"/>
+								<xs:attribute name="arguments" type="xs:string" use="optional"/>
+								<xs:attribute default="1" name="latency" type="xs:int" use="optional">
+									<xs:annotation>
+										<xs:documentation>
+											The latency in number of cycles between issuing the instruction
+											and the result of the instruction is ready.
+											This information is needed for the optimal instruction scheduler.
+										</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:attribute default="0" name="exec-unit-type-ids" type="typeExecUnitTypeIDs" use="optional">
+									<xs:annotation>
+										<xs:documentation/>
+									</xs:annotation>
+								</xs:attribute>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="1" minOccurs="0" name="assembly">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="1" minOccurs="0" name="register-classes">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element maxOccurs="unbounded" minOccurs="0" name="register-class" type="typeRegisterClass"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element maxOccurs="1" minOccurs="0" name="registers">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element maxOccurs="unbounded" minOccurs="0" name="register" type="typeRegister"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element maxOccurs="1" minOccurs="0" name="exec-unit-types">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element maxOccurs="unbounded" minOccurs="0" name="exec-unit-type" type="typeExecUnitType"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute default="1" name="processor-issue-rate" type="xs:int" use="optional"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="1" minOccurs="0" name="includes">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" minOccurs="0" name="include">
+							<xs:complexType>
+								<xs:attribute name="file" type="xs:string" use="required"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="1" minOccurs="0" name="build">
+				<xs:complexType>
+					<xs:attribute name="compiler-command" type="xs:string" use="required"/>
+					<xs:attribute name="harness-template-dir" type="xs:string" use="required"/>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="name" type="xs:string" use="required"/>
+		<xs:attribute name="inherits-from" type="xs:string" use="optional"/>
+	</xs:complexType>
+	<xs:simpleType name="typeBaseDatatype">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="int"/>
+			<xs:enumeration value="long"/>
+			<xs:enumeration value="double"/>
+			<xs:enumeration value="float"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeBaseIntrinsicName">
+		<xs:union memberTypes="typeBaseIntrinsicEnum xs:string"/>
+	</xs:simpleType>
+	<xs:simpleType name="typeBaseIntrinsicEnum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="barrier"/>
+			<xs:enumeration value="threadid"/>
+			<xs:enumeration value="numthreads"/>
+			<xs:enumeration value="malloc"/>
+			<xs:enumeration value="unary_plus"/>
+			<xs:enumeration value="unary_minus"/>
+			<xs:enumeration value="plus"/>
+			<xs:enumeration value="minus"/>
+			<xs:enumeration value="multiply"/>
+			<xs:enumeration value="divide"/>
+			<xs:enumeration value="fma">
+				<xs:annotation>
+					<xs:documentation>fused multiply-add</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="splat">
+				<xs:annotation>
+					<xs:documentation>Promotes a scalar constant to a vector with that constant in each entry.</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="fms">
+				<xs:annotation>
+					<xs:documentation>fused multiply-subtract</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="vector-reduce-sum"></xs:enumeration>
+			<xs:enumeration value="vector-reduce-product"></xs:enumeration>
+			<xs:enumeration value="vector-reduce-min"></xs:enumeration>
+			<xs:enumeration value="vector-reduce-max"></xs:enumeration>
+			<xs:enumeration value="load-gpr">
+				<xs:annotation>
+					<xs:documentation>Load instruction, moving data from memory to a general purpose register (GPR)</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="store-gpr">
+				<xs:annotation>
+					<xs:documentation>Store instruction, moving data from a general purpose register (GPR) to memory</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="load-fpr-aligned">
+				<xs:annotation>
+					<xs:documentation>Load instruction, moving aligned data from memory to a SIMD/floating point unit register</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="load-fpr-unaligned">
+				<xs:annotation>
+					<xs:documentation>Load instruction, moving unaligned data from memory to a SIMD/floating point unit register</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="store-fpr-aligned">
+				<xs:annotation>
+					<xs:documentation>Store instruction, moving aligned data from a SIMD/floating point unit register to memory</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="store-fpr-unaligned">
+				<xs:annotation>
+					<xs:documentation>Load instruction, moving unaligned data from a SIMD/floating point unit register to memory</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="min"/>
+			<xs:enumeration value="max"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeDeclspec">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="kernel"/>
+			<xs:enumeration value="localfunction"/>
+			<xs:enumeration value="restrictedpointer"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeCgType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="pragma"/>
+			<xs:enumeration value="functioncall"/>
+			<xs:enumeration value="statement"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="typeRegisterClass">
+		<xs:attribute name="name" type="xs:ID" use="required"/>
+		<xs:attribute name="type" type="typeRegisterType" use="required"/>
+		<xs:attribute name="width" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Register width in bits (e.g., general purpose registers on x86_64 (rax, rbx, ...) are 64 bits wide.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="datatype" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>The data type associated with this register, e.g., &quot;int64_t&quot; for 64-bit registers on x86_64.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="bitrange" type="typeRangeType" use="optional">
+			<xs:annotation>
+				<xs:documentation>The range of bits of the main register this subregister contains.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="subregister-of" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>
+					Indicates that registers in this register class are subregisters of registers of another class.
+					The value of the attribute should be the id of some other register class.
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="typeRegister">
+		<xs:sequence>
+			<xs:element maxOccurs="unbounded" minOccurs="0" name="subregister" type="typeRegister"/>
+		</xs:sequence>
+		<xs:attribute name="name" type="xs:string" use="required"/>
+		<xs:attribute name="class" type="xs:IDREF" use="required"/>
+	</xs:complexType>
+	<xs:simpleType name="typeRegisterType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="gpr">
+				<xs:annotation>
+					<xs:documentation>general purpose register</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="fpr">
+				<xs:annotation>
+					<xs:documentation>floating point register</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="simd">
+				<xs:annotation>
+					<xs:documentation>SIMD floating point register</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeRangeType">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[0-9]+\.\.[0-9]+"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeExecUnitTypeIDs">
+		<xs:annotation>
+			<xs:documentation>
+				Execution unit IDs are a whitespace-separeted list of integers, which identify the
+				execution units, i.e., the pipelines in which an instruction can be executed.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:list>
+			<xs:simpleType>
+				<xs:restriction base="xs:int"/>
+			</xs:simpleType>
+		</xs:list>
+	</xs:simpleType>
+	<xs:complexType name="typeExecUnitType">
+		<xs:attribute name="id" type="xs:int"/>
+		<xs:attribute name="name" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>An optional name for the execution unit (only for documentation purposes)</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="quantity" type="xs:int">
+			<xs:annotation>
+				<xs:documentation>The number of execution units of this type that are available</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+</xs:schema>

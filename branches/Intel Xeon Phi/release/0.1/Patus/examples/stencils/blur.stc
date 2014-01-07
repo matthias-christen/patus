@@ -1,0 +1,28 @@
+stencil blur (
+	float grid U,
+	float param s0 = expf( 0 * (1 / (2 * 2^2))),
+	float param s1 = expf(-1 * (1 / (2 * 2^2))),
+	float param s2 = expf(-2 * (1 / (2 * 2^2))),
+	float param s4 = expf(-4 * (1 / (2 * 2^2))),
+	float param s5 = expf(-5 * (1 / (2 * 2^2))),
+	float param s8 = expf(-8 * (1 / (2 * 2^2))))
+{
+	domainsize = (1 .. width, 1 .. height);
+    
+	operation
+	{
+		float f = 1 / (s0 + 4 * (s1 + s2 + s4 + s8) + 8 * s5);
+    	
+		U[x, y; t+1] = f * (
+			s0 * U[x, y; t] +
+			s1 * (U[x-1, y; t] + U[x+1, y; t] + U[x, y-1; t] + U[x, y+1; t]) +
+			s2 * (U[x-1, y-1; t] + U[x+1, y-1; t] + U[x-1, y+1; t] + U[x+1, y+1; t]) +
+			s4 * (U[x-2, y; t] + U[x+2, y; t] + U[x, y-2; t] + U[x, y+2; t]) +
+			s5 * (
+				U[x-2, y-1; t] + U[x-1, y-2; t] + U[x+1, y-2; t] + U[x+2, y-1; t] +
+        		U[x-2, y+1; t] + U[x-1, y+2; t] + U[x+1, y+2; t] + U[x+2, y+1; t]
+        	) +
+			s8 * (U[x-2, y-2; t] + U[x+2, y-2; t] + U[x-2, y+2; t] + U[x+2, y+2; t])
+		);
+	}
+}

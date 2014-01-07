@@ -1,0 +1,14 @@
+\begin{thebibliography}{1}
+
+\bibitem{fftw05}
+M.~Frigo and S.~Johnson.
+\newblock {The Design and Implementation of FFTW3}.
+\newblock {\em Proceedings of the IEEE}, 93(2):216--231, 2005.
+\newblock Special issue on ``Program Generation, Optimization, and Platform
+  Adaptation''.
+
+\bibitem{opencl08}
+{Khronos OpenCL Working Group}.
+\newblock {\em {The OpenCL Specification}}, 8 December 2008.
+
+\end{thebibliography}

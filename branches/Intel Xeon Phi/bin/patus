@@ -1,0 +1,163 @@
+#!/bin/bash
+
+# check whether the environment includes Patus
+if [ -z $PATUS_HOME ]
+then
+	echo "PATUS_HOME not set."
+	echo "Please source util/patusvars.sh (in bash/sh) or util/patusvars.csh (in csh/tcsh)"
+	echo "before using patus."
+	exit
+fi
+
+# check whether Java is available
+java_ver=`java -version 2>&1 | grep "java version" | sed "s/java version \"//"`
+if [ -z "$java_ver" ]
+then
+	echo "Java was not found on your system."
+	echo "Please install Java 7 or later (http://www.oracle.com/technetwork/java/javase/downloads/index.html)"
+	echo "and make sure that it can be started with the 'java' command."
+	exit
+else
+	java_maj=`echo $java_ver | cut -d '.' -f 1`
+	java_min=`echo $java_ver | cut -d '.' -f 2`
+
+	if [ $java_maj -lt 1 ] || ( [ $java_maj -eq 1 ] && [ $java_min -lt 7 ] )
+	then
+		echo "Java $java_maj.$java_min was found on your system."
+		echo "Patus requires Java 7 or later. Please download the latest version from"
+		echo "http://www.oracle.com/technetwork/java/javase/downloads/index.html"
+		echo "and install it on your system."
+		exit
+	fi
+fi
+
+
+# check arguments and set defaults if the arguments were not provided
+
+# - does the user want help?
+#   (--help flag set or no arguments provided)
+if [ $# -eq 0 ] || echo $@ | grep -q "\\-\\-help"
+then
+	echo "Syntax:"
+	echo "    patus [ command-line-options ] <stencil-spec> [ command-line-options ]"
+	echo
+	echo "The most common command line options are:"
+	echo
+	echo "--architecture=<Hardware Name>"
+	echo "    Possible values for <Hardware Name> are:"
+	grep "architectureType name=" $PATUS_HOME/arch/architectures.xml | sed "s/.\\+name=\"/        /g" | sed s/\".\\+//g
+	echo
+	echo "--outdir=<Output Directory>"
+	echo "    The output directory in which the generated files will be written."
+	echo "    If not specified the generated files will be created in ./out"
+	echo
+	echo "--strategy=<Strategy File>"
+	echo "    The Strategy file describing the parallelization/optimization strategy."
+	echo "    Strategy files can be found in $PATUS_HOME/strategy"
+	echo
+	echo "--unroll=<UnrollFactors1,UnrollFactors2,...>"
+	echo "    A list of unrolling factors applied to the inner most loop nest"
+	echo "    containing the stencil computation."
+	echo "    UnrollFactorsI can be either an integer, in which case the unrolling"
+	echo "    factor is applied to each dimension, or it can be a list of integers"
+	echo "    separated by colons, in which case a single, specific unrolling"
+	echo "    configuration for this UnrollFactorsI is created. E.g.,"
+	echo "        2:1:4"
+	echo "    will unroll twice in the x dimension, apply no unrolling to the"
+	echo "    y dimension, and unroll four times in the z dimension. Should the"
+	echo "    stencil have more than 3 dimensions, no unrolling will be applied in"
+	echo "    any of the other dimensions."
+	echo
+	echo "--embedded"
+	echo "    Specify this flag if your stencil specification is embedded in a"
+	echo "    source file and Patus is to be used both as a preprocessor (to extract"
+	echo "    the specification) and a code generator"
+	echo
+	echo "--create-inline-asm={yes|no}"
+	echo "    Do or don't create any inline assembly code."
+	echo "    Defaults to 'yes'"
+	echo
+	echo "For more command line options, execute"
+	echo "    patus --morehelp"
+	exit
+fi
+
+if echo $@ | grep -q "\\-\\-morehelp"
+then
+	echo "Command line options you can provide to patus.jar:"
+	echo
+	java -jar $PATUS_HOME/bin/patus.jar codegen
+	exit
+fi
+
+# set default parameters
+stencil_spec=""
+arch="x86_64 SSE asm"
+arch_set="false"
+verb="codegen"
+strategy="$PATUS_HOME/strategy/cacheblocked.stg"
+outdir="$PWD/out"
+unroll="1,2,4:1:1"
+create_inline_asm="yes"
+moreargs=""
+
+for arg in "$@"
+do
+	if [ ${arg:0:2} == "--" ]
+	then
+		arg_name=${arg%=*}
+		arg_value=${arg#*=}
+		
+		case "$arg_name" in
+		--embedded)
+			verb="codegen-x"
+			;;
+		--architecture)
+			arch="$arg_value"
+			arch_set="true"
+			;;
+		--strategy)
+			strategy="$arg_value"
+			;;
+		--outdir)
+			outdir="$arg_value"
+			;;
+		--unroll)
+			unroll="$arg_value"
+			;;
+		--create-inline-asm)
+			create_inline_asm="$arg_value"
+			;;
+		*)
+			moreargs="$moreargs $arg_name=$arg_value"
+			;;
+		esac
+	else
+		stencil_spec="$arg"
+	fi
+done
+
+# if the architecture has not been set on the command line, test whether AVX is available
+if [ "$arch_set" == "false" ]
+then
+	if grep -q avx /proc/cpuinfo
+	then
+		# the CPU supports AVX
+		if [ "$create_inline_asm" == "no" ]
+		then
+			arch="x86_64 AVX"
+		else
+			arch="x86_64 AVX asm"
+		fi
+
+		echo "AVX support detected; using the architecture name '$arch'"
+	else
+		if [ "$create_inline_asm" == "no" ]
+		then
+			arch="x86_64 SSE"
+		fi
+	fi
+fi
+
+# run Patus
+java -jar $PATUS_HOME/bin/patus.jar $verb --stencil2=$stencil_spec --strategy=$strategy --outdir=$outdir --unroll=$unroll --architecture="$PATUS_HOME/arch/architectures.xml,$arch" $moreargs

@@ -1,0 +1,13 @@
+#!/bin/bash
+PATUS_HOME=$HOME/Workspace/Patus
+
+if [ $# -eq 0 ]
+then
+    echo
+    echo "Syntax: autotune <executable> <parameters ...>"
+    echo
+
+    exit
+fi
+
+java -jar $PATUS_HOME/bin/patus.jar autotune $@ -mch.unibas.cs.hpwc.patus.autotuner.MetaHeuristicOptimizer | tee `date +tune_%F_%H.%M.%S.txt`

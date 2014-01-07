@@ -1,0 +1,15 @@
+stencil HorzDiffOut (
+	float grid u_out(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid flx(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid fly(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid up(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1),
+	const float grid dcoeff(0 .. iDim-1, 0 .. jDim-1, 0 .. kDim-1)
+)
+{
+	domainsize = (2 .. iDim-3, 2 .. jDim-3, 0 .. kDim-1);
+
+	operation
+	{
+		u_out[x, y, z; t+1] = up[x, y, z] - dcoeff[x, y, z] * (flx[x, y, z] - flx[x-1, y, z] + fly[x, y, z] - fly[x, y-1, z]);
+	}
+}

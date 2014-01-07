@@ -1,0 +1,22 @@
+/**
+ * Cache-blocking strategy.
+ */
+strategy cacheblocked_domain (
+	domain u,
+	auto dim cbv = ({u.size(1)/4, u.size(1)/2, u.size(1)}, 4:4:u.size(2 .. u.dim)),
+	auto dim cbw = (2:2:cbv),
+	auto int chunk = {1,2,4})
+{
+	// iterate over time steps 
+	for t = 1 .. stencil.t_max
+	{
+		// iterate over subdomain
+		for subdomain v(cbv) in u(:; t) parallel schedule chunk
+		{
+			// calculate the stencil for each point in the subdomain
+			for subdomain w(cbw) in v(:; t)
+				for point p in w(:; t)
+					w[p; t+1] = stencil (w[p; t]);
+		}
+	}
+}

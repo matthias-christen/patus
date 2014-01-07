@@ -1,0 +1,22 @@
+/**
+ * Stencil specification integrating the energy density.
+ */
+stencil integrate (
+    	const float grid e(1 .. x_max, 1 .. y_max)[2],
+    	const float grid h(1 .. x_max, 1 .. y_max),
+		float grid u_em(1 .. x_max, 1 .. y_max),
+		float param MU, float param EPSILON)
+{
+    domainsize = (2 .. x_max-1, 2 .. y_max-1);
+    
+    operation
+    {
+		u_em[x, y; t+1] = u_em[x, y; t] +
+			0.5 * (h[x, y]^2 / MU + EPSILON * (e[x, y; 0]^2 + e[x, y; 1]^2));
+    }
+    
+    initial
+    {
+    	u_em[x, y; 0] = 0;
+    }
+}

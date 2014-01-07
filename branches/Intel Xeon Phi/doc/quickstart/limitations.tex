@@ -1,0 +1,32 @@
+\section{Current Limitations}
+
+In the current release, there are the following limitations to \textsc{Patus}:
+\begin{itemize}
+  \item Only shared memory architectures are supported directly
+    (specifically: shared memory CPU systems and single-GPU setups).
+    However, if you have MPI code that handles communication and synchronization
+    for the distributed case, \textsc{Patus}-generated code can be used as a replacement
+    for the per-node stencil computation code.
+    
+  \item It is assumed that the evaluation order of the stencils within one spatial sweep is irrelevant.
+    Also, always all points within the domain are traversed per sweep. One grid array is read and another
+    array is written to (Jacobi iteration).
+    In particular, this rules out schemes with special traversal rules such as red-black Gauss-Seidel
+    iterations.
+    
+  \item Boundary handling is not yet optimized in the generated code.
+    Expect performance drops if a boundary specification is included in the stencil specification.
+  
+  %\item The index calculation assumes that the stencil computation is carried out on a flat grid (or a grid which is
+  %  homotopic to a flat grid). In particular, currently no spherical or torical geometries are implemented, which require
+  %  modulo index calculations. 
+    
+  \item There is no support yet for temporally blocked schemes.
+
+  \item Limitation for Fortran interoperability: only one timestep per stencil kernel is supported.
+  
+  \item Limitation for (CUDA-capable) GPUs: the generated code does not do any significant performance optimizations yet.
+    Also, the stencil kernel can only perform one timestep (since CUDA does not allow global synchronization from within
+    a kernel).
+\end{itemize}
+

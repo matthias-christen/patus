@@ -1,0 +1,15 @@
+\indexentry{wave equation|hyperpage}{3}
+\indexentry{finite difference|hyperpage}{3}
+\indexentry{PDE|hyperpage}{3}
+\indexentry{\textsc{Patus} code generator|hyperpage}{5}
+\indexentry{auto-tuning|hyperpage}{6}
+\indexentry{stencil specification|hyperpage}{21}
+\indexentry{strategy|hyperpage}{25}
+\indexentry{Strategy|hyperpage}{25}
+\indexentry{cache blocking|hyperpage}{25}
+\indexentry{hardware model|hyperpage}{29}
+\indexentry{parallelism level|hyperpage}{29}
+\indexentry{domain decomposition|hyperpage}{29}
+\indexentry{hardware mapping|hyperpage}{29}
+\indexentry{subdomain iterator|hyperpage}{30}
+\indexentry{index calculation|hyperpage}{30}

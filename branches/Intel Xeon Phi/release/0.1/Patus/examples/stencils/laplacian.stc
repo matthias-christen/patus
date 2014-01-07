@@ -1,0 +1,15 @@
+stencil laplacian (double grid U, double param alpha, double param beta)
+{
+	domainsize = (1 .. x_max, 1 .. y_max, 1 .. z_max);
+	
+	operation
+	{
+		U[x, y, z; t+1] =
+			alpha * U[x, y, z; t] +
+			beta * (
+				U[x+1, y, z; t] + U[x-1, y, z; t] +
+				U[x, y+1, z; t] + U[x, y-1, z; t] +
+				U[x, y, z+1; t] + U[x, y, z-1; t]
+			);
+	}
+}

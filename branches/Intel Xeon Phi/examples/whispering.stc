@@ -1,0 +1,33 @@
+stencil whispering_gallery (
+	float grid e(1 .. x_max, 1 .. y_max)[2],
+	float grid h(1 .. x_max, 1 .. y_max),
+	float grid u_em(1 .. x_max, 1 .. y_max),
+	const float grid ca(1 .. x_max, 1 .. y_max),
+	const float grid cb(1 .. x_max, 1 .. y_max),
+	const float grid da(1 .. x_max, 1 .. y_max),
+	const float grid db(1 .. x_max, 1 .. y_max),
+	float param MU, float param EPSILON
+)
+{
+    domainsize = (2 .. x_max-1, 2 .. y_max-1);
+    
+    operation 
+    {
+    	float e0 = ca[x, y] * e[x, y; t; 0] + cb[x, y] * (h[x, y+1; t] - h[x, y; t]);
+    	float e1 = ca[x, y] * e[x, y; t; 1] - cb[x, y] * (h[x+1, y; t] - h[x, y; t]);
+        
+        // e[x, y-1; t+1; 0]
+        float ey = ca[x, y-1] * e[x, y-1; t; 0] + cb[x, y-1] * (h[x, y; t] - h[x, y-1; t]);
+        
+        // e[x-1, y; t+1; 1]
+        float ex = ca[x-1, y] * e[x-1, y; t; 1] - cb[x-1, y] * (h[x, y; t] - h[x-1, y; t]);
+        
+        e[x, y; t+1; 0] = e0;
+        e[x, y; t+1; 1] = e1;
+
+		float h1 = da[x, y] * h[x, y; t] + db[x, y] * (e0 - ey + ex - e1);
+        h[x, y; t+1] = h1;
+        
+        u_em[x, y; t+1] = u_em[x, y; t] + 0.5 * (h1^2 / MU + EPSILON * (e0^2 + e1^2));
+    }
+}

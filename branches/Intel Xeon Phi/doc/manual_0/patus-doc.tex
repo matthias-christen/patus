@@ -1,0 +1,37 @@
+\documentclass[11pt, a4paper, makeidx]{memoir}
+\input{style.tex}
+
+\begin{document}
+
+% *************** Front matter ***************
+\frontmatter
+\input{front.tex}
+
+% *************** Main matter ***************
+\mainmatter
+
+\input{copyrights.tex}
+\input{walkthrough.tex}
+\input{commandline.tex}
+\input{integrating.tex}
+\input{alternate.tex}
+\input{patus-indepth.tex}
+\input{limitations.tex}
+
+% *************** Bibliography ***************
+\bibliographystyle{plain}
+{\small\bibliography{patus-doc}}
+
+
+% *************** Appendixes ***************
+\appendix
+\appendixpage*
+\input{grammars.tex}
+\input{stencils.tex}
+
+
+% *************** Back matter ***************
+\backmatter
+\input{back.tex}
+
+\end{document}

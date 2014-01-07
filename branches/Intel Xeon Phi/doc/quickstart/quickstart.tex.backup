@@ -1,0 +1,46 @@
+\documentclass[a4paper,9pt]{extarticle}
+
+\title{
+  {\Huge \textsc{Patus} Quickstart}\\
+  {\small \textsc{Patus} v.\patusversion}
+}
+
+\author{
+  Matthias-M. Christen\\  
+  {\small University of Lugano, Switzerland}\\
+  {\small \href{mailto:matthias.christen@usi.ch}{matthias.christen@usi.ch}}
+}
+
+\pdfinfo{%
+  /Title    (Patus Quickstart)
+  /Author   (Matthias-M. Christen)
+  /Creator  ()
+  /Producer ()
+  /Subject  ()
+  /Keywords (Patus)
+}
+
+\newcommand{\patusversion}{0.1}
+
+\input{style.tex}
+
+\begin{document}
+\maketitle
+\date
+
+\input{introduction.tex}
+\input{copyrights.tex}
+\input{install.tex}
+\input{usage.tex}
+\input{limitations.tex}
+\input{examples.tex}
+%\input{grammars.tex}
+
+\section*{Acknowledgments}
+\textsc{Patus} has been developed within the \href{http://www.hp2c.ch/}{High Performance and High Productivity Computing}
+initiative of the Swiss National Supercomputer Center (CSCS).
+
+%\bibliographystyle{plain}
+%{\small\bibliography{patus-doc}}
+
+\end{document}

@@ -1,0 +1,363 @@
+/*******************************************************************************
+ * Copyright (c) 2011 Matthias-M. Christen, University of Basel, Switzerland.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser Public License v2.1
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * 
+ * Contributors:
+ *     Matthias-M. Christen, University of Basel, Switzerland - initial API and implementation
+ ******************************************************************************/
+///////////////////////////////////////////////////////////////////////////
+// Imports
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import cetus.hir.AccessExpression;
+import cetus.hir.AccessOperator;
+import cetus.hir.ArrayAccess;
+import cetus.hir.BinaryExpression;
+import cetus.hir.BinaryOperator;
+import cetus.hir.DepthFirstIterator;
+import cetus.hir.Expression;
+import cetus.hir.FloatLiteral;
+import cetus.hir.FunctionCall;
+import cetus.hir.Identifier;
+import cetus.hir.IDExpression;
+import cetus.hir.IntegerLiteral;
+import cetus.hir.NameID;
+import cetus.hir.Specifier;
+import cetus.hir.Typecast;
+import cetus.hir.UnaryExpression;
+import cetus.hir.UnaryOperator;
+
+import ch.unibas.cs.hpwc.patus.codegen.Globals;
+import ch.unibas.cs.hpwc.patus.representation.StencilNode;
+import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
+import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
+
+
+COMPILER MaximaExpression
+
+	/**
+	 * The Cetus expression, the result of parsing the Maxima output
+	 */
+	private Expression m_expression;
+	
+	/**
+	 * A map of identifier names to the identifiers in the original
+	 * expression before evaluating/simplifying, if the orignal expression
+	 * is available
+	 */
+	private Map<String, Identifier> m_mapIdentifiers;
+	
+	/**
+	 * The number of Flops in the resulting expression
+	 */
+	private int m_nFlops;
+	
+	/**
+	 * The type of the expression (simple expression, equation, inequality)
+	 */
+	private Symbolic.EExpressionType m_type;
+
+
+	/**
+	 * Sets the original expression.
+	 */
+	public void setOriginalExpression (Expression exprOrig)
+	{
+		if (exprOrig == null)
+			return;
+
+		if (m_mapIdentifiers == null)			
+			m_mapIdentifiers = new HashMap<String, Identifier> ();
+			
+		for (DepthFirstIterator it = new DepthFirstIterator (exprOrig); it.hasNext (); )
+		{
+			Object obj = it.next ();
+			if (obj instanceof StencilNode)
+				m_mapIdentifiers.put (((StencilNode) obj).toExpandedString (), (Identifier) obj);
+			else if (obj instanceof Identifier)
+				m_mapIdentifiers.put (((Identifier) obj).getName (), (Identifier) obj);
+		}
+	}
+	
+	/**
+	 * Returns a clone of identifier named <code>strIdentifierName</code> in the
+	 * original expression, if the original expression and the identifier are available,
+	 * or a new {@link NameID}.
+	 */
+	private IDExpression getIdentifier (String strIdentifierName)
+	{
+		if (m_mapIdentifiers != null)
+		{
+			Identifier id = m_mapIdentifiers.get (strIdentifierName);
+			if (id != null)
+				return id.clone ();
+		}
+		
+		return new NameID (strIdentifierName);
+	}
+
+	/**
+	 * Returns the expression that has been parsed.
+	 */
+	public Expression getExpression ()
+	{
+		return m_expression;
+	}
+	
+	/**
+	 * Returns the number of Flops in the expression
+	 */
+	public int getFlops ()
+	{
+		return m_nFlops;
+	}
+	
+	/**
+	 * Returns the type of the expression
+	 */
+	public Symbolic.EExpressionType getExpressionType ()
+	{
+		return m_type;
+	}
+	
+	protected void assertParamCount (int nParamsCount, String strFunctionName, List<Expression> listArgs)
+	{
+		if (listArgs.size () != nParamsCount)
+			errors.SemErr (la.line, la.col, StringUtil.concat (strFunctionName, " expects ", nParamsCount, " parameters, but ", listArgs.size (), " were provided."));
+	}
+
+	public Expression processFunctionCall (Expression id, List<Expression> listArgs)
+	{
+		if (id instanceof NameID)
+		{
+			String strFunctionName = ((NameID) id).getName ();
+
+			// special function to be replaced with other operations
+			if ("mod".equals (strFunctionName))
+			{
+				assertParamCount (2, strFunctionName, listArgs);
+				return new BinaryExpression (listArgs.get (0), BinaryOperator.MODULUS, listArgs.get (1));
+			}
+			if ("floor".equals (strFunctionName))
+			{
+				assertParamCount (1, strFunctionName, listArgs);
+				return new Typecast (CodeGeneratorUtil.specifiers (Globals.SPECIFIER_INDEX), listArgs.get (0));
+			}
+
+			// function names to replace			
+			if ("ceiling".equals (strFunctionName))
+				id = new NameID ("ceil");
+
+			return new FunctionCall (id, listArgs);
+		}
+
+		return id;
+	}
+
+
+///////////////////////////////////////////////////////////////////////////
+// Tokens
+
+CHARACTERS
+	letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$%".
+	digit = "0123456789".
+	cr = '\r'.
+	lf = '\n'.
+	tab = '\t'.
+
+TOKENS
+	ident = letter { letter | digit }.
+    integer = digit { digit }.
+    float = digit { digit } '.' [ digit { digit } [ 'e' [ '+' | '-' ] digit { digit } ] ].
+
+COMMENTS FROM "/*" TO "*/" NESTED
+COMMENTS FROM "//" TO lf
+
+IGNORE cr + lf + tab
+
+
+///////////////////////////////////////////////////////////////////////////
+// Productions
+
+PRODUCTIONS                                                                    // SEMANTIC ACTIONS
+
+	/**
+	 * An expression within the strategy method.
+	 */
+    MaximaExpression<out Expression expr> =                                    (. m_nFlops = 0; m_type = Symbolic.EExpressionType.EXPRESSION; .)                    
+        ComparisonExpression<out expr>                                         (. m_expression = expr; /* m_expression.setParens (false); */ .)
+        .
+
+	/**
+	 * A comparison expression.
+	 */
+	ComparisonExpression<out Expression expr> =
+		AdditiveExpression<out Expression expr0>                               (. expr = expr0; .)
+		[                                                                      (. BinaryOperator op = null; .)
+			(
+				"="                                                            (. op = BinaryOperator.COMPARE_EQ; m_type = Symbolic.EExpressionType.EQUATION; .)
+				|
+				"#"                                                            (. op = BinaryOperator.COMPARE_NE; m_type = Symbolic.EExpressionType.INEQUALITY; .)
+				|
+				"<="                                                           (. op = BinaryOperator.COMPARE_LE; m_type = Symbolic.EExpressionType.INEQUALITY; .)
+				|
+				">="                                                           (. op = BinaryOperator.COMPARE_GE; m_type = Symbolic.EExpressionType.INEQUALITY; .)
+				|
+				"<"                                                            (. op = BinaryOperator.COMPARE_LT; m_type = Symbolic.EExpressionType.INEQUALITY; .)
+				|
+				">"                                                            (. op = BinaryOperator.COMPARE_GT; m_type = Symbolic.EExpressionType.INEQUALITY; .)
+			)
+			AdditiveExpression<out Expression expr1>                           (. if (op != null) expr = new BinaryExpression (expr0, op, expr1); .)
+		].
+		
+	/**
+	 * An additive expression.
+	 */
+    AdditiveExpression<out Expression expr> =
+        MultiplicativeExpression<out Expression expr0>                         (. expr = expr0; .)
+        {                                                                      (. BinaryOperator op = BinaryOperator.ADD; .)
+        	(
+        		(
+	        		'+'
+	        		|
+	        		'-'                                                        (. op = BinaryOperator.SUBTRACT; .)
+	        	)                                                              (. m_nFlops++; .)
+        	)
+        	MultiplicativeExpression<out Expression expr1>                     (. expr = new BinaryExpression (expr.clone (), op, expr1);.)
+        }.
+        
+	/**
+	 * A multiplicative expression.
+	 */
+    MultiplicativeExpression<out Expression expr> =
+        UnarySignExpression<out Expression expr0>                              (. expr = expr0; .)
+        {                                                                      (. BinaryOperator op = BinaryOperator.MULTIPLY; .)
+        	(
+        		(
+        			'*'
+        			|
+        			'/'                                                        (. op = BinaryOperator.DIVIDE; .)
+        		)                                                              (. m_nFlops++; .)
+        	)
+        	UnarySignExpression<out Expression expr1>                          (. expr = new BinaryExpression (expr.clone (), op, expr1); .)
+        }.
+        
+    UnarySignExpression<out Expression expr> =                                 (. boolean bIsNegative = false; .)
+        [
+            '+'
+            |
+            '-'                                                                (. bIsNegative = true; m_nFlops++; .)
+        ]
+        ExponentExpression<out Expression expr1>                               (. if (!bIsNegative) expr = expr1; else { .)
+                                                                               (.     if (expr1 instanceof FloatLiteral) expr = new FloatLiteral (-((FloatLiteral) expr1).getValue ()); .)
+                                                                               (.     if (expr1 instanceof IntegerLiteral) expr = new IntegerLiteral (-((IntegerLiteral) expr1).getValue ()); .)
+                                                                               (.     else expr = new UnaryExpression (UnaryOperator.MINUS, expr1); .)
+                                                                               (. } .)
+        .
+        
+	/**
+	 * An exponent expression.
+	 */
+    ExponentExpression<out Expression expr> =
+        UnaryExpression<out Expression expr0>                                  (. expr = expr0; .)
+        {
+        	'^' UnarySignExpression<out Expression expr1>                      (. expr = ExpressionUtil.createExponentExpression (expr.clone (), expr1, null); .)
+        }.
+        
+	/**
+	 * An expression with an unary operator.
+	 */
+    UnaryExpression<out Expression expr> =                                     (. expr = null; .)
+        (
+        	FloatLiteral<out double fValue>                                    (. expr = new FloatLiteral (fValue); .)
+        	|
+        	IntegerLiteral<out int nValue>                                     (. expr = new IntegerLiteral (nValue); .)
+        	|
+        	BracketedExpression<out Expression exprBracketed>                  (. expr = exprBracketed; .)
+        	|
+        	TypeCast<out Expression exprCast>                                  (. expr = exprCast; .)
+        	|
+        	FunctionCallOrIdentifier<out Expression exprValue>                 (. expr = exprValue; .)
+        ).
+        
+    
+	/**
+	 * A bracketed expression.
+	 */
+    BracketedExpression<out Expression expr> =
+        '(' ComparisonExpression<out expr> ')'.
+        
+    /**
+     * A type cast expression.
+     */
+    TypeCast<out Expression expr> =                                            (. List<Specifier> listSpecs = new ArrayList<Specifier> (1); .)
+    	(
+    		"int"                                                              (. listSpecs.add (Globals.SPECIFIER_INDEX); .)
+    		|
+    		"float"                                                            (. listSpecs.add (Specifier.FLOAT); .)
+    		|
+    		"double"                                                           (. listSpecs.add (Specifier.DOUBLE); .)
+    	)
+    	"("
+    	ComparisonExpression<out Expression exprValue>
+    	")"                                                                    (. expr = new Typecast (listSpecs, exprValue); .)
+    	.
+    	
+	/**
+	 * A function call.
+	 */
+    FunctionCallOrIdentifier<out Expression expr> =
+        Identifier<out expr>                                                   (. boolean bIsFunctionCall = false; List<Expression> listArgs = null; .)
+        [
+        	ArraySubscripts<out expr, expr>
+        ]
+        [
+        	'('                                                                (. bIsFunctionCall = true; listArgs = new ArrayList<Expression> (); .)
+        	[
+        		ComparisonExpression<out Expression exprArg>                   (. listArgs.add (exprArg); .)
+        		{
+        			',' ComparisonExpression<out exprArg>                      (. listArgs.add (exprArg); .)
+        		}
+        	]
+        	')'
+        ]                                                                      (. if (bIsFunctionCall) expr = processFunctionCall (expr, listArgs); .)
+        .
+        
+	Identifier<out Expression expr> =
+		ident                                                                  (. expr = t.val.equals ("%pi") ? new FloatLiteral (Math.PI) : getIdentifier (t.val); .)
+		[
+			'.'
+			Identifier<out Expression exprSubscript>                           (. expr = new AccessExpression (expr.clone (), AccessOperator.MEMBER_ACCESS, exprSubscript); .)
+		]
+		.       
+
+
+    ///////////////////////////////////////////////////////////////////////
+    // General Types
+		
+		
+	FloatLiteral<out double fValue> =                                          (. fValue = 0.0; .)
+		float                                                                  (. fValue = Double.parseDouble (t.val); .)
+		.
+		
+	IntegerLiteral<out int nValue> =                                           (. nValue = 0; .)
+		integer                                                                (. nValue = Integer.parseInt (t.val); .)
+		.
+		
+	ArraySubscripts<out Expression exprAccess, Expression exprArray> =         (. List<Expression> listAccesses = new ArrayList<Expression> (); .)
+		{
+			'['
+			AdditiveExpression<out Expression exprSubscript>                   (. listAccesses.add (exprSubscript); .)
+			']'
+		}                                                                      (. exprAccess = listAccesses.size () > 0 ? new ArrayAccess (exprArray, listAccesses) : exprArray; .)
+		.
+		
+END MaximaExpression.

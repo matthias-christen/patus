@@ -903,7 +903,7 @@
 		<codegenerator src-suffix="c" backend="INTELXEONPHI" use-function-pointers="true"/>
 		<parallelism>
 			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
-				<barrier type="pragma" implementation="omp barrier"/>
+				<barrier type="pragma" implementation="omp barrier"/>"arch/architectures.xml"
 			</level>
 		</parallelism>
 		<datatypes>

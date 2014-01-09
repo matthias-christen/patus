@@ -576,7 +576,8 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		int nAlignRestrict = 1;
 
 		StatementList sl = new StatementList (new ArrayList<Statement> ());
-		for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getInputGrids ())
+		// Orginal :for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getInputGrids ())
+		for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (EVariableType.INPUT_GRID.mask () | EVariableType.OUTPUT_GRID.mask ()|EVariableType.INPUT_GRID.mask () ))
 		{
 			// check whether size is compatible with SIMD vector length
 			if (m_data.getArchitectureDescription ().useSIMD () && !m_data.getOptions ().useNativeSIMDDatatypes ())

@@ -33,7 +33,6 @@ public class IntelXeonCodeGenerator extends OpenMPCodeGenerator
 	public IntelXeonCodeGenerator (CodeGeneratorSharedObjects data)
 	{
 		super (data);
-		System.out.println("Using the IntelXeonCodeGenerator in the package: ch.unibas.cd.hpwc.patus.codegen.backend.intel");
 	}
 	
 	@Override
@@ -142,14 +141,18 @@ public class IntelXeonCodeGenerator extends OpenMPCodeGenerator
 	 * @param bFree is 1 if memory should be freed after execution. 0 If it should be retained. 
 	 * @return
 	 */
-	private StatementList createOffloadPragma (String strClause, boolean bAlloc, boolean bFree)
+	private StatementList createOffloadPragma (String strClause, boolean bAlloc, boolean bFree, boolean transfer)
 	{
 		// generate no "offload" pragmas in native build mode
 		if (m_data.getOptions().getNativeMic())
 			return new StatementList ();
-				
-		StringBuilder sbPragma = new StringBuilder ("offload target(mic) ");
+		StringBuilder sbPragma;
 		
+		if (transfer){
+			sbPragma = new StringBuilder ("offload_transfer target(mic) ");
+		}else{
+			sbPragma = new StringBuilder ("offload target(mic) ");
+		}
 		// TODO: individual treatment of in/out grids depending on the use case
 		for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
 			GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID.mask () | GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID.mask ()))
@@ -172,22 +175,28 @@ public class IntelXeonCodeGenerator extends OpenMPCodeGenerator
 
 	public StatementList offloadMicAllocate ()
 	{
-		return createOffloadPragma ("in", true, false);
+		return createOffloadPragma ("in", true, false,false);
 	}
 	
 	public StatementList offloadMic ()
 	{
-		return createOffloadPragma ("nocopy", false, false);
+		return createOffloadPragma ("nocopy", false, false,false);
 	}
 	
 	public StatementList offloadMicCopyback ()
 	{
-		return createOffloadPragma ("out", false, false);
+		return createOffloadPragma ("out", false, false,false);
 	}
 	
 	public StatementList deallocateMicGrids ()
 	{
-		return createOffloadPragma ("nocopy", false, true);
+		return createOffloadPragma ("nocopy", false, true,false);
 	}
+	
+	public StatementList offloadTransferMicCopyback ()
+	{
+		return createOffloadPragma("out",false, false,true);
+	}
+	
 	
 }

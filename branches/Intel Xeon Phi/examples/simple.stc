@@ -1,16 +1,19 @@
 stencil wave (
-	float grid U(0 .. x_max-1))
+	float grid U(0 .. x_max-1, 0 .. y_max-1))
 {
-	iterate while t < 5;
-	domainsize = (2 .. x_max-3);
+	iterate while t < 3;
+	domainsize = (1.. x_max-2, 1 .. y_max-2);
   
 	initial
 	{
-		U[x; 0] = 1;
+	
+		U[x ,y; 0] = 1;
+		
 	}
 
 	operation
-	{
-		U[x; t+1] = U[x-1; t] + U[x; t] + U[x+1; t];	            
+	{		
+		U[x ,y; t+1] = U[x ,y; t]+U[x ,y; t];
+			
 	}
 }

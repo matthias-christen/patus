@@ -40,6 +40,13 @@ int main (int argc, char** argv)
 		#pragma patus compute_stencil
 	}
 	
+	// write output
+	if (has_arg ("-o", argc, argv))
+	{	//#pragma offload target(mic) out(<grid>:length(<grid_size>) alloc_if(0) free_if(0))
+		#pragma patus offload_transfer_mic_copyback
+		#pragma patus write_grids("%s.0.data", input)
+	}
+	
 	// run the benchmark
 	tic ();
 	//#pragma offload target(mic) nocopy(<grid>:length(<grid_size>) alloc_if(0) free_if(0))

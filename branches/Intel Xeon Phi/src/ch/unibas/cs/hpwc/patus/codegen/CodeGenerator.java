@@ -470,11 +470,11 @@ public class CodeGenerator
 		
 		listDeclarationsAndAssignments.add (new AnnotationStatement (new CommentAnnotation ("Implementation")));
 
-		// Segment of Code for generateing code which runs on the Mic (Surounding the funciton)
+		
 		slbCode.addStatementsAtTop (listDeclarationsAndAssignments);
 
+		// Segment of Code for generateing code which runs on the Mic (Surounding the funciton)
 		if(!m_data.getOptions().getNativeMic()){
-		//TODO DIRECTIVE ENDE
 			slbCode.addStatementAtTop(new AnnotationStatement(new CodeAnnotation("#ifdef __MIC__")));
 			slbCode.addStatement(new AnnotationStatement(new CodeAnnotation("#else")));
 			slbCode.addStatement(new AnnotationStatement(new CodeAnnotation("\t printf(\"ERROR not executing on the MIC\");")));
@@ -789,6 +789,7 @@ public class CodeGenerator
 									type instanceof StencilCalculation.ParamType ? ((StencilCalculation.ParamType) type).getDefaultValue () : null,
 									m_data)
 							);
+							
 						}
 
 						// add size parameters (all variables used to specify domain size and the grid size arguments to the operation)

@@ -15,5 +15,11 @@ bench: kernel.o driver.o util.o timer.o
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+	
+tune:
+$(PATUS_TEST_NONAUTOTUNE_EXE_PARAMS)
+	$(PATUS_AUTOTUNER) bench $(PATUS_EXE_PARAMS) | tee `date +tune_%F_%H.%M.%S.txt`
+	
+
 clean:
 	rm -rf *.o bench

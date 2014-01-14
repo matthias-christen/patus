@@ -256,6 +256,18 @@ public abstract class AbstractBackend implements IBackend
 	{
 		return m_mixinNonKernelFunctions.initializeGrids ();
 	}
+	
+	@Override
+	public StatementList initializeGridsRef ()
+	{
+		return m_mixinNonKernelFunctions.initializeGridsRef ();
+	}
+	
+	@Override
+	public StatementList initializeGridsComp ()
+	{
+		return m_mixinNonKernelFunctions.initializeGridsComp ();
+	}
 
 	@Override
 	public StatementList sendData ()

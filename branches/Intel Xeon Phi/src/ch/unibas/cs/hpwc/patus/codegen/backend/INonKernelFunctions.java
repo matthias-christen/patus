@@ -49,6 +49,16 @@ public interface INonKernelFunctions
 	 * Creates the code to call the generated initialization function.
 	 */
 	public abstract StatementList initializeGrids ();
+	
+	/**
+	 * Creates the code to call the generated initialization function only for the computation grids.
+	 */
+	public abstract StatementList initializeGridsComp ();
+	
+	/**
+	 * Creates the code to call the generated initialization function only for the reference grids.
+	 */
+	public abstract StatementList initializeGridsRef ();
 
 	/**
 	 * Creates the code to transfer the data to the compute units.
@@ -115,4 +125,5 @@ public interface INonKernelFunctions
 	 * the name of the executable).
 	 */
 	public abstract String getExeParams ();
+
 }

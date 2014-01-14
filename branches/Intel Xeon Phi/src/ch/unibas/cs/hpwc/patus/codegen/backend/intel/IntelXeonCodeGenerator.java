@@ -8,6 +8,7 @@ import cetus.hir.AnnotationStatement;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
+import cetus.hir.ExpressionStatement;
 import cetus.hir.FunctionCall;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.Literal;
@@ -19,6 +20,9 @@ import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
+import ch.unibas.cs.hpwc.patus.codegen.ValidationCodeGenerator;
+import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.EVariableType;
+import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
 import ch.unibas.cs.hpwc.patus.codegen.backend.openmp.OpenMPCodeGenerator;
 import ch.unibas.cs.hpwc.patus.util.ASTUtil;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
@@ -159,7 +163,6 @@ public class IntelXeonCodeGenerator extends OpenMPCodeGenerator
 		{
 			sbPragma.append (strClause);
 			sbPragma.append ('(');
-			
 			sbPragma.append (varGrid.getName ());
 			sbPragma.append (":length(");
 			sbPragma.append (varGrid.getBoxSize ().getVolume ().toString ());
@@ -190,12 +193,49 @@ public class IntelXeonCodeGenerator extends OpenMPCodeGenerator
 	
 	public StatementList deallocateMicGrids ()
 	{
-		return createOffloadPragma ("nocopy", false, true,false);
+		return createOffloadPragma ("nocopy", false, true,true);
 	}
 	
 	public StatementList offloadTransferMicCopyback ()
 	{
+		
 		return createOffloadPragma("out",false, false,true);
+	}
+	
+	private StatementList createOffloadPragmaRef (String strClause, boolean bAlloc, boolean bFree, boolean transfer)
+	{
+		// generate no "offload" pragmas in native build mode
+		if (m_data.getOptions().getNativeMic())
+			return new StatementList ();
+		StringBuilder sbPragma;
+		
+		if (transfer){
+			sbPragma = new StringBuilder ("offload_transfer target(mic) ");
+		}else{
+			sbPragma = new StringBuilder ("offload target(mic) ");
+		}
+		// TODO: individual treatment of in/out grids depending on the use case
+		for (GlobalGeneratedIdentifiers.Variable varGrid : m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
+			GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID.mask () | GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID.mask ()))
+		{
+			sbPragma.append (strClause);
+			sbPragma.append ('(');
+			sbPragma.append (varGrid.getName ());
+			sbPragma.append(ValidationCodeGenerator.SUFFIX_REFERENCE);
+			sbPragma.append (":length(");
+			sbPragma.append (varGrid.getBoxSize ().getVolume ().toString ());
+			sbPragma.append (") alloc_if(");
+			sbPragma.append (bAlloc ? 1 : 0); // 1
+			sbPragma.append (") free_if(");
+			sbPragma.append (bFree ? 1 : 0);
+			sbPragma.append (")) ");
+		}
+		
+		return new StatementList (new AnnotationStatement (new PragmaAnnotation (sbPragma.toString ())));
+	}
+	public StatementList offloadMicAllocateRef ()
+	{
+		return createOffloadPragmaRef ("inout", true, false,false);
 	}
 	
 	

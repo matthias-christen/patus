@@ -2,7 +2,7 @@ stencil laplacian(float grid U(0 .. x_max, 0 .. y_max,0 .. z_max))
 {
 	domainsize = (1 .. x_max-1, 1 .. y_max-1, 1 .. z_max-1);
 	
-	
+
 	initial
 	{
 	

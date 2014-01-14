@@ -71,6 +71,14 @@ import ch.unibas.cs.hpwc.patus.util.FileUtil;
 import ch.unibas.cs.hpwc.patus.util.MathUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
+/**
+ * @author gspsev00
+ *
+ */
+/**
+ * @author gspsev00
+ *
+ */
 public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFunctions
 {
 	///////////////////////////////////////////////////////////////////
@@ -337,9 +345,11 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 					VariableDeclaration decl = null;
 					if (var.getType () == GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID)
 						decl = new VariableDeclaration (var.getSpecifiers (), (VariableDeclarator) ((Identifier) exprId).getSymbol ());
-					else if (var.getType () == GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID)
+					else if (var.getType () == GlobalGeneratedIdentifiers.EVariableType.OUTPUT_GRID){
 						decl = new VariableDeclaration (ASTUtil.dereference (var.getSpecifiers ()), (VariableDeclarator) ((Identifier) exprId).getSymbol ());
-
+					//ME 
+						System.out.println((var.getSpecifiers ()));
+					}
 					// add the variable declaration
 					if (decl != null)
 					{
@@ -663,6 +673,58 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 				~EVariableType.OUTPUT_GRID.mask () & ~EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask ());
 
 		sl.addStatement (new ExpressionStatement (new FunctionCall (nidInitialize.clone (), getFunctionArguments (listArgVars, sl, true))));
+
+		// initialize the reference grids
+		if (m_data.getOptions ().getCreateValidationCode ())
+		{
+			Expression exprInit = new FunctionCall (nidInitialize.clone (), getFunctionArguments (listArgVars, sl, false));
+			exprInit = (Expression) ASTUtil.addSuffixToIdentifiers (exprInit, ValidationCodeGenerator.SUFFIX_REFERENCE, getGridSet ());
+			sl.addStatement (new ExpressionStatement (exprInit));
+		}
+
+		return sl;
+	}
+	
+	/**
+	 *  This method generates the initialization code for the grids used for the computation
+	 * @return
+	 */
+	@Override
+	public StatementList initializeGridsComp ()
+	{
+		initialize ();
+
+		NameID nidInitialize = m_data.getData ().getGlobalGeneratedIdentifiers ().getInitializeFunctionName ();
+		if (nidInitialize == null)
+			return null;
+
+		StatementList sl = new StatementList ();
+
+		List<Variable> listArgVars =
+			m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
+				~EVariableType.OUTPUT_GRID.mask () & ~EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask ());
+
+		sl.addStatement (new ExpressionStatement (new FunctionCall (nidInitialize.clone (), getFunctionArguments (listArgVars, sl, true))));
+
+		return sl;
+	}
+	
+	/**
+	 * This method generates the initialization code for the grids used for the validation
+	 * @return StatementList
+	 */
+	@Override
+	public StatementList initializeGridsRef ()
+	{
+		NameID nidInitialize = m_data.getData ().getGlobalGeneratedIdentifiers ().getInitializeFunctionName ();
+		if (nidInitialize == null)
+			return null;
+
+		StatementList sl = new StatementList ();
+
+		List<Variable> listArgVars =
+			m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
+				~EVariableType.OUTPUT_GRID.mask () & ~EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask ());
 
 		// initialize the reference grids
 		if (m_data.getOptions ().getCreateValidationCode ())

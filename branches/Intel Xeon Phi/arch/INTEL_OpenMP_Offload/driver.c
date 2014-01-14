@@ -25,12 +25,19 @@ int main (int argc, char** argv)
 	#pragma patus offload_mic_allocate
 	#pragma omp parallel
 	{
-		#pragma patus initialize_grids
+		#pragma patus initialize_grids_comp
 	}
 
 	long nFlopsPerStencil = PATUS_FLOPS_PER_STENCIL;
 	long nGridPointsCount = 5 * PATUS_GRID_POINTS_COUNT;
 	long nBytesTransferred = 5 * PATUS_BYTES_TRANSFERRED;
+
+// write output
+	if (has_arg ("-o", argc, argv))
+	{	//#pragma offload target(mic) out(<grid>:length(<grid_size>) alloc_if(0) free_if(0))
+		#pragma patus offload_transfer_mic_copyback
+		#pragma patus write_grids("%s.0.data", input)
+	}
 
 	// warm up
 	//#pragma offload target(mic) nocopy(<grid>:length(<grid_size>) alloc_if(0) free_if(0))
@@ -40,12 +47,6 @@ int main (int argc, char** argv)
 		#pragma patus compute_stencil
 	}
 	
-	// write output
-	if (has_arg ("-o", argc, argv))
-	{	//#pragma offload target(mic) out(<grid>:length(<grid_size>) alloc_if(0) free_if(0))
-		#pragma patus offload_transfer_mic_copyback
-		#pragma patus write_grids("%s.0.data", input)
-	}
 	
 	// run the benchmark
 	tic ();
@@ -59,16 +60,24 @@ int main (int argc, char** argv)
 	}
 	toc (nFlopsPerStencil, nGridPointsCount, nBytesTransferred);
 	
+	
 	// validate
 	if (PATUS_DO_VALIDATION)
 	{
 		//#pragma offload target(mic) out(<grid>:length(<grid_size>) alloc_if(0) free_if(0))
 		#pragma patus offload_mic_copyback
+		
 		#pragma omp parallel
 		{
-			#pragma patus initialize_grids
+			#pragma patus initialize_grids_comp
 			#pragma omp barrier
 			#pragma patus compute_stencil
+		}
+		
+		//Initialization & Computation of the reference grid
+		#pragma patus offload_mic_allocate_ref
+		{
+			#pragma patus initialize_grids_ref
 		}
 		#pragma patus validate_computation
 		if (PATUS_VALIDATES)
@@ -85,7 +94,7 @@ int main (int argc, char** argv)
 	// free memory
 	//#pragma offload target(mic) out(<grid>:length(<grid_size>) alloc_if(0) free_if(1))
 	#pragma patus deallocate_mic_grids
-	{}
+	
 	
 	#pragma patus deallocate_grids
 

@@ -356,4 +356,6 @@ public interface IArchitectureDescription
 	public abstract TypeExecUnitType getExecutionUnitTypeByID (int nID);
 	
 	public abstract List<TypeExecUnitType> getExecutionUnitTypesByIDs (List<?> listIDs);
+
+	public abstract boolean useCopybackFunction();
 }

@@ -951,6 +951,8 @@ public class TypeArchitectureType {
         protected String innermostLoopCg;
         @XmlAttribute(name = "use-function-pointers", required = true)
         protected boolean useFunctionPointers;
+        @XmlAttribute(name= "use-copyback-function")
+        protected boolean useCopybackFunction;
 
         /**
          * Gets the value of the srcSuffix property.
@@ -1040,6 +1042,22 @@ public class TypeArchitectureType {
             this.useFunctionPointers = value;
         }
 
+        
+        /**
+         * Gets the value of the useFunctionPointers property.
+         * 
+         */
+        public boolean isUseCopybackFunction() {
+            return useCopybackFunction;
+        }
+
+        /**
+         * Sets the value of the useFunctionPointers property.
+         * 
+         */
+        public void setUseCopybackFunction(boolean value) {
+            this.useCopybackFunction = value;
+        }
     }
 
 

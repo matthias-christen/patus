@@ -69,6 +69,7 @@ import ch.unibas.cs.hpwc.patus.analysis.StrategyAnalyzer;
 import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
 import ch.unibas.cs.hpwc.patus.ast.Parameter;
 import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
+import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.StencilSpecifier;
@@ -266,6 +267,10 @@ public class CodeGenerator
 		// create the initialization code
 		StatementListBundle slbInitializationBody = createInitializationCode (listOutputs);
 		
+		// create the copyback code
+		StatementListBundle slbCopybackBody = createCopybackCode (listOutputs);
+				
+				
 		// add global declarations
 		for (KernelSourceFile out : listOutputs)
 			addAdditionalGlobalDeclarations (out, slbThreadBody.getDefault ());
@@ -279,7 +284,7 @@ public class CodeGenerator
 		// package the code into functions, add them to the translation unit, and write the code files
 		for (KernelSourceFile out : listOutputs)
 		{
-			packageKernelSourceFile (out, slbThreadBody, slbInitializationBody, bIncludeAutotuneParameters);
+			packageKernelSourceFile (out, slbThreadBody, slbInitializationBody, bIncludeAutotuneParameters, slbCopybackBody);
 			out.writeCode (this, m_data, fileOutputDirectory);
 		}
 	}
@@ -287,6 +292,7 @@ public class CodeGenerator
 	private StatementListBundle createComputeCode ()
 	{
 		m_data.getData ().setCreatingInitialization (false);
+		m_data.getData().setCreatingCopyback(false);
 		CodeGeneratorRuntimeOptions optionsStencil = new CodeGeneratorRuntimeOptions ();
 		optionsStencil.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 		optionsStencil.setOption (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, m_data.getStencilCalculation ().getBoundaries () != null);
@@ -304,8 +310,6 @@ public class CodeGenerator
 	private StatementListBundle createInitializationCode (List<KernelSourceFile> listOutputs)
 	{
 		StatementListBundle slbInitializationBody = null;
-		
-		
 		
 		boolean bCreateInitialization = false;
 		for (KernelSourceFile out : listOutputs)
@@ -333,7 +337,43 @@ public class CodeGenerator
 		return slbInitializationBody;
 	}
 
-	private void packageKernelSourceFile (KernelSourceFile out, StatementListBundle slbThreadBody, StatementListBundle slbInitializationBody, boolean bIncludeAutotuneParameters)
+/**
+ * Creates code for copy back the output grid. (e.g. Intel Xeon Phi)
+ * @param listOutputs
+ * @return
+ */
+	//TODO - me added creatCopybackCode
+	private StatementListBundle createCopybackCode (List<KernelSourceFile> listOutputs)
+	{
+		StatementListBundle slbCopybackBody = null;
+		
+		Boolean bCreateCopyback = false;
+		for (KernelSourceFile out : listOutputs)
+			if (out.getCreateCopyback ())
+			{
+				bCreateCopyback = true;
+				break;
+			}
+		
+		if (bCreateCopyback)
+		{
+			m_data.getData ().setCreatingCopyback (true);
+			m_data.getCodeGenerators ().reset ();
+			m_data.getData ().reset ();
+			CodeGeneratorRuntimeOptions optionsInitialize = new CodeGeneratorRuntimeOptions ();
+			//CompoundStatement cmpstmtStrategyInitThreadBody = m_cgThreadCode.generate (m_data.getStrategy ().getBody (), optionsInitialize);
+			//RangeIterator rg=new RangeIterator(new Identifier(new VariableDeclarator(new NameID("ii"))), new Expression() {
+//			}, exprEnd, exprStep, stmtBody, nParallelismLevel)
+			//m_data.getCodeGenerators ().getLoopCodeGenerator ().generate()
+			slbCopybackBody = new StatementListBundle();
+			addCopybackBody(slbCopybackBody, optionsInitialize);
+		}
+		
+		
+		return slbCopybackBody;
+	}
+	
+	private void packageKernelSourceFile (KernelSourceFile out, StatementListBundle slbThreadBody, StatementListBundle slbInitializationBody, boolean bIncludeAutotuneParameters, StatementListBundle slbCopybackBody)
 	{
 		// stencil function(s)
 		boolean bMakeFortranCompatible = out.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
@@ -369,6 +409,29 @@ public class CodeGenerator
 				}
 			}, false, false, bIncludeAutotuneParameters, false, out.getCompatibility ());
 		}
+		
+		
+		//TODO - ME ADD COPY BACK FUNCTION
+		// copyback function for the mic
+		
+				if (slbCopybackBody != null && out.getCreateCopyback ())
+				{
+					packageCode (new GeneratedProcedure (
+						"copyback",
+						m_data.getData ().getGlobalGeneratedIdentifiers ().getFunctionParameterList (true,false, false, false),
+						slbCopybackBody,
+						out,
+						bMakeFortranCompatible)
+					{
+						@Override
+						protected void setGlobalGeneratedIdentifiersFunctionName (NameID nidFnxName)
+						{
+							m_data.getData ().getGlobalGeneratedIdentifiers ().setInitializeFunctionName (nidFnxName);
+						}
+					}, false, true, false, false, out.getCompatibility ());
+				}
+		
+	
 	}
 
 	/**
@@ -472,8 +535,10 @@ public class CodeGenerator
 
 		
 		slbCode.addStatementsAtTop (listDeclarationsAndAssignments);
-
+		
+		//TODO - me add __MIC__ surounding the function
 		// Segment of Code for generateing code which runs on the Mic (Surounding the funciton)
+		
 		if(!m_data.getOptions().getNativeMic()){
 			slbCode.addStatementAtTop(new AnnotationStatement(new CodeAnnotation("#ifdef __MIC__")));
 			slbCode.addStatement(new AnnotationStatement(new CodeAnnotation("#else")));
@@ -1180,5 +1245,30 @@ public class CodeGenerator
 		////////
 
 		return sb.toString ();
+	}
+	
+	
+	private void addCopybackBody (StatementListBundle slbCode, CodeGeneratorRuntimeOptions options)
+	{
+		
+		// add the additional declarations to the code
+		List<Statement> listDeclarationsAndAssignments = new ArrayList<> (m_data.getData ().getNumberOfDeclarationsToAdd ()+1);
+		
+		
+		listDeclarationsAndAssignments.add (new AnnotationStatement (new CommentAnnotation ("Implementation")));
+		
+		slbCode.addStatementsAtTop (listDeclarationsAndAssignments);
+		
+		//TODO - me add __MIC__ surounding the function
+		// Segment of Code for generateing code which runs on the Mic (Surounding the funciton)
+		
+		if(!m_data.getOptions().getNativeMic()){
+			slbCode.addStatementAtTop(new AnnotationStatement(new CodeAnnotation("#ifdef __MIC__")));
+			slbCode.addStatement(new AnnotationStatement(new CodeAnnotation("#else")));
+			slbCode.addStatement(new AnnotationStatement(new CodeAnnotation("\t printf(\"ERROR not executing on the MIC\");")));
+			slbCode.addStatement(new AnnotationStatement(new CodeAnnotation("#endif")));
+		}
+		
+
 	}
 }

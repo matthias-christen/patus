@@ -99,6 +99,8 @@ public class CodeGeneratorData
 	private MemoryObjectManager m_moManager;
 
 	private boolean m_bIsCreatingInitialization;
+	
+	private boolean m_bIsCreatingCopyback;
 
 	/**
 	 * A comparator for declarations
@@ -141,6 +143,7 @@ public class CodeGeneratorData
 		m_moManager = new MemoryObjectManager (objects);
 
 		m_bIsCreatingInitialization = false;
+		m_bIsCreatingCopyback=false;
 	}
 
 	public void initialize ()
@@ -327,5 +330,15 @@ public class CodeGeneratorData
 	public boolean isCreatingInitialization ()
 	{
 		return m_bIsCreatingInitialization;
+	}
+	
+	public void setCreatingCopyback(boolean bIsCreatingCopyback)
+	{
+		m_bIsCreatingCopyback = bIsCreatingCopyback;
+	}
+
+	public boolean isCreatingCopyback()
+	{
+		return m_bIsCreatingCopyback;
 	}
 }

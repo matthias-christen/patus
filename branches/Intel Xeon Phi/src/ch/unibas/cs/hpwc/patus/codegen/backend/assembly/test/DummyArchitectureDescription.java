@@ -273,4 +273,10 @@ public class DummyArchitectureDescription implements IArchitectureDescription
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public boolean useCopybackFunction() {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

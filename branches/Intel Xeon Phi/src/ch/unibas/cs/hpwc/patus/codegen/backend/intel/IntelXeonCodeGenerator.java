@@ -8,7 +8,6 @@ import cetus.hir.AnnotationStatement;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.Expression;
-import cetus.hir.ExpressionStatement;
 import cetus.hir.FunctionCall;
 import cetus.hir.IntegerLiteral;
 import cetus.hir.Literal;
@@ -18,11 +17,11 @@ import cetus.hir.PragmaAnnotation;
 import cetus.hir.Specifier;
 import cetus.hir.Traversable;
 import ch.unibas.cs.hpwc.patus.ast.StatementList;
+import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
+import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
 import ch.unibas.cs.hpwc.patus.codegen.ValidationCodeGenerator;
-import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.EVariableType;
-import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
 import ch.unibas.cs.hpwc.patus.codegen.backend.openmp.OpenMPCodeGenerator;
 import ch.unibas.cs.hpwc.patus.util.ASTUtil;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
@@ -237,6 +236,19 @@ public class IntelXeonCodeGenerator extends OpenMPCodeGenerator
 	{
 		return createOffloadPragmaRef ("inout", true, false,false);
 	}
+	
+	
+
+	@Override
+	public String getAdditionalKernelSpecificCode ()
+	{	
+		
+		
+		// forward declaration for barrier
+		return "bla";
+		
+	}
+	
 	
 	
 }

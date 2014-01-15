@@ -39,7 +39,7 @@ public class KernelSourceFile
 	protected CodeGenerationOptions.ECompatibility m_compatibility;
 	protected boolean m_bCreateInitialization;
 	protected boolean m_bCreateBenchmarkingHarness;
-
+	protected boolean m_bCreateCopyback; //TODO - me
 
 	///////////////////////////////////////////////////////////////////
 	// Implementation
@@ -213,6 +213,18 @@ public class KernelSourceFile
 	public final void setCreateBenchmarkingHarness (boolean bCreateBenchmarkingHarness)
 	{
 		m_bCreateBenchmarkingHarness = bCreateBenchmarkingHarness;
+	}
+	
+	//TODO - me 
+	public final boolean getCreateCopyback ()
+	{
+		return m_bCreateCopyback;
+	}
+
+	//TODO - me
+	public final void setCreateCopyback (boolean bCreateCopyback)
+	{
+		m_bCreateCopyback = bCreateCopyback;
 	}
 
 	public final TranslationUnit getTranslationUnit ()

@@ -123,7 +123,13 @@ public class CodeGeneratorMain
 			ksf.setCompatibility (CodeGenerationOptions.ECompatibility.C);
 			ksf.setCreateInitialization (true);
 			ksf.setCreateBenchmarkingHarness (true);
-
+			
+			//TODO - me Ajust the if clause to only produce copyback for intel xeon phi in the offload execution model
+			if(m_hardwareDescription.useCopybackFunction()){
+				ksf.setCreateCopyback(true);
+			}else{
+				ksf.setCreateCopyback(false);
+			}
 			listOutputs.add (ksf);
 		}
 
@@ -133,9 +139,16 @@ public class CodeGeneratorMain
 			ksf.setCompatibility (m_options.getCompatibility ());
 			ksf.setCreateInitialization (m_options.getCreateInitialization ());
 			ksf.setCreateBenchmarkingHarness (false);
-
+			//TODO - me Ajust the if clause to only produce copyback for intel xeon phi in the offload execution model
+			if(m_hardwareDescription.useCopybackFunction()){
+				ksf.setCreateCopyback(true);
+			}else{
+				ksf.setCreateCopyback(false);
+			}
 			listOutputs.add (ksf);
 		}
+		
+		
 
 		return listOutputs;
 	}

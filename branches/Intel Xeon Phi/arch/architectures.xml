@@ -900,7 +900,7 @@
 	</architectureType>
 
 <architectureType name="XEON_Offload">
-		<codegenerator src-suffix="c" backend="INTELXEONPHI" use-function-pointers="true"/>
+		<codegenerator src-suffix="c" backend="INTELXEONPHI" use-function-pointers="true" use-copyback-function="true"/>
 		<parallelism>
 			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
 				<barrier type="pragma" implementation="omp barrier"/>
@@ -953,7 +953,7 @@
 	</architectureType>
 
 <architectureType name="XEON_Native_OpenMP">
-		<codegenerator src-suffix="c" backend="INTELXEONPHI" use-function-pointers="true"/>
+		<codegenerator src-suffix="c" backend="INTELXEONPHI" use-function-pointers="true" use-copyback-function="false"/>
 		<parallelism>
 			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
 				<barrier type="pragma" implementation="omp barrier"/>

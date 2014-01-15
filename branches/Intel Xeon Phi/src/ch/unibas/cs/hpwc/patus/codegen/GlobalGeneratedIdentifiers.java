@@ -315,6 +315,8 @@ public class GlobalGeneratedIdentifiers
 
 	private NameID m_nidStencilFunction;
 	
+	private NameID m_nidCopybackFunction; //TODO - Me
+	
 	private List<Variable> m_listVariables;
 	
 	private Map<String, Variable> m_mapVariables;
@@ -482,7 +484,42 @@ public class GlobalGeneratedIdentifiers
 	{
 		m_nidInitializeFunction = nidInitializeFunction;
 	}
+//<----
+	//TODO - me added copyback function
+	
 
+	public NameID getCopybackFunctionName ()
+	{
+		return m_nidCopybackFunction;
+	}
+	
+	void setCopybackFunctionName(NameID nidCopybackFunction) {
+		m_nidCopybackFunction = nidCopybackFunction;
+	}
+	
+	public VariableDeclaration getCopybackFunctionDeclaration (CodeGenerationOptions.ECompatibility compatibility)
+	{
+		if (m_nidCopybackFunction == null)
+			return null;
+
+		List<Specifier> listSpecs = new ArrayList<> ();
+		listSpecs.addAll (m_data.getArchitectureDescription ().getDeclspecs (TypeDeclspec.KERNEL));
+		listSpecs.add (Specifier.VOID);
+		
+		return new VariableDeclaration (
+			listSpecs,
+			new ProcedureDeclarator (
+				m_nidCopybackFunction.clone (),
+				GlobalGeneratedIdentifiers.getDeclarations (getVariables (
+					~EVariableType.OUTPUT_GRID.mask () &
+					~EVariableType.INTERNAL_AUTOTUNE_PARAMETER.mask ()),
+				compatibility)
+			)
+		);
+	}
+	
+	//---->
+	
 	/**
 	 * Returns the name of the (generic, parametrized) stencil function.
 	 * @return

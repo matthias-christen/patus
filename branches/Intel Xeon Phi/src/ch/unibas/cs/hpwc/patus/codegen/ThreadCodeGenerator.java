@@ -111,6 +111,7 @@ public class ThreadCodeGenerator
 			else if (t instanceof Statement && !(t instanceof DeclarationStatement))
 				cmpstmtOutput.addStatement (((Statement) t).clone ());
 		}
+		
 	}
 
 	/**

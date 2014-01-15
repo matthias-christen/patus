@@ -89,7 +89,7 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 		// process the range iterator
 		if (trvInput instanceof RangeIterator)
 			return generateRangeIterator ((RangeIterator) trvInput, options);
-
+		
 		// process the subdomain iterator
 		if (trvInput instanceof SubdomainIterator)
 			return generateSubdomainIterator ((SubdomainIterator) trvInput, options);

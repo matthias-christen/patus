@@ -227,7 +227,13 @@ public class ArchitectureDescriptionManager
 		{
 			return m_type.getCodegenerator ().isUseFunctionPointers ();
 		}
-
+		
+		@Override
+		public boolean useCopybackFunction()
+		{
+			return m_type.getCodegenerator ().isUseCopybackFunction ();
+		}
+		
 		@Override
 		public int getNumberOfParallelLevels ()
 		{

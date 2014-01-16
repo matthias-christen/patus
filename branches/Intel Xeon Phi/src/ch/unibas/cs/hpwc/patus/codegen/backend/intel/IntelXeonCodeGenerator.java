@@ -245,7 +245,7 @@ public class IntelXeonCodeGenerator extends OpenMPCodeGenerator
 		
 		
 		// forward declaration for barrier
-		return "bla";
+		return null;
 		
 	}
 	

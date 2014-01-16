@@ -48,6 +48,7 @@ import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.NestedDeclarator;
 import cetus.hir.NewExpression;
+import cetus.hir.OmpAnnotation;
 import cetus.hir.PointerSpecifier;
 import cetus.hir.PragmaAnnotation;
 import cetus.hir.PreAnnotation;
@@ -57,6 +58,7 @@ import cetus.hir.SizeofExpression;
 import cetus.hir.Specifier;
 import cetus.hir.Statement;
 import cetus.hir.SwitchStatement;
+import cetus.hir.SymbolTools;
 import cetus.hir.TranslationUnit;
 import cetus.hir.Traversable;
 import cetus.hir.UnaryExpression;
@@ -360,13 +362,13 @@ public class CodeGenerator
 			m_data.getData ().setCreatingCopyback (true);
 			m_data.getCodeGenerators ().reset ();
 			m_data.getData ().reset ();
-			CodeGeneratorRuntimeOptions optionsInitialize = new CodeGeneratorRuntimeOptions ();
-			//CompoundStatement cmpstmtStrategyInitThreadBody = m_cgThreadCode.generate (m_data.getStrategy ().getBody (), optionsInitialize);
-			//RangeIterator rg=new RangeIterator(new Identifier(new VariableDeclarator(new NameID("ii"))), new Expression() {
-//			}, exprEnd, exprStep, stmtBody, nParallelismLevel)
-			//m_data.getCodeGenerators ().getLoopCodeGenerator ().generate()
+			CompoundStatement cs=new CompoundStatement();
+			OmpAnnotation as= new OmpAnnotation();
 			slbCopybackBody = new StatementListBundle();
-			addCopybackBody(slbCopybackBody, optionsInitialize);
+			addCopybackBody(slbCopybackBody);
+			//slbCopybackBody.addStatement(new DeclarationStatement(decl)) {
+			
+			
 		}
 		
 		
@@ -1248,7 +1250,7 @@ public class CodeGenerator
 	}
 	
 	
-	private void addCopybackBody (StatementListBundle slbCode, CodeGeneratorRuntimeOptions options)
+	private void addCopybackBody (StatementListBundle slbCode)
 	{
 		
 		// add the additional declarations to the code

@@ -145,6 +145,11 @@ public class SingleThreadCodeGenerator implements ICodeGenerator
 			options.hasValue (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_VALIDATE))
 		{
 			m_data.getData ().getMemoryObjectManager ().swapMemoryObjectPointers (it, slbLoopBody, options);
+			
+			// TODO: check: do we always need a barrier here?
+			Statement stmtBarrier = m_data.getCodeGenerators ().getBackendCodeGenerator ().getBarrier (it.getParallelismLevel () + 1);
+			if (stmtBarrier != null)
+				slbLoopBody.addStatement (stmtBarrier);			
 		}
 
 		return m_data.getCodeGenerators ().getLoopCodeGenerator ().generate (it, it.getStart (), slbLoopBody, slbGenerated, options);

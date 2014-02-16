@@ -276,6 +276,10 @@ public class IndexExpressionCache
 		 */
 		private Expression computeSimplifiedIndex (String strIndexExpression, ExpressionData dataIndexExpression, boolean bNoVectorize, Expression... rgExprOrigs) throws NotConvertableException
 		{
+			// ignore if the expression string is empty
+			if (strIndexExpression.equals (""))
+				return null;
+			
 			// if there is only one expression in the map, we can't simplify
 			Map<String, IndexValue> mapIdentifiers = m_mapIdentifiers.get (bNoVectorize);
 			if (mapIdentifiers == null || mapIdentifiers.size () <= 1)

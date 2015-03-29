@@ -1,0 +1,67 @@
+stencil wave (
+	float grid U(0 .. x_max-1, 0 .. y_max-1, 0 .. z_max-1), 
+	float param fMin,
+	float param fDX,
+	float param fDT_DX_sq)
+{
+		domainsize = (2 .. x_max-3, 2 .. y_max-3, 2 .. z_max-3);
+	
+		operation
+		{
+			// Define a coefficient array.
+			// Note that the lower and upper bounds can be arbitrary integers.
+			
+			float c[0..2] = {
+				2 - 15/2 * fDT_DX_sq,
+				4/3 * fDT_DX_sq,
+				-1/12 * fDT_DX_sq
+			};
+			
+				
+			// Use the compile-time reduction "sum" to sum up the neighbor points
+			// the set preceding the sum function defines the indices which to sum over.
+			//
+			// Sets are specified in the set-builder notation; the first part, left of the
+			// ":", defines the variables and assigns value ranges to them; in the second,
+			// optional part, right of the ":", conditions for the variables can be defined.
+			//
+			// Note that (since c[r] is inside the sum) this will product more Flops
+			// than strictly necessary.
+			
+			U[x, y, z; t+1] =
+				c[0] * U[x, y, z; t] - U[x, y, z; t-1] +
+				({ i=-1..1, j=-1..1, k=-1..1, r=1..2 : i^2+j^2+k^2 == 1 } sum(c[r] * U[x+r*i,y+r*j,z+r*k; t]));
+		}
+}
+
+
+/*
+stencil wave (
+	float grid U(0 .. x_max-1, 0 .. y_max-1, 0 .. z_max-1), 
+	float param fMin = -1,
+	float param fDX = 2/x_max,
+	float param fDT_DX_sq = 0.25)
+{
+		iterate while t < 10;
+		domainsize = (0 .. x_max-3, 2 .. y_max-3, 2 .. z_max-3);
+	
+		initial
+		{
+			U[x, y, z; -1] = sinf (2*π * ((x-1) * fDX + fMin)) * sinf (2*π * ((y-1) * fDX + fMin)) * sinf (2*π * ((z-1) * fDX + fMin));
+			U[x, y, z; 0] = U[x, y, z; -1];
+			U[x, y, z; 1] = 0;
+		}
+	
+		operation
+		{
+			float c[0..2] = {
+				2 - 15/2 * fDT_DX_sq,
+				4/3 * fDT_DX_sq,
+				-1/12 * fDT_DX_sq
+			};
+					
+			U[x, y, z; t+1] = c[0] * U[x, y, z; t] - U[x, y, z; t-1] +
+				{ i=-1..1, j=-1..1, k=-1..1, r=1..2 : i^2+j^2+k^2==1 } sum(c[r] * U[x+r*i,y+r*j,z+r*k; t]);
+		}
+}
+*/

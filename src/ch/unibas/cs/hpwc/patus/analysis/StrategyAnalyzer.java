@@ -217,7 +217,8 @@ public class StrategyAnalyzer
 		m_mapParallelismLevelIteratorSizes = new HashMap<> ();
 		m_mapParallelismLevelDomainSizes.put (0, new Size (m_data.getStencilCalculation ().getDomainSize ().getSize ()));
 		
-		buildGridHierarchy (m_strategy.getBody (), null);
+		if (m_strategy.getBody () != null)
+			buildGridHierarchy (m_strategy.getBody (), null);
 
 		// analyze the temporal structure
 		m_setTimeIndices = new HashSet<> ();
@@ -390,6 +391,9 @@ public class StrategyAnalyzer
 	 */
 	protected void findTemporalIterators ()
 	{
+		if (m_strategy.getBody () == null)
+			return;
+		
 		for (DepthFirstIterator it = new DepthFirstIterator (m_strategy.getBody ()); it.hasNext (); )
 		{
 			Object obj = it.next ();
@@ -1210,6 +1214,9 @@ public class StrategyAnalyzer
 	{
 		//////XXX
 		// only returns the TBF within the outer most temporal loop for now...
+		
+		if (m_strategy.getBody () == null)
+			return new IntegerLiteral (1);
 
 		for (DepthFirstIterator it = new DepthFirstIterator (m_strategy.getBody ()); it.hasNext (); )
 		{

@@ -43,6 +43,8 @@ public class Main
 			CodeGeneratorMain.main (Arrays.copyOfRange (args, 1, args.length));
 		else if (strMode.equals ("codegen-x"))
 			Preprocessor.main (Arrays.copyOfRange (args, 1, args.length));
+		else if (strMode.equals ("codegen-trapezoid"))
+			TrapezoidCodeGeneratorMain.main (Arrays.copyOfRange (args, 1, args.length));
 		else if (strMode.equals ("autotune"))
 			StandaloneAutotuner.main (Arrays.copyOfRange (args, 1, args.length));
 		else if (strMode.equals ("compare"))

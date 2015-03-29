@@ -61,7 +61,7 @@ public class KernelSourceFile
 		m_listExportedProcedures.add (procedure);
 	}
 
-	public void writeCode (CodeGenerator cg, CodeGeneratorSharedObjects data, File fileOutputDirectory)
+	public void writeCode (IBaseCodeGenerator cg, CodeGeneratorSharedObjects data, File fileOutputDirectory)
 	{
 		writeKernelSource (cg, data, fileOutputDirectory);
 		writeKernelHeader (fileOutputDirectory);
@@ -71,7 +71,7 @@ public class KernelSourceFile
 	/**
 	 * Write the stencil kernel implementation source file.
 	 */
-	private void writeKernelSource (CodeGenerator cg, CodeGeneratorSharedObjects data, File fileOutputDirectory)
+	private void writeKernelSource (IBaseCodeGenerator cg, CodeGeneratorSharedObjects data, File fileOutputDirectory)
 	{
 		if (m_bCreateBenchmarkingHarness)
 		{
@@ -88,6 +88,7 @@ public class KernelSourceFile
 			KernelSourceFile.LOGGER.info ("Writing kernel source...");
 
 			out = new PrintWriter (new IndentOutputStream (new FileOutputStream (new File (fileOutputDirectory, m_unit.getOutputFilename ()))));
+			out.println (cg.getFileHeader ());
 			out.println (cg.getIncludesAndDefines (true));
 
 			String strAdditionalKernelSpecificCode = data.getCodeGenerators ().getBackendCodeGenerator ().getAdditionalKernelSpecificCode ();

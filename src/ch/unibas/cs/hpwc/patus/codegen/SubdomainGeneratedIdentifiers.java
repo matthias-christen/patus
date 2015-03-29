@@ -38,6 +38,7 @@ public class SubdomainGeneratedIdentifiers
 
 		private Identifier m_idIndexIdentifier;
 		private Identifier[] m_rgDimensionIndexIdentifiers;
+		private Identifier[] m_rgDimensionMinIdentifiers;
 		private Identifier[] m_rgDimensionMaxIdentifiers;
 		private Identifier[] m_rgDimensionBlockIndexIdentifiers;
 		private Identifier m_idLoopCounter;
@@ -59,6 +60,7 @@ public class SubdomainGeneratedIdentifiers
 
 			m_idIndexIdentifier = null;
 			m_rgDimensionIndexIdentifiers = null;
+			m_rgDimensionMinIdentifiers = null;
 			m_rgDimensionMaxIdentifiers = null;
 			m_rgDimensionBlockIndexIdentifiers = null;
 			m_idLoopCounter = null;
@@ -162,6 +164,35 @@ public class SubdomainGeneratedIdentifiers
 			return getDimensionIndexIdentifiers ()[nDimension];
 		}
 
+		/**
+		 *
+		 * @return
+		 */
+		public Identifier[] getDimensionMinIdentifiers ()
+		{
+			if (m_rgDimensionMinIdentifiers == null)
+			{
+				m_rgDimensionMinIdentifiers = new Identifier[m_sdid.getDimensionality ()];
+				for (int i = 0; i < m_sdid.getDimensionality (); i++)
+				{
+					m_rgDimensionMinIdentifiers[i] = createIdentifier (StringUtil.concat (
+						"_idx_", CodeGeneratorUtil.getDimensionName (i), "_min"));
+				}
+			}
+
+			return m_rgDimensionMinIdentifiers;
+		}
+
+		/**
+		 *
+		 * @param nDimension
+		 * @return
+		 */
+		public Identifier getDimensionMinIdentifier (int nDimension)
+		{
+			return getDimensionMinIdentifiers ()[nDimension];
+		}
+		
 		/**
 		 *
 		 * @return
@@ -304,6 +335,7 @@ public class SubdomainGeneratedIdentifiers
 			m_idLoopCounter = null;
 			m_idNumBlocks = null;
 			m_rgDimensionIndexIdentifiers = null;
+			m_rgDimensionMinIdentifiers = null;
 			m_rgDimensionMaxIdentifiers = null;
 			m_rgDimensionBlockIndexIdentifiers = null;
 		}
@@ -371,6 +403,17 @@ public class SubdomainGeneratedIdentifiers
 	public Identifier getDimensionIndexIdentifier (SubdomainIdentifier sdid, int nDimension)
 	{
 		return getIdentifiers (sdid).getDimensionIndexIdentifier (nDimension);
+	}
+
+	/**
+	 *
+	 * @param sdid
+	 * @param nDimension
+	 * @return
+	 */
+	public Identifier getDimensionMinIdentifier (SubdomainIdentifier sdid, int nDimension)
+	{
+		return getIdentifiers (sdid).getDimensionMinIdentifier (nDimension);
 	}
 
 	/**

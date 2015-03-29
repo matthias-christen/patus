@@ -477,7 +477,7 @@ public class GlobalGeneratedIdentifiers
 	 *
 	 * @param nidInitializeFunction
 	 */
-	/* package */ void setInitializeFunctionName (NameID nidInitializeFunction)
+	public void setInitializeFunctionName (NameID nidInitializeFunction)
 	{
 		m_nidInitializeFunction = nidInitializeFunction;
 	}
@@ -515,7 +515,7 @@ public class GlobalGeneratedIdentifiers
 	 *
 	 * @param nidStencilFunction
 	 */
-	/* package */ void setStencilFunctionName (NameID nidStencilFunction)
+	public void setStencilFunctionName (NameID nidStencilFunction)
 	{
 		m_nidStencilFunction = nidStencilFunction;
 	}

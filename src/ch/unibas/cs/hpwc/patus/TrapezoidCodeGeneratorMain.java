@@ -1,33 +1,27 @@
 package ch.unibas.cs.hpwc.patus;
 
 import java.io.File;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import cetus.hir.Declaration;
-import cetus.hir.NameID;
-import cetus.hir.Specifier;
+import cetus.hir.DeclarationStatement;
+import cetus.hir.Statement;
 import cetus.hir.VariableDeclaration;
-import cetus.hir.VariableDeclarator;
+import ch.unibas.cs.hpwc.patus.analysis.HIRAnalyzer;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
+import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
+import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
-import ch.unibas.cs.hpwc.patus.ast.StencilSpecifier;
-import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
 import ch.unibas.cs.hpwc.patus.codegen.Strategy;
 import ch.unibas.cs.hpwc.patus.codegen.TrapezoidCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
-import ch.unibas.cs.hpwc.patus.geometry.Point;
-import ch.unibas.cs.hpwc.patus.geometry.Size;
-import ch.unibas.cs.hpwc.patus.geometry.Subdomain;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
-import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
@@ -36,8 +30,6 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 	// Constants
 
 	private final static Logger LOGGER = Logger.getLogger (TrapezoidCodeGeneratorMain.class);
-
-	private final static DateFormat DATE_FORMAT = new SimpleDateFormat ("yyyy/MM/dd HH:mm:ss");
 
 
 	///////////////////////////////////////////////////////////////////
@@ -75,26 +67,10 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		// show stencil and strategy codes
 		TrapezoidCodeGeneratorMain.LOGGER.debug (StringUtil.concat ("Stencil Calculation:\n", m_stencil.toString ()));
 
-		Strategy dummyStrategy = new Strategy();
-		byte nDimensionality = m_stencil.getDimensionality();
+		String strategyCode = "strategy dummy (domain u) { for t = 1 .. stencil.t_max for point p in u(:; t) u[p; t+1] = stencil(u[p; t]); }";
+		Strategy strategy = Strategy.parse(strategyCode, m_stencil);
 		
-        Point ptMin = new Point(nDimensionality);
-        Point ptMax = new Point(nDimensionality);
-        for (int i = 0; i < nDimensionality; i++)
-        {
-        	// TODO: clean up; eg. use m_data.getData ().getGeneratedIdentifiers ().getDimensionMinIdentifier
-        	ptMin.setCoord(i, new NameID(CodeGeneratorUtil.getDimensionName(i) + "_min"));
-        	ptMax.setCoord(i, new NameID(CodeGeneratorUtil.getDimensionName(i) + "_max"));
-        }
-        
-        Subdomain sg = new Subdomain (null, Subdomain.ESubdomainType.SUBDOMAIN, ptMin, new Size (ptMin, ptMax), true);
-		dummyStrategy.setBaseDomain(new SubdomainIdentifier ("u", sg));
-		
-		List<Declaration> listParams = new ArrayList<Declaration> ();
-		listParams.add (new VariableDeclaration (StencilSpecifier.STENCIL_PARAM, new VariableDeclarator (Specifier.INT, new NameID ("__t_min"))));
-		dummyStrategy.setParameters (listParams);
-		
-		m_data = new CodeGeneratorSharedObjects (m_stencil, dummyStrategy, m_hardwareDescription, m_options);
+		m_data = new CodeGeneratorSharedObjects (m_stencil, strategy, m_hardwareDescription, m_options);
 		TrapezoidCodeGenerator cg = new TrapezoidCodeGenerator(m_data);
 
 		// generate the code
@@ -104,7 +80,7 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 
 		TrapezoidCodeGeneratorMain.LOGGER.info ("Generating code...");
 		createFunctionParameterList (true, true);
-		StatementListBundle slbGenerated = cg.generate(dummyStrategy.getBody(), optionsStencil);
+		StatementListBundle slbGenerated = cg.generate(strategy.getBody(), optionsStencil);
 		addAdditionalDeclarationsAndAssignments (slbGenerated, optionsStencil);
 		
 		// output
@@ -116,6 +92,9 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 
 		// add internal autotune parameters to the parameter list
 		createFunctionInternalAutotuneParameterList (slbGenerated);
+		
+		// do post-generation optimizations
+		optimizeCode (slbGenerated);
 
 		// package the code into functions, add them to the translation unit, and write the code files
 		for (KernelSourceFile out : listOutputs)
@@ -127,10 +106,50 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		TrapezoidCodeGeneratorMain.LOGGER.info("Code generation completed.");
 	}
 	
+	/*
 	protected void setBaseMemoryObjectInitializers ()
 	{
 		// don't do anything (we don't need to initialize base memory objects)
+	}*/
+	
+	/**
+	 * Do post-code generation optimizations (loop unrolling, ...).
+	 * @param cmpstmtBody
+	 * @return
+	 */
+	protected void optimizeCode (StatementListBundle slbInput)
+	{
+		// remove declarations of unused variables
+		for (ParameterAssignment pa : slbInput)
+		{
+			LOGGER.debug (StringUtil.concat ("Removing unused variables from ", pa.toString ()));
+
+			StatementList sl = slbInput.getStatementList (pa);
+			List<Statement> list = sl.getStatementsAsList ();
+			boolean bModified = false;
+
+			for (Iterator<Statement> it = list.iterator (); it.hasNext (); )
+			{
+				Statement stmt = it.next ();
+				if (stmt instanceof DeclarationStatement && ((DeclarationStatement) stmt).getDeclaration () instanceof VariableDeclaration)
+				{
+					VariableDeclaration vdecl = (VariableDeclaration) ((DeclarationStatement) stmt).getDeclaration ();
+					if (vdecl.getNumDeclarators () == 1)
+					{
+						if (!HIRAnalyzer.isReferenced (vdecl.getDeclarator (0).getID (), sl))
+						{
+							it.remove ();
+							bModified = true;
+						}
+					}
+				}
+			}
+
+			if (bModified)
+				slbInput.replaceStatementList (pa, new StatementList (list));
+		}
 	}
+	
 
 	/**
 	 * Creates the list of output kernel source files.

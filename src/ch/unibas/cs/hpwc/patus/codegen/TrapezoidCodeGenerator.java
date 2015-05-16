@@ -1,5 +1,9 @@
 package ch.unibas.cs.hpwc.patus.codegen;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import cetus.hir.AnnotationStatement;
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
 import cetus.hir.BinaryExpression;
@@ -9,28 +13,32 @@ import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.ForLoop;
 import cetus.hir.Identifier;
-import cetus.hir.IntegerLiteral;
 import cetus.hir.NameID;
 import cetus.hir.Specifier;
 import cetus.hir.Traversable;
 import cetus.hir.UnaryExpression;
 import cetus.hir.UnaryOperator;
 import cetus.hir.VariableDeclarator;
+import ch.unibas.cs.hpwc.patus.ast.IndexBoundsCalculationInsertionAnnotation;
+import ch.unibas.cs.hpwc.patus.ast.Parameter;
 import ch.unibas.cs.hpwc.patus.ast.RangeIterator;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
+import ch.unibas.cs.hpwc.patus.codegen.backend.assembly.InnermostLoopCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
-import ch.unibas.cs.hpwc.patus.geometry.Border;
+import ch.unibas.cs.hpwc.patus.codegen.options.StencilLoopUnrollingConfiguration;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
-import ch.unibas.cs.hpwc.patus.geometry.Size;
-import ch.unibas.cs.hpwc.patus.geometry.Subdomain;
-import ch.unibas.cs.hpwc.patus.geometry.Vector;
 import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
+import ch.unibas.cs.hpwc.patus.util.IntArray;
 import ch.unibas.cs.hpwc.patus.util.StatementListBundleUtil;
+import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class TrapezoidCodeGenerator implements ICodeGenerator
 {
+	///////////////////////////////////////////////////////////////////
+	// Member Variables
+
 	/**
 	 * The shared data
 	 */
@@ -48,7 +56,12 @@ public class TrapezoidCodeGenerator implements ICodeGenerator
 	 */
 	private Identifier[][][] m_rgSlopes;
 	
+	private int[] m_rgMaxUnrollingFactorPerDimension;
 	
+	
+	///////////////////////////////////////////////////////////////////
+	// Implementation
+
 	public TrapezoidCodeGenerator(CodeGeneratorSharedObjects data)
 	{
 		m_data = data;
@@ -56,13 +69,9 @@ public class TrapezoidCodeGenerator implements ICodeGenerator
 		byte nDim = m_data.getStencilCalculation().getDimensionality();
 				
 		m_sdidBase = m_data.getStrategy ().getBaseDomain ().clone ();
-
-		m_sdidIterator = new SubdomainIdentifier ("v", new Subdomain (
-			m_sdidBase.getSubdomain (),
-			Subdomain.ESubdomainType.POINT,
-			new Size (Vector.getOnesVector (m_sdidBase.getDimensionality ()))));
-
-		m_sdIterator = new SubdomainIterator(m_sdidIterator, m_sdidBase, new Border(nDim), 1, null, null, 0);
+		
+		m_sdIterator = m_data.getCodeGenerators().getStrategyAnalyzer().getOuterMostSubdomainIterator();
+		m_sdidIterator = m_sdIterator.getIterator();
 		
 		// construct the bounds and slope variables
 		m_rgSlopes = new Identifier[nDim][][];
@@ -85,6 +94,7 @@ public class TrapezoidCodeGenerator implements ICodeGenerator
 		}
 	}
 	
+	
 	@Override
 	public StatementListBundle generate(Traversable trvInput, CodeGeneratorRuntimeOptions options)
 	{
@@ -92,12 +102,27 @@ public class TrapezoidCodeGenerator implements ICodeGenerator
 		
 		// add function parameters
 
-		m_idTemporalIdx = new Identifier (new VariableDeclarator (Specifier.INT, new NameID ("__t")));
+		
+		
+		
+		//IDExpression idTemporalIdx = m_data.getCodeGenerators().getStrategyAnalyzer().getTimeIndexVariable();
+		//m_idTemporalIdx = new Identifier (new VariableDeclarator (Specifier.INT, new NameID ("__t")));
 
-		StatementListBundle slbLoopBody = generateIteratorForDimension((byte) (m_data.getStencilCalculation().getDimensionality() - 1), options);
+		//StatementListBundle slbLoopBody = generateIteratorForDimension((byte) (m_data.getStencilCalculation().getDimensionality() - 1), options);
+		
+		StatementListBundle slbLoopBody = new TrapezoidalSubdomainIteratorCodeGenerator(
+			m_data.getCodeGenerators ().getStencilCalculationCodeGenerator (),
+			m_data,
+			m_rgSlopes
+		).generate(
+			m_data.getCodeGenerators().getStrategyAnalyzer().getOuterMostSubdomainIterator(),
+			options
+		);
 		
 		// generate the time loop
-		RangeIterator itTemporal = new RangeIterator(m_idTemporalIdx, new IntegerLiteral (0), new NameID ("__tmin"), new IntegerLiteral (1), null, 0);
+		//RangeIterator itTemporal = new RangeIterator(m_idTemporalIdx, new IntegerLiteral (0), new NameID ("__tmin"), new IntegerLiteral (1), null, 0);
+		RangeIterator itTemporal = m_data.getCodeGenerators().getStrategyAnalyzer().getMainTemporalIterator();
+		
 		return m_data.getCodeGenerators ().getLoopCodeGenerator ().generate (itTemporal, itTemporal.getStart (), slbLoopBody, slbGenerated, options);
 		
 		/*
@@ -128,7 +153,7 @@ public class TrapezoidCodeGenerator implements ICodeGenerator
 		StatementListBundle slbGenerated = new StatementListBundle ();
 
 		if (nDimension == 0)
-			;//slbGenerated.addStatements(m_data.getCodeGenerators ().getInnermostLoopCodeGenerator().generate(m_sdIterator, options));
+			generateInnerMost(slbGenerated, options);
 		else
 		{		
 			Identifier idIdx = m_data.getData ().getGeneratedIdentifiers ().getDimensionIndexIdentifier (m_sdidIterator, nDimension);
@@ -161,20 +186,64 @@ public class TrapezoidCodeGenerator implements ICodeGenerator
 				new UnaryExpression(UnaryOperator.PRE_INCREMENT, idIdx.clone()),
 				new CompoundStatement()
 			));
+			
 			StatementListBundleUtil.addToLoopBody(slbGenerated, slbLoopBody);
 		}
 		
 		// generate the increment statements
 		slbGenerated.addStatement(new ExpressionStatement(new AssignmentExpression(
-			m_data.getData().getGeneratedIdentifiers().getDimensionMinIdentifier(m_sdidBase, nDimension).clone(),
+			m_data.getData().getGeneratedIdentifiers().getDimensionMinIdentifier(m_sdidIterator, nDimension).clone(),
 			AssignmentOperator.ADD,
 			m_rgSlopes[nDimension][0][0].clone())));
 		slbGenerated.addStatement(new ExpressionStatement(new AssignmentExpression(
-			m_data.getData().getGeneratedIdentifiers().getDimensionMaxIdentifier(m_sdidBase, nDimension).clone(),
+			m_data.getData().getGeneratedIdentifiers().getDimensionMaxIdentifier(m_sdidIterator, nDimension).clone(),
 			AssignmentOperator.ADD,
 			m_rgSlopes[nDimension][0][1].clone())));
 		
 		return slbGenerated;
+	}
+	
+	private void generateInnerMost(StatementListBundle slbGenerated, CodeGeneratorRuntimeOptions options)
+	{
+		byte nDimensionality = m_data.getStencilCalculation().getDimensionality();
+		IInnermostLoopCodeGenerator cg = m_data.getCodeGenerators ().getInnermostLoopCodeGenerator();
+
+		Parameter param = new Parameter (StringUtil.concat ("_unroll_", m_sdIterator.getIterator ().getName ()));
+
+		// create a code branch for each unrolling configuration
+		for (StencilLoopUnrollingConfiguration config :	m_data.getOptions ().getStencilLoopUnrollingConfigurations (
+			nDimensionality, m_rgMaxUnrollingFactorPerDimension, true))
+		{
+			// generate the code for the loop nest
+			StatementListBundle slbLoopNest = new StatementListBundle ();
+			slbLoopNest.addStatementAtTop (new AnnotationStatement (new IndexBoundsCalculationInsertionAnnotation (m_sdIterator)));
+
+			if (cg != null)
+				generateInnerMostWithSpecializedCG(slbLoopNest, /*bHasParentLoop*/ false, options, config);
+			else
+			{
+				
+			}
+			
+			/*
+			recursiveGenerateInner (slbLoopNest, nStartDim - 1, false, config);
+
+			if (slbLoopNest.size () == 1)
+				slbGeneratedParent.addStatement (slbLoopNest.getDefault (), param, config.toInteger ());
+			else
+				slbGeneratedParent.addStatements (slbLoopNest, param, config.toInteger ());
+				*/
+		}
+
+		//return slbGeneratedParent;
+			
+
+		/*
+		if (cg != null)
+			slbGenerated.addStatements(cg.generate(m_sdIterator, options));
+		else
+			createStencilCalculation(slbGenerated, config);
+			*/
 	}
 	
 	/**
@@ -223,5 +292,56 @@ public class TrapezoidCodeGenerator implements ICodeGenerator
 		}
 		
 		return exprResult;
+	}
+	
+	/**
+	 * Generates code for the innermost loop containing a stencil call using a specialized
+	 * innermost loop code generator.
+	 * @param slbParent
+	 */
+	private void generateInnerMostWithSpecializedCG (StatementListBundle slbParent, boolean bHasParentLoop, CodeGeneratorRuntimeOptions options, StencilLoopUnrollingConfiguration config)
+	{
+		// set code generator options
+		options.setOption (InnermostLoopCodeGenerator.OPTION_INLINEASM_UNROLLFACTOR, config.getUnrollingFactor (0));
+			
+		// generate the code
+		byte nDimensionality = m_sdIterator.getIterator ().getDimensionality ();
+		Set<IntArray> setUnrollings = new HashSet<> ();
+		for (int[] rgOffset : config.getConfigurationSpace (nDimensionality))
+		{
+			IntArray arr = new IntArray (rgOffset, true);
+			arr.set (0, 0);
+			setUnrollings.add (arr);
+		}
+		
+		// clear the index cache before invoking the inner-most loop CG
+		m_data.getData ().getMemoryObjectManager ().clear ();
+		
+		// generate one version of the code for each unrolling configuration
+		// TODO: since only the base grid addresses change, cache generated versions of the code
+		StatementListBundle slbInnerLoop = null;
+		for (IntArray arr : setUnrollings)
+		{
+			CodeGeneratorRuntimeOptions opts = options.clone ();
+			opts.setOption (CodeGeneratorRuntimeOptions.OPTION_INNER_UNROLLINGCONFIGURATION, arr.get ());
+			
+			StatementListBundle slb = m_data.getCodeGenerators ().getInnermostLoopCodeGenerator ().generate (m_sdIterator, opts);
+			
+			if (slb != null)
+			{
+				if (slbInnerLoop == null)
+					slbInnerLoop = new StatementListBundle ();
+				slbInnerLoop.addStatements (slb);
+			}
+		}
+		
+		// add the code to the parent loop
+		if (slbInnerLoop != null)
+		{
+			if (bHasParentLoop)
+				StatementListBundleUtil.addToLoopBody (slbParent, slbInnerLoop);
+			else
+				slbParent.addStatements (slbInnerLoop);
+		}
 	}
 }

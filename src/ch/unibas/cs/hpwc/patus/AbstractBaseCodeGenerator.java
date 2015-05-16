@@ -9,8 +9,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
-
 import cetus.hir.AnnotationStatement;
 import cetus.hir.ArrayAccess;
 import cetus.hir.ArraySpecifier;
@@ -58,14 +56,14 @@ import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorData;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
-import ch.unibas.cs.hpwc.patus.codegen.MemoryObject;
-import ch.unibas.cs.hpwc.patus.codegen.MemoryObjectManager;
-import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
-import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.IBaseCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
+import ch.unibas.cs.hpwc.patus.codegen.MemoryObject;
+import ch.unibas.cs.hpwc.patus.codegen.MemoryObjectManager;
+import ch.unibas.cs.hpwc.patus.codegen.StencilNodeSet;
+import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.geometry.Size;
 import ch.unibas.cs.hpwc.patus.grammar.strategy.IAutotunerParam;
 import ch.unibas.cs.hpwc.patus.representation.Stencil;
@@ -80,8 +78,6 @@ public abstract class AbstractBaseCodeGenerator implements IBaseCodeGenerator
 {
 	///////////////////////////////////////////////////////////////////
 	// Constants
-
-	private final static Logger LOGGER = Logger.getLogger (AbstractBaseCodeGenerator.class);
 
 	private final static DateFormat DATE_FORMAT = new SimpleDateFormat ("yyyy/MM/dd HH:mm:ss");
 

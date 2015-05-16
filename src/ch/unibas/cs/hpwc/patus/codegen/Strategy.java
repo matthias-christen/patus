@@ -10,6 +10,7 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.codegen;
 
+import java.io.ByteArrayInputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,17 @@ public class Strategy
 		Strategy strategy = parser.getStrategy ();
 		strategy.setFilename (strFilename);
 		return strategy;
+	}
+	
+	public static Strategy parse (String strategyCode, StencilCalculation stencilCalculation)
+	{
+		Parser parser = new Parser (new Scanner (new ByteArrayInputStream (strategyCode.getBytes())));
+		parser.setStencilCalculation (stencilCalculation);
+		parser.Parse ();
+		if (parser.hasErrors ())
+			throw new RuntimeException ("Parsing the Strategy failed.");
+		
+		return parser.getStrategy ();
 	}
 
 

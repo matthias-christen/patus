@@ -503,6 +503,11 @@ public class StrategyAnalyzer
 			return null;
 		return m_itMainTemporalIterator.getLoopIndex ();
 	}
+	
+	public RangeIterator getMainTemporalIterator ()
+	{
+		return m_itMainTemporalIterator;
+	}
 
 	/**
 	 * Returns the total number of virtual parallel units that are used

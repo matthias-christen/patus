@@ -122,7 +122,7 @@ public abstract class AbstractSubdomainIteratorCodeGenerator implements ICodeGen
 		/**
 		 * Gets the maximum unrolling factors per dimension (depending on the domain of the iterator).
 		 */
-		private void initializeMaximumUnrollingFactors ()
+		public void initializeMaximumUnrollingFactors ()
 		{
 			byte nDimensionality = m_sdIterator.getDomainIdentifier ().getDimensionality ();
 			Size sizeDomain = m_sdIterator.getDomainIdentifier ().getSubdomain ().getSize ();

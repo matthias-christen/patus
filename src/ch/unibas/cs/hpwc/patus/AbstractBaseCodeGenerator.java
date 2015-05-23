@@ -9,9 +9,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import cetus.hir.AnnotationStatement;
 import cetus.hir.ArrayAccess;
 import cetus.hir.ArraySpecifier;
+import cetus.hir.AssignmentExpression;
+import cetus.hir.AssignmentOperator;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.BreakStatement;
@@ -49,6 +53,7 @@ import ch.unibas.cs.hpwc.patus.analysis.StrategyAnalyzer;
 import ch.unibas.cs.hpwc.patus.arch.TypeDeclspec;
 import ch.unibas.cs.hpwc.patus.ast.Parameter;
 import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
+import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.StencilSpecifier;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
@@ -57,6 +62,7 @@ import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorData;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
 import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers.Variable;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.Globals;
 import ch.unibas.cs.hpwc.patus.codegen.IBaseCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
@@ -79,8 +85,12 @@ public abstract class AbstractBaseCodeGenerator implements IBaseCodeGenerator
 	///////////////////////////////////////////////////////////////////
 	// Constants
 
+	private final static boolean SINGLE_ASSIGNMENT = false;
+
 	private final static DateFormat DATE_FORMAT = new SimpleDateFormat ("yyyy/MM/dd HH:mm:ss");
 
+	private final static Logger LOGGER = Logger.getLogger (AbstractBaseCodeGenerator.class);
+	
 	
 	///////////////////////////////////////////////////////////////////
 	// Inner Types
@@ -919,5 +929,148 @@ public abstract class AbstractBaseCodeGenerator implements IBaseCodeGenerator
 		sb.append ("\n */\n\n");
 		
 		return sb.toString ();
+	}
+	
+	/**
+	 *
+	 * @param bIncludeAutotuneParameters
+	 * @return
+	 */
+	public String getIncludesAndDefines (boolean bIncludeAutotuneParameters)
+	{
+		/*
+		return StringUtil.concat (
+			"#include <stdio.h>\n#include <stdlib.h>\n\n",
+			bIncludeAutotuneParameters ? "#include \"kerneltest.h\"\n\n" : null);
+		*/
+
+		//return "#define t_max 1\n#define THREAD_NUMBER 0\n#define NUMBER_OF_THREADS 1\n\n";
+		//return "#define t_max 1";
+
+		StringBuilder sb = new StringBuilder ();
+
+		if (m_data.getOptions ().isDebugPrintStencilIndices ())
+			sb.append ("#include <stdio.h>\n");
+
+		// include files
+		for (String strFile : m_data.getArchitectureDescription ().getIncludeFiles ())
+		{
+			sb.append ("#include \"");
+			sb.append (strFile);
+			sb.append ("\"\n");
+		}
+
+		sb.append ("#include <stdint.h>\n");
+		sb.append ("#include \"patusrt.h\"\n");
+		
+		sb.append ("#include \"");
+		sb.append (CodeGenerationOptions.DEFAULT_TUNEDPARAMS_FILENAME);
+		sb.append ("\"\n");
+
+		////////
+		//sb.append ("#define t_max 1");
+		////////
+
+		return sb.toString ();
+	}
+	
+	
+	///////////////////////////////////////////////////////////////////
+	// Post-Code Generation Code Optimization
+
+	protected static int m_nTempCount = 0;
+	private Expression substituteBinaryExpressionRecursive (List<Specifier> listSpecs, Expression expr, CompoundStatement cmpstmt)
+	{
+		if (expr instanceof BinaryExpression)
+		{
+			Expression exprLHS = substituteBinaryExpressionRecursive (listSpecs, ((BinaryExpression) expr).getLHS (), cmpstmt);
+			Expression exprRHS = substituteBinaryExpressionRecursive (listSpecs, ((BinaryExpression) expr).getRHS (), cmpstmt);
+
+			VariableDeclarator decl = new VariableDeclarator (new NameID (StringUtil.concat ("__tmp", CodeGenerator.m_nTempCount++)));
+			decl.setInitializer (new ValueInitializer (new BinaryExpression (exprLHS, ((BinaryExpression) expr).getOperator (), exprRHS)));
+			cmpstmt.addDeclaration (new VariableDeclaration (listSpecs, decl));
+			return new Identifier (decl);
+		}
+
+		return expr.clone ();
+	}
+
+	@SuppressWarnings("unchecked")
+	protected CompoundStatement substituteBinaryExpression (Identifier idLHS, AssignmentOperator op, BinaryExpression expr)
+	{
+		CompoundStatement cmpstmt = new CompoundStatement ();
+		cmpstmt.addStatement (new ExpressionStatement (new AssignmentExpression (
+			idLHS.clone (),
+			op,
+			substituteBinaryExpressionRecursive (idLHS.getSymbol ().getTypeSpecifiers (), expr, cmpstmt))));
+		return cmpstmt;
+	}
+
+	protected void substituteBinaryExpressions (Traversable trv)
+	{
+		if (trv instanceof ExpressionStatement)
+		{
+			Expression expr = ((ExpressionStatement) trv).getExpression ();
+			if (expr instanceof AssignmentExpression)
+			{
+				AssignmentExpression aexpr = (AssignmentExpression) expr;
+				if (aexpr.getLHS () instanceof Identifier && aexpr.getRHS () instanceof BinaryExpression)
+					((Statement) trv).swapWith (substituteBinaryExpression ((Identifier) aexpr.getLHS (), aexpr.getOperator (), (BinaryExpression) ((AssignmentExpression) expr).getRHS ()));
+			}
+		}
+		else
+		{
+			for (Traversable trvChild : trv.getChildren ())
+				substituteBinaryExpressions (trvChild);
+		}
+	}
+
+	/**
+	 * Do post-code generation optimizations (loop unrolling, ...).
+	 * @param cmpstmtBody
+	 * @return
+	 */
+	protected void optimizeCode (StatementListBundle slbInput)
+	{
+		// create one assignment for each subexpression
+		if (AbstractBaseCodeGenerator.SINGLE_ASSIGNMENT)
+		{
+			for (ParameterAssignment pa : slbInput)
+			{
+				StatementList sl = slbInput.getStatementList (pa);
+				for (Statement stmt : sl.getStatementsAsList ())
+					substituteBinaryExpressions (stmt);
+			}
+		}
+
+		// remove declarations of unused variables
+		for (ParameterAssignment pa : slbInput)
+		{
+			LOGGER.debug (StringUtil.concat ("Removing unused variables from ", pa.toString ()));
+
+			StatementList sl = slbInput.getStatementList (pa);
+			List<Statement> list = sl.getStatementsAsList ();
+			boolean bModified = false;
+
+			for (Iterator<Statement> it = list.iterator (); it.hasNext (); )
+			{
+				Statement stmt = it.next ();
+				if (stmt instanceof DeclarationStatement && ((DeclarationStatement) stmt).getDeclaration () instanceof VariableDeclaration)
+				{
+					VariableDeclaration vdecl = (VariableDeclaration) ((DeclarationStatement) stmt).getDeclaration ();
+					if (vdecl.getNumDeclarators () == 1)
+					{
+						if (!HIRAnalyzer.isReferenced (vdecl.getDeclarator (0).getID (), sl))
+						{
+							it.remove ();
+							bModified = true;
+						}
+					}
+				}
+			}
+
+			if (bModified)
+				slbInput.replaceStatementList (pa, new StatementList (list));
+		}
 	}
 }

@@ -10,14 +10,11 @@
  ******************************************************************************/
 package ch.unibas.cs.hpwc.patus.codegen;
 
-import org.apache.log4j.Logger;
-
 import cetus.hir.AssignmentExpression;
 import cetus.hir.AssignmentOperator;
 import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.CompoundStatement;
-import cetus.hir.DepthFirstIterator;
 import cetus.hir.Expression;
 import cetus.hir.ExpressionStatement;
 import cetus.hir.ForLoop;
@@ -31,7 +28,9 @@ import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
 import ch.unibas.cs.hpwc.patus.ast.SubdomainIterator;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
+import ch.unibas.cs.hpwc.patus.codegen.options.StencilLoopUnrollingConfiguration;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
+import ch.unibas.cs.hpwc.patus.geometry.Size;
 import ch.unibas.cs.hpwc.patus.symbolic.Symbolic;
 import ch.unibas.cs.hpwc.patus.util.ExpressionUtil;
 
@@ -46,7 +45,7 @@ public class TrapezoidalSubdomainIteratorCodeGenerator extends AbstractSubdomain
 	///////////////////////////////////////////////////////////////////
 	// Constants and Static Types
 
-	private final static Logger LOGGER = Logger.getLogger (TrapezoidalSubdomainIteratorCodeGenerator.class);
+	//private final static Logger LOGGER = Logger.getLogger (TrapezoidalSubdomainIteratorCodeGenerator.class);
 
 
 	///////////////////////////////////////////////////////////////////
@@ -66,6 +65,27 @@ public class TrapezoidalSubdomainIteratorCodeGenerator extends AbstractSubdomain
 			super (sgit, options);
 		}
 
+		/**
+		 * Gets the maximum unrolling factors per dimension (depending on the domain of the iterator).
+		 */
+		public void initializeMaximumUnrollingFactors ()
+		{
+			byte nDimensionality = m_sdIterator.getDomainIdentifier ().getDimensionality ();
+			Size sizeDomain = m_sdIterator.getDomainIdentifier ().getSubdomain ().getSize ();
+
+			m_rgMaxUnrollingFactorPerDimension = new int[nDimensionality];
+
+			Expression exprCoord = sizeDomain.getCoord (0);
+			if (ExpressionUtil.isNumberLiteral (exprCoord))
+				m_rgMaxUnrollingFactorPerDimension[0] = ExpressionUtil.getIntegerValue (exprCoord);
+			else
+				m_rgMaxUnrollingFactorPerDimension[0] = StencilLoopUnrollingConfiguration.NO_UNROLLING_LIMIT;
+
+			// don't allow unrolling in y, z, ... dimensions
+			for (int i = 1; i < nDimensionality; i++)
+				m_rgMaxUnrollingFactorPerDimension[i] = 1;
+		}
+		
 		/**
 		 * Creates the lower loop bound for the <code>for</code> loop in
 		 * dimension <code>nDim</code>.

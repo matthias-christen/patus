@@ -2,26 +2,35 @@ package ch.unibas.cs.hpwc.patus;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import cetus.hir.DeclarationStatement;
-import cetus.hir.Statement;
+import cetus.hir.AssignmentExpression;
+import cetus.hir.AssignmentOperator;
+import cetus.hir.ExpressionStatement;
+import cetus.hir.Identifier;
+import cetus.hir.NameID;
+import cetus.hir.Specifier;
 import cetus.hir.VariableDeclaration;
-import ch.unibas.cs.hpwc.patus.analysis.HIRAnalyzer;
+import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.arch.IArchitectureDescription;
 import ch.unibas.cs.hpwc.patus.ast.ParameterAssignment;
-import ch.unibas.cs.hpwc.patus.ast.StatementList;
 import ch.unibas.cs.hpwc.patus.ast.StatementListBundle;
+import ch.unibas.cs.hpwc.patus.ast.SubdomainIdentifier;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorData;
 import ch.unibas.cs.hpwc.patus.codegen.CodeGeneratorSharedObjects;
+import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
 import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
 import ch.unibas.cs.hpwc.patus.codegen.Strategy;
 import ch.unibas.cs.hpwc.patus.codegen.TrapezoidCodeGenerator;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
+import ch.unibas.cs.hpwc.patus.geometry.Box;
+import ch.unibas.cs.hpwc.patus.geometry.Point;
 import ch.unibas.cs.hpwc.patus.representation.StencilCalculation;
+import ch.unibas.cs.hpwc.patus.symbolic.Maxima;
+import ch.unibas.cs.hpwc.patus.util.CodeGeneratorUtil;
 import ch.unibas.cs.hpwc.patus.util.StringUtil;
 
 public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
@@ -60,14 +69,36 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		m_hardwareDescription = hardwareDescription;
 		m_fileOutputDirectory = fileOutputDirectory;
 		m_options = options;
+		
+		// set the domain size of the stencil to generic min/max expressions
+		byte nDim = m_stencil.getDimensionality();
+		Point ptMin = new Point (nDim);
+		Point ptMax = new Point (nDim);
+		
+		for (byte i = 0; i < nDim; i++)
+		{
+			String strCoordName = CodeGeneratorUtil.getDimensionName (i); 
+			ptMin.setCoord(i, new NameID (StringUtil.concat("__trapezoid_", strCoordName, "_min")));
+			ptMax.setCoord(i, new NameID (StringUtil.concat("__trapezoid_", strCoordName, "_max")));
+		}
+		
+		m_stencil.getDomainSize().setMin(ptMin);
+		m_stencil.getDomainSize().setMax(ptMax);
 	}
 	
 	public void run()
 	{
-		// show stencil and strategy codes
+		// show stencil code
 		TrapezoidCodeGeneratorMain.LOGGER.debug (StringUtil.concat ("Stencil Calculation:\n", m_stencil.toString ()));
 
-		String strategyCode = "strategy dummy (domain u) { for t = 1 .. stencil.t_max for point p in u(:; t) u[p; t+1] = stencil(u[p; t]); }";
+		// create the strategy
+		String strategyCode =
+			"strategy trapezoidal (domain u)           " +
+			"{                                         " +
+			"    for t = 1 .. stencil.t_max            " +
+			"        for point p in u(:; t)            " +
+			"            u[p; t+1] = stencil(u[p; t]); " +			
+			"}                                         ";
 		Strategy strategy = Strategy.parse(strategyCode, m_stencil);
 		
 		m_data = new CodeGeneratorSharedObjects (m_stencil, strategy, m_hardwareDescription, m_options);
@@ -77,10 +108,11 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		CodeGeneratorRuntimeOptions optionsStencil = new CodeGeneratorRuntimeOptions ();
 		optionsStencil.setOption (CodeGeneratorRuntimeOptions.OPTION_STENCILCALCULATION, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 		optionsStencil.setOption (CodeGeneratorRuntimeOptions.OPTION_DOBOUNDARYCHECKS, false);
-
+		
 		TrapezoidCodeGeneratorMain.LOGGER.info ("Generating code...");
 		createFunctionParameterList (true, true);
 		StatementListBundle slbGenerated = cg.generate(strategy.getBody(), optionsStencil);
+		addMaxPointInitializations();
 		addAdditionalDeclarationsAndAssignments (slbGenerated, optionsStencil);
 		
 		// output
@@ -88,10 +120,13 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 
 		// add global declarations
 		for (KernelSourceFile out : listOutputs)
-			addAdditionalGlobalDeclarations (out, slbGenerated.getDefault ());
+			addAdditionalGlobalDeclarations (out, slbGenerated.getDefault ());		
 
 		// add internal autotune parameters to the parameter list
 		createFunctionInternalAutotuneParameterList (slbGenerated);
+		
+		// add function parameters for trapezoidal code
+		createFunctionTrapezoidalParameterList (cg, slbGenerated);
 		
 		// do post-generation optimizations
 		optimizeCode (slbGenerated);
@@ -113,43 +148,95 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 	}*/
 	
 	/**
-	 * Do post-code generation optimizations (loop unrolling, ...).
-	 * @param cmpstmtBody
-	 * @return
+	 * Add initializations for the largest dimension min/max points
+	 * (p1_idx_z_min, p1_idx_z_max).
 	 */
-	protected void optimizeCode (StatementListBundle slbInput)
-	{
-		// remove declarations of unused variables
-		for (ParameterAssignment pa : slbInput)
-		{
-			LOGGER.debug (StringUtil.concat ("Removing unused variables from ", pa.toString ()));
+	protected void addMaxPointInitializations ()
+	{		
+		SubdomainIdentifier it = m_data.getCodeGenerators().getStrategyAnalyzer().getOuterMostSubdomainIterator().getIterator();
+		ParameterAssignment paStencilComputation = new ParameterAssignment (CodeGeneratorData.PARAM_COMPUTATION_TYPE, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
+	
+		byte nLargestDim = (byte) (m_stencil.getDimensionality() - 1);
 
-			StatementList sl = slbInput.getStatementList (pa);
-			List<Statement> list = sl.getStatementsAsList ();
-			boolean bModified = false;
-
-			for (Iterator<Statement> it = list.iterator (); it.hasNext (); )
-			{
-				Statement stmt = it.next ();
-				if (stmt instanceof DeclarationStatement && ((DeclarationStatement) stmt).getDeclaration () instanceof VariableDeclaration)
-				{
-					VariableDeclaration vdecl = (VariableDeclaration) ((DeclarationStatement) stmt).getDeclaration ();
-					if (vdecl.getNumDeclarators () == 1)
-					{
-						if (!HIRAnalyzer.isReferenced (vdecl.getDeclarator (0).getID (), sl))
-						{
-							it.remove ();
-							bModified = true;
-						}
-					}
-				}
-			}
-
-			if (bModified)
-				slbInput.replaceStatementList (pa, new StatementList (list));
-		}
+		// p1_idx_z_min=__trapezoid_z_min;
+		m_data.getData().addInitializationStatement(
+			paStencilComputation,
+			new ExpressionStatement(new AssignmentExpression(
+				m_data.getData().getGeneratedIdentifiers().getDimensionMinIdentifier(it, nLargestDim).clone(),
+				AssignmentOperator.NORMAL,
+				m_stencil.getDomainSize().getMin().getCoord(nLargestDim).clone()
+			))
+		);
+		
+		// p1_idx_z_max=__trapezoid_z_max;
+		m_data.getData().addInitializationStatement(
+			paStencilComputation,
+			new ExpressionStatement(new AssignmentExpression(
+				m_data.getData().getGeneratedIdentifiers().getDimensionMaxIdentifier(it, nLargestDim).clone(),
+				AssignmentOperator.NORMAL,
+				m_stencil.getDomainSize().getMax().getCoord(nLargestDim).clone()
+			))
+		);
 	}
 	
+	/**
+	 * Adds "t_max" and the slopes to the list of function parameters.
+	 * @param cg
+	 * @param slb
+	 */
+	protected void createFunctionTrapezoidalParameterList (TrapezoidCodeGenerator cg, StatementListBundle slb)
+	{
+		GlobalGeneratedIdentifiers ggid = m_data.getData ().getGlobalGeneratedIdentifiers ();
+		
+		// add artificial domain size
+		Box boxDomain = m_stencil.getDomainSize();
+		for (int i = 0; i < boxDomain.getDimensionality(); i++)
+		{
+			VariableDeclarator declMin = new VariableDeclarator((NameID) boxDomain.getMin().getCoord(i));
+			ggid.addStencilFunctionArguments(new GlobalGeneratedIdentifiers.Variable (
+				GlobalGeneratedIdentifiers.EVariableType.INTERNAL_ADDITIONAL_KERNEL_PARAMETER,
+				new VariableDeclaration (Specifier.INT, declMin),
+				declMin.getSymbolName(),
+				null, null
+			));
+
+			VariableDeclarator declMax = new VariableDeclarator((NameID) boxDomain.getMax().getCoord(i));
+			ggid.addStencilFunctionArguments(new GlobalGeneratedIdentifiers.Variable (
+				GlobalGeneratedIdentifiers.EVariableType.INTERNAL_ADDITIONAL_KERNEL_PARAMETER,
+				new VariableDeclaration (Specifier.INT, declMax),
+				declMax.getSymbolName(),
+				null, null
+			));
+		}
+		
+		// add t_max
+		VariableDeclarator declTMax = (VariableDeclarator) cg.getTMax().getSymbol();
+		ggid.addStencilFunctionArguments(new GlobalGeneratedIdentifiers.Variable (
+			GlobalGeneratedIdentifiers.EVariableType.INTERNAL_ADDITIONAL_KERNEL_PARAMETER,
+			new VariableDeclaration (Specifier.INT, declTMax),
+			declTMax.getSymbolName(),
+			null, null
+		));
+
+		// add the slopes
+		Identifier[][][] slopes = cg.getSlopes();
+		for (int i = 0; i < slopes.length; i++)
+		{
+			for (int j = 0; j < slopes[i].length; j++)
+			{
+				for (int k = 0; k < slopes[i][j].length; k++)
+				{
+					VariableDeclarator decl = (VariableDeclarator) slopes[i][j][k].getSymbol();
+					ggid.addStencilFunctionArguments(new GlobalGeneratedIdentifiers.Variable (
+						GlobalGeneratedIdentifiers.EVariableType.INTERNAL_ADDITIONAL_KERNEL_PARAMETER,
+						new VariableDeclaration (Specifier.INT, decl),
+						decl.getSymbolName(),
+						null, null
+					));
+				}
+			}
+		}
+	}
 
 	/**
 	 * Creates the list of output kernel source files.
@@ -184,36 +271,6 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		return sb.toString ();
 	}
 	
-	/**
-	 *
-	 * @param bIncludeAutotuneParameters
-	 * @return
-	 */
-	public String getIncludesAndDefines (boolean bIncludeAutotuneParameters)
-	{
-		StringBuilder sb = new StringBuilder ();
-
-		if (m_data.getOptions ().isDebugPrintStencilIndices ())
-			sb.append ("#include <stdio.h>\n");
-
-		// include files
-		for (String strFile : m_data.getArchitectureDescription ().getIncludeFiles ())
-		{
-			sb.append ("#include \"");
-			sb.append (strFile);
-			sb.append ("\"\n");
-		}
-
-		sb.append ("#include <stdint.h>\n");
-		sb.append ("#include \"patusrt.h\"\n");
-		
-		sb.append ("#include \"");
-		sb.append (CodeGenerationOptions.DEFAULT_TUNEDPARAMS_FILENAME);
-		sb.append ("\"\n");
-
-		return sb.toString ();
-	}	
-	
 	public static void main(String[] args)
 	{
 		try
@@ -237,6 +294,8 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 			new TrapezoidCodeGeneratorMain (stencil, options.getHardwareDescription(), options.getOutputDir (), options.getOptions ()).run ();
 			
 			TrapezoidCodeGeneratorMain.LOGGER.info("complete");
+			
+			Maxima.getInstance().close();
 		}
 		catch (Exception e)
 		{

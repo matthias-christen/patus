@@ -30,9 +30,9 @@ import ch.unibas.cs.hpwc.patus.util.StringUtil;
  * 
  * @author Matthias-M. Christen
  */
-public class CodeGenerationOptions {
-	private final static Logger LOGGER = Logger
-			.getLogger(CodeGenerationOptions.class);
+public class CodeGenerationOptions
+{
+	private final static Logger LOGGER = Logger.getLogger(CodeGenerationOptions.class);
 
 	/**
 	 * The default filename for the kernel source file
@@ -47,57 +47,72 @@ public class CodeGenerationOptions {
 	 */
 	public final static double TOLERANCE_DEFAULT = 1e-5;
 
-	// /////////////////////////////////////////////////////////////////
+	
+	///////////////////////////////////////////////////////////////////
 	// Inner Types
 
-	public enum ECompatibility {
-		C, FORTRAN;
+	public enum ECompatibility
+	{
+		C,
+		FORTRAN;
 
-		public static ECompatibility fromString(String s) {
+		public static ECompatibility fromString(String s)
+		{
 			if ("C".equals(s))
 				return ECompatibility.C;
 			if ("Fortran".equals(s))
 				return ECompatibility.FORTRAN;
+			
 			return null;
 		}
 	}
 
-	public enum EDebugOption {
-		PRINT_STENCIL_INDICES("print-stencil-indices"), PRINT_VALIDATION_ERRORS(
-				"print-validation-errors");
+	public enum EDebugOption
+	{
+		PRINT_STENCIL_INDICES("print-stencil-indices"),
+		PRINT_VALIDATION_ERRORS("print-validation-errors");
 
 		private String m_strValue;
 
-		private EDebugOption(String strValue) {
+		private EDebugOption(String strValue)
+		{
 			m_strValue = strValue;
 		}
 
-		public static EDebugOption fromString(String s) {
+		public static EDebugOption fromString(String s)
+		{
 			for (EDebugOption opt : values())
 				if (opt.m_strValue.equals(s))
 					return opt;
+			
 			return null;
 		}
 	}
 
-	public enum ETarget {
-		BENCHMARK_HARNESS("benchmark"), KERNEL_ONLY("kernel");
+	public enum ETarget
+	{
+		BENCHMARK_HARNESS("benchmark"),
+		KERNEL_ONLY("kernel");
 
 		private String m_strValue;
 
-		private ETarget(String strValue) {
+		private ETarget(String strValue)
+		{
 			m_strValue = strValue;
 		}
 
-		public static ETarget fromString(String s) {
+		public static ETarget fromString(String s)
+		{
 			for (ETarget target : values())
 				if (target.m_strValue.equals(s))
 					return target;
+			
 			return null;
 		}
 	}
 
-	// /////////////////////////////////////////////////////////////////
+	
+	///////////////////////////////////////////////////////////////////
 	// Member Variables
 
 	/**
@@ -139,14 +154,16 @@ public class CodeGenerationOptions {
 
 	private boolean m_bNativeMic;
 
-	// /////////////////////////////////////////////////////////////////
+	
+	///////////////////////////////////////////////////////////////////
 	// Implementation
 
-	public CodeGenerationOptions() {
+	public CodeGenerationOptions()
+	{
 		// set default options
+		
 		m_compatibility = ECompatibility.C;
-		m_rgUnrollingConfigs = new UnrollConfig[] { new UnrollConfig(1),
-				new UnrollConfig(2) };
+		m_rgUnrollingConfigs = new UnrollConfig[] { new UnrollConfig(1), new UnrollConfig(2) };
 		m_bUseNativeSIMDDatatypes = false;
 		m_bAlwaysUseNonalignedMoves = false;
 		m_bBalanceBinaryExpressions = true;
@@ -167,47 +184,53 @@ public class CodeGenerationOptions {
 	 * 
 	 * @param options
 	 */
-	public void set(CodeGenerationOptions options) {
+	public void set(CodeGenerationOptions options)
+	{
 		setCompatibility(options.getCompatibility());
 		setUnrollingConfigs(options.getUnrollingConfigs());
 		setUseNativeSIMDDatatypes(options.useNativeSIMDDatatypes());
 		setAlwaysUseNonalignedMoves(options.isAlwaysUseNonalignedMoves());
 		setBalanceBinaryExpressions(options.getBalanceBinaryExpressions());
 		m_setDebugOptions.addAll(options.m_setDebugOptions);
+		
 		for (ETarget target : options.getTargets())
 			addTarget(target);
+		
 		setKernelFilename(options.getKernelFilename());
 		setCreateInitialization(options.getCreateInitialization());
 		setCreateValidation(options.getCreateValidationCode());
 		setValidationTolerance(options.getValidationTolerance());
-		setUseOptimalInstructionScheduling(options
-				.getUseOptimalInstructionScheduling());
+		setUseOptimalInstructionScheduling(options.getUseOptimalInstructionScheduling());
 		setCreatePrefetching(options.getCreatePrefetching());
 		setNativeMic(options.getNativeMic());
 	}
 
-
 	/**
 	 * Check whether the code generation options are compatible.
 	 */
-	public void checkSettings(StencilCalculation stencil) {
-		if (getCompatibility() == CodeGenerationOptions.ECompatibility.FORTRAN) {
+	public void checkSettings(StencilCalculation stencil)
+	{
+		if (getCompatibility() == CodeGenerationOptions.ECompatibility.FORTRAN)
+		{
 			if (!ExpressionUtil.isValue(stencil.getMaxIterations(), 1))
-				CodeGenerationOptions.LOGGER
-						.error("In Fortran compatiblity mode, the only permissible t_max is 1.");
+				CodeGenerationOptions.LOGGER.error("In Fortran compatiblity mode, the only permissible t_max is 1.");
 		}
 	}
 
-	public void setCompatibility(ECompatibility compatibility) {
+	public void setCompatibility(ECompatibility compatibility)
+	{
 		m_compatibility = compatibility;
 	}
 
-	public ECompatibility getCompatibility() {
+	public ECompatibility getCompatibility()
+	{
 		return m_compatibility;
 	}
 
-	public void setUnrollingConfigs(UnrollConfig... config) {
-		if (config == null) {
+	public void setUnrollingConfigs(UnrollConfig... config)
+	{
+		if (config == null)
+		{
 			m_rgUnrollingConfigs = new UnrollConfig[] { new UnrollConfig(1) };
 			return;
 		}
@@ -217,26 +240,34 @@ public class CodeGenerationOptions {
 			m_rgUnrollingConfigs[i] = config[i].clone();
 	}
 
-	public UnrollConfig[] getUnrollingConfigs() {
+	public UnrollConfig[] getUnrollingConfigs()
+	{
 		return m_rgUnrollingConfigs;
 	}
 
 	public Set<StencilLoopUnrollingConfiguration> getStencilLoopUnrollingConfigurations(
-			int nDimensionality, int[] rgMaxUnrollingFactorPerDimension,
-			boolean bIsEligibleForStencilLoopUnrolling) {
+		int nDimensionality,
+		int[] rgMaxUnrollingFactorPerDimension,
+		boolean bIsEligibleForStencilLoopUnrolling)
+	{
 		Set<StencilLoopUnrollingConfiguration> setUnrollingConfigs = new HashSet<>();
-		if (bIsEligibleForStencilLoopUnrolling) {
-			// create the single-unrolling configurations and count the
-			// multi-unrollings
+		
+		if (bIsEligibleForStencilLoopUnrolling)
+		{
+			// create the single-unrolling configurations and count the multi-unrollings
 			int nMultiUnrollingsCount = 0;
-			for (UnrollConfig config : m_rgUnrollingConfigs) {
+			
+			for (UnrollConfig config : m_rgUnrollingConfigs)
+			{
 				if (config.isMultiConfig())
 					nMultiUnrollingsCount++;
-				else {
-					setUnrollingConfigs
-							.add(new StencilLoopUnrollingConfiguration(
-									nDimensionality, config.getUnrollings(),
-									rgMaxUnrollingFactorPerDimension));
+				else
+				{
+					setUnrollingConfigs.add(new StencilLoopUnrollingConfiguration(
+						nDimensionality,
+						config.getUnrollings(),
+						rgMaxUnrollingFactorPerDimension
+					));
 				}
 			}
 
@@ -246,23 +277,30 @@ public class CodeGenerationOptions {
 				dpe.addDimension(0, nMultiUnrollingsCount - 1);
 
 			UnrollConfig[] rgMultiUnrollConfigs = new UnrollConfig[nMultiUnrollingsCount];
+			
 			int i = 0;
 			for (UnrollConfig config : m_rgUnrollingConfigs)
 				if (config.isMultiConfig())
 					rgMultiUnrollConfigs[i++] = config;
 
-			for (int[] rgUnrollingIndices : dpe) {
+			for (int[] rgUnrollingIndices : dpe)
+			{
 				StencilLoopUnrollingConfiguration config = new StencilLoopUnrollingConfiguration();
-				for (i = 0; i < rgUnrollingIndices.length; i++) {
-					config.setUnrollingForDimension(i,
-							rgMultiUnrollConfigs[rgUnrollingIndices[i]]
-									.getUnrollingInDimension(0),
-							rgMaxUnrollingFactorPerDimension[i]);
+				
+				for (i = 0; i < rgUnrollingIndices.length; i++)
+				{
+					config.setUnrollingForDimension(
+						i,
+						rgMultiUnrollConfigs[rgUnrollingIndices[i]].getUnrollingInDimension(0),
+						rgMaxUnrollingFactorPerDimension[i]
+					);
 				}
 
 				setUnrollingConfigs.add(config);
 			}
-		} else {
+		}
+		else
+		{
 			// loop is not eligible for unrolling: add a non-unroll
 			// configuration
 			setUnrollingConfigs.add(new StencilLoopUnrollingConfiguration());
@@ -271,59 +309,77 @@ public class CodeGenerationOptions {
 		return setUnrollingConfigs;
 	}
 
-	public void setUseNativeSIMDDatatypes(boolean bUseNativeSIMDDatatypes) {
+	public void setUseNativeSIMDDatatypes(boolean bUseNativeSIMDDatatypes)
+	{
 		m_bUseNativeSIMDDatatypes = bUseNativeSIMDDatatypes;
 	}
 
-	public boolean useNativeSIMDDatatypes() {
+	public boolean useNativeSIMDDatatypes()
+	{
 		return m_bUseNativeSIMDDatatypes;
 	}
 
-	public void setAlwaysUseNonalignedMoves(boolean bAlwaysUseNonalignedMoves) {
+	public void setAlwaysUseNonalignedMoves(boolean bAlwaysUseNonalignedMoves)
+	{
 		m_bAlwaysUseNonalignedMoves = bAlwaysUseNonalignedMoves;
 	}
 
-	public boolean isAlwaysUseNonalignedMoves() {
+	public boolean isAlwaysUseNonalignedMoves()
+	{
 		return m_bAlwaysUseNonalignedMoves;
 	}
 
-	public void setBalanceBinaryExpressions(boolean bBalanceBinaryExpressions) {
+	public void setBalanceBinaryExpressions(boolean bBalanceBinaryExpressions)
+	{
 		m_bBalanceBinaryExpressions = bBalanceBinaryExpressions;
 	}
 
-	public boolean getBalanceBinaryExpressions() {
+	public boolean getBalanceBinaryExpressions()
+	{
 		return m_bBalanceBinaryExpressions;
 	}
 
-	public void setDebugOptions(String[] rgDebugOptions) {
-		for (String strDebugOption : rgDebugOptions) {
+	public void setDebugOptions(String[] rgDebugOptions)
+	{
+		for (String strDebugOption : rgDebugOptions)
+		{
 			EDebugOption option = EDebugOption.fromString(strDebugOption);
+			
 			if (option != null)
 				m_setDebugOptions.add(option);
 			else
-				LOGGER.info(StringUtil.concat("Bad debug option: '",
-						strDebugOption,
-						"' is not recognized as a debug option."));
+			{
+				LOGGER.info(StringUtil.concat(
+					"Bad debug option: '",
+					strDebugOption,
+					"' is not recognized as a debug option."
+				));
+			}
 		}
 	}
 
-	public boolean isDebugOptionSet(EDebugOption option) {
+	public boolean isDebugOptionSet(EDebugOption option)
+	{
 		return m_setDebugOptions.contains(option);
 	}
 
-	public boolean isDebugPrintStencilIndices() {
+	public boolean isDebugPrintStencilIndices()
+	{
 		return isDebugOptionSet(EDebugOption.PRINT_STENCIL_INDICES);
 	}
 
-	public List<ETarget> getTargets() {
+	public List<ETarget> getTargets()
+	{
 		return m_listTargets;
 	}
 
-	public void clearTargets() {
+	public void clearTargets()
+	{
 		m_listTargets.clear();
 	}
 
-	public void addTarget(ETarget target) {
+	public void addTarget(ETarget target)
+	{
 		if (!m_listTargets.contains(target))
 			m_listTargets.add(target);
 
@@ -333,64 +389,77 @@ public class CodeGenerationOptions {
 			m_bCreateInitialization = true;
 	}
 
-	public String getKernelFilename() {
+	public String getKernelFilename()
+	{
 		return m_strKernelFilename;
 	}
 
-	public void setKernelFilename(String strKernelFilename) {
+	public void setKernelFilename(String strKernelFilename)
+	{
 		if (strKernelFilename == null)
 			m_strKernelFilename = "kernel";
 		else
 			m_strKernelFilename = strKernelFilename;
 	}
 
-	public void setCreateInitialization(boolean bCreateInitialization) {
+	public void setCreateInitialization(boolean bCreateInitialization)
+	{
 		m_bCreateInitialization = bCreateInitialization;
 	}
 
-	public boolean getCreateInitialization() {
+	public boolean getCreateInitialization()
+	{
 		return m_bCreateInitialization;
 	}
 
-	public boolean getCreateValidationCode() {
+	public boolean getCreateValidationCode()
+	{
 		// TODO: implement validation for SIMD datatypes (=> remove restriction)
 		return m_bCreateValidation && !useNativeSIMDDatatypes();
 	}
 
-	public void setCreateValidation(boolean bCreateValidation) {
+	public void setCreateValidation(boolean bCreateValidation)
+	{
 		m_bCreateValidation = bCreateValidation;
 	}
 
-	public double getValidationTolerance() {
+	public double getValidationTolerance()
+	{
 		return m_fValidationTolerance;
 	}
 
-	public void setValidationTolerance(double fValidationTolerance) {
+	public void setValidationTolerance(double fValidationTolerance)
+	{
 		m_fValidationTolerance = fValidationTolerance;
 	}
 
-	public void setUseOptimalInstructionScheduling(
-			boolean bUseOptimalInstructionScheduling) {
+	public void setUseOptimalInstructionScheduling(boolean bUseOptimalInstructionScheduling)
+	{
 		m_bUseOptimalInstructionScheduling = bUseOptimalInstructionScheduling;
 	}
 
-	public boolean getUseOptimalInstructionScheduling() {
+	public boolean getUseOptimalInstructionScheduling()
+	{
 		return m_bUseOptimalInstructionScheduling;
 	}
 
-	public void setCreatePrefetching(boolean bCreatePrefetching) {
+	public void setCreatePrefetching(boolean bCreatePrefetching)
+	{
 		m_bCreatePrefetching = bCreatePrefetching;
 	}
 
-	public boolean getCreatePrefetching() {
+	public boolean getCreatePrefetching()
+	{
 		return m_bCreatePrefetching;
 	}
 
-	public void setNativeMic(boolean bNativeMic) {
-		m_bNativeMic = bNativeMic;		
+	public void setNativeMic(boolean bNativeMic)
+	{
+		m_bNativeMic = bNativeMic;
 	}
-	
-	public boolean getNativeMic() {
+
+	public boolean getNativeMic()
+	{
 		return m_bNativeMic;
 	}
 }

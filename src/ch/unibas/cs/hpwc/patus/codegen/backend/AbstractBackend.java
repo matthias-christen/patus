@@ -39,9 +39,9 @@ public abstract class AbstractBackend implements IBackend
 	
 	// Mixin classes
 
-	private AbstractArithmeticImpl m_mixinArithmetic;
+	protected AbstractArithmeticImpl m_mixinArithmetic;
 
-	private AbstractNonKernelFunctionsImpl m_mixinNonKernelFunctions;
+	protected AbstractNonKernelFunctionsImpl m_mixinNonKernelFunctions;
 	
 
 	///////////////////////////////////////////////////////////////////

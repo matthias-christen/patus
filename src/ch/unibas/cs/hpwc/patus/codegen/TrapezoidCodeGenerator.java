@@ -4,7 +4,6 @@ import cetus.hir.BinaryExpression;
 import cetus.hir.BinaryOperator;
 import cetus.hir.Identifier;
 import cetus.hir.NameID;
-import cetus.hir.Specifier;
 import cetus.hir.Traversable;
 import cetus.hir.VariableDeclarator;
 import ch.unibas.cs.hpwc.patus.ast.RangeIterator;

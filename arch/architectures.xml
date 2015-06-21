@@ -846,6 +846,16 @@
 		</intrinsics>
 	</architectureType>
 
+	<architectureType name="Strategy2 AVX" inherits-from="x86_64 AVX">
+		<codegenerator backend="Strategy2" use-function-pointers="true" src-suffix="c"/>
+		<build compiler-command="make" harness-template-dir="Strategy2"/>
+	</architectureType>
+
+	<architectureType name="Strategy2 AVX asm" inherits-from="x86_64 AVX asm">
+		<codegenerator backend="Strategy2" use-function-pointers="true" src-suffix="c"/>
+		<build compiler-command="make" harness-template-dir="Strategy2"/>
+	</architectureType>
+
 	<!-- MIC Architecture, OpenMP parallelization -->
 	<architectureType name="MIC">
 		<codegenerator src-suffix="c" backend="OpenMP_MIC" use-function-pointers="true"/>
@@ -899,7 +909,7 @@
 		<build compiler-command="make" harness-template-dir="MIC_OpenMP"/>
 	</architectureType>
 
-<architectureType name="XEON_Offload">
+	<architectureType name="XEON_Offload">
 		<codegenerator src-suffix="c" backend="INTELXEONPHI" use-function-pointers="true"/>
 		<parallelism>
 			<level number="1" has-explicit-local-datacopy="false" async-IO="true">
@@ -951,7 +961,7 @@
 		<build compiler-command="make" harness-template-dir="INTEL_OpenMP_Offload"/>
 	</architectureType>
 
-<architectureType name="XEON_Native_OpenMP">
+	<architectureType name="XEON_Native_OpenMP">
 		<codegenerator src-suffix="c" backend="INTELXEONPHI" use-function-pointers="true"/>
 		<parallelism>
 			<level number="1" has-explicit-local-datacopy="false" async-IO="true">

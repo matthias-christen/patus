@@ -235,7 +235,7 @@ public class FindStencilNodeBaseVectors
 			throw new RuntimeException (StringUtil.concat (
 				"Stencil nodes must have spatial indices of equal dimensions. Dimension is ",
 				m_nDimension,
-				", but the dimensino of ",
+				", but the dimension of ",
 				node.toString (),
 				" is ", node.getIndex ().getSpaceIndex ().length, "."));
 		}

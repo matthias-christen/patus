@@ -25,6 +25,7 @@ import ch.unibas.cs.hpwc.patus.codegen.GlobalGeneratedIdentifiers;
 import ch.unibas.cs.hpwc.patus.codegen.KernelSourceFile;
 import ch.unibas.cs.hpwc.patus.codegen.Strategy;
 import ch.unibas.cs.hpwc.patus.codegen.TrapezoidCodeGenerator;
+import ch.unibas.cs.hpwc.patus.codegen.CodeGenerationOptions.ETarget;
 import ch.unibas.cs.hpwc.patus.codegen.options.CodeGeneratorRuntimeOptions;
 import ch.unibas.cs.hpwc.patus.geometry.Box;
 import ch.unibas.cs.hpwc.patus.geometry.Point;
@@ -56,6 +57,8 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 	 * stencil description file.
 	 */
 	private StencilCalculation m_stencil;
+	
+	private Box m_boxOrigDomainSize;
 		
 	
 	///////////////////////////////////////////////////////////////////
@@ -71,19 +74,21 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		m_options = options;
 		
 		// set the domain size of the stencil to generic min/max expressions
-		byte nDim = m_stencil.getDimensionality();
+		byte nDim = m_stencil.getDimensionality ();
 		Point ptMin = new Point (nDim);
 		Point ptMax = new Point (nDim);
 		
 		for (byte i = 0; i < nDim; i++)
 		{
 			String strCoordName = CodeGeneratorUtil.getDimensionName (i); 
-			ptMin.setCoord(i, new NameID (StringUtil.concat("__trapezoid_", strCoordName, "_min")));
-			ptMax.setCoord(i, new NameID (StringUtil.concat("__trapezoid_", strCoordName, "_max")));
+			ptMin.setCoord(i, new NameID (StringUtil.concat ("__trapezoid_", strCoordName, "_min")));
+			ptMax.setCoord(i, new NameID (StringUtil.concat ("__trapezoid_", strCoordName, "_max")));
 		}
 		
-		m_stencil.getDomainSize().setMin(ptMin);
-		m_stencil.getDomainSize().setMax(ptMax);
+		m_boxOrigDomainSize = new Box (m_stencil.getDomainSize ());
+		
+		m_stencil.getDomainSize ().setMin (ptMin);
+		m_stencil.getDomainSize ().setMax (ptMax);
 	}
 	
 	public void run()
@@ -102,7 +107,7 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		Strategy strategy = Strategy.parse(strategyCode, m_stencil);
 		
 		m_data = new CodeGeneratorSharedObjects (m_stencil, strategy, m_hardwareDescription, m_options);
-		TrapezoidCodeGenerator cg = new TrapezoidCodeGenerator(m_data);
+		TrapezoidCodeGenerator cg = new TrapezoidCodeGenerator (m_data);
 
 		// generate the code
 		CodeGeneratorRuntimeOptions optionsStencil = new CodeGeneratorRuntimeOptions ();
@@ -111,8 +116,8 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		
 		TrapezoidCodeGeneratorMain.LOGGER.info ("Generating code...");
 		createFunctionParameterList (true, true);
-		StatementListBundle slbGenerated = cg.generate(strategy.getBody(), optionsStencil);
-		addMaxPointInitializations();
+		StatementListBundle slbGenerated = cg.generate (strategy.getBody (), optionsStencil);
+		addMaxPointInitializations ();
 		addAdditionalDeclarationsAndAssignments (slbGenerated, optionsStencil);
 		
 		// output
@@ -130,6 +135,8 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		
 		// do post-generation optimizations
 		optimizeCode (slbGenerated);
+		
+		m_stencil.setDomainSize (m_boxOrigDomainSize);
 
 		// package the code into functions, add them to the translation unit, and write the code files
 		for (KernelSourceFile out : listOutputs)
@@ -138,7 +145,7 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 			out.writeCode (this, m_data, m_fileOutputDirectory);
 		}
 		
-		TrapezoidCodeGeneratorMain.LOGGER.info("Code generation completed.");
+		TrapezoidCodeGeneratorMain.LOGGER.info ("Code generation completed.");
 	}
 	
 	/*
@@ -153,28 +160,28 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 	 */
 	protected void addMaxPointInitializations ()
 	{		
-		SubdomainIdentifier it = m_data.getCodeGenerators().getStrategyAnalyzer().getOuterMostSubdomainIterator().getIterator();
+		SubdomainIdentifier it = m_data.getCodeGenerators ().getStrategyAnalyzer ().getOuterMostSubdomainIterator ().getIterator ();
 		ParameterAssignment paStencilComputation = new ParameterAssignment (CodeGeneratorData.PARAM_COMPUTATION_TYPE, CodeGeneratorRuntimeOptions.VALUE_STENCILCALCULATION_STENCIL);
 	
-		byte nLargestDim = (byte) (m_stencil.getDimensionality() - 1);
+		byte nLargestDim = (byte) (m_stencil.getDimensionality () - 1);
 
 		// p1_idx_z_min=__trapezoid_z_min;
-		m_data.getData().addInitializationStatement(
+		m_data.getData().addInitializationStatement (
 			paStencilComputation,
-			new ExpressionStatement(new AssignmentExpression(
-				m_data.getData().getGeneratedIdentifiers().getDimensionMinIdentifier(it, nLargestDim).clone(),
+			new ExpressionStatement (new AssignmentExpression (
+				m_data.getData ().getGeneratedIdentifiers ().getDimensionMinIdentifier (it, nLargestDim).clone (),
 				AssignmentOperator.NORMAL,
-				m_stencil.getDomainSize().getMin().getCoord(nLargestDim).clone()
+				m_stencil.getDomainSize ().getMin ().getCoord (nLargestDim).clone ()
 			))
 		);
 		
 		// p1_idx_z_max=__trapezoid_z_max;
-		m_data.getData().addInitializationStatement(
+		m_data.getData ().addInitializationStatement (
 			paStencilComputation,
-			new ExpressionStatement(new AssignmentExpression(
-				m_data.getData().getGeneratedIdentifiers().getDimensionMaxIdentifier(it, nLargestDim).clone(),
+			new ExpressionStatement (new AssignmentExpression (
+				m_data.getData ().getGeneratedIdentifiers ().getDimensionMaxIdentifier (it, nLargestDim).clone (),
 				AssignmentOperator.NORMAL,
-				m_stencil.getDomainSize().getMax().getCoord(nLargestDim).clone()
+				m_stencil.getDomainSize ().getMax ().getCoord (nLargestDim).clone ()
 			))
 		);
 	}
@@ -189,48 +196,48 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 		GlobalGeneratedIdentifiers ggid = m_data.getData ().getGlobalGeneratedIdentifiers ();
 		
 		// add artificial domain size
-		Box boxDomain = m_stencil.getDomainSize();
-		for (int i = 0; i < boxDomain.getDimensionality(); i++)
+		Box boxDomain = m_stencil.getDomainSize ();
+		for (int i = 0; i < boxDomain.getDimensionality (); i++)
 		{
-			VariableDeclarator declMin = new VariableDeclarator((NameID) boxDomain.getMin().getCoord(i));
+			VariableDeclarator declMin = new VariableDeclarator ((NameID) boxDomain.getMin ().getCoord (i));
 			ggid.addStencilFunctionArguments(new GlobalGeneratedIdentifiers.Variable (
-				GlobalGeneratedIdentifiers.EVariableType.INTERNAL_ADDITIONAL_KERNEL_PARAMETER,
+				GlobalGeneratedIdentifiers.EVariableType.TRAPEZOIDAL_SIZE,
 				new VariableDeclaration (Specifier.INT, declMin),
-				declMin.getSymbolName(),
+				declMin.getSymbolName (),
 				null, null
 			));
 
-			VariableDeclarator declMax = new VariableDeclarator((NameID) boxDomain.getMax().getCoord(i));
-			ggid.addStencilFunctionArguments(new GlobalGeneratedIdentifiers.Variable (
-				GlobalGeneratedIdentifiers.EVariableType.INTERNAL_ADDITIONAL_KERNEL_PARAMETER,
+			VariableDeclarator declMax = new VariableDeclarator ((NameID) boxDomain.getMax ().getCoord (i));
+			ggid.addStencilFunctionArguments (new GlobalGeneratedIdentifiers.Variable (
+				GlobalGeneratedIdentifiers.EVariableType.TRAPEZOIDAL_SIZE,
 				new VariableDeclaration (Specifier.INT, declMax),
-				declMax.getSymbolName(),
+				declMax.getSymbolName (),
 				null, null
 			));
 		}
 		
 		// add t_max
-		VariableDeclarator declTMax = (VariableDeclarator) cg.getTMax().getSymbol();
-		ggid.addStencilFunctionArguments(new GlobalGeneratedIdentifiers.Variable (
-			GlobalGeneratedIdentifiers.EVariableType.INTERNAL_ADDITIONAL_KERNEL_PARAMETER,
+		VariableDeclarator declTMax = (VariableDeclarator) cg.getTMax ().getSymbol ();
+		ggid.addStencilFunctionArguments (new GlobalGeneratedIdentifiers.Variable (
+			GlobalGeneratedIdentifiers.EVariableType.TRAPEZOIDAL_TMAX,
 			new VariableDeclaration (Specifier.INT, declTMax),
-			declTMax.getSymbolName(),
+			declTMax.getSymbolName (),
 			null, null
 		));
 
 		// add the slopes
-		Identifier[][][] slopes = cg.getSlopes();
+		Identifier[][][] slopes = cg.getSlopes ();
 		for (int i = 0; i < slopes.length; i++)
 		{
 			for (int j = 0; j < slopes[i].length; j++)
 			{
 				for (int k = 0; k < slopes[i][j].length; k++)
 				{
-					VariableDeclarator decl = (VariableDeclarator) slopes[i][j][k].getSymbol();
-					ggid.addStencilFunctionArguments(new GlobalGeneratedIdentifiers.Variable (
-						GlobalGeneratedIdentifiers.EVariableType.INTERNAL_ADDITIONAL_KERNEL_PARAMETER,
+					VariableDeclarator decl = (VariableDeclarator) slopes[i][j][k].getSymbol ();
+					ggid.addStencilFunctionArguments (new GlobalGeneratedIdentifiers.Variable (
+						GlobalGeneratedIdentifiers.EVariableType.TRAPEZOIDAL_SLOPE,
 						new VariableDeclaration (Specifier.INT, decl),
-						decl.getSymbolName(),
+						decl.getSymbolName (),
 						null, null
 					));
 				}
@@ -246,11 +253,25 @@ public class TrapezoidCodeGeneratorMain extends AbstractBaseCodeGenerator
 	{
 		List<KernelSourceFile> listOutputs = new ArrayList<> ();
 
-		KernelSourceFile ksf = new KernelSourceFile (getOutputFile (m_options.getKernelFilename ()));
-		ksf.setCompatibility (m_options.getCompatibility ());
-		ksf.setCreateInitialization (m_options.getCreateInitialization ());
-		ksf.setCreateBenchmarkingHarness (false);
-		listOutputs.add (ksf);
+		// create a benchmarking version?
+		if (m_options.getTargets ().contains (ETarget.BENCHMARK_HARNESS))
+		{
+			KernelSourceFile ksf = new KernelSourceFile (getOutputFile (CodeGenerationOptions.DEFAULT_KERNEL_FILENAME));
+			ksf.setCompatibility (CodeGenerationOptions.ECompatibility.C);
+			ksf.setCreateInitialization (false);
+			ksf.setCreateBenchmarkingHarness (true);
+
+			listOutputs.add (ksf);
+		}
+
+		if (m_options.getTargets ().contains (ETarget.KERNEL_ONLY))
+		{
+			KernelSourceFile ksf = new KernelSourceFile (getOutputFile (m_options.getKernelFilename ()));
+			ksf.setCompatibility (m_options.getCompatibility ());
+			ksf.setCreateInitialization (false /*m_options.getCreateInitialization ()*/);
+			ksf.setCreateBenchmarkingHarness (false);
+			listOutputs.add (ksf);
+		}
 
 		return listOutputs;
 	}

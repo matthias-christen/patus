@@ -235,46 +235,53 @@ public class StencilAssemblySection extends AssemblySection
 	public Specifier getDatatype ()
 	{
 		if (m_specDatatype == null)
+			m_specDatatype = StencilAssemblySection.getDatatype (m_data.getStencilCalculation ());
+		
+		return m_specDatatype;
+	}
+	
+	public static Specifier getDatatype (StencilCalculation stencil)
+	{
+		Specifier specDatatype = null;
+		
+		for (StencilNode node : stencil.getOutputBaseNodeSet ())
 		{
-			for (StencilNode node : m_data.getStencilCalculation ().getOutputBaseNodeSet ())
+			if (specDatatype == null)
 			{
-				if (m_specDatatype == null)
+				specDatatype = node.getSpecifier ();
+				if (specDatatype != null)
+					break;
+			}
+			else
+			{
+				if (!specDatatype.equals (node.getSpecifier ()))
+					throw new RuntimeException ("");
+			}
+		}
+		
+		if (specDatatype == null)
+		{
+			for (StencilNode node : stencil.getInputBaseNodeSet ())
+			{
+				if (specDatatype == null)
 				{
-					m_specDatatype = node.getSpecifier ();
-					if (m_specDatatype != null)
+					specDatatype = node.getSpecifier ();
+					if (specDatatype != null)
 						break;
 				}
 				else
 				{
-					if (!m_specDatatype.equals (node.getSpecifier ()))
+					if (!specDatatype.equals (node.getSpecifier ()))
 						throw new RuntimeException ("");
 				}
-			}
-			
-			if (m_specDatatype == null)
-			{
-				for (StencilNode node : m_data.getStencilCalculation ().getInputBaseNodeSet ())
-				{
-					if (m_specDatatype == null)
-					{
-						m_specDatatype = node.getSpecifier ();
-						if (m_specDatatype != null)
-							break;
-					}
-					else
-					{
-						if (!m_specDatatype.equals (node.getSpecifier ()))
-							throw new RuntimeException ("");
-					}
-				}					
-			}
-			
-			// default...
-			if (m_specDatatype == null)
-				m_specDatatype = Specifier.FLOAT;
+			}					
 		}
 		
-		return m_specDatatype;
+		// default...
+		if (specDatatype == null)
+			specDatatype = Specifier.FLOAT;
+		
+		return specDatatype;
 	}
 
 	/**

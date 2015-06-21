@@ -44,6 +44,8 @@ public class BackendFactory
 			return new OpenMPAVXCodeGenerator (data);
 		if ("OpenMP_AVX_Asm".equals (strBackend))
 			return new OpenMPAVXAsmCodeGenerator (data);
+		if ("Strategy2".equals (strBackend))
+			return new Strategy2CodeGenerator (data);
 		if ("OpenMP_MIC".equals (strBackend))
 			return new OpenMPMICCodeGenerator (data);
 		if ("INTELXEONPHI".equals(strBackend))

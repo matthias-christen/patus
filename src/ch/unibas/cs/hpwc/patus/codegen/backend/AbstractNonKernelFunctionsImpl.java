@@ -168,7 +168,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	{
 	}
 
-	private void initialize ()
+	public void initialize ()
 	{
 		if (m_mapCommandLineParamIndices != null)
 			return;
@@ -202,6 +202,11 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	{
 		m_kernelSourceFile = ksf;
 	}
+	
+	public KernelSourceFile getKernelSourceFile ()
+	{
+		return m_kernelSourceFile;
+	}
 
 	/**
 	 * Returns the expression that substitutes a {@link Variable} in the driver code.
@@ -227,28 +232,25 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 				Expression expr = m_mapVariableIdentifiers.get (variable);
 				if (expr == null)
 					return null;
+				
 				switch (typeOutputGrid)
 				{
 				case OUTPUTGRID_DEFAULT:
 					return expr.clone ();
 				case OUTPUTGRID_POINTER:
 					return new UnaryExpression (UnaryOperator.ADDRESS_OF, expr.clone ());
+				default:
+					return null;
 				}
 			}
 
 		case KERNEL_PARAMETER:
 			return getParameterSampleValue (variable);
 
-		case AUTOTUNE_PARAMETER:
-		case INTERNAL_AUTOTUNE_PARAMETER:
-		case INTERNAL_NONKERNEL_AUTOTUNE_PARAMETER:
-		case INTERNAL_ADDITIONAL_KERNEL_PARAMETER:
-		case SIZE_PARAMETER:
+		default:
 			//return getCommandLineParameterForVariable (variable);
 			return new NameID (variable.getName ());
 		}
-
-		return null;
 	}
 
 	/**
@@ -762,7 +764,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	 * @param listVariables The list of variables for which to determine the common alignment restriction
 	 * @return The alignment restriction common to the types of the variables in <code>listVariables</code>
 	 */
-	private int getGlobalAlignmentRestriction (List<Variable> listVariables)
+	public int getGlobalAlignmentRestriction (List<Variable> listVariables)
 	{
 		Set<Specifier> setTypes = new HashSet<> ();
 		for (Variable v : listVariables)
@@ -785,7 +787,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		return nAlignRestrict;
 	}
 	
-	private Expression getArgumentExpressionFromVariable (Variable v, StatementList slAuxStatements, int nAlignRestrict, boolean bForceAlign)
+	public Expression getArgumentExpressionFromVariable (Variable v, StatementList slAuxStatements, int nAlignRestrict, boolean bForceAlign)
 	{
 		boolean bIsPowerOfTwo = MathUtil.isPowerOfTwo (nAlignRestrict);
 		boolean bIsFortranCompatible = m_kernelSourceFile.getCompatibility () == CodeGenerationOptions.ECompatibility.FORTRAN;
@@ -864,7 +866,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	 * functions. Takes care of alignment restrictions.
 	 * @return List of function arguments to <code>initialize</code> and <code>kernel</code>
 	 */
-	private List<Expression> getFunctionArguments (List<Variable> listVariables, StatementList sl, boolean bForceAlign)
+	public List<Expression> getFunctionArguments (List<Variable> listVariables, StatementList sl, boolean bForceAlign)
 	{
 		// get alignment restrictions
 		int nAlignRestrict = getGlobalAlignmentRestriction (listVariables);		
@@ -877,7 +879,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 		return listArgs;
 	}
 
-	private Set<IDExpression> getGridSet ()
+	public Set<IDExpression> getGridSet ()
 	{
 		List<Variable> listVars = m_data.getData ().getGlobalGeneratedIdentifiers ().getVariables (
 			GlobalGeneratedIdentifiers.EVariableType.INPUT_GRID.mask () |
@@ -992,7 +994,7 @@ public abstract class AbstractNonKernelFunctionsImpl implements INonKernelFuncti
 	 * @param nodes The nodes for which to look for the memory objects and in which to count bytes
 	 * @return The number of bytes in the memory objects corresponding to the stencil nodes in <code>nodes</code>
 	 */
-	private Expression getBytes (Iterable<StencilNode> nodes)
+	public Expression getBytes (Iterable<StencilNode> nodes)
 	{
 		Expression exprTotalBytes = null;
 
